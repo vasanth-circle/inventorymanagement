@@ -1,0 +1,201 @@
+import Transaction from '../models/Transaction.js';
+import Item from '../models/Item.js';
+
+// @desc    Create stock inward transaction
+// @route   POST /api/transactions/inward
+// @access  Private
+export const stockInward = async (req, res, next) => {
+    try {
+        const { item, quantity, reason, notes } = req.body;
+
+        const itemDoc = await Item.findById(item);
+        if (!itemDoc) {
+            return res.status(404).json({ message: 'Item not found' });
+        }
+
+        const previousQuantity = itemDoc.quantity;
+        const newQuantity = previousQuantity + parseInt(quantity);
+
+        // Update item quantity
+        itemDoc.quantity = newQuantity;
+        await itemDoc.save();
+
+        // Create transaction record
+        const transaction = await Transaction.create({
+            item,
+            type: 'inward',
+            quantity,
+            reason,
+            notes,
+            user: req.user._id,
+            previousQuantity,
+            newQuantity,
+            toLocation: itemDoc.location,
+        });
+
+        const populatedTransaction = await Transaction.findById(transaction._id)
+            .populate('item', 'name barcode')
+            .populate('user', 'name email');
+
+        res.status(201).json(populatedTransaction);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Create stock outward transaction
+// @route   POST /api/transactions/outward
+// @access  Private
+export const stockOutward = async (req, res, next) => {
+    try {
+        const { item, quantity, reason, notes } = req.body;
+
+        const itemDoc = await Item.findById(item);
+        if (!itemDoc) {
+            return res.status(404).json({ message: 'Item not found' });
+        }
+
+        if (itemDoc.quantity < quantity) {
+            return res.status(400).json({ message: 'Insufficient stock available' });
+        }
+
+        const previousQuantity = itemDoc.quantity;
+        const newQuantity = previousQuantity - parseInt(quantity);
+
+        // Update item quantity
+        itemDoc.quantity = newQuantity;
+        await itemDoc.save();
+
+        // Create transaction record
+        const transaction = await Transaction.create({
+            item,
+            type: 'outward',
+            quantity,
+            reason,
+            notes,
+            user: req.user._id,
+            previousQuantity,
+            newQuantity,
+            fromLocation: itemDoc.location,
+        });
+
+        const populatedTransaction = await Transaction.findById(transaction._id)
+            .populate('item', 'name barcode')
+            .populate('user', 'name email');
+
+        res.status(201).json(populatedTransaction);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Create stock transfer transaction
+// @route   POST /api/transactions/transfer
+// @access  Private
+export const stockTransfer = async (req, res, next) => {
+    try {
+        const { item, quantity, fromLocation, toLocation, notes } = req.body;
+
+        const itemDoc = await Item.findById(item);
+        if (!itemDoc) {
+            return res.status(404).json({ message: 'Item not found' });
+        }
+
+        const previousQuantity = itemDoc.quantity;
+
+        // Update item location
+        itemDoc.location = toLocation;
+        await itemDoc.save();
+
+        // Create transaction record
+        const transaction = await Transaction.create({
+            item,
+            type: 'transfer',
+            quantity,
+            fromLocation,
+            toLocation,
+            notes,
+            user: req.user._id,
+            previousQuantity,
+            newQuantity: previousQuantity, // Quantity doesn't change in transfer
+        });
+
+        const populatedTransaction = await Transaction.findById(transaction._id)
+            .populate('item', 'name barcode')
+            .populate('user', 'name email');
+
+        res.status(201).json(populatedTransaction);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Get all transactions with filtering
+// @route   GET /api/transactions
+// @access  Private
+export const getTransactions = async (req, res, next) => {
+    try {
+        const {
+            page = 1,
+            limit = 10,
+            type = '',
+            item = '',
+            startDate = '',
+            endDate = '',
+        } = req.query;
+
+        const query = {};
+
+        if (type) {
+            query.type = type;
+        }
+
+        if (item) {
+            query.item = item;
+        }
+
+        if (startDate || endDate) {
+            query.createdAt = {};
+            if (startDate) {
+                query.createdAt.$gte = new Date(startDate);
+            }
+            if (endDate) {
+                query.createdAt.$lte = new Date(endDate);
+            }
+        }
+
+        const transactions = await Transaction.find(query)
+            .populate('item', 'name barcode category')
+            .populate('user', 'name email')
+            .sort({ createdAt: -1 })
+            .limit(limit * 1)
+            .skip((page - 1) * limit)
+            .exec();
+
+        const count = await Transaction.countDocuments(query);
+
+        res.json({
+            transactions,
+            totalPages: Math.ceil(count / limit),
+            currentPage: page,
+            totalTransactions: count,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Get transaction history for an item
+// @route   GET /api/transactions/item/:itemId
+// @access  Private
+export const getItemHistory = async (req, res, next) => {
+    try {
+        const transactions = await Transaction.find({ item: req.params.itemId })
+            .populate('user', 'name email')
+            .sort({ createdAt: -1 });
+
+        res.json(transactions);
+    } catch (error) {
+        next(error);
+    }
+};
