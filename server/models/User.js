@@ -29,6 +29,22 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: true,
     },
+    menuAccess: {
+        type: String,
+        enum: ['all', 'specific'],
+        default: 'all',
+    },
+    allowedMenus: {
+        type: [String],
+        default: [],
+        validate: {
+            validator: function (menus) {
+                const validMenus = ['dashboard', 'inventory', 'stock-inward', 'stock-outward', 'stock-return', 'scan-bill', 'returns', 'reports', 'users'];
+                return menus.every(menu => validMenus.includes(menu));
+            },
+            message: 'Invalid menu identifier'
+        }
+    },
 }, {
     timestamps: true,
 });

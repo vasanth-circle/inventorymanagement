@@ -12,6 +12,7 @@ import itemRoutes from './routes/itemRoutes.js';
 import transactionRoutes from './routes/transactionRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
+import excelRoutes from './routes/excelRoutes.js';
 
 dotenv.config();
 
@@ -42,6 +43,7 @@ app.use('/api/items', itemRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/excel', excelRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

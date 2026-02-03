@@ -13,7 +13,7 @@ const generateToken = (id) => {
 // @access  Public
 export const register = async (req, res, next) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { name, email, password, role, menuAccess, allowedMenus } = req.body;
 
         // Check if user exists
         const userExists = await User.findOne({ email });
@@ -27,6 +27,8 @@ export const register = async (req, res, next) => {
             email,
             password,
             role: role || 'staff',
+            menuAccess: menuAccess || 'all',
+            allowedMenus: allowedMenus || [],
         });
 
         res.status(201).json({
@@ -34,6 +36,8 @@ export const register = async (req, res, next) => {
             name: user.name,
             email: user.email,
             role: user.role,
+            menuAccess: user.menuAccess,
+            allowedMenus: user.allowedMenus,
             token: generateToken(user._id),
         });
     } catch (error) {
@@ -69,6 +73,8 @@ export const login = async (req, res, next) => {
             name: user.name,
             email: user.email,
             role: user.role,
+            menuAccess: user.menuAccess,
+            allowedMenus: user.allowedMenus,
             token: generateToken(user._id),
         });
     } catch (error) {
@@ -95,6 +101,108 @@ export const getUsers = async (req, res, next) => {
     try {
         const users = await User.find({});
         res.json(users);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Update user
+// @route   PUT /api/auth/users/:id
+// @access  Private/Admin
+export const updateUser = async (req, res, next) => {
+    try {
+        const { name, email, role, menuAccess, allowedMenus } = req.body;
+        const userId = req.params.id;
+
+        // Check if user exists
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Check if email is being changed and if it already exists
+        if (email && email !== user.email) {
+            const emailExists = await User.findOne({ email });
+            if (emailExists) {
+                return res.status(400).json({ message: 'Email already in use' });
+            }
+        }
+
+        // Update user fields
+        if (name) user.name = name;
+        if (email) user.email = email;
+        if (role) user.role = role;
+        if (menuAccess) user.menuAccess = menuAccess;
+        if (allowedMenus !== undefined) user.allowedMenus = allowedMenus;
+
+        await user.save();
+
+        res.json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            isActive: user.isActive,
+            menuAccess: user.menuAccess,
+            allowedMenus: user.allowedMenus,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Toggle user status (activate/deactivate)
+// @route   PATCH /api/auth/users/:id/status
+// @access  Private/Admin
+export const toggleUserStatus = async (req, res, next) => {
+    try {
+        const userId = req.params.id;
+
+        // Prevent admin from deactivating themselves
+        if (userId === req.user._id.toString()) {
+            return res.status(400).json({ message: 'Cannot deactivate your own account' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        user.isActive = !user.isActive;
+        await user.save();
+
+        res.json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            isActive: user.isActive,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Delete user
+// @route   DELETE /api/auth/users/:id
+// @access  Private/Admin
+export const deleteUser = async (req, res, next) => {
+    try {
+        const userId = req.params.id;
+
+        // Prevent admin from deleting themselves
+        if (userId === req.user._id.toString()) {
+            return res.status(400).json({ message: 'Cannot delete your own account' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        await User.findByIdAndDelete(userId);
+
+        res.json({ message: 'User deleted successfully' });
     } catch (error) {
         next(error);
     }

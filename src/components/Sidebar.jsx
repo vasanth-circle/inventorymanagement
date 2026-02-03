@@ -1,18 +1,29 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useContext } from 'react';
+import { AuthContext } from '../context/AuthContext';
 
 const Sidebar = () => {
     const location = useLocation();
+    const { user, hasMenuAccess } = useContext(AuthContext);
 
-    const navItems = [
-        { label: 'Dashboard', path: '/dashboard', icon: '📊' },
-        { label: 'Inventory', path: '/inventory', icon: '📦' },
-        { label: 'Stock Inward', path: '/stock-inward', icon: '📥' },
-        { label: 'Stock Outward', path: '/stock-outward', icon: '📤' },
-        { label: 'Stock Return', path: '/stock-return', icon: '🔄' },
-        { label: 'Scan Bill', path: '/scan-bill', icon: '🧾' },
-        { label: 'Returns', path: '/returns', icon: '↩️' },
-        { label: 'Reports', path: '/reports', icon: '📈' },
+    const allNavItems = [
+        { label: 'Dashboard', path: '/dashboard', icon: '📊', id: 'dashboard' },
+        { label: 'Inventory', path: '/inventory', icon: '📦', id: 'inventory' },
+        { label: 'Stock Inward', path: '/stock-inward', icon: '📥', id: 'stock-inward' },
+        { label: 'Stock Outward', path: '/stock-outward', icon: '📤', id: 'stock-outward' },
+        { label: 'Stock Return', path: '/stock-return', icon: '🔄', id: 'stock-return' },
+        { label: 'Scan Bill', path: '/scan-bill', icon: '🧾', id: 'scan-bill' },
+        { label: 'Returns', path: '/returns', icon: '↩️', id: 'returns' },
+        { label: 'Reports', path: '/reports', icon: '📈', id: 'reports' },
     ];
+
+    // Filter menu items based on user permissions
+    const navItems = allNavItems.filter(item => hasMenuAccess(item.id));
+
+    // Add Users menu item for admin only
+    if (user?.role === 'admin') {
+        navItems.push({ label: 'Users', path: '/users', icon: '👥', id: 'users' });
+    }
 
     return (
         <aside className="w-64 bg-white shadow-md min-h-screen">

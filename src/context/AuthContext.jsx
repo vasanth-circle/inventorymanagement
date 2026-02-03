@@ -54,8 +54,18 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    const hasMenuAccess = (menuId) => {
+        if (!user) return false;
+        // Admin always has access to all menus
+        if (user.role === 'admin') return true;
+        // Check if user has all menus access
+        if (user.menuAccess === 'all') return true;
+        // Check if menu is in allowed menus
+        return user.allowedMenus?.includes(menuId) || false;
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+        <AuthContext.Provider value={{ user, loading, login, register, logout, hasMenuAccess }}>
             {children}
         </AuthContext.Provider>
     );
