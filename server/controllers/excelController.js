@@ -1,5 +1,6 @@
 import xlsx from 'xlsx';
 import Item from '../models/Item.js';
+import Category from '../models/Category.js';
 import Transaction from '../models/Transaction.js';
 
 // Parse Excel file and return data
@@ -113,12 +114,33 @@ export const importExcelData = async (req, res, next) => {
         // Process each item
         for (const itemData of items) {
             try {
-                // Check if item exists by SKU
-                let item = await Item.findOne({ sku: itemData.sku });
+                // Resolve Category ID
+                let categoryId;
+                const category = await Category.findOne({ name: { $regex: new RegExp(`^${itemData.category}$`, 'i') } });
+
+                if (category) {
+                    categoryId = category._id;
+                } else {
+                    // Create category if it doesn't exist
+                    const newCategory = await Category.create({ name: itemData.category });
+                    categoryId = newCategory._id;
+                }
+
+                // Check if item exists by SKU or Name
+                let item = await Item.findOne({
+                    $or: [
+                        { sku: itemData.sku },
+                        { name: itemData.name }
+                    ]
+                });
 
                 if (item) {
                     // Item exists - update quantity
+                    const previousQuantity = item.quantity;
                     item.quantity += itemData.quantity;
+                    // Update price and location if provided
+                    if (itemData.price) item.price = itemData.price;
+                    if (itemData.location) item.location = itemData.location;
                     await item.save();
 
                     // Create inward transaction
@@ -126,10 +148,10 @@ export const importExcelData = async (req, res, next) => {
                         item: item._id,
                         type: 'inward',
                         quantity: itemData.quantity,
-                        price: itemData.price,
-                        supplier: itemData.supplier || 'Excel Import',
+                        previousQuantity: previousQuantity,
+                        newQuantity: item.quantity,
+                        reason: 'Excel Import',
                         location: itemData.location || item.location,
-                        date: itemData.date || new Date(),
                         user: req.user._id,
                     });
 
@@ -143,14 +165,11 @@ export const importExcelData = async (req, res, next) => {
                     item = await Item.create({
                         name: itemData.name,
                         sku: itemData.sku,
-                        category: itemData.category,
+                        category: categoryId,
                         quantity: itemData.quantity,
-                        unit: itemData.unit,
                         price: itemData.price,
-                        supplier: itemData.supplier,
                         location: itemData.location,
-                        minStockLevel: itemData.minStockLevel || 0,
-                        description: itemData.description,
+                        minStockThreshold: itemData.minStockLevel || 10,
                     });
 
                     // Create inward transaction
@@ -158,10 +177,10 @@ export const importExcelData = async (req, res, next) => {
                         item: item._id,
                         type: 'inward',
                         quantity: itemData.quantity,
-                        price: itemData.price,
-                        supplier: itemData.supplier || 'Excel Import',
+                        previousQuantity: 0,
+                        newQuantity: itemData.quantity,
+                        reason: 'Excel Import',
                         location: itemData.location || item.location,
-                        date: itemData.date || new Date(),
                         user: req.user._id,
                     });
 

@@ -8,6 +8,7 @@ const Sidebar = () => {
         { name: 'Inventory', path: '/inventory', icon: '📦' },
         { name: 'Stock Inward', path: '/stock-inward', icon: '📥' },
         { name: 'Stock Outward', path: '/stock-outward', icon: '📤' },
+        { name: 'Stocks', path: '/stocks', icon: '📋' },
         { name: 'Reports', path: '/reports', icon: '📈' },
     ];
 
@@ -21,8 +22,8 @@ const Sidebar = () => {
                             key={item.path}
                             to={item.path}
                             className={`group flex items-center px-4 py-3 text-sm font-medium rounded-md mb-1 transition-colors ${isActive
-                                    ? 'bg-primary-100 text-primary-700'
-                                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                                ? 'bg-primary-100 text-primary-700'
+                                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                                 }`}
                         >
                             <span className="mr-3 text-xl">{item.icon}</span>

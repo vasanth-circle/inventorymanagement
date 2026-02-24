@@ -30,6 +30,7 @@ export const schemas = {
     createItem: Joi.object({
         name: Joi.string().required().trim(),
         barcode: Joi.string().optional().trim(),
+        sku: Joi.string().optional().trim(),
         category: Joi.string().required(),
         quantity: Joi.number().min(0).default(0),
         minStockThreshold: Joi.number().min(0).default(10),

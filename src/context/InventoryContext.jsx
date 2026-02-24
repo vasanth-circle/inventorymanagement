@@ -103,6 +103,89 @@ export const InventoryProvider = ({ children }) => {
         }
     };
 
+    // Create category
+    const addCategory = async (categoryData) => {
+        try {
+            const { data } = await api.post('/categories', categoryData);
+            setCategories([...categories, data]);
+            toast.success('Category created successfully');
+            return { success: true, data };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to create category');
+            return { success: false };
+        }
+    };
+
+    // Update category
+    const editCategory = async (id, categoryData) => {
+        try {
+            const { data } = await api.put(`/categories/${id}`, categoryData);
+            setCategories(categories.map(cat => cat._id === id ? data : cat));
+            toast.success('Category updated successfully');
+            return { success: true, data };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update category');
+            return { success: false };
+        }
+    };
+
+    // Delete category
+    const removeCategory = async (id) => {
+        try {
+            await api.delete(`/categories/${id}`);
+            setCategories(categories.filter(cat => cat._id !== id));
+            toast.success('Category deleted successfully');
+            return { success: true };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete category');
+            return { success: false };
+        }
+    };
+
+    // Parse Excel file
+    const parseExcelFile = async (file) => {
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const { data } = await api.post('/excel/parse', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            return { success: true, data };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to parse Excel file');
+            return { success: false };
+        }
+    };
+
+    // Import Excel data
+    const importExcelData = async (itemsData) => {
+        try {
+            const { data } = await api.post('/excel/import', { items: itemsData });
+            toast.success(data.message || 'Import completed successfully');
+            fetchItems(); // Refresh items after import
+            return { success: true, data };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to import data');
+            return { success: false };
+        }
+    };
+
+    // Download Template
+    const downloadTemplate = async () => {
+        try {
+            const response = await api.get('/excel/template', { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'stock_inward_template.xlsx');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            toast.error('Failed to download template');
+        }
+    };
+
     useEffect(() => {
         if (user) {
             fetchCategories();
@@ -123,6 +206,12 @@ export const InventoryProvider = ({ children }) => {
                 createTransaction,
                 fetchTransactions,
                 fetchCategories,
+                addCategory,
+                editCategory,
+                removeCategory,
+                parseExcelFile,
+                importExcelData,
+                downloadTemplate,
             }}
         >
             {children}

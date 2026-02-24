@@ -12,6 +12,13 @@ const itemSchema = new mongoose.Schema({
         sparse: true,
         trim: true,
     },
+    sku: {
+        type: String,
+        unique: true,
+        sparse: true,
+        trim: true,
+        uppercase: true,
+    },
     category: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Category',

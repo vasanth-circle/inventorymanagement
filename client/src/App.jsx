@@ -12,6 +12,7 @@ import Inventory from './pages/Inventory';
 import StockInward from './pages/StockInward';
 import StockOutward from './pages/StockOutward';
 import Reports from './pages/Reports';
+import Stocks from './pages/Stocks';
 
 function App() {
     return (
@@ -40,6 +41,7 @@ function App() {
                                                     <Route path="/stock-inward" element={<StockInward />} />
                                                     <Route path="/stock-outward" element={<StockOutward />} />
                                                     <Route path="/reports" element={<Reports />} />
+                                                    <Route path="/stocks" element={<Stocks />} />
                                                     <Route path="/" element={<Navigate to="/dashboard" />} />
                                                 </Routes>
                                             </main>

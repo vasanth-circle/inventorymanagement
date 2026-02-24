@@ -94,8 +94,10 @@ const Dashboard = () => {
                     <h2 className="text-xl font-semibold text-gray-900 mb-4">Today's Inward</h2>
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-3xl font-bold text-green-600">{stats?.todayInward?.total || 0}</p>
-                            <p className="text-sm text-gray-600">{stats?.todayInward?.count || 0} transactions</p>
+                            <p className="text-3xl font-bold text-green-600">
+                                {formatCurrency(stats?.todayInward?.totalValue || 0)}
+                            </p>
+                            <p className="text-sm text-gray-600">{stats?.todayInward?.total || 0} units ({stats?.todayInward?.count || 0} transactions)</p>
                         </div>
                         <span className="text-5xl">📥</span>
                     </div>
@@ -105,8 +107,10 @@ const Dashboard = () => {
                     <h2 className="text-xl font-semibold text-gray-900 mb-4">Today's Outward</h2>
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-3xl font-bold text-red-600">{stats?.todayOutward?.total || 0}</p>
-                            <p className="text-sm text-gray-600">{stats?.todayOutward?.count || 0} transactions</p>
+                            <p className="text-3xl font-bold text-red-600">
+                                {formatCurrency(stats?.todayOutward?.totalValue || 0)}
+                            </p>
+                            <p className="text-sm text-gray-600">{stats?.todayOutward?.total || 0} units ({stats?.todayOutward?.count || 0} transactions)</p>
                         </div>
                         <span className="text-5xl">📤</span>
                     </div>
@@ -200,8 +204,8 @@ const Dashboard = () => {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${transaction.type === 'inward' ? 'bg-green-100 text-green-800' :
-                                                    transaction.type === 'outward' ? 'bg-red-100 text-red-800' :
-                                                        'bg-blue-100 text-blue-800'
+                                                transaction.type === 'outward' ? 'bg-red-100 text-red-800' :
+                                                    'bg-blue-100 text-blue-800'
                                                 }`}>
                                                 {transaction.type}
                                             </span>

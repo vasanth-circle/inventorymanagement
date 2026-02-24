@@ -1,10 +1,10 @@
-import { useState, useContext } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { InventoryContext } from '../context/InventoryContext';
 import toast from 'react-hot-toast';
 
 const StockInward = () => {
-    const { categories, createItem, createTransaction } = useContext(InventoryContext);
+    const { items, fetchItems, categories, createItem, createTransaction } = useContext(InventoryContext);
     const navigate = useNavigate();
     const [isNewItem, setIsNewItem] = useState(true);
     const [loading, setLoading] = useState(false);
@@ -21,9 +21,31 @@ const StockInward = () => {
     });
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
+    const [selectedItem, setSelectedItem] = useState('');
+
+    useEffect(() => {
+        fetchItems({ limit: 1000 });
+    }, []);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleItemSelect = (e) => {
+        const itemId = e.target.value;
+        setSelectedItem(itemId);
+        if (itemId) {
+            const item = items.find(i => i._id === itemId);
+            if (item) {
+                setFormData({
+                    ...formData,
+                    name: item.name,
+                    barcode: item.barcode || '',
+                    category: item.category?._id || item.category || '',
+                    price: item.price,
+                });
+            }
+        }
     };
 
     const handleImageChange = (e) => {
@@ -44,7 +66,7 @@ const StockInward = () => {
 
         try {
             if (isNewItem) {
-                // Create new item with initial stock
+                // Create new item logic
                 const itemFormData = new FormData();
                 itemFormData.append('name', formData.name);
                 itemFormData.append('barcode', formData.barcode);
@@ -73,6 +95,25 @@ const StockInward = () => {
                     toast.success('Item created and stock added successfully!');
                     navigate('/inventory');
                 }
+            } else {
+                // Add stock to existing item
+                if (!selectedItem) {
+                    toast.error('Please select an item');
+                    return;
+                }
+
+                const result = await createTransaction({
+                    item: selectedItem,
+                    type: 'inward',
+                    quantity: parseInt(formData.quantity),
+                    reason: formData.reason || 'Restocking',
+                    notes: formData.notes,
+                });
+
+                if (result.success) {
+                    toast.success('Stock added successfully!');
+                    navigate('/inventory');
+                }
             }
         } catch (error) {
             toast.error('Failed to add stock');
@@ -94,8 +135,8 @@ const StockInward = () => {
                         <button
                             onClick={() => setIsNewItem(true)}
                             className={`px-4 py-2 rounded-lg font-medium transition-colors ${isNewItem
-                                    ? 'bg-primary-600 text-white'
-                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                ? 'bg-primary-600 text-white'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                 }`}
                         >
                             New Item
@@ -103,8 +144,8 @@ const StockInward = () => {
                         <button
                             onClick={() => setIsNewItem(false)}
                             className={`px-4 py-2 rounded-lg font-medium transition-colors ${!isNewItem
-                                    ? 'bg-primary-600 text-white'
-                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                ? 'bg-primary-600 text-white'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                 }`}
                         >
                             Existing Item
@@ -227,6 +268,27 @@ const StockInward = () => {
                                 </div>
                             </div>
                         </>
+                    )}
+
+                    {!isNewItem && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Select Existing Item <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                value={selectedItem}
+                                onChange={handleItemSelect}
+                                required={!isNewItem}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            >
+                                <option value="">-- Choose an item --</option>
+                                {items.map(item => (
+                                    <option key={item._id} value={item._id}>
+                                        {item.name} {item.barcode ? `(${item.barcode})` : ''} - Current: {item.quantity}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                     )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
