@@ -52,7 +52,7 @@ export const schemas = {
 
     createTransaction: Joi.object({
         item: Joi.string().required(),
-        type: Joi.string().valid('inward', 'outward', 'transfer', 'adjustment').required(),
+        type: Joi.string().valid('inward', 'outward', 'transfer', 'adjustment', 'return').required(),
         quantity: Joi.number().min(1).required(),
         reason: Joi.string().optional().trim(),
         fromLocation: Joi.string().optional().trim(),

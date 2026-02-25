@@ -1,4 +1,5 @@
 import Item from '../models/Item.js';
+import { sendResponse, sendError } from '../utils/standardResponse.js';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -145,10 +146,17 @@ export const updateItem = async (req, res, next) => {
         const item = await Item.findById(req.params.id);
 
         if (!item) {
-            return res.status(404).json({ message: 'Item not found' });
+            return sendError(res, 404, 'Item not found');
         }
 
         const updateData = { ...req.body };
+
+        // Prevent direct quantity updates
+        if (updateData.quantity !== undefined) {
+            delete updateData.quantity;
+            // Or throw an error:
+            // return sendError(res, 400, 'Quantity cannot be updated directly. Please use the Transactions menu.');
+        }
 
         if (req.file) {
             updateData.image = `/uploads/${req.file.filename}`;
@@ -160,7 +168,7 @@ export const updateItem = async (req, res, next) => {
             { new: true, runValidators: true }
         ).populate('category', 'name');
 
-        res.json(updatedItem);
+        sendResponse(res, 200, updatedItem, 'Item updated successfully');
     } catch (error) {
         next(error);
     }

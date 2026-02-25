@@ -1,21 +1,42 @@
+import { useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 
 const Sidebar = () => {
+    const { user } = useContext(AuthContext);
     const location = useLocation();
 
     const navItems = [
-        { name: 'Dashboard', path: '/dashboard', icon: '📊' },
-        { name: 'Inventory', path: '/inventory', icon: '📦' },
-        { name: 'Stock Inward', path: '/stock-inward', icon: '📥' },
-        { name: 'Stock Outward', path: '/stock-outward', icon: '📤' },
-        { name: 'Stocks', path: '/stocks', icon: '📋' },
-        { name: 'Reports', path: '/reports', icon: '📈' },
+        { name: 'Dashboard', path: '/dashboard', icon: '📊', id: 'dashboard' },
+        { name: 'Inventory', path: '/inventory', icon: '📦', id: 'inventory' },
+        { name: 'Categories', path: '/categories', icon: '🏷️', id: 'categories' },
+        { name: 'Customers', path: '/customers', icon: '👥', id: 'sales' },
+        { name: 'Sales Orders', path: '/sales-orders', icon: '📝', id: 'sales' },
+        { name: 'Vendors', path: '/vendors', icon: '🏪', id: 'purchases' },
+        { name: 'Purchase Orders', path: '/purchase-orders', icon: '📋', id: 'purchases' },
+        { name: 'Stock Inward', path: '/stock-inward', icon: '📥', id: 'stock-inward' },
+        { name: 'Stock Outward', path: '/stock-outward', icon: '📤', id: 'stock-outward' },
+        { name: 'Stock Return', path: '/stock-return', icon: '↩️', id: 'stock-return' },
+        { name: 'Bulk Import', path: '/bulk-import', icon: '📁', id: 'bulk-import' },
+        { name: 'Stocks', path: '/stocks', icon: '📋', id: 'stocks' },
+        { name: 'Reports', path: '/reports', icon: '📈', id: 'reports' },
+    ];
+
+    const filteredNavItems = navItems.filter(item => {
+        if (user?.role === 'admin') return true;
+        if (user?.menuAccess === 'all') return true;
+        return user?.allowedMenus?.includes(item.id);
+    });
+
+    const finalItems = [
+        ...filteredNavItems,
+        ...(user?.role === 'admin' ? [{ name: 'Users', path: '/users', icon: '👥', id: 'users' }] : []),
     ];
 
     return (
         <aside className="w-64 bg-white shadow-md min-h-screen">
             <nav className="mt-5 px-2">
-                {navItems.map((item) => {
+                {finalItems.map((item) => {
                     const isActive = location.pathname === item.path;
                     return (
                         <Link

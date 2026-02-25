@@ -54,8 +54,68 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    // User Management (Admin only)
+    const addUser = async (userData) => {
+        try {
+            const { data } = await api.post('/auth/users', userData);
+            return { success: true, data };
+        } catch (error) {
+            return {
+                success: false,
+                message: error.response?.data?.message || 'Failed to add user',
+            };
+        }
+    };
+
+    const fetchUsers = async () => {
+        try {
+            const { data } = await api.get('/auth/users');
+            return { success: true, data };
+        } catch (error) {
+            return { success: false, message: error.response?.data?.message || 'Failed to fetch users' };
+        }
+    };
+
+    const updateUserDetails = async (id, userData) => {
+        try {
+            const { data } = await api.put(`/auth/users/${id}`, userData);
+            return { success: true, data };
+        } catch (error) {
+            return { success: false, message: error.response?.data?.message || 'Failed to update user' };
+        }
+    };
+
+    const changeUserStatus = async (id) => {
+        try {
+            const { data } = await api.patch(`/auth/users/${id}/status`);
+            return { success: true, data };
+        } catch (error) {
+            return { success: false, message: error.response?.data?.message || 'Failed to change status' };
+        }
+    };
+
+    const removeUser = async (id) => {
+        try {
+            await api.delete(`/auth/users/${id}`);
+            return { success: true };
+        } catch (error) {
+            return { success: false, message: error.response?.data?.message || 'Failed to delete user' };
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+        <AuthContext.Provider value={{
+            user,
+            loading,
+            login,
+            register,
+            logout,
+            addUser,
+            fetchUsers,
+            updateUserDetails,
+            changeUserStatus,
+            removeUser
+        }}>
             {children}
         </AuthContext.Provider>
     );

@@ -3,13 +3,23 @@
 @tailwind utilities;
 
 :root {
-  --primary-color: #3b82f6;
-  --secondary-color: #1e40af;
+  --primary-color: #e11d48; /* Zoho Red */
+  --secondary-color: #1a1f2e; /* Zoho Dark Sidebar */
+  --accent-color: #3b82f6;
   --success-color: #10b981;
   --warning-color: #f59e0b;
   --danger-color: #ef4444;
-  --bg-color: #f9fafb;
-  --text-color: #111827;
+  --bg-color: #f4f7fa;
+  --text-color: #334155;
+  --sidebar-width: 260px;
+}
+
+.zoho-card {
+  @apply bg-white rounded-xl shadow-sm border border-slate-100 transition-all duration-200;
+}
+
+.zoho-card:hover {
+  @apply shadow-md border-slate-200;
 }
 
 body {

@@ -55,6 +55,18 @@ export const AuthProvider = ({ children }) => {
     };
 
     // User Management (Admin only)
+    const addUser = async (userData) => {
+        try {
+            const { data } = await api.post('/auth/users', userData);
+            return { success: true, data };
+        } catch (error) {
+            return {
+                success: false,
+                message: error.response?.data?.message || 'Failed to add user',
+            };
+        }
+    };
+
     const fetchUsers = async () => {
         try {
             const { data } = await api.get('/auth/users');
@@ -98,6 +110,7 @@ export const AuthProvider = ({ children }) => {
             login,
             register,
             logout,
+            addUser,
             fetchUsers,
             updateUserDetails,
             changeUserStatus,

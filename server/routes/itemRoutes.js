@@ -8,19 +8,20 @@ import {
     upload,
 } from '../controllers/itemController.js';
 import { protect, authorize } from '../middleware/authMiddleware.js';
+import { checkMenuAccess } from '../middleware/accessMiddleware.js';
 import { validateRequest, schemas } from '../middleware/validateRequest.js';
 
 const router = express.Router();
 
 router
     .route('/')
-    .get(protect, getItems)
-    .post(protect, upload.single('image'), validateRequest(schemas.createItem), createItem);
+    .get(protect, checkMenuAccess('inventory'), getItems)
+    .post(protect, checkMenuAccess('inventory'), upload.single('image'), validateRequest(schemas.createItem), createItem);
 
 router
     .route('/:id')
-    .get(protect, getItem)
-    .put(protect, upload.single('image'), updateItem)
-    .delete(protect, authorize('admin', 'manager'), deleteItem);
+    .get(protect, checkMenuAccess('inventory'), getItem)
+    .put(protect, checkMenuAccess('inventory'), upload.single('image'), updateItem)
+    .delete(protect, authorize('admin', 'manager'), checkMenuAccess('inventory'), deleteItem);
 
 export default router;

@@ -1,6 +1,8 @@
 import Item from '../models/Item.js';
 import Transaction from '../models/Transaction.js';
 import Category from '../models/Category.js';
+import SalesOrder from '../models/SalesOrder.js';
+import PurchaseOrder from '../models/PurchaseOrder.js';
 
 // @desc    Get dashboard statistics
 // @route   GET /api/dashboard/stats
@@ -65,6 +67,38 @@ export const getDashboardStats = async (req, res, next) => {
             }
         ]);
 
+        // Sales Activity Counts
+        const salesActivity = await SalesOrder.aggregate([
+            {
+                $group: {
+                    _id: '$status',
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        // Purchase Activity Counts
+        const purchaseActivity = await PurchaseOrder.aggregate([
+            {
+                $group: {
+                    _id: '$status',
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        // Total Sales and Purchase Amount
+        const salesStats = await SalesOrder.aggregate([
+            { $match: { status: { $ne: 'void' } } },
+            { $group: { _id: null, totalSales: { $sum: '$totalAmount' } } }
+        ]);
+
+        const purchaseStats = await PurchaseOrder.aggregate([
+            { $match: { status: { $ne: 'void' } } },
+            { $group: { _id: null, totalPurchase: { $sum: '$totalAmount' } } }
+        ]);
+
+
         // Category-wise distribution
         const categoryDistribution = await Item.aggregate([
             {
@@ -94,7 +128,18 @@ export const getDashboardStats = async (req, res, next) => {
             }
         ]);
 
+        // Inventory Summary Stats
+        const totalItemsCount = await Item.aggregate([
+            { $group: { _id: null, total: { $sum: '$quantity' } } }
+        ]);
+
+        const pendingOrders = await PurchaseOrder.find({ status: 'issued' });
+        const pendingReceipts = pendingOrders.reduce((acc, order) => {
+            return acc + order.items.reduce((sum, item) => sum + item.quantity, 0);
+        }, 0);
+
         res.json({
+            userName: req.user.name,
             totalItems,
             lowStockItems,
             outOfStockItems,
@@ -102,6 +147,12 @@ export const getDashboardStats = async (req, res, next) => {
             todayOutward: todayOutward[0] || { total: 0, count: 0 },
             stockValue: stockValue[0]?.totalValue || 0,
             categoryDistribution,
+            salesActivity: salesActivity.reduce((acc, curr) => ({ ...acc, [curr._id]: curr.count }), {}),
+            purchaseActivity: purchaseActivity.reduce((acc, curr) => ({ ...acc, [curr._id]: curr.count }), {}),
+            totalSales: salesStats[0]?.totalSales || 0,
+            totalPurchase: purchaseStats[0]?.totalPurchase || 0,
+            totalItemsCount: totalItemsCount[0]?.total || 0,
+            pendingReceipts,
         });
     } catch (error) {
         next(error);

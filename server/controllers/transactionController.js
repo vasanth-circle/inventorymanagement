@@ -1,5 +1,5 @@
-import Transaction from '../models/Transaction.js';
 import Item from '../models/Item.js';
+import { sendResponse } from '../utils/standardResponse.js';
 
 // @desc    Create stock inward transaction
 // @route   POST /api/transactions/inward
@@ -10,7 +10,7 @@ export const stockInward = async (req, res, next) => {
 
         const itemDoc = await Item.findById(item);
         if (!itemDoc) {
-            return res.status(404).json({ message: 'Item not found' });
+            return sendError(res, 404, 'Item not found');
         }
 
         const previousQuantity = itemDoc.quantity;
@@ -37,7 +37,7 @@ export const stockInward = async (req, res, next) => {
             .populate('item', 'name barcode')
             .populate('user', 'name email');
 
-        res.status(201).json(populatedTransaction);
+        sendResponse(res, 201, populatedTransaction, 'Stock inward recorded successfully');
     } catch (error) {
         next(error);
     }
@@ -52,11 +52,11 @@ export const stockOutward = async (req, res, next) => {
 
         const itemDoc = await Item.findById(item);
         if (!itemDoc) {
-            return res.status(404).json({ message: 'Item not found' });
+            return sendError(res, 404, 'Item not found');
         }
 
         if (itemDoc.quantity < quantity) {
-            return res.status(400).json({ message: 'Insufficient stock available' });
+            return sendError(res, 400, 'Insufficient stock available');
         }
 
         const previousQuantity = itemDoc.quantity;
@@ -89,6 +89,48 @@ export const stockOutward = async (req, res, next) => {
     }
 };
 
+// @desc    Create stock return transaction
+// @route   POST /api/transactions/return
+// @access  Private
+export const stockReturn = async (req, res, next) => {
+    try {
+        const { item, quantity, reason, notes } = req.body;
+
+        const itemDoc = await Item.findById(item);
+        if (!itemDoc) {
+            return sendError(res, 404, 'Item not found');
+        }
+
+        const previousQuantity = itemDoc.quantity;
+        const newQuantity = previousQuantity + parseInt(quantity);
+
+        // Update item quantity
+        itemDoc.quantity = newQuantity;
+        await itemDoc.save();
+
+        // Create transaction record
+        const transaction = await Transaction.create({
+            item,
+            type: 'return',
+            quantity,
+            reason,
+            notes,
+            user: req.user._id,
+            previousQuantity,
+            newQuantity,
+            toLocation: itemDoc.location,
+        });
+
+        const populatedTransaction = await Transaction.findById(transaction._id)
+            .populate('item', 'name barcode')
+            .populate('user', 'name email');
+
+        res.status(201).json(populatedTransaction);
+    } catch (error) {
+        next(error);
+    }
+};
+
 // @desc    Create stock transfer transaction
 // @route   POST /api/transactions/transfer
 // @access  Private
@@ -98,7 +140,7 @@ export const stockTransfer = async (req, res, next) => {
 
         const itemDoc = await Item.findById(item);
         if (!itemDoc) {
-            return res.status(404).json({ message: 'Item not found' });
+            return sendError(res, 404, 'Item not found');
         }
 
         const previousQuantity = itemDoc.quantity;

@@ -70,8 +70,9 @@ const StockInward = () => {
                 const itemFormData = new FormData();
                 itemFormData.append('name', formData.name);
                 itemFormData.append('barcode', formData.barcode);
+                itemFormData.append('sku', formData.sku || '');
                 itemFormData.append('category', formData.category);
-                itemFormData.append('quantity', formData.quantity);
+                itemFormData.append('quantity', 0); // Start at 0, transaction will add the quantity
                 itemFormData.append('price', formData.price);
                 itemFormData.append('minStockThreshold', formData.minStockThreshold);
                 itemFormData.append('location', formData.location);
@@ -188,6 +189,20 @@ const StockInward = () => {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        SKU
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="sku"
+                                        value={formData.sku || ''}
+                                        onChange={handleChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                        placeholder="Enter SKU (optional)"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Category <span className="text-red-500">*</span>
                                     </label>
                                     <select
@@ -206,7 +221,7 @@ const StockInward = () => {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Price <span className="text-red-500">*</span>
+                                        Price (₹) <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                         type="number"
@@ -217,7 +232,7 @@ const StockInward = () => {
                                         value={formData.price}
                                         onChange={handleChange}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                        placeholder="Enter price"
+                                        placeholder="Enter price in ₹"
                                     />
                                 </div>
 

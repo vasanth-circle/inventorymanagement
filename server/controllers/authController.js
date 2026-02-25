@@ -45,6 +45,42 @@ export const register = async (req, res, next) => {
     }
 };
 
+// @desc    Add new user (admin only)
+// @route   POST /api/auth/users
+// @access  Private/Admin
+export const addUser = async (req, res, next) => {
+    try {
+        const { name, email, password, role, menuAccess, allowedMenus } = req.body;
+
+        // Check if user exists
+        const userExists = await User.findOne({ email });
+        if (userExists) {
+            return res.status(400).json({ message: 'User already exists' });
+        }
+
+        // Create user
+        const user = await User.create({
+            name,
+            email,
+            password,
+            role: role || 'staff',
+            menuAccess: menuAccess || 'all',
+            allowedMenus: allowedMenus || [],
+        });
+
+        res.status(201).json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            menuAccess: user.menuAccess,
+            allowedMenus: user.allowedMenus,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 // @desc    Login user
 // @route   POST /api/auth/login
 // @access  Public

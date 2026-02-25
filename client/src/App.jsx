@@ -11,8 +11,16 @@ import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
 import StockInward from './pages/StockInward';
 import StockOutward from './pages/StockOutward';
+import StockReturn from './pages/StockReturn';
 import Reports from './pages/Reports';
 import Stocks from './pages/Stocks';
+import Categories from './pages/Categories';
+import BulkImport from './pages/BulkImport';
+import Users from './pages/Users';
+import Customers from './pages/Customers';
+import SalesOrders from './pages/SalesOrders';
+import Vendors from './pages/Vendors';
+import PurchaseOrders from './pages/PurchaseOrders';
 
 function App() {
     return (
@@ -40,8 +48,16 @@ function App() {
                                                     <Route path="/inventory" element={<Inventory />} />
                                                     <Route path="/stock-inward" element={<StockInward />} />
                                                     <Route path="/stock-outward" element={<StockOutward />} />
+                                                    <Route path="/stock-return" element={<StockReturn />} />
                                                     <Route path="/reports" element={<Reports />} />
                                                     <Route path="/stocks" element={<Stocks />} />
+                                                    <Route path="/categories" element={<Categories />} />
+                                                    <Route path="/bulk-import" element={<BulkImport />} />
+                                                    <Route path="/users" element={<Users />} />
+                                                    <Route path="/customers" element={<Customers />} />
+                                                    <Route path="/sales-orders" element={<SalesOrders />} />
+                                                    <Route path="/vendors" element={<Vendors />} />
+                                                    <Route path="/purchase-orders" element={<PurchaseOrders />} />
                                                     <Route path="/" element={<Navigate to="/dashboard" />} />
                                                 </Routes>
                                             </main>

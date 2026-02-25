@@ -1,10 +1,9 @@
 import { useContext } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
 const Navbar = () => {
     const { user, logout } = useContext(AuthContext);
-    const location = useLocation();
     const navigate = useNavigate();
 
     const handleLogout = () => {
@@ -13,36 +12,45 @@ const Navbar = () => {
     };
 
     return (
-        <nav className="bg-white shadow-md">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between h-16">
-                    <div className="flex items-center">
-                        <Link to="/dashboard" className="flex items-center">
-                            <div className="flex-shrink-0">
-                                <h1 className="text-2xl font-bold text-primary-600">
-                                    📦 InventoryPro
-                                </h1>
-                            </div>
-                        </Link>
+        <nav className="bg-white border-b border-gray-100 sticky top-0 z-40">
+            <div className="max-w-[1600px] mx-auto px-6">
+                <div className="flex justify-between h-14 items-center">
+                    {/* Left: Quick Search */}
+                    <div className="flex-1 max-w-xl">
+                        <div className="relative group">
+                            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                                🔍
+                            </span>
+                            <input
+                                type="text"
+                                placeholder="Search across modules..."
+                                className="block w-full pl-10 pr-3 py-1.5 border border-gray-200 rounded-lg leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 sm:text-sm transition-all"
+                            />
+                        </div>
                     </div>
 
-                    <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-2">
-                            <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold">
-                                {user?.name?.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="hidden md:block">
-                                <p className="text-sm font-medium text-gray-700">{user?.name}</p>
-                                <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
-                            </div>
+                    {/* Right: User Actions */}
+                    <div className="flex items-center space-x-6">
+                        <div className="flex items-center space-x-2 text-gray-400">
+                            <button className="p-2 hover:bg-gray-50 rounded-lg">➕</button>
+                            <button className="p-2 hover:bg-gray-50 rounded-lg">🔔</button>
+                            <button className="p-2 hover:bg-gray-50 rounded-lg">⚙️</button>
                         </div>
 
-                        <button
-                            onClick={handleLogout}
-                            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                        >
-                            Logout
-                        </button>
+                        <div className="h-6 w-px bg-gray-200"></div>
+
+                        <div className="flex items-center space-x-3">
+                            <div className="text-right hidden sm:block">
+                                <p className="text-sm font-bold text-gray-700">{user?.name}</p>
+                                <p className="text-[10px] font-bold text-rose-500 uppercase tracking-tighter">Zylker</p>
+                            </div>
+                            <button
+                                onClick={handleLogout}
+                                className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition-colors border border-slate-200"
+                            >
+                                👤
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
