@@ -1,5 +1,6 @@
 import Item from '../models/Item.js';
-import { sendResponse } from '../utils/standardResponse.js';
+import Transaction from '../models/Transaction.js';
+import { sendResponse, sendError } from '../utils/standardResponse.js';
 
 // @desc    Create stock inward transaction
 // @route   POST /api/transactions/inward
@@ -202,7 +203,9 @@ export const getTransactions = async (req, res, next) => {
                 query.createdAt.$gte = new Date(startDate);
             }
             if (endDate) {
-                query.createdAt.$lte = new Date(endDate);
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                query.createdAt.$lte = end;
             }
         }
 

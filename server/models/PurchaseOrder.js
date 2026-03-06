@@ -53,7 +53,7 @@ const purchaseOrderSchema = new mongoose.Schema({
     timestamps: true,
 });
 
-purchaseOrderSchema.pre('save', function (next) {
+purchaseOrderSchema.pre('validate', function (next) {
     this.items.forEach(item => {
         item.total = item.quantity * item.price;
     });
@@ -61,7 +61,6 @@ purchaseOrderSchema.pre('save', function (next) {
     next();
 });
 
-purchaseOrderSchema.index({ orderNumber: 1 });
 purchaseOrderSchema.index({ vendor: 1 });
 
 const PurchaseOrder = mongoose.model('PurchaseOrder', purchaseOrderSchema);

@@ -21,6 +21,7 @@ import Customers from './pages/Customers';
 import SalesOrders from './pages/SalesOrders';
 import Vendors from './pages/Vendors';
 import PurchaseOrders from './pages/PurchaseOrders';
+import Profile from './pages/Profile';
 
 function App() {
     return (
@@ -58,6 +59,7 @@ function App() {
                                                     <Route path="/sales-orders" element={<SalesOrders />} />
                                                     <Route path="/vendors" element={<Vendors />} />
                                                     <Route path="/purchase-orders" element={<PurchaseOrders />} />
+                                                    <Route path="/profile" element={<Profile />} />
                                                     <Route path="/" element={<Navigate to="/dashboard" />} />
                                                 </Routes>
                                             </main>

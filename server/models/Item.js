@@ -49,6 +49,10 @@ const itemSchema = new mongoose.Schema({
         type: String,
         default: '',
     },
+    description: {
+        type: String,
+        trim: true,
+    },
     customFields: {
         type: Map,
         of: mongoose.Schema.Types.Mixed,
@@ -59,7 +63,7 @@ const itemSchema = new mongoose.Schema({
 });
 
 // Indexes for search optimization
-itemSchema.index({ name: 'text', barcode: 'text' });
+itemSchema.index({ name: 'text', barcode: 'text', description: 'text' });
 itemSchema.index({ category: 1 });
 itemSchema.index({ quantity: 1 });
 

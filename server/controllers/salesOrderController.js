@@ -59,6 +59,17 @@ export const createSalesOrder = async (req, res, next) => {
     try {
         const { customer, items, orderDate, expectedShipmentDate, notes, terms } = req.body;
 
+        // Check if items have enough stock
+        for (const lineItem of items) {
+            const itemDoc = await Item.findById(lineItem.item);
+            if (!itemDoc) {
+                return sendError(res, 400, `Item not found`);
+            }
+            if (itemDoc.quantity < lineItem.quantity) {
+                return sendError(res, 400, `Insufficient stock for ${itemDoc.name} (Available: ${itemDoc.quantity})`);
+            }
+        }
+
         // Generate Order Number (Simple logic)
         const count = await SalesOrder.countDocuments();
         const orderNumber = `SO-${String(count + 1).padStart(5, '0')}`;
@@ -94,6 +105,18 @@ export const updateSOStatus = async (req, res, next) => {
 
         // Logic for inventory update when status becomes 'shipped'
         if (status === 'shipped' && order.status !== 'shipped') {
+            // Check stock for all items first
+            for (const lineItem of order.items) {
+                const itemDoc = await Item.findById(lineItem.item);
+                if (!itemDoc) {
+                    return sendError(res, 400, `Item not found`);
+                }
+                if (itemDoc.quantity < lineItem.quantity) {
+                    return sendError(res, 400, `Insufficient stock for ${itemDoc.name} to ship order (Available: ${itemDoc.quantity})`);
+                }
+            }
+
+            // Deduct stock and record transactions
             for (const lineItem of order.items) {
                 const itemDoc = await Item.findById(lineItem.item);
                 if (itemDoc) {

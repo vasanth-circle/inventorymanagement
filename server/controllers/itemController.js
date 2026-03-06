@@ -125,6 +125,15 @@ export const createItem = async (req, res, next) => {
     try {
         const itemData = { ...req.body };
 
+        // Parse customFields if sent as a string (from FormData)
+        if (typeof itemData.customFields === 'string') {
+            try {
+                itemData.customFields = JSON.parse(itemData.customFields);
+            } catch (e) {
+                return sendError(res, 400, 'Invalid custom fields format');
+            }
+        }
+
         if (req.file) {
             itemData.image = `/uploads/${req.file.filename}`;
         }
@@ -150,6 +159,15 @@ export const updateItem = async (req, res, next) => {
         }
 
         const updateData = { ...req.body };
+
+        // Parse customFields if sent as a string (from FormData)
+        if (typeof updateData.customFields === 'string') {
+            try {
+                updateData.customFields = JSON.parse(updateData.customFields);
+            } catch (e) {
+                return sendError(res, 400, 'Invalid custom fields format');
+            }
+        }
 
         // Prevent direct quantity updates
         if (updateData.quantity !== undefined) {

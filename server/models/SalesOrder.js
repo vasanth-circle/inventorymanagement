@@ -55,7 +55,7 @@ const salesOrderSchema = new mongoose.Schema({
 });
 
 // Calculate line item totals before saving
-salesOrderSchema.pre('save', function (next) {
+salesOrderSchema.pre('validate', function (next) {
     this.items.forEach(item => {
         item.total = item.quantity * item.price;
     });
@@ -63,7 +63,6 @@ salesOrderSchema.pre('save', function (next) {
     next();
 });
 
-salesOrderSchema.index({ orderNumber: 1 });
 salesOrderSchema.index({ customer: 1 });
 salesOrderSchema.index({ status: 1 });
 
