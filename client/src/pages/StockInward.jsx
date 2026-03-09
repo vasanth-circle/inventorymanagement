@@ -11,13 +11,11 @@ const StockInward = () => {
     const [formData, setFormData] = useState({
         name: '',
         barcode: '',
-        sku: '',
         category: '',
         quantity: '',
         price: '',
         minStockThreshold: '10',
         location: 'Main Warehouse',
-        description: '',
         reason: '',
         notes: '',
     });
@@ -32,22 +30,6 @@ const StockInward = () => {
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
-
-    const handleCustomFieldChange = (index, field, value) => {
-        const newFields = [...customFields];
-        newFields[index][field] = value;
-        setCustomFields(newFields);
-    };
-
-    const addCustomField = () => {
-        setCustomFields([...customFields, { key: '', value: '' }]);
-    };
-
-    const removeCustomField = (index) => {
-        const newFields = [...customFields];
-        newFields.splice(index, 1);
-        setCustomFields(newFields);
     };
 
     const handleItemSelect = (e) => {
@@ -77,6 +59,21 @@ const StockInward = () => {
             setImageFile(file);
             setImagePreview(URL.createObjectURL(file));
         }
+    }
+
+    const addCustomField = () => {
+        setCustomFields([...customFields, { key: '', value: '' }]);
+    };
+
+    const removeCustomField = (index) => {
+        const newFields = customFields.filter((_, i) => i !== index);
+        setCustomFields(newFields);
+    };
+
+    const handleCustomFieldChange = (index, field, value) => {
+        const newFields = [...customFields];
+        newFields[index][field] = value;
+        setCustomFields(newFields);
     };
 
     const handleSubmit = async (e) => {
@@ -85,33 +82,29 @@ const StockInward = () => {
 
         try {
             if (isNewItem) {
-                // Formatting custom fields array into an object mapping
-                const customFieldsObj = {};
-                customFields.forEach(field => {
-                    if (field.key.trim() && field.value.trim()) {
-                        customFieldsObj[field.key.trim()] = field.value.trim();
-                    }
-                });
-
                 // Create new item logic
                 const itemFormData = new FormData();
                 itemFormData.append('name', formData.name);
                 itemFormData.append('barcode', formData.barcode);
                 itemFormData.append('sku', formData.sku || '');
-                itemFormData.append('description', formData.description || '');
                 itemFormData.append('category', formData.category);
                 itemFormData.append('quantity', 0); // Start at 0, transaction will add the quantity
                 itemFormData.append('price', formData.price);
                 itemFormData.append('minStockThreshold', formData.minStockThreshold);
                 itemFormData.append('location', formData.location);
 
-                if (Object.keys(customFieldsObj).length > 0) {
-                    itemFormData.append('customFields', JSON.stringify(customFieldsObj));
-                }
-
                 if (imageFile) {
                     itemFormData.append('image', imageFile);
                 }
+
+                // Convert customFields array to Map-like object
+                const customFieldsObj = {};
+                customFields.forEach(field => {
+                    if (field.key.trim()) {
+                        customFieldsObj[field.key.trim()] = field.value;
+                    }
+                });
+                itemFormData.append('customFields', JSON.stringify(customFieldsObj));
 
                 const result = await createItem(itemFormData);
 
@@ -156,7 +149,7 @@ const StockInward = () => {
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6 bg-gray-50 pb-10">
+        <div className="max-w-4xl mx-auto space-y-6">
             <div>
                 <h1 className="text-3xl font-bold text-gray-900">Stock Inward</h1>
                 <p className="text-gray-600 mt-2">Add new items or increase existing stock</p>
@@ -298,70 +291,51 @@ const StockInward = () => {
                                 </div>
                             </div>
 
-                            <div className="w-full mt-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Description
-                                </label>
-                                <textarea
-                                    name="description"
-                                    value={formData.description}
-                                    onChange={handleChange}
-                                    rows="2"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                    placeholder="Enter item description..."
-                                />
-                            </div>
-
-                            <div className="w-full mt-6 bg-gray-50 border border-gray-200 p-4 rounded-lg">
+                            <div className="border-t border-gray-100 pt-6">
                                 <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-md font-semibold text-gray-800">Custom Fields</h3>
+                                    <h3 className="text-sm font-semibold text-gray-700">Dynamic Custom Fields</h3>
                                     <button
                                         type="button"
                                         onClick={addCustomField}
-                                        className="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm font-medium text-primary-600 hover:bg-gray-50 transition-colors"
+                                        className="text-xs px-3 py-1 bg-primary-50 text-primary-600 rounded-md hover:bg-primary-100 transition-colors font-medium border border-primary-200"
                                     >
                                         + Add Field
                                     </button>
                                 </div>
-
-                                {customFields.length === 0 ? (
-                                    <p className="text-sm text-gray-500 italic">No custom fields added. Use this to store specifications like Color, Size, Brand, etc.</p>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {customFields.map((field, index) => (
-                                            <div key={index} className="flex space-x-3 items-start">
-                                                <div className="flex-1">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Field Name (e.g., Color)"
-                                                        value={field.key}
-                                                        onChange={(e) => handleCustomFieldChange(index, 'key', e.target.value)}
-                                                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                                    />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Value (e.g., Red)"
-                                                        value={field.value}
-                                                        onChange={(e) => handleCustomFieldChange(index, 'value', e.target.value)}
-                                                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                                    />
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeCustomField(index)}
-                                                    className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors mt-0.5"
-                                                    title="Remove Field"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                                                    </svg>
-                                                </button>
+                                <div className="space-y-3">
+                                    {customFields.map((field, index) => (
+                                        <div key={index} className="flex space-x-3 items-start animate-fade-in">
+                                            <div className="flex-1">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Field Name (e.g. Color)"
+                                                    value={field.key}
+                                                    onChange={(e) => handleCustomFieldChange(index, 'key', e.target.value)}
+                                                    className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                                />
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
+                                            <div className="flex-[1.5]">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Value (e.g. Blue)"
+                                                    value={field.value}
+                                                    onChange={(e) => handleCustomFieldChange(index, 'value', e.target.value)}
+                                                    className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                                />
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeCustomField(index)}
+                                                className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                                            >
+                                                🗑️
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {customFields.length === 0 && (
+                                        <p className="text-xs text-gray-400 italic">No custom fields added yet. Add fields for dynamic information like Color, Size, etc.</p>
+                                    )}
+                                </div>
                             </div>
 
                             <div>

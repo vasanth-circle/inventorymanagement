@@ -2,7 +2,7 @@ import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'; // Add missing icons if this project uses heroicons
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -96,13 +96,12 @@ const Login = () => {
                         </button>
                     </div>
 
-                    <div className="text-center">
-                        <p className="text-sm text-gray-600">
-                            Don't have an account?{' '}
-                            <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500">
-                                Register here
+                    <div className="flex items-center justify-end">
+                        <div className="text-sm">
+                            <Link to="/forgot-password" className="font-medium text-primary-600 hover:text-primary-500">
+                                Forgot your password?
                             </Link>
-                        </p>
+                        </div>
                     </div>
                 </form>
             </div>

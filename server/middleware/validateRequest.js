@@ -36,7 +36,8 @@ export const schemas = {
         minStockThreshold: Joi.number().min(0).default(10),
         price: Joi.number().min(0).required(),
         location: Joi.string().optional().trim(),
-        customFields: Joi.object().optional(),
+        description: Joi.string().optional().allow('').trim(),
+        customFields: Joi.any().optional(),
     }),
 
     updateItem: Joi.object({
@@ -47,7 +48,8 @@ export const schemas = {
         minStockThreshold: Joi.number().min(0).optional(),
         price: Joi.number().min(0).optional(),
         location: Joi.string().optional().trim(),
-        customFields: Joi.object().optional(),
+        description: Joi.string().optional().allow('').trim(),
+        customFields: Joi.any().optional(),
     }),
 
     createTransaction: Joi.object({

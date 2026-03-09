@@ -8,14 +8,10 @@ const itemSchema = new mongoose.Schema({
     },
     barcode: {
         type: String,
-        unique: true,
-        sparse: true,
         trim: true,
     },
     sku: {
         type: String,
-        unique: true,
-        sparse: true,
         trim: true,
         uppercase: true,
     },
