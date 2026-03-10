@@ -19,12 +19,24 @@ export const schemas = {
         name: Joi.string().required().trim(),
         email: Joi.string().email().required().trim().lowercase(),
         password: Joi.string().min(6).required(),
-        role: Joi.string().valid('admin', 'manager', 'staff').default('staff'),
+        role: Joi.string().valid('admin', 'manager', 'staff', 'tenant_owner').default('staff'),
+        menuAccess: Joi.string().valid('all', 'specific', null).optional(),
+        allowedMenus: Joi.array().items(Joi.string().allow('')).optional(),
+        tenantId: Joi.string().optional(),
     }),
 
     login: Joi.object({
         email: Joi.string().email().required().trim().lowercase(),
         password: Joi.string().required(),
+    }),
+
+    updateUser: Joi.object({
+        name: Joi.string().optional().trim(),
+        email: Joi.string().email().optional().trim().lowercase(),
+        role: Joi.string().valid('admin', 'manager', 'staff', 'tenant_owner').optional(),
+        menuAccess: Joi.string().valid('all', 'specific', null).optional(),
+        allowedMenus: Joi.array().items(Joi.string().allow('')).optional(),
+        isActive: Joi.boolean().optional(),
     }),
 
     createItem: Joi.object({

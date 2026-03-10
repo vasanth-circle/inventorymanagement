@@ -11,7 +11,7 @@ router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
 router.get('/users', protect, authorize('admin', 'tenant_owner'), getUsers);
 router.post('/users', protect, authorize('admin', 'tenant_owner'), validateRequest(schemas.register), addUser);
-router.put('/users/:id', protect, authorize('admin', 'tenant_owner'), updateUser);
+router.put('/users/:id', protect, authorize('admin', 'tenant_owner'), validateRequest(schemas.updateUser), updateUser);
 router.patch('/users/:id/status', protect, authorize('admin', 'tenant_owner'), toggleUserStatus);
 router.delete('/users/:id', protect, authorize('admin', 'tenant_owner'), deleteUser);
 
