@@ -3,7 +3,7 @@ import { AuthContext } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 const Users = () => {
-    const { user: currentUser, fetchUsers, updateUserDetails, changeUserStatus, removeUser } = useContext(AuthContext);
+    const { user: currentUser, fetchUsers, addUser, updateUserDetails, changeUserStatus, removeUser } = useContext(AuthContext);
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -168,8 +168,14 @@ const Users = () => {
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
                     <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-                        <h2 className="text-xl font-bold text-gray-900 mb-4">Edit User Permissions</h2>
+                        <h2 className="text-xl font-bold text-gray-900 mb-4">
+                            {editingUser ? 'Edit User Permissions' : 'Add New User'}
+                        </h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500" required />
+                            </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                                 <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500" required />
