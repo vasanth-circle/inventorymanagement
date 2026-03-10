@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { appConn } from '../config/db.js';
 
 const salesOrderSchema = new mongoose.Schema({
     orderNumber: {
@@ -66,6 +67,6 @@ salesOrderSchema.pre('validate', function (next) {
 salesOrderSchema.index({ customer: 1 });
 salesOrderSchema.index({ status: 1 });
 
-const SalesOrder = mongoose.model('SalesOrder', salesOrderSchema);
+const SalesOrder = appConn.model('SalesOrder', salesOrderSchema);
 
 export default SalesOrder;

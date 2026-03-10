@@ -1,7 +1,8 @@
-import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import { authConn, appConn, coreConn } from './config/db.js';
 import Category from './models/Category.js';
 import User from './models/User.js';
+import Tenant from './models/Tenant.js';
 
 dotenv.config();
 
@@ -13,20 +14,44 @@ const categories = [
     { name: 'Consumables', description: 'Consumable items and supplies' },
 ];
 
+const waitForConnection = (conn, name) => {
+    return new Promise((resolve, reject) => {
+        if (conn.readyState === 1) resolve();
+        conn.once('open', () => {
+            console.log(`Connected to ${name} database`);
+            resolve();
+        });
+        conn.once('error', (err) => {
+            console.error(`Connection error for ${name}:`, err);
+            reject(err);
+        });
+    });
+};
+
 const seedDatabase = async () => {
     try {
-        await mongoose.connect(process.env.MONGODB_URI);
-        console.log('MongoDB connected');
+        console.log('Connecting to databases...');
+        await Promise.all([
+            waitForConnection(authConn, 'Auth'),
+            waitForConnection(appConn, 'App'),
+            waitForConnection(coreConn, 'Core')
+        ]);
 
-        // Clear existing data
-        await Category.deleteMany({});
-        console.log('Cleared existing categories');
+        // 1. Seed Core DB (Default Tenant)
+        console.log('Seeding Core DB...');
+        const tenantExists = await Tenant.findOne({ slug: 'main-tenant' });
+        if (!tenantExists) {
+            await Tenant.create({
+                businessName: 'Main Business',
+                slug: 'main-tenant',
+                status: 'Active',
+                apps: [{ name: 'inventory', enabled: true }]
+            });
+            console.log('Created default tenant: Main Business');
+        }
 
-        // Insert categories
-        const createdCategories = await Category.insertMany(categories);
-        console.log(`Created ${createdCategories.length} categories`);
-
-        // Create default admin user if not exists
+        // 2. Seed Auth DB (Default Admin)
+        console.log('Seeding Auth DB...');
         const adminExists = await User.findOne({ email: 'admin@inventory.com' });
         if (!adminExists) {
             await User.create({
@@ -36,6 +61,16 @@ const seedDatabase = async () => {
                 role: 'admin',
             });
             console.log('Created default admin user (email: admin@inventory.com, password: admin123)');
+        }
+
+        // 3. Seed App DB (Categories)
+        console.log('Seeding App DB...');
+        const categoryCount = await Category.countDocuments();
+        if (categoryCount === 0) {
+            const createdCategories = await Category.insertMany(categories);
+            console.log(`Created ${createdCategories.length} categories`);
+        } else {
+            console.log('Categories already exist, skipping...');
         }
 
         console.log('Database seeded successfully!');

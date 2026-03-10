@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { appConn } from '../config/db.js';
 
 const purchaseOrderSchema = new mongoose.Schema({
     orderNumber: {
@@ -63,6 +64,6 @@ purchaseOrderSchema.pre('validate', function (next) {
 
 purchaseOrderSchema.index({ vendor: 1 });
 
-const PurchaseOrder = mongoose.model('PurchaseOrder', purchaseOrderSchema);
+const PurchaseOrder = appConn.model('PurchaseOrder', purchaseOrderSchema);
 
 export default PurchaseOrder;

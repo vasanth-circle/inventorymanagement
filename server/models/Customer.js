@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { appConn } from '../config/db.js';
 
 const customerSchema = new mongoose.Schema({
     name: {
@@ -59,6 +60,6 @@ const customerSchema = new mongoose.Schema({
 customerSchema.index({ name: 'text', companyName: 'text', email: 'text' });
 customerSchema.index({ isActive: 1 });
 
-const Customer = mongoose.model('Customer', customerSchema);
+const Customer = appConn.model('Customer', customerSchema);
 
 export default Customer;

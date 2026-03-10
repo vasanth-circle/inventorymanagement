@@ -61,25 +61,48 @@ app.get('/api/health', (req, res) => {
 // Error handler (must be last)
 app.use(errorHandler);
 
-// MongoDB connection
-const connectDB = async () => {
+import { authConn, appConn, coreConn } from './config/db.js';
+import { checkTenantStatus } from './middleware/tenantMiddleware.js';
+
+// Apply tenant check middleware to all /api routes (except auth/login/register if needed)
+// For now, applying to all /api to be safe
+app.use('/api', checkTenantStatus);
+
+// MongoDB connection status check
+const startServer = async () => {
     try {
-        await mongoose.connect(process.env.MONGODB_URI);
-        console.log('MongoDB connected successfully');
+        // Wait for all three connections to be established
+        await Promise.all([
+            new Promise((resolve, reject) => {
+                if (authConn.readyState === 1) resolve();
+                authConn.once('open', resolve);
+                authConn.once('error', reject);
+            }),
+            new Promise((resolve, reject) => {
+                if (appConn.readyState === 1) resolve();
+                appConn.once('open', resolve);
+                appConn.once('error', reject);
+            }),
+            new Promise((resolve, reject) => {
+                if (coreConn.readyState === 1) resolve();
+                coreConn.once('open', resolve);
+                coreConn.once('error', reject);
+            })
+        ]);
+
+        console.log('All MongoDB connections (Auth, App, Core) established successfully');
+
+        const PORT = process.env.PORT || 5000;
+        app.listen(PORT, () => {
+            console.log(`Server running on port ${PORT}`);
+            console.log(`Environment: ${process.env.NODE_ENV}`);
+        });
     } catch (error) {
-        console.error('MongoDB connection error:', error);
+        console.error('Failed to establish database connections:', error);
         process.exit(1);
     }
 };
 
-// Start server
-const PORT = process.env.PORT || 5000;
-
-connectDB().then(() => {
-    app.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
-        console.log(`Environment: ${process.env.NODE_ENV}`);
-    });
-});
+startServer();
 
 export default app;

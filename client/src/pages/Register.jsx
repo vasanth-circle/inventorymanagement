@@ -12,8 +12,14 @@ const Register = () => {
         role: 'staff',
     });
     const [loading, setLoading] = useState(false);
-    const { register } = useContext(AuthContext);
+    const { user, register } = useContext(AuthContext);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (user) {
+            navigate('/dashboard');
+        }
+    }, [user, navigate]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });

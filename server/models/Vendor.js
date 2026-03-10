@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { appConn } from '../config/db.js';
 
 const vendorSchema = new mongoose.Schema({
     name: {
@@ -45,6 +46,6 @@ const vendorSchema = new mongoose.Schema({
 
 vendorSchema.index({ name: 'text', companyName: 'text' });
 
-const Vendor = mongoose.model('Vendor', vendorSchema);
+const Vendor = appConn.model('Vendor', vendorSchema);
 
 export default Vendor;

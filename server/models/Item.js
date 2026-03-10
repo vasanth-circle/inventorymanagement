@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { appConn } from '../config/db.js';
 
 const itemSchema = new mongoose.Schema({
     name: {
@@ -74,6 +75,6 @@ itemSchema.virtual('stockStatus').get(function () {
 itemSchema.set('toJSON', { virtuals: true });
 itemSchema.set('toObject', { virtuals: true });
 
-const Item = mongoose.model('Item', itemSchema);
+const Item = appConn.model('Item', itemSchema);
 
 export default Item;

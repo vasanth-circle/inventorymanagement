@@ -8,14 +8,25 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Check if user is logged in
-        const token = localStorage.getItem('token');
-        const userData = localStorage.getItem('user');
+        const verifyToken = async () => {
+            const token = localStorage.getItem('token');
+            const userData = localStorage.getItem('user');
 
-        if (token && userData) {
-            setUser(JSON.parse(userData));
-        }
-        setLoading(false);
+            if (token && userData) {
+                try {
+                    const { data } = await api.get('/auth/me');
+                    setUser(data);
+                } catch (error) {
+                    console.error('Token verification failed:', error);
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    setUser(null);
+                }
+            }
+            setLoading(false);
+        };
+
+        verifyToken();
     }, []);
 
     const login = async (email, password) => {

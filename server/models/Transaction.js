@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { appConn } from '../config/db.js';
 
 const transactionSchema = new mongoose.Schema({
     item: {
@@ -54,6 +55,6 @@ transactionSchema.index({ item: 1, createdAt: -1 });
 transactionSchema.index({ type: 1 });
 transactionSchema.index({ user: 1 });
 
-const Transaction = mongoose.model('Transaction', transactionSchema);
+const Transaction = appConn.model('Transaction', transactionSchema);
 
 export default Transaction;
