@@ -89,9 +89,9 @@ const Dashboard = () => {
                             <div className="space-y-4">
                                 {[
                                     { label: 'Low Stock Items', value: stats?.lowStockItems || 0, color: 'text-rose-600', path: '/inventory' },
-                                    { label: 'Active Item Groups', value: 39, color: 'text-slate-700' },
+                                    { label: 'Active Item Groups', value: stats?.totalCategories || 0, color: 'text-slate-700' },
                                     { label: 'Active Items', value: stats?.totalItems || 0, color: 'text-slate-700' },
-                                    { label: 'Unconfirmed Items', value: 121, color: 'text-yellow-600' }
+                                    { label: 'Unconfirmed Items', value: stats?.outOfStockItems || 0, color: 'text-yellow-600' }
                                 ].map((row, i) => (
                                     <div key={i} className="flex justify-between items-center p-2 hover:bg-gray-50 rounded-lg transition-colors group cursor-pointer">
                                         <span className="text-xs text-gray-500 font-medium group-hover:text-gray-700">{row.label}</span>
@@ -110,16 +110,17 @@ const Dashboard = () => {
                                 </select>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="text-center p-3 border border-gray-50 rounded-xl bg-slate-50/50">
-                                    <div className="text-xl mb-1">👔</div>
-                                    <div className="text-[10px] font-bold text-gray-400 uppercase truncate">Oxford Blue</div>
-                                    <div className="text-xs font-black text-gray-700">171 pcs</div>
-                                </div>
-                                <div className="text-center p-3 border border-gray-50 rounded-xl bg-slate-50/50">
-                                    <div className="text-xl mb-1">👖</div>
-                                    <div className="text-[10px] font-bold text-gray-400 uppercase truncate">Slim Fit Den-o</div>
-                                    <div className="text-xs font-black text-gray-700">45 sets</div>
-                                </div>
+                                {stats?.topSellingItems?.length > 0 ? (
+                                    stats.topSellingItems.slice(0, 2).map((item, i) => (
+                                        <div key={i} className="text-center p-3 border border-gray-50 rounded-xl bg-slate-50/50">
+                                            <div className="text-xl mb-1">{i === 0 ? '👔' : '👖'}</div>
+                                            <div className="text-[10px] font-bold text-gray-400 uppercase truncate" title={item.name}>{item.name}</div>
+                                            <div className="text-xs font-black text-gray-700">{item.totalSold} pcs</div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="col-span-2 text-center py-4 text-[10px] text-gray-400 font-bold uppercase">No sales yet</div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -129,23 +130,28 @@ const Dashboard = () => {
                         <div className="zoho-card p-6">
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Purchase Order</h3>
-                                <span className="text-[10px] text-gray-400 font-bold">This Month</span>
+                                <span className="text-[10px] text-gray-400 font-bold">Total</span>
                             </div>
                             <div className="flex flex-col items-center justify-center h-24 bg-gray-50/30 rounded-xl border border-dashed border-gray-200">
-                                <span className="text-2xl font-black text-gray-300">₹0.00</span>
-                                <span className="text-[10px] text-gray-400 uppercase font-bold mt-1">Quantity Ordered: 0</span>
+                                <span className="text-2xl font-black text-rose-600">{formatCurrency(stats?.totalPurchase || 0)}</span>
+                                <span className="text-[10px] text-gray-400 uppercase font-bold mt-1">Total Purchased</span>
                             </div>
                         </div>
                         <div className="zoho-card p-6">
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Sales Order</h3>
-                                <span className="text-[10px] text-gray-400 font-bold">This Month</span>
+                                <span className="text-[10px] text-gray-400 font-bold">Summary</span>
                             </div>
                             <div className="grid grid-cols-4 gap-1">
-                                {['Draft', 'Confirmed', 'Packed', 'Shipped'].map((s, i) => (
+                                {[
+                                    { status: 'draft', label: 'Draft' },
+                                    { status: 'confirmed', label: 'Confirmed' },
+                                    { status: 'packed', label: 'Packed' },
+                                    { status: 'shipped', label: 'Shipped' }
+                                ].map((s, i) => (
                                     <div key={i} className="text-center p-2 rounded-lg bg-gray-50/50">
-                                        <div className="text-[10px] font-bold text-gray-400 uppercase leading-tight mb-1">{s}</div>
-                                        <div className="text-sm font-black text-gray-700">0</div>
+                                        <div className="text-[10px] font-bold text-gray-400 uppercase leading-tight mb-1">{s.label}</div>
+                                        <div className="text-sm font-black text-gray-700">{stats?.salesActivity?.[s.status] || 0}</div>
                                     </div>
                                 ))}
                             </div>

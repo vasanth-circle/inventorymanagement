@@ -128,15 +128,28 @@ export const getDashboardStats = async (req, res, next) => {
             }
         ]);
 
-        // Inventory Summary Stats
-        const totalItemsCount = await Item.aggregate([
-            { $group: { _id: null, total: { $sum: '$quantity' } } }
-        ]);
+        // Total categories count
+        const totalCategories = await Category.countDocuments();
 
+        // Pending Purchase Orders (issued status)
         const pendingOrders = await PurchaseOrder.find({ status: 'issued' });
         const pendingReceipts = pendingOrders.reduce((acc, order) => {
             return acc + order.items.reduce((sum, item) => sum + item.quantity, 0);
         }, 0);
+
+        // Top Selling Items (top 5 from Sales Orders)
+        const topSellingItems = await SalesOrder.aggregate([
+            { $unwind: '$items' },
+            {
+                $group: {
+                    _id: '$items.item',
+                    name: { $first: '$items.name' },
+                    totalSold: { $sum: '$items.quantity' }
+                }
+            },
+            { $sort: { totalSold: -1 } },
+            { $limit: 5 }
+        ]);
 
         res.json({
             userName: req.user.name,
@@ -153,6 +166,8 @@ export const getDashboardStats = async (req, res, next) => {
             totalPurchase: purchaseStats[0]?.totalPurchase || 0,
             totalItemsCount: totalItemsCount[0]?.total || 0,
             pendingReceipts,
+            totalCategories,
+            topSellingItems
         });
     } catch (error) {
         next(error);
