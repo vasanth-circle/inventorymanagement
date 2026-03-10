@@ -68,6 +68,7 @@ export const addUser = async (req, res, next) => {
             role: role || 'staff',
             menuAccess: menuAccess || 'all',
             allowedMenus: allowedMenus || [],
+            tenantId: req.user.tenantId, // Automatically associate with requester's tenant
         });
 
         res.status(201).json({
@@ -146,7 +147,8 @@ export const getMe = async (req, res, next) => {
 // @access  Private/Admin
 export const getUsers = async (req, res, next) => {
     try {
-        const users = await User.find({});
+        // Only get users belonging to the same tenant
+        const users = await User.find({ tenantId: req.user.tenantId });
         res.json(users);
     } catch (error) {
         next(error);
@@ -199,8 +201,8 @@ export const updateUser = async (req, res, next) => {
         const { name, email, role, menuAccess, allowedMenus } = req.body;
         const userId = req.params.id;
 
-        // Check if user exists
-        const user = await User.findById(userId);
+        // Check if user exists and belongs to the same tenant
+        const user = await User.findOne({ _id: userId, tenantId: req.user.tenantId });
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -248,7 +250,7 @@ export const toggleUserStatus = async (req, res, next) => {
             return res.status(400).json({ message: 'Cannot deactivate your own account' });
         }
 
-        const user = await User.findById(userId);
+        const user = await User.findOne({ _id: userId, tenantId: req.user.tenantId });
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -280,12 +282,12 @@ export const deleteUser = async (req, res, next) => {
             return res.status(400).json({ message: 'Cannot delete your own account' });
         }
 
-        const user = await User.findById(userId);
+        const user = await User.findOne({ _id: userId, tenantId: req.user.tenantId });
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        await User.findByIdAndDelete(userId);
+        await User.findOneAndDelete({ _id: userId, tenantId: req.user.tenantId });
 
         res.json({ message: 'User deleted successfully' });
     } catch (error) {
