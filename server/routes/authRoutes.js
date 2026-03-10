@@ -9,10 +9,10 @@ router.post('/register', validateRequest(schemas.register), register);
 router.post('/login', validateRequest(schemas.login), login);
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
-router.get('/users', protect, authorize('admin'), getUsers);
-router.post('/users', protect, authorize('admin'), validateRequest(schemas.register), addUser);
-router.put('/users/:id', protect, authorize('admin'), updateUser);
-router.patch('/users/:id/status', protect, authorize('admin'), toggleUserStatus);
-router.delete('/users/:id', protect, authorize('admin'), deleteUser);
+router.get('/users', protect, authorize('admin', 'tenant_owner'), getUsers);
+router.post('/users', protect, authorize('admin', 'tenant_owner'), validateRequest(schemas.register), addUser);
+router.put('/users/:id', protect, authorize('admin', 'tenant_owner'), updateUser);
+router.patch('/users/:id/status', protect, authorize('admin', 'tenant_owner'), toggleUserStatus);
+router.delete('/users/:id', protect, authorize('admin', 'tenant_owner'), deleteUser);
 
 export default router;

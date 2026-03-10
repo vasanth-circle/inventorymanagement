@@ -22,6 +22,6 @@ router
     .route('/:id')
     .get(protect, checkMenuAccess('inventory'), getItem)
     .put(protect, checkMenuAccess('inventory'), upload.single('image'), updateItem)
-    .delete(protect, authorize('admin', 'manager'), checkMenuAccess('inventory'), deleteItem);
+    .delete(protect, authorize('admin', 'manager', 'tenant_owner'), checkMenuAccess('inventory'), deleteItem);
 
 export default router;

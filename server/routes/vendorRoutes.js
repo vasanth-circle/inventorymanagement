@@ -21,6 +21,6 @@ router.route('/')
 router.route('/:id')
     .get(getVendor)
     .put(updateVendor)
-    .delete(authorize('admin'), deleteVendor);
+    .delete(authorize('admin', 'tenant_owner'), deleteVendor);
 
 export default router;

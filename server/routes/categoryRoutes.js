@@ -13,11 +13,11 @@ const router = express.Router();
 router
     .route('/')
     .get(protect, getCategories)
-    .post(protect, authorize('admin', 'manager'), validateRequest(schemas.createCategory), createCategory);
+    .post(protect, authorize('admin', 'manager', 'tenant_owner'), validateRequest(schemas.createCategory), createCategory);
 
 router
     .route('/:id')
-    .put(protect, authorize('admin', 'manager'), updateCategory)
-    .delete(protect, authorize('admin'), deleteCategory);
+    .put(protect, authorize('admin', 'manager', 'tenant_owner'), updateCategory)
+    .delete(protect, authorize('admin', 'tenant_owner'), deleteCategory);
 
 export default router;
