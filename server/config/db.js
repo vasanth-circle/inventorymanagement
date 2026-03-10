@@ -24,7 +24,7 @@ const createConnection = (uri, dbName) => {
     return conn;
 };
 
-export const appConn = createConnection(process.env.APP_MONGODB_URI, 'App');
+export const appConn = createConnection(process.env.APP_MONGODB_URI || process.env.MONGODB_URI, 'App');
 export const coreConn = createConnection(process.env.CORE_MONGODB_URI, 'Core');
 
 export default {

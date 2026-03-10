@@ -50,7 +50,7 @@ const Sidebar = () => {
         }
     ];
 
-    if (user?.role === 'admin') {
+    if (user?.role === 'admin' || user?.role === 'tenant_owner') {
         navGroups.push({
             name: 'Settings',
             id: 'settings',
