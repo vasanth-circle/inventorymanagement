@@ -61,7 +61,7 @@ app.get('/api/health', (req, res) => {
 // Error handler (must be last)
 app.use(errorHandler);
 
-import { authConn, appConn, coreConn } from './config/db.js';
+import { appConn, coreConn } from './config/db.js';
 import { checkTenantStatus } from './middleware/tenantMiddleware.js';
 
 // Apply tenant check middleware to all /api routes (except auth/login/register if needed)
@@ -71,13 +71,8 @@ app.use('/api', checkTenantStatus);
 // MongoDB connection status check
 const startServer = async () => {
     try {
-        // Wait for all three connections to be established
+        // Wait for both connections to be established
         await Promise.all([
-            new Promise((resolve, reject) => {
-                if (authConn.readyState === 1) resolve();
-                authConn.once('open', resolve);
-                authConn.once('error', reject);
-            }),
             new Promise((resolve, reject) => {
                 if (appConn.readyState === 1) resolve();
                 appConn.once('open', resolve);
@@ -90,7 +85,7 @@ const startServer = async () => {
             })
         ]);
 
-        console.log('All MongoDB connections (Auth, App, Core) established successfully');
+        console.log('All MongoDB connections (App, Core) established successfully');
 
         const PORT = process.env.PORT || 5000;
         app.listen(PORT, () => {

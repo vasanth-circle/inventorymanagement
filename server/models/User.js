@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-import { authConn } from '../config/db.js';
+import { coreConn } from '../config/db.js';
 
 const userSchema = new mongoose.Schema({
     name: {
@@ -64,6 +64,6 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);
 };
 
-const User = authConn.model('User', userSchema);
+const User = coreConn.model('User', userSchema);
 
 export default User;

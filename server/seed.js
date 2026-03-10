@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { authConn, appConn, coreConn } from './config/db.js';
+import { appConn, coreConn } from './config/db.js';
 import Category from './models/Category.js';
 import User from './models/User.js';
 import Tenant from './models/Tenant.js';
@@ -32,12 +32,11 @@ const seedDatabase = async () => {
     try {
         console.log('Connecting to databases...');
         await Promise.all([
-            waitForConnection(authConn, 'Auth'),
             waitForConnection(appConn, 'App'),
             waitForConnection(coreConn, 'Core')
         ]);
 
-        // 1. Seed Core DB (Default Tenant)
+        // 1. Seed Core DB (Default Tenant and User)
         console.log('Seeding Core DB...');
         const tenantExists = await Tenant.findOne({ slug: 'main-tenant' });
         if (!tenantExists) {
@@ -50,8 +49,8 @@ const seedDatabase = async () => {
             console.log('Created default tenant: Main Business');
         }
 
-        // 2. Seed Auth DB (Default Admin)
-        console.log('Seeding Auth DB...');
+        // 2. Seed Users in Core DB (Default Admin)
+        console.log('Seeding Users in Core DB...');
         const adminExists = await User.findOne({ email: 'admin@inventory.com' });
         if (!adminExists) {
             await User.create({
