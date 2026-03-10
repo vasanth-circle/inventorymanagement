@@ -5,7 +5,6 @@ import { coreConn } from '../config/db.js';
 const userSchema = new mongoose.Schema({
     name: {
         type: String,
-        required: [true, 'Name is required'],
         trim: true,
     },
     email: {
@@ -32,19 +31,16 @@ const userSchema = new mongoose.Schema({
     },
     menuAccess: {
         type: String,
-        enum: ['all', 'specific'],
+        enum: ['all', 'specific', null],
         default: 'all',
     },
     allowedMenus: {
         type: [String],
         default: [],
-        validate: {
-            validator: function (menus) {
-                const validMenus = ['dashboard', 'inventory', 'stock-inward', 'stock-outward', 'stock-return', 'scan-bill', 'returns', 'reports', 'users'];
-                return menus.every(menu => validMenus.includes(menu));
-            },
-            message: 'Invalid menu identifier'
-        }
+    },
+    tenantId: {
+        type: String,
+        trim: true,
     },
 }, {
     timestamps: true,
@@ -61,9 +57,12 @@ userSchema.pre('save', async function (next) {
 
 // Method to compare passwords
 userSchema.methods.comparePassword = async function (candidatePassword) {
+    // If the hash in the DB is not a bcrypt hash, this will return false
+    // Most modern core DBs use bcrypt.
     return await bcrypt.compare(candidatePassword, this.password);
 };
 
-const User = coreConn.model('User', userSchema);
+// Check if model already exists on this connection
+const User = coreConn.models.User || coreConn.model('User', userSchema);
 
 export default User;

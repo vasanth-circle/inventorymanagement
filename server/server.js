@@ -1,7 +1,10 @@
+import dotenv from 'dotenv';
+// Initialize dotenv at the very top before any local imports that depend on process.env
+dotenv.config();
+
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -17,8 +20,6 @@ import customerRoutes from './routes/customerRoutes.js';
 import salesOrderRoutes from './routes/salesOrderRoutes.js';
 import vendorRoutes from './routes/vendorRoutes.js';
 import purchaseOrderRoutes from './routes/purchaseOrderRoutes.js';
-
-dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,37 +65,54 @@ app.use(errorHandler);
 import { appConn, coreConn } from './config/db.js';
 import { checkTenantStatus } from './middleware/tenantMiddleware.js';
 
-// Apply tenant check middleware to all /api routes (except auth/login/register if needed)
-// For now, applying to all /api to be safe
+// Apply tenant check middleware to all /api routes (except health and auth)
 app.use('/api', checkTenantStatus);
 
 // MongoDB connection status check
 const startServer = async () => {
+    const PORT = process.env.PORT || 5000;
+
+    // Start listening immediately to avoid 502 Bad Gateway
+    const server = app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Server running on port ${PORT}`);
+        console.log(`Environment: ${process.env.NODE_ENV}`);
+        console.log('Waiting for database connections...');
+    });
+
     try {
-        // Wait for both connections to be established
+        // Log connection attempts
+        if (!process.env.APP_MONGODB_URI) console.warn('Warning: APP_MONGODB_URI is not defined');
+        if (!process.env.CORE_MONGODB_URI) console.warn('Warning: CORE_MONGODB_URI is not defined');
+
+        // Monitor connections
         await Promise.all([
             new Promise((resolve, reject) => {
                 if (appConn.readyState === 1) resolve();
-                appConn.once('open', resolve);
-                appConn.once('error', reject);
+                appConn.once('open', () => {
+                    console.log('MongoDB connected to App database');
+                    resolve();
+                });
+                appConn.once('error', (err) => {
+                    console.error('MongoDB connection error for App:', err.message);
+                    resolve();
+                });
             }),
             new Promise((resolve, reject) => {
                 if (coreConn.readyState === 1) resolve();
-                coreConn.once('open', resolve);
-                coreConn.once('error', reject);
+                coreConn.once('open', () => {
+                    console.log('MongoDB connected to Core database');
+                    resolve();
+                });
+                coreConn.once('error', (err) => {
+                    console.error('MongoDB connection error for Core:', err.message);
+                    resolve();
+                });
             })
         ]);
 
-        console.log('All MongoDB connections (App, Core) established successfully');
-
-        const PORT = process.env.PORT || 5000;
-        app.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`);
-            console.log(`Environment: ${process.env.NODE_ENV}`);
-        });
+        console.log('Initial database connection checks completed.');
     } catch (error) {
-        console.error('Failed to establish database connections:', error);
-        process.exit(1);
+        console.error('Unexpected error during startup:', error);
     }
 };
 

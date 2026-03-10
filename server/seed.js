@@ -1,10 +1,10 @@
 import dotenv from 'dotenv';
+dotenv.config();
+
 import { appConn, coreConn } from './config/db.js';
 import Category from './models/Category.js';
 import User from './models/User.js';
 import Tenant from './models/Tenant.js';
-
-dotenv.config();
 
 const categories = [
     { name: 'Electronics', description: 'Electronic devices and accessories' },
@@ -49,17 +49,21 @@ const seedDatabase = async () => {
             console.log('Created default tenant: Main Business');
         }
 
-        // 2. Seed Users in Core DB (Default Admin)
+        // 2. Seed Users in Core DB (Default Admin if empty)
         console.log('Seeding Users in Core DB...');
-        const adminExists = await User.findOne({ email: 'admin@inventory.com' });
-        if (!adminExists) {
+        const userCount = await User.countDocuments();
+        if (userCount === 0) {
             await User.create({
                 name: 'Admin User',
                 email: 'admin@inventory.com',
                 password: 'admin123',
                 role: 'admin',
+                isActive: true,
+                menuAccess: 'all'
             });
             console.log('Created default admin user (email: admin@inventory.com, password: admin123)');
+        } else {
+            console.log(`${userCount} users already exist in Core DB, skipping default admin creation.`);
         }
 
         // 3. Seed App DB (Categories)

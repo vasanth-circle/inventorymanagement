@@ -7,26 +7,34 @@ import Tenant from '../models/Tenant.js';
  */
 export const checkTenantStatus = async (req, res, next) => {
     try {
-        // Skip check for health check
-        if (req.path === '/health') return next();
+        // Skip check for health check and auth routes
+        if (req.path === '/health' || req.path.startsWith('/auth')) return next();
 
-        // For now, let's assume all users belong to a default tenant or we check by business name.
-        // In a production app, the user model would have a tenantId.
-
-        // Let's look for a default tenant if not specified, or just check the first one for demonstration
-        // as per the requirement "controlls for the tenent who can access this".
-
-        // Find the "inventory" app status in the core DB
-        const tenant = await Tenant.findOne({
-            'apps.name': 'inventory'
-        });
-
-        if (!tenant) {
-            // If no tenant configuration found, we might want to allow it or block it.
-            // Based on the screenshot, at least one should exist.
-            return next();
+        // 1. Identify tenant
+        let tenant;
+        if (req.user && req.user.tenantId) {
+            // Find by user's specific tenantId from core DB
+            tenant = await Tenant.findOne({
+                $or: [
+                    { tenantId: req.user.tenantId },
+                    { _id: req.user.tenantId } // In case the ID itself is the tenantId
+                ]
+            });
         }
 
+        // 2. Fallback to generic inventory app check if no specific user tenant found
+        if (!tenant) {
+            tenant = await Tenant.findOne({
+                'apps.name': 'inventory'
+            });
+        }
+
+        if (!tenant) {
+            console.warn('No tenant configuration found for inventory app');
+            return next(); // Fail-open for now or block if strict
+        }
+
+        // 3. Check if app is enabled for this tenant
         const inventoryApp = tenant.apps.find(app => app.name === 'inventory');
 
         if (!inventoryApp || !inventoryApp.enabled || tenant.status === 'Inactive' || tenant.status === 'Suspended') {

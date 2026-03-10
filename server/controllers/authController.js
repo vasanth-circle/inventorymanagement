@@ -29,6 +29,7 @@ export const register = async (req, res, next) => {
             role: role || 'staff',
             menuAccess: menuAccess || 'all',
             allowedMenus: allowedMenus || [],
+            tenantId: req.body.tenantId, // Allow passing tenantId during creation
         });
 
         res.status(201).json({
@@ -36,6 +37,7 @@ export const register = async (req, res, next) => {
             name: user.name,
             email: user.email,
             role: user.role,
+            tenantId: user.tenantId,
             menuAccess: user.menuAccess,
             allowedMenus: user.allowedMenus,
             token: generateToken(user._id),
@@ -87,33 +89,42 @@ export const addUser = async (req, res, next) => {
 export const login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
+        console.log(`Login attempt for email: ${email}`);
 
         // Check for user
         const user = await User.findOne({ email }).select('+password');
         if (!user) {
+            console.log(`Login failed: User not found for email ${email}`);
             return res.status(401).json({ message: 'Invalid credentials' });
         }
+
+        console.log(`User found: ${user.name || user.email}. Checking password...`);
 
         // Check password
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
+            console.log(`Login failed: Password mismatch for user ${email}`);
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        if (!user.isActive) {
+        if (user.isActive === false) {
+            console.log(`Login failed: User ${email} is inactive`);
             return res.status(401).json({ message: 'User account is inactive' });
         }
 
+        console.log(`Login successful for user: ${email}`);
         res.json({
             _id: user._id,
             name: user.name,
             email: user.email,
             role: user.role,
+            tenantId: user.tenantId,
             menuAccess: user.menuAccess,
             allowedMenus: user.allowedMenus,
             token: generateToken(user._id),
         });
     } catch (error) {
+        console.error('Login error:', error);
         next(error);
     }
 };

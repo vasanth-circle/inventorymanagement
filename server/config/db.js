@@ -4,6 +4,13 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const createConnection = (uri, dbName) => {
+    if (!uri) {
+        console.error(`CRITICAL: ${dbName} database URI is not defined!`);
+        // Return a connection that will fail early if used
+        const conn = mongoose.createConnection();
+        return conn;
+    }
+
     const conn = mongoose.createConnection(uri);
 
     conn.on('connected', () => {

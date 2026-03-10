@@ -7,6 +7,11 @@ const tenantSchema = new mongoose.Schema({
         required: true,
         trim: true,
     },
+    tenantId: { // Alternative identifier often used in core systems
+        type: String,
+        unique: true,
+        sparse: true,
+    },
     slug: {
         type: String,
         required: true,
@@ -25,11 +30,11 @@ const tenantSchema = new mongoose.Schema({
     }],
     owner: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User', // This would be the core user
+        ref: 'User',
     }
 }, {
     timestamps: true,
-    collection: 'tenants' // Explicitly set if different from model name
+    collection: 'tenants'
 });
 
 const Tenant = coreConn.model('Tenant', tenantSchema);
