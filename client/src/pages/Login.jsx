@@ -102,12 +102,19 @@ const Login = () => {
                         </button>
                     </div>
 
-                    <div className="flex items-center justify-end">
-                        <div className="text-sm">
-                            <Link to="/forgot-password" className="font-medium text-primary-600 hover:text-primary-500">
+                    <div className="flex flex-col space-y-4">
+                        <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Don't have an account?</span>
+                            <Link to="/forgot-password" name="forgot-password" id="forgot-password" className="font-medium text-primary-600 hover:text-primary-500">
                                 Forgot your password?
                             </Link>
                         </div>
+                        <Link
+                            to="/register"
+                            className="w-full flex justify-center py-2 px-4 border border-primary-600 text-sm font-medium rounded-lg text-primary-600 bg-white hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+                        >
+                            Sign Up for Free Trial
+                        </Link>
                     </div>
                 </form>
             </div>
