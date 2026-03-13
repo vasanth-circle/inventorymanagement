@@ -9,7 +9,7 @@ export const stockInward = async (req, res, next) => {
     try {
         const { item, quantity, reason, notes } = req.body;
 
-        const itemDoc = await Item.findById(item);
+        const itemDoc = await Item.findOne({ _id: item, tenantId: req.tenantId });
         if (!itemDoc) {
             return sendError(res, 404, 'Item not found');
         }
@@ -32,9 +32,10 @@ export const stockInward = async (req, res, next) => {
             previousQuantity,
             newQuantity,
             toLocation: itemDoc.location,
+            tenantId: req.tenantId
         });
 
-        const populatedTransaction = await Transaction.findById(transaction._id)
+        const populatedTransaction = await Transaction.findOne({ _id: transaction._id, tenantId: req.tenantId })
             .populate('item', 'name barcode')
             .populate('user', 'name email');
 
@@ -51,7 +52,7 @@ export const stockOutward = async (req, res, next) => {
     try {
         const { item, quantity, reason, notes } = req.body;
 
-        const itemDoc = await Item.findById(item);
+        const itemDoc = await Item.findOne({ _id: item, tenantId: req.tenantId });
         if (!itemDoc) {
             return sendError(res, 404, 'Item not found');
         }
@@ -78,9 +79,10 @@ export const stockOutward = async (req, res, next) => {
             previousQuantity,
             newQuantity,
             fromLocation: itemDoc.location,
+            tenantId: req.tenantId
         });
 
-        const populatedTransaction = await Transaction.findById(transaction._id)
+        const populatedTransaction = await Transaction.findOne({ _id: transaction._id, tenantId: req.tenantId })
             .populate('item', 'name barcode')
             .populate('user', 'name email');
 
@@ -97,7 +99,7 @@ export const stockReturn = async (req, res, next) => {
     try {
         const { item, quantity, reason, notes } = req.body;
 
-        const itemDoc = await Item.findById(item);
+        const itemDoc = await Item.findOne({ _id: item, tenantId: req.tenantId });
         if (!itemDoc) {
             return sendError(res, 404, 'Item not found');
         }
@@ -120,9 +122,10 @@ export const stockReturn = async (req, res, next) => {
             previousQuantity,
             newQuantity,
             toLocation: itemDoc.location,
+            tenantId: req.tenantId
         });
 
-        const populatedTransaction = await Transaction.findById(transaction._id)
+        const populatedTransaction = await Transaction.findOne({ _id: transaction._id, tenantId: req.tenantId })
             .populate('item', 'name barcode')
             .populate('user', 'name email');
 
@@ -139,7 +142,7 @@ export const stockTransfer = async (req, res, next) => {
     try {
         const { item, quantity, fromLocation, toLocation, notes } = req.body;
 
-        const itemDoc = await Item.findById(item);
+        const itemDoc = await Item.findOne({ _id: item, tenantId: req.tenantId });
         if (!itemDoc) {
             return sendError(res, 404, 'Item not found');
         }
@@ -161,9 +164,10 @@ export const stockTransfer = async (req, res, next) => {
             user: req.user._id,
             previousQuantity,
             newQuantity: previousQuantity, // Quantity doesn't change in transfer
+            tenantId: req.tenantId
         });
 
-        const populatedTransaction = await Transaction.findById(transaction._id)
+        const populatedTransaction = await Transaction.findOne({ _id: transaction._id, tenantId: req.tenantId })
             .populate('item', 'name barcode')
             .populate('user', 'name email');
 
@@ -187,7 +191,7 @@ export const getTransactions = async (req, res, next) => {
             endDate = '',
         } = req.query;
 
-        const query = {};
+        const query = { tenantId: req.tenantId };
 
         if (type) {
             query.type = type;
@@ -235,7 +239,7 @@ export const getTransactions = async (req, res, next) => {
 // @access  Private
 export const getItemHistory = async (req, res, next) => {
     try {
-        const transactions = await Transaction.find({ item: req.params.itemId })
+        const transactions = await Transaction.find({ item: req.params.itemId, tenantId: req.tenantId })
             .populate('user', 'name email')
             .sort({ createdAt: -1 });
 

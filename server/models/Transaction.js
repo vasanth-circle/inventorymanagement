@@ -46,14 +46,19 @@ const transactionSchema = new mongoose.Schema({
         type: Number,
         required: true,
     },
+    tenantId: {
+        type: String,
+        required: [true, 'Tenant ID is required'],
+        index: true,
+    },
 }, {
     timestamps: true,
 });
 
 // Indexes for efficient querying
-transactionSchema.index({ item: 1, createdAt: -1 });
-transactionSchema.index({ type: 1 });
-transactionSchema.index({ user: 1 });
+transactionSchema.index({ item: 1, createdAt: -1, tenantId: 1 });
+transactionSchema.index({ type: 1, tenantId: 1 });
+transactionSchema.index({ user: 1, tenantId: 1 });
 
 const Transaction = appConn.model('Transaction', transactionSchema);
 

@@ -68,7 +68,12 @@ import { appConn, coreConn } from './config/db.js';
 import { checkTenantStatus } from './middleware/tenantMiddleware.js';
 
 // Apply tenant check middleware to all /api routes (except health and auth)
-app.use('/api', checkTenantStatus);
+app.use('/api', (req, res, next) => {
+    if (req.path.startsWith('/auth') || req.path === '/health') {
+        return next();
+    }
+    checkTenantStatus(req, res, next);
+});
 
 // MongoDB connection status check
 const startServer = async () => {

@@ -39,12 +39,17 @@ const vendorSchema = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default: true,
-    }
+    },
+    tenantId: {
+        type: String,
+        required: [true, 'Tenant ID is required'],
+        index: true,
+    },
 }, {
     timestamps: true,
 });
 
-vendorSchema.index({ name: 'text', companyName: 'text' });
+vendorSchema.index({ name: 'text', companyName: 'text', tenantId: 1 });
 
 const Vendor = appConn.model('Vendor', vendorSchema);
 

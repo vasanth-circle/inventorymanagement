@@ -3,6 +3,7 @@ import Transaction from '../models/Transaction.js';
 import Category from '../models/Category.js';
 import SalesOrder from '../models/SalesOrder.js';
 import PurchaseOrder from '../models/PurchaseOrder.js';
+import Tenant from '../models/Tenant.js';
 
 // @desc    Get dashboard statistics
 // @route   GET /api/dashboard/stats
@@ -11,22 +12,29 @@ export const getDashboardStats = async (req, res, next) => {
     try {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        const tenantQuery = { tenantId: req.tenantId };
+        
+        // Fetch Tenant Info
+        const tenant = await Tenant.findOne({ tenantId: req.tenantId });
+        const companyName = tenant ? tenant.businessName : 'Inventory Management';
 
         // Total items count
-        const totalItems = await Item.countDocuments();
+        const totalItems = await Item.countDocuments(tenantQuery);
 
         // Low stock items count
         const lowStockItems = await Item.countDocuments({
+            ...tenantQuery,
             $expr: { $lte: ['$quantity', '$minStockThreshold'] }
         });
 
         // Out of stock items count
-        const outOfStockItems = await Item.countDocuments({ quantity: 0 });
+        const outOfStockItems = await Item.countDocuments({ ...tenantQuery, quantity: 0 });
 
         // Today's inward transactions
         const todayInward = await Transaction.aggregate([
             {
                 $match: {
+                    ...tenantQuery,
                     type: 'inward',
                     createdAt: { $gte: today }
                 }
@@ -44,6 +52,7 @@ export const getDashboardStats = async (req, res, next) => {
         const todayOutward = await Transaction.aggregate([
             {
                 $match: {
+                    ...tenantQuery,
                     type: 'outward',
                     createdAt: { $gte: today }
                 }
@@ -59,6 +68,7 @@ export const getDashboardStats = async (req, res, next) => {
 
         // Total stock value
         const stockValue = await Item.aggregate([
+            { $match: tenantQuery },
             {
                 $group: {
                     _id: null,
@@ -69,6 +79,7 @@ export const getDashboardStats = async (req, res, next) => {
 
         // Sales Activity Counts
         const salesActivity = await SalesOrder.aggregate([
+            { $match: tenantQuery },
             {
                 $group: {
                     _id: '$status',
@@ -79,6 +90,7 @@ export const getDashboardStats = async (req, res, next) => {
 
         // Purchase Activity Counts
         const purchaseActivity = await PurchaseOrder.aggregate([
+            { $match: tenantQuery },
             {
                 $group: {
                     _id: '$status',
@@ -89,18 +101,19 @@ export const getDashboardStats = async (req, res, next) => {
 
         // Total Sales and Purchase Amount
         const salesStats = await SalesOrder.aggregate([
-            { $match: { status: { $ne: 'void' } } },
+            { $match: { ...tenantQuery, status: { $ne: 'void' } } },
             { $group: { _id: null, totalSales: { $sum: '$totalAmount' } } }
         ]);
 
         const purchaseStats = await PurchaseOrder.aggregate([
-            { $match: { status: { $ne: 'void' } } },
+            { $match: { ...tenantQuery, status: { $ne: 'void' } } },
             { $group: { _id: null, totalPurchase: { $sum: '$totalAmount' } } }
         ]);
 
 
         // Category-wise distribution
         const categoryDistribution = await Item.aggregate([
+            { $match: tenantQuery },
             {
                 $group: {
                     _id: '$category',
@@ -129,16 +142,17 @@ export const getDashboardStats = async (req, res, next) => {
         ]);
 
         // Total categories count
-        const totalCategories = await Category.countDocuments();
+        const totalCategories = await Category.countDocuments(tenantQuery);
 
         // Pending Purchase Orders (issued status)
-        const pendingOrders = await PurchaseOrder.find({ status: 'issued' });
+        const pendingOrders = await PurchaseOrder.find({ ...tenantQuery, status: 'issued' });
         const pendingReceipts = pendingOrders.reduce((acc, order) => {
             return acc + order.items.reduce((sum, item) => sum + item.quantity, 0);
         }, 0);
 
         // Top Selling Items (top 5 from Sales Orders)
         const topSellingItems = await SalesOrder.aggregate([
+            { $match: tenantQuery },
             { $unwind: '$items' },
             {
                 $group: {
@@ -153,6 +167,7 @@ export const getDashboardStats = async (req, res, next) => {
 
         res.json({
             userName: req.user.name,
+            companyName,
             totalItems,
             lowStockItems,
             outOfStockItems,
@@ -164,7 +179,7 @@ export const getDashboardStats = async (req, res, next) => {
             purchaseActivity: purchaseActivity.reduce((acc, curr) => ({ ...acc, [curr._id]: curr.count }), {}),
             totalSales: salesStats[0]?.totalSales || 0,
             totalPurchase: purchaseStats[0]?.totalPurchase || 0,
-            totalItemsCount: totalItemsCount[0]?.total || 0,
+            totalItemsCount: totalItems, // Fixed bug: was totalItemsCount
             pendingReceipts,
             totalCategories,
             topSellingItems

@@ -45,7 +45,7 @@ const Dashboard = () => {
                     <div className="w-10 h-10 bg-white shadow-sm border border-gray-100 rounded-lg flex items-center justify-center text-xl">🏠</div>
                     <div>
                         <h1 className="text-2xl font-bold text-gray-800">Hello, {stats?.userName || 'User'}!</h1>
-                        <p className="text-xs text-gray-400 font-medium">Zylker Organizations</p>
+                        <p className="text-xs text-gray-400 font-medium">{stats?.companyName || 'Inventory Management'}</p>
                     </div>
                 </div>
                 <button onClick={fetchDashboardData} className="p-2 text-gray-400 hover:text-rose-600 transition-colors">
@@ -169,7 +169,7 @@ const Dashboard = () => {
                         <div className="p-0">
                             <div className="flex items-center justify-between p-5 border-b border-gray-50 hover:bg-slate-50/30 transition-colors">
                                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-tighter">Quantity in Hand</span>
-                                <span className="text-lg font-black text-gray-800">{stats?.totalItemsCount || '104,582'}</span>
+                                <span className="text-lg font-black text-gray-800">{stats?.totalItemsCount || '0'}</span>
                             </div>
                             <div className="flex items-center justify-between p-5 hover:bg-slate-50/30 transition-colors">
                                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-tighter">Quantity to be Received</span>

@@ -5,7 +5,11 @@ const salesOrderSchema = new mongoose.Schema({
     orderNumber: {
         type: String,
         required: true,
-        unique: true,
+    },
+    tenantId: {
+        type: String,
+        required: [true, 'Tenant ID is required'],
+        index: true,
     },
     customer: {
         type: mongoose.Schema.Types.ObjectId,
@@ -64,8 +68,9 @@ salesOrderSchema.pre('validate', function (next) {
     next();
 });
 
-salesOrderSchema.index({ customer: 1 });
-salesOrderSchema.index({ status: 1 });
+salesOrderSchema.index({ orderNumber: 1, tenantId: 1 }, { unique: true });
+salesOrderSchema.index({ customer: 1, tenantId: 1 });
+salesOrderSchema.index({ status: 1, tenantId: 1 });
 
 const SalesOrder = appConn.model('SalesOrder', salesOrderSchema);
 

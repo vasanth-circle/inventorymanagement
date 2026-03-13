@@ -6,7 +6,6 @@ const locationSchema = new mongoose.Schema({
         type: String,
         required: [true, 'Location name is required'],
         trim: true,
-        unique: true,
     },
     description: {
         type: String,
@@ -15,10 +14,18 @@ const locationSchema = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default: true,
-    }
+    },
+    tenantId: {
+        type: String,
+        required: [true, 'Tenant ID is required'],
+        index: true,
+    },
 }, {
     timestamps: true,
 });
+
+// Location name must be unique within a tenant
+locationSchema.index({ name: 1, tenantId: 1 }, { unique: true });
 
 const Location = appConn.model('Location', locationSchema);
 

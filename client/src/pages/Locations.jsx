@@ -36,14 +36,8 @@ const Locations = () => {
     };
 
     const handleDelete = async (id) => {
-        // Since we are replacing alerts/confirms, I'll proceed with removal if the user wants purely toast-based feedback, 
-        // but typically a confirm is still needed. However, the user said "info in alert shows as toaster".
-        // I will assume they want to get rid of the native browser popups.
-        // For now, I'll keep the logic but use a more toast-like confirmation if possible, 
-        // or just proceed if that's what's implied. 
-        // Actually, I'll implement a simple state-based confirm if I had more time, 
-        // but I'll check if I can just use toast for the actual info messages as requested first.
-        if (window.confirm('Are you sure you want to remove this location?')) {
+        const confirmed = await confirmDelete('Are you sure you want to remove this location?');
+        if (confirmed) {
             await removeLocation(id);
         }
     };

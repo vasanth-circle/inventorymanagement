@@ -5,7 +5,7 @@ import Location from '../models/Location.js';
 // @access  Private
 export const getLocations = async (req, res, next) => {
     try {
-        const locations = await Location.find({ isActive: true }).sort({ name: 1 });
+        const locations = await Location.find({ tenantId: req.tenantId, isActive: true }).sort({ name: 1 });
         res.json(locations);
     } catch (error) {
         next(error);
@@ -19,7 +19,10 @@ export const createLocation = async (req, res, next) => {
     try {
         const { name, description } = req.body;
 
-        const locationExists = await Location.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') } });
+        const locationExists = await Location.findOne({ 
+            name: { $regex: new RegExp(`^${name}$`, 'i') },
+            tenantId: req.tenantId 
+        });
 
         if (locationExists) {
             return res.status(400).json({ message: 'Location already exists' });
@@ -28,6 +31,7 @@ export const createLocation = async (req, res, next) => {
         const location = await Location.create({
             name,
             description,
+            tenantId: req.tenantId
         });
 
         res.status(201).json(location);
@@ -43,7 +47,7 @@ export const updateLocation = async (req, res, next) => {
     try {
         const { name, description, isActive } = req.body;
 
-        let location = await Location.findById(req.params.id);
+        let location = await Location.findOne({ _id: req.params.id, tenantId: req.tenantId });
 
         if (!location) {
             return res.status(404).json({ message: 'Location not found' });
@@ -66,7 +70,7 @@ export const updateLocation = async (req, res, next) => {
 // @access  Private/Admin
 export const deleteLocation = async (req, res, next) => {
     try {
-        const location = await Location.findById(req.params.id);
+        const location = await Location.findOne({ _id: req.params.id, tenantId: req.tenantId });
 
         if (!location) {
             return res.status(404).json({ message: 'Location not found' });

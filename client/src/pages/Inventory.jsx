@@ -35,7 +35,7 @@ const Inventory = () => {
         barcode: '',
         category: '',
         price: '',
-        minStockThreshold: '10',
+        minStockThreshold: '',
         location: '',
         description: ''
     });
@@ -184,7 +184,7 @@ const Inventory = () => {
                     barcode: '',
                     category: '',
                     price: '',
-                    minStockThreshold: '10',
+                    minStockThreshold: '',
                     location: '',
                     description: ''
                 });

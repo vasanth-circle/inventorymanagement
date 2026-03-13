@@ -45,6 +45,9 @@ export const checkTenantStatus = async (req, res, next) => {
             });
         }
 
+        // Attach tenantId to request for use in controllers
+        req.tenantId = tenant.tenantId || tenant._id;
+
         next();
     } catch (error) {
         console.error('Tenant Check Error:', error);

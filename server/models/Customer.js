@@ -52,13 +52,18 @@ const customerSchema = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default: true,
-    }
+    },
+    tenantId: {
+        type: String,
+        required: [true, 'Tenant ID is required'],
+        index: true,
+    },
 }, {
     timestamps: true,
 });
 
-customerSchema.index({ name: 'text', companyName: 'text', email: 'text' });
-customerSchema.index({ isActive: 1 });
+customerSchema.index({ name: 'text', companyName: 'text', email: 'text', tenantId: 1 });
+customerSchema.index({ isActive: 1, tenantId: 1 });
 
 const Customer = appConn.model('Customer', customerSchema);
 

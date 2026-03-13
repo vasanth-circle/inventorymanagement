@@ -56,6 +56,9 @@ function App() {
                                                 <Route path="/sales-orders" element={<SalesOrders />} />
                                                 <Route path="/vendors" element={<Vendors />} />
                                                 <Route path="/purchase-orders" element={<PurchaseOrders />} />
+                                                <Route path="/locations" element={<Locations />} />
+                                                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                                                <Route path="*" element={<Navigate to="/dashboard" replace />} />
                                             </Routes>
                                         </main>
                                     </div>

@@ -5,7 +5,11 @@ const purchaseOrderSchema = new mongoose.Schema({
     orderNumber: {
         type: String,
         required: true,
-        unique: true,
+    },
+    tenantId: {
+        type: String,
+        required: [true, 'Tenant ID is required'],
+        index: true,
     },
     vendor: {
         type: mongoose.Schema.Types.ObjectId,
@@ -62,7 +66,8 @@ purchaseOrderSchema.pre('validate', function (next) {
     next();
 });
 
-purchaseOrderSchema.index({ vendor: 1 });
+purchaseOrderSchema.index({ orderNumber: 1, tenantId: 1 }, { unique: true });
+purchaseOrderSchema.index({ vendor: 1, tenantId: 1 });
 
 const PurchaseOrder = appConn.model('PurchaseOrder', purchaseOrderSchema);
 

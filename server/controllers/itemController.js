@@ -54,7 +54,7 @@ export const getItems = async (req, res, next) => {
             sortOrder = 'desc'
         } = req.query;
 
-        const query = {};
+        const query = { tenantId: req.tenantId };
 
         // Search by name or barcode
         if (search) {
@@ -106,7 +106,7 @@ export const getItems = async (req, res, next) => {
 // @access  Private
 export const getItem = async (req, res, next) => {
     try {
-        const item = await Item.findById(req.params.id).populate('category', 'name');
+        const item = await Item.findOne({ _id: req.params.id, tenantId: req.tenantId }).populate('category', 'name');
 
         if (!item) {
             return res.status(404).json({ message: 'Item not found' });
@@ -138,8 +138,10 @@ export const createItem = async (req, res, next) => {
             itemData.image = `/uploads/${req.file.filename}`;
         }
 
+        itemData.tenantId = req.tenantId;
+
         const item = await Item.create(itemData);
-        const populatedItem = await Item.findById(item._id).populate('category', 'name');
+        const populatedItem = await Item.findOne({ _id: item._id, tenantId: req.tenantId }).populate('category', 'name');
 
         res.status(201).json(populatedItem);
     } catch (error) {
@@ -152,7 +154,7 @@ export const createItem = async (req, res, next) => {
 // @access  Private
 export const updateItem = async (req, res, next) => {
     try {
-        const item = await Item.findById(req.params.id);
+        const item = await Item.findOne({ _id: req.params.id, tenantId: req.tenantId });
 
         if (!item) {
             return sendError(res, 404, 'Item not found');
@@ -180,8 +182,8 @@ export const updateItem = async (req, res, next) => {
             updateData.image = `/uploads/${req.file.filename}`;
         }
 
-        const updatedItem = await Item.findByIdAndUpdate(
-            req.params.id,
+        const updatedItem = await Item.findOneAndUpdate(
+            { _id: req.params.id, tenantId: req.tenantId },
             updateData,
             { new: true, runValidators: true }
         ).populate('category', 'name');
@@ -197,13 +199,13 @@ export const updateItem = async (req, res, next) => {
 // @access  Private/Admin
 export const deleteItem = async (req, res, next) => {
     try {
-        const item = await Item.findById(req.params.id);
+        const item = await Item.findOne({ _id: req.params.id, tenantId: req.tenantId });
 
         if (!item) {
             return res.status(404).json({ message: 'Item not found' });
         }
 
-        await Item.findByIdAndDelete(req.params.id);
+        await Item.findOneAndDelete({ _id: req.params.id, tenantId: req.tenantId });
 
         res.json({ message: 'Item deleted successfully' });
     } catch (error) {

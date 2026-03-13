@@ -54,14 +54,20 @@ const itemSchema = new mongoose.Schema({
         of: mongoose.Schema.Types.Mixed,
         default: {},
     },
+    tenantId: {
+        type: String,
+        required: [true, 'Tenant ID is required'],
+        index: true,
+    },
 }, {
     timestamps: true,
 });
 
 // Indexes for search optimization
-itemSchema.index({ name: 'text', barcode: 'text', description: 'text' });
-itemSchema.index({ category: 1 });
-itemSchema.index({ quantity: 1 });
+itemSchema.index({ name: 'text', barcode: 'text', description: 'text', tenantId: 1 });
+itemSchema.index({ tenantId: 1, category: 1 });
+itemSchema.index({ tenantId: 1, quantity: 1 });
+itemSchema.index({ tenantId: 1, sku: 1 }, { unique: true });
 
 // Virtual field for stock status
 itemSchema.virtual('stockStatus').get(function () {

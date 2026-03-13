@@ -130,22 +130,29 @@ export const importExcelData = async (req, res, next) => {
             try {
                 // Resolve Category ID
                 let categoryId;
-                const category = await Category.findOne({ name: { $regex: new RegExp(`^${itemData.category}$`, 'i') } });
+                const category = await Category.findOne({ 
+                    name: { $regex: new RegExp(`^${itemData.category}$`, 'i') },
+                    tenantId: req.tenantId
+                });
 
                 if (category) {
                     categoryId = category._id;
                 } else {
                     // Create category if it doesn't exist
-                    const newCategory = await Category.create({ name: itemData.category });
+                    const newCategory = await Category.create({ 
+                        name: itemData.category,
+                        tenantId: req.tenantId
+                    });
                     categoryId = newCategory._id;
                 }
 
-                // Check if item exists by SKU or Name
+                // Check if item exists by SKU or Name within the tenant
                 let item = await Item.findOne({
                     $or: [
                         { sku: itemData.sku },
                         { name: itemData.name }
-                    ]
+                    ],
+                    tenantId: req.tenantId
                 });
 
                 if (item) {
@@ -170,6 +177,7 @@ export const importExcelData = async (req, res, next) => {
                         reason: 'Excel Import',
                         location: itemData.location || item.location,
                         user: req.user._id,
+                        tenantId: req.tenantId
                     });
 
                     results.updated.push({
@@ -186,8 +194,9 @@ export const importExcelData = async (req, res, next) => {
                         quantity: itemData.quantity,
                         price: itemData.price,
                         location: itemData.location,
-                        minStockThreshold: itemData.minStockLevel || 10,
+                        minStockThreshold: itemData.minStockLevel || 0,
                         customFields: itemData.customFields || {},
+                        tenantId: req.tenantId
                     });
 
                     // Create inward transaction
@@ -200,6 +209,7 @@ export const importExcelData = async (req, res, next) => {
                         reason: 'Excel Import',
                         location: itemData.location || item.location,
                         user: req.user._id,
+                        tenantId: req.tenantId
                     });
 
                     results.success.push({
@@ -233,8 +243,8 @@ export const importExcelData = async (req, res, next) => {
 // Generate Excel template
 export const downloadTemplate = async (req, res, next) => {
     try {
-        // Fetch all unique custom field keys across all items
-        const allItems = await Item.find({}, 'customFields');
+        // Fetch all unique custom field keys across all items for this tenant
+        const allItems = await Item.find({ tenantId: req.tenantId }, 'customFields');
         const customFieldKeys = new Set();
         allItems.forEach(item => {
             if (item.customFields) {
@@ -242,8 +252,8 @@ export const downloadTemplate = async (req, res, next) => {
             }
         });
 
-        // Fetch all managed locations
-        const locations = await Location.find({ isActive: true });
+        // Fetch all managed locations for this tenant
+        const locations = await Location.find({ tenantId: req.tenantId, isActive: true });
         const locationNames = locations.map(loc => loc.name).join(', ') || 'Main Warehouse';
 
         // Create sample data with dynamic headers
