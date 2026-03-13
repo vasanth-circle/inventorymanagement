@@ -19,6 +19,7 @@ export const schemas = {
         name: Joi.string().required().trim(),
         email: Joi.string().email().required().trim().lowercase(),
         password: Joi.string().min(6).required(),
+        companyName: Joi.string().required().trim(),
         role: Joi.string().valid('admin', 'manager', 'staff', 'tenant_owner').default('staff'),
         menuAccess: Joi.string().valid('all', 'specific', null).optional(),
         allowedMenus: Joi.array().items(Joi.string().allow('')).optional(),

@@ -43,7 +43,10 @@ const Register = () => {
         const result = await register(formData.name, formData.email, formData.password, formData.companyName);
 
         if (result.success) {
-            toast.success('Registration successful!');
+            toast.success(`Welcome to InventoryPro, ${result.user.name || 'User'}!`, {
+                position: 'top-right',
+                duration: 5000
+            });
             navigate('/dashboard');
         } else {
             toast.error(result.message);

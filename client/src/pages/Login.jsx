@@ -25,7 +25,10 @@ const Login = () => {
         const result = await login(email, password);
 
         if (result.success) {
-            toast.success('Login successful!');
+            toast.success(`Welcome back, ${result.user.name || 'User'}!`, {
+                position: 'top-right',
+                duration: 4000
+            });
             navigate('/dashboard');
         } else {
             toast.error(result.message);
