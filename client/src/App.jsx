@@ -20,6 +20,7 @@ import Customers from './pages/Customers';
 import SalesOrders from './pages/SalesOrders';
 import Vendors from './pages/Vendors';
 import PurchaseOrders from './pages/PurchaseOrders';
+import Locations from './pages/Locations';
 
 function App() {
     return (

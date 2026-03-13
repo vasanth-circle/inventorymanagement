@@ -3,7 +3,7 @@ import { InventoryContext } from '../context/InventoryContext';
 import toast from 'react-hot-toast';
 
 const Categories = () => {
-    const { categories, addCategory, editCategory, removeCategory, loading } = useContext(InventoryContext);
+    const { categories, addCategory, editCategory, removeCategory, loading, confirmDelete } = useContext(InventoryContext);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState(null);
     const [formData, setFormData] = useState({ name: '', description: '' });
@@ -37,9 +37,9 @@ const Categories = () => {
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this category? Items in this category will remain but their category reference may be lost.')) {
+        confirmDelete('Are you sure you want to delete this category? Items in this category will remain but their category reference may be lost.', async () => {
             await removeCategory(id);
-        }
+        });
     };
 
     return (

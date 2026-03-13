@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import Tenant from '../models/Tenant.js';
 
 // Generate JWT token
 const generateToken = (id) => {
@@ -13,7 +14,7 @@ const generateToken = (id) => {
 // @access  Public
 export const register = async (req, res, next) => {
     try {
-        const { name, email, password, role, menuAccess, allowedMenus } = req.body;
+        const { name, email, password, companyName } = req.body;
 
         // Check if user exists
         const userExists = await User.findOne({ email });
@@ -21,16 +22,31 @@ export const register = async (req, res, next) => {
             return res.status(400).json({ message: 'User already exists' });
         }
 
+        // Create Tenant
+        const slug = companyName.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+        const tenantId = `T-${Date.now()}`;
+        
+        const tenant = await Tenant.create({
+            businessName: companyName,
+            tenantId: tenantId,
+            slug: slug,
+            status: 'Trial',
+            apps: [{ name: 'inventory', enabled: true }]
+        });
+
         // Create user
         const user = await User.create({
             name,
             email,
             password,
-            role: role || 'staff',
-            menuAccess: menuAccess || 'all',
-            allowedMenus: allowedMenus || [],
-            tenantId: req.body.tenantId, // Allow passing tenantId during creation
+            role: 'tenant_owner',
+            menuAccess: 'all',
+            tenantId: tenant.tenantId,
         });
+
+        // Update tenant owner
+        tenant.owner = user._id;
+        await tenant.save();
 
         res.status(201).json({
             _id: user._id,

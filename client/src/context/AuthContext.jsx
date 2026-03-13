@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect } from 'react';
 import api from '../utils/api';
+import toast from 'react-hot-toast';
 
 export const AuthContext = createContext();
 
@@ -44,9 +45,9 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const register = async (name, email, password, role) => {
+    const register = async (name, email, password, companyName) => {
         try {
-            const { data } = await api.post('/auth/register', { name, email, password, role });
+            const { data } = await api.post('/auth/register', { name, email, password, companyName });
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data));
             setUser(data);

@@ -17,6 +17,7 @@ const Sidebar = () => {
                 { name: 'Dashboard', path: '/dashboard', id: 'dashboard' },
                 { name: 'Items', path: '/inventory', id: 'inventory' },
                 { name: 'Categories', path: '/categories', id: 'categories' },
+                { name: 'Locations', path: '/locations', id: 'inventory' },
                 { name: 'Bulk Import', path: '/bulk-import', id: 'bulk-import' },
                 { name: 'Adjustments', path: '/stocks', id: 'stocks' },
             ]

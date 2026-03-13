@@ -2,6 +2,7 @@ import xlsx from 'xlsx';
 import Item from '../models/Item.js';
 import Category from '../models/Category.js';
 import Transaction from '../models/Transaction.js';
+import Location from '../models/Location.js';
 
 // Parse Excel file and return data
 export const parseExcel = async (req, res, next) => {
@@ -65,10 +66,23 @@ export const parseExcel = async (req, res, next) => {
                     minStockLevel: row['Min Stock Level'] ? parseFloat(row['Min Stock Level']) : 0,
                     description: row['Description']?.toString().trim() || '',
                     date: row['Date'] ? new Date(row['Date']) : new Date(),
+                    customFields: {},
                 },
-                isValid: errors.length === 0,
-                errors: errors,
             };
+
+            // Capture custom fields (any column that doesn't match standard fields)
+            const standardFields = [
+                'Item Name', 'SKU', 'Category', 'Quantity', 'Unit', 'Price', 
+                'Supplier', 'Location', 'Min Stock Level', 'Description', 'Date'
+            ];
+
+            Object.keys(row).forEach(key => {
+                if (!standardFields.includes(key)) {
+                    result.data.customFields[key] = row[key];
+                }
+            });
+
+            return result;
         });
 
         // Check for duplicate SKUs in the file
@@ -141,6 +155,9 @@ export const importExcelData = async (req, res, next) => {
                     // Update price and location if provided
                     if (itemData.price) item.price = itemData.price;
                     if (itemData.location) item.location = itemData.location;
+                    if (itemData.customFields) {
+                        item.customFields = { ...item.customFields, ...itemData.customFields };
+                    }
                     await item.save();
 
                     // Create inward transaction
@@ -170,6 +187,7 @@ export const importExcelData = async (req, res, next) => {
                         price: itemData.price,
                         location: itemData.location,
                         minStockThreshold: itemData.minStockLevel || 10,
+                        customFields: itemData.customFields || {},
                     });
 
                     // Create inward transaction
@@ -215,7 +233,29 @@ export const importExcelData = async (req, res, next) => {
 // Generate Excel template
 export const downloadTemplate = async (req, res, next) => {
     try {
-        // Create sample data
+        // Fetch all unique custom field keys across all items
+        const allItems = await Item.find({}, 'customFields');
+        const customFieldKeys = new Set();
+        allItems.forEach(item => {
+            if (item.customFields) {
+                Object.keys(item.customFields).forEach(key => customFieldKeys.add(key));
+            }
+        });
+
+        // Fetch all managed locations
+        const locations = await Location.find({ isActive: true });
+        const locationNames = locations.map(loc => loc.name).join(', ') || 'Main Warehouse';
+
+        // Create sample data with dynamic headers
+        const headers = [
+            'Item Name', 'SKU', 'Category', 'Quantity', 'Unit', 'Price', 
+            'Supplier', 'Location', 'Min Stock Level', 'Description', 'Date'
+        ];
+        
+        // Add custom field keys to headers
+        const customHeaderStartIdx = headers.length;
+        customFieldKeys.forEach(key => headers.push(key));
+
         const sampleData = [
             {
                 'Item Name': 'Laptop Dell XPS 15',
@@ -225,32 +265,24 @@ export const downloadTemplate = async (req, res, next) => {
                 'Unit': 'pieces',
                 'Price': 45000,
                 'Supplier': 'Dell India',
-                'Location': 'Warehouse A',
+                'Location': locations[0]?.name || 'Warehouse A',
                 'Min Stock Level': 5,
                 'Description': '15-inch laptop with i7 processor',
                 'Date': '2024-01-15',
             },
-            {
-                'Item Name': 'Mouse Wireless',
-                'SKU': 'MOU-001',
-                'Category': 'Accessories',
-                'Quantity': 50,
-                'Unit': 'pieces',
-                'Price': 500,
-                'Supplier': 'Logitech',
-                'Location': 'Warehouse B',
-                'Min Stock Level': 10,
-                'Description': 'Wireless optical mouse',
-                'Date': '2024-01-15',
-            },
         ];
+
+        // Add empty values for custom fields in sample data
+        customFieldKeys.forEach(key => {
+            sampleData[0][key] = '';
+        });
 
         // Create workbook and worksheet
         const workbook = xlsx.utils.book_new();
-        const worksheet = xlsx.utils.json_to_sheet(sampleData);
+        const worksheet = xlsx.utils.json_to_sheet(sampleData, { header: headers });
 
         // Set column widths
-        worksheet['!cols'] = [
+        const colWidths = [
             { wch: 25 }, // Item Name
             { wch: 15 }, // SKU
             { wch: 15 }, // Category
@@ -263,6 +295,15 @@ export const downloadTemplate = async (req, res, next) => {
             { wch: 30 }, // Description
             { wch: 12 }, // Date
         ];
+
+        // Add widths for custom field columns
+        customFieldKeys.forEach(() => colWidths.push({ wch: 20 }));
+        
+        worksheet['!cols'] = colWidths;
+
+        // Add comment to Location header explaining how to use managed locations
+        if (!worksheet['H1'].c) worksheet['H1'].c = [];
+        worksheet['H1'].c.push({ a: 'System', t: `Available Locations: ${locationNames}` });
 
         xlsx.utils.book_append_sheet(workbook, worksheet, 'Stock Inward');
 

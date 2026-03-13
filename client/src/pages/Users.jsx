@@ -3,7 +3,7 @@ import { AuthContext } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 const Users = () => {
-    const { user: currentUser, fetchUsers, addUser, updateUserDetails, changeUserStatus, removeUser } = useContext(AuthContext);
+    const { user: currentUser, fetchUsers, addUser, updateUserDetails, changeUserStatus, removeUser, confirmDelete } = useContext(AuthContext);
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -93,7 +93,7 @@ const Users = () => {
             toast.error('You cannot delete your own account');
             return;
         }
-        if (window.confirm('Are you sure you want to delete this user?')) {
+        confirmDelete('Are you sure you want to delete this user?', async () => {
             const result = await removeUser(id);
             if (result.success) {
                 toast.success('User deleted successfully');
@@ -101,7 +101,7 @@ const Users = () => {
             } else {
                 toast.error(result.message);
             }
-        }
+        });
     };
 
     return (

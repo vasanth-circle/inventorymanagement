@@ -4,7 +4,10 @@ import { formatCurrency, formatDate, getStockStatusColor, exportToCSV, debounce 
 import toast from 'react-hot-toast';
 
 const Inventory = () => {
-    const { items, fetchItems, deleteItem, createItem, updateItem, categories, loading } = useContext(InventoryContext);
+    const { 
+        items, fetchItems, deleteItem, createItem, updateItem, 
+        categories, locations, fetchLocations, loading, confirmDelete
+    } = useContext(InventoryContext);
     const [filters, setFilters] = useState({
         search: '',
         category: '',
@@ -33,7 +36,7 @@ const Inventory = () => {
         category: '',
         price: '',
         minStockThreshold: '10',
-        location: 'Main Warehouse',
+        location: '',
         description: ''
     });
     const [createCustomFields, setCreateCustomFields] = useState([]);
@@ -41,6 +44,7 @@ const Inventory = () => {
 
     useEffect(() => {
         loadItems();
+        fetchLocations();
     }, [filters]);
 
     const loadItems = async () => {
@@ -59,10 +63,10 @@ const Inventory = () => {
     }, 500);
 
     const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this item?')) {
+        confirmDelete('Are you sure you want to delete this item?', async () => {
             await deleteItem(id);
             loadItems();
-        }
+        });
     };
 
     const handleEdit = (item) => {
@@ -181,7 +185,7 @@ const Inventory = () => {
                     category: '',
                     price: '',
                     minStockThreshold: '10',
-                    location: 'Main Warehouse',
+                    location: '',
                     description: ''
                 });
                 setCreateCustomFields([]);
@@ -465,6 +469,20 @@ const Inventory = () => {
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                                     />
                                 </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                                    <select
+                                        name="location"
+                                        value={editFormData.location}
+                                        onChange={handleEditChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                    >
+                                        <option value="">Select Location</option>
+                                        {locations.map(loc => (
+                                            <option key={loc._id} value={loc.name}>{loc.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
 
                             <div className="space-y-4">
@@ -596,13 +614,17 @@ const Inventory = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                                    <input
-                                        type="text"
+                                    <select
                                         name="location"
                                         value={createFormData.location}
                                         onChange={handleCreateChange}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    />
+                                    >
+                                        <option value="">Select Location</option>
+                                        {locations.map(loc => (
+                                            <option key={loc._id} value={loc.name}>{loc.name}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
 

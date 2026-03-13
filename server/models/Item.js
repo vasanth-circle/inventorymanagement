@@ -40,7 +40,6 @@ const itemSchema = new mongoose.Schema({
     location: {
         type: String,
         trim: true,
-        default: 'Main Warehouse',
     },
     image: {
         type: String,

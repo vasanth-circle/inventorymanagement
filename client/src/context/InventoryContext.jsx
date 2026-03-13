@@ -9,6 +9,7 @@ export const InventoryProvider = ({ children }) => {
     const { user } = useContext(AuthContext);
     const [items, setItems] = useState([]);
     const [categories, setCategories] = useState([]);
+    const [locations, setLocations] = useState([]);
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(false);
 
@@ -142,6 +143,55 @@ export const InventoryProvider = ({ children }) => {
         }
     };
 
+    // Fetch locations
+    const fetchLocations = async () => {
+        try {
+            const { data } = await api.get('/locations');
+            setLocations(data);
+        } catch (error) {
+            toast.error('Failed to fetch locations');
+        }
+    };
+
+    // Add location
+    const addLocation = async (locationData) => {
+        try {
+            const { data } = await api.post('/locations', locationData);
+            setLocations([...locations, data]);
+            toast.success('Location created successfully');
+            return { success: true, data };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to create location');
+            return { success: false };
+        }
+    };
+
+    // Update location
+    const editLocation = async (id, locationData) => {
+        try {
+            const { data } = await api.put(`/locations/${id}`, locationData);
+            setLocations(locations.map(loc => loc._id === id ? data : loc));
+            toast.success('Location updated successfully');
+            return { success: true, data };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update location');
+            return { success: false };
+        }
+    };
+
+    // Delete location
+    const removeLocation = async (id) => {
+        try {
+            await api.delete(`/locations/${id}`);
+            setLocations(locations.filter(loc => loc._id !== id));
+            toast.success('Location removed successfully');
+            return { success: true };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to remove location');
+            return { success: false };
+        }
+    };
+
     // Parse Excel file
     const parseExcelFile = async (file) => {
         try {
@@ -189,6 +239,7 @@ export const InventoryProvider = ({ children }) => {
     useEffect(() => {
         if (user) {
             fetchCategories();
+            fetchLocations();
         }
     }, [user]);
 
@@ -209,6 +260,11 @@ export const InventoryProvider = ({ children }) => {
                 addCategory,
                 editCategory,
                 removeCategory,
+                locations,
+                fetchLocations,
+                addLocation,
+                editLocation,
+                removeLocation,
                 parseExcelFile,
                 importExcelData,
                 downloadTemplate,

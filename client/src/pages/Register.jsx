@@ -7,9 +7,9 @@ const Register = () => {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
+        companyName: '',
         password: '',
         confirmPassword: '',
-        role: 'staff',
     });
     const [loading, setLoading] = useState(false);
     const { user, register } = useContext(AuthContext);
@@ -40,7 +40,7 @@ const Register = () => {
 
         setLoading(true);
 
-        const result = await register(formData.name, formData.email, formData.password, formData.role);
+        const result = await register(formData.name, formData.email, formData.password, formData.companyName);
 
         if (result.success) {
             toast.success('Registration successful!');
@@ -131,20 +131,19 @@ const Register = () => {
                         </div>
 
                         <div>
-                            <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
-                                Role
+                            <label htmlFor="companyName" className="block text-sm font-medium text-gray-700 mb-1">
+                                Company Name
                             </label>
-                            <select
-                                id="role"
-                                name="role"
-                                value={formData.role}
+                            <input
+                                id="companyName"
+                                name="companyName"
+                                type="text"
+                                required
+                                value={formData.companyName}
                                 onChange={handleChange}
-                                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                            >
-                                <option value="staff">Staff</option>
-                                <option value="manager">Manager</option>
-                                <option value="admin">Admin</option>
-                            </select>
+                                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                                placeholder="Enter your company name"
+                            />
                         </div>
                     </div>
 
