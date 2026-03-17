@@ -4,6 +4,7 @@ import {
     getPurchaseOrder,
     createPurchaseOrder,
     updatePOStatus,
+    receivePurchaseOrder
 } from '../controllers/purchaseOrderController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { checkMenuAccess } from '../middleware/accessMiddleware.js';
@@ -22,5 +23,8 @@ router.route('/:id')
 
 router.route('/:id/status')
     .patch(updatePOStatus);
+
+router.route('/:id/receive')
+    .post(receivePurchaseOrder);
 
 export default router;

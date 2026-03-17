@@ -7,7 +7,7 @@ import { sendResponse, sendError } from '../utils/standardResponse.js';
 // @access  Private
 export const stockInward = async (req, res, next) => {
     try {
-        const { item, quantity, reason, notes } = req.body;
+        const { item, quantity, damagedQuantity, reason, notes } = req.body;
 
         const itemDoc = await Item.findOne({ _id: item, tenantId: req.tenantId });
         if (!itemDoc) {
@@ -16,9 +16,13 @@ export const stockInward = async (req, res, next) => {
 
         const previousQuantity = itemDoc.quantity;
         const newQuantity = previousQuantity + parseInt(quantity);
+        const dmgQty = parseInt(damagedQuantity) || 0;
 
         // Update item quantity
         itemDoc.quantity = newQuantity;
+        if (dmgQty > 0) {
+            itemDoc.damagedQuantity = (itemDoc.damagedQuantity || 0) + dmgQty;
+        }
         await itemDoc.save();
 
         // Create transaction record
@@ -26,6 +30,7 @@ export const stockInward = async (req, res, next) => {
             item,
             type: 'inward',
             quantity,
+            damagedQuantity: dmgQty,
             reason,
             notes,
             user: req.user._id,
@@ -97,7 +102,7 @@ export const stockOutward = async (req, res, next) => {
 // @access  Private
 export const stockReturn = async (req, res, next) => {
     try {
-        const { item, quantity, reason, notes } = req.body;
+        const { item, quantity, returnType, reason, notes } = req.body;
 
         const itemDoc = await Item.findOne({ _id: item, tenantId: req.tenantId });
         if (!itemDoc) {
@@ -105,7 +110,20 @@ export const stockReturn = async (req, res, next) => {
         }
 
         const previousQuantity = itemDoc.quantity;
-        const newQuantity = previousQuantity + parseInt(quantity);
+        let newQuantity = previousQuantity;
+        let finalReason = reason;
+        
+        if (returnType === 'vendor') {
+            if (previousQuantity < quantity) {
+                return sendError(res, 400, 'Insufficient stock to return to vendor');
+            }
+            newQuantity -= parseInt(quantity);
+            if (!finalReason) finalReason = 'Return to Vendor';
+        } else {
+            // Default is customer return (inward to stock)
+            newQuantity += parseInt(quantity);
+            if (!finalReason) finalReason = 'Customer Return';
+        }
 
         // Update item quantity
         itemDoc.quantity = newQuantity;
@@ -114,9 +132,9 @@ export const stockReturn = async (req, res, next) => {
         // Create transaction record
         const transaction = await Transaction.create({
             item,
-            type: 'return',
+            type: 'return', // Could be 'return_outward' or 'outward', but keeping 'return' for logs.
             quantity,
-            reason,
+            reason: finalReason,
             notes,
             user: req.user._id,
             previousQuantity,
@@ -228,6 +246,58 @@ export const getTransactions = async (req, res, next) => {
             totalPages: Math.ceil(count / limit),
             currentPage: page,
             totalTransactions: count,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Create stock adjustment transaction
+// @route   POST /api/transactions/adjustment
+// @access  Private
+export const stockAdjustment = async (req, res, next) => {
+    try {
+        const { item, quantity, adjustmentType, reason, notes } = req.body;
+
+        const itemDoc = await Item.findOne({ _id: item, tenantId: req.tenantId });
+        if (!itemDoc) {
+            return sendError(res, 404, 'Item not found');
+        }
+
+        const previousQuantity = itemDoc.quantity;
+        let newQuantity = previousQuantity;
+
+        if (adjustmentType === 'add') {
+            newQuantity += parseInt(quantity);
+        } else if (adjustmentType === 'subtract') {
+            newQuantity -= parseInt(quantity);
+            if (newQuantity < 0) {
+                return sendError(res, 400, 'Adjustment would result in negative stock');
+            }
+        } else {
+            return sendError(res, 400, 'Adjustment type must be "add" or "subtract"');
+        }
+
+        // Update item quantity
+        itemDoc.quantity = newQuantity;
+        await itemDoc.save();
+
+        // Create transaction record
+        const transaction = await Transaction.create({
+            item,
+            type: 'adjustment',
+            quantity,
+            reason: reason || `Manual Adjustment (${adjustmentType})`,
+            notes,
+            user: req.user._id,
+            previousQuantity,
+            newQuantity,
+            tenantId: req.tenantId
+        });
+
+        res.status(201).json({
+            success: true,
+            data: transaction
         });
     } catch (error) {
         next(error);

@@ -8,6 +8,9 @@ const PurchaseOrders = () => {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
+    const [selectedOrder, setSelectedOrder] = useState(null);
+    const [receiveData, setReceiveData] = useState([]);
     const [formData, setFormData] = useState({
         vendor: '',
         items: [{ item: '', quantity: 1, price: 0 }],
@@ -95,6 +98,42 @@ const PurchaseOrders = () => {
         }
     };
 
+    const openReceiveModal = (order) => {
+        setSelectedOrder(order);
+        // order.items have item populated with name and sku
+        const initialReceiveData = order.items.map(i => ({
+            item: i.item._id || i.item,
+            name: i.item.name || 'Unknown Item',
+            expected: i.quantity,
+            receivedQuantity: i.quantity,
+            damagedQuantity: 0
+        }));
+        setReceiveData(initialReceiveData);
+        setIsReceiveModalOpen(true);
+    };
+
+    const handleReceiveDataChange = (index, field, value) => {
+        const newData = [...receiveData];
+        newData[index][field] = value;
+        setReceiveData(newData);
+    };
+
+    const handleReceiveSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            await axios.post(`${API_URL}/${selectedOrder._id}/receive`, {
+                receivedItems: receiveData
+            }, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            toast.success(`Purchase order received successfully`);
+            setIsReceiveModalOpen(false);
+            fetchOrders();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to receive order');
+        }
+    };
+
     const getStatusColor = (status) => {
         switch (status) {
             case 'draft': return 'bg-gray-100 text-gray-800';
@@ -151,7 +190,7 @@ const PurchaseOrders = () => {
                                             <button onClick={() => handleStatusUpdate(order._id, 'issued')} className="text-blue-600 hover:text-blue-800 text-sm">Issue PO</button>
                                         )}
                                         {order.status === 'issued' && (
-                                            <button onClick={() => handleStatusUpdate(order._id, 'received')} className="text-green-600 hover:text-green-800 text-sm">Receive Stock</button>
+                                            <button onClick={() => openReceiveModal(order)} className="text-green-600 hover:text-green-800 text-sm font-semibold">Convert to Inward</button>
                                         )}
                                     </td>
                                 </tr>
@@ -218,6 +257,55 @@ const PurchaseOrders = () => {
                             <div className="flex justify-end gap-3 pt-6 border-t sticky bottom-0 bg-white">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
                                 <button type="submit" className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-bold">Save PO</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {isReceiveModalOpen && selectedOrder && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl my-8">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white">
+                            <h2 className="text-xl font-bold text-gray-800">Convert to Inward: PO {selectedOrder.orderNumber}</h2>
+                            <button onClick={() => setIsReceiveModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                        </div>
+                        <form onSubmit={handleReceiveSubmit} className="p-6 space-y-6">
+                            <div className="space-y-4">
+                                <p className="text-sm text-gray-600 mb-4">Please verify the quantities received and record any damaged stock before converting to an inward transaction. Damaged stock will be recorded but won't be added to your usable inventory count.</p>
+                                <table className="w-full text-left">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Item Name</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24">Expected</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32">Received</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32 text-red-600">Damaged</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {receiveData.map((row, index) => (
+                                            <tr key={index}>
+                                                <td className="py-3 px-3 font-medium text-gray-800">
+                                                    {row.name}
+                                                </td>
+                                                <td className="px-3 py-3 text-gray-600">
+                                                    {row.expected}
+                                                </td>
+                                                <td className="px-3 py-3">
+                                                    <input required type="number" min="0" value={row.receivedQuantity} onChange={(e) => handleReceiveDataChange(index, 'receivedQuantity', parseInt(e.target.value))} className="w-full px-2 py-1 border rounded border-gray-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none" />
+                                                </td>
+                                                <td className="px-3 py-3">
+                                                    <input required type="number" min="0" value={row.damagedQuantity} onChange={(e) => handleReceiveDataChange(index, 'damagedQuantity', parseInt(e.target.value))} className="w-full px-2 py-1 border rounded border-red-200 text-red-600 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none" />
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-6 border-t sticky bottom-0 bg-white">
+                                <button type="button" onClick={() => setIsReceiveModalOpen(false)} className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+                                <button type="submit" className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold">Confirm Inward</button>
                             </div>
                         </form>
                     </div>

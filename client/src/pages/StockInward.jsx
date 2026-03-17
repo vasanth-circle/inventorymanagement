@@ -13,6 +13,7 @@ const StockInward = () => {
         barcode: '',
         category: '',
         quantity: '',
+        damagedQuantity: 0,
         price: '',
         minStockThreshold: '10',
         location: 'Main Warehouse',
@@ -114,6 +115,7 @@ const StockInward = () => {
                         item: result.data._id,
                         type: 'inward',
                         quantity: parseInt(formData.quantity),
+                        damagedQuantity: parseInt(formData.damagedQuantity) || 0,
                         reason: formData.reason || 'Initial stock',
                         notes: formData.notes,
                     });
@@ -132,6 +134,7 @@ const StockInward = () => {
                     item: selectedItem,
                     type: 'inward',
                     quantity: parseInt(formData.quantity),
+                    damagedQuantity: parseInt(formData.damagedQuantity) || 0,
                     reason: formData.reason || 'Restocking',
                     notes: formData.notes,
                 });
@@ -381,7 +384,7 @@ const StockInward = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Quantity <span className="text-red-500">*</span>
+                                Good Quantity <span className="text-red-500">*</span>
                             </label>
                             <input
                                 type="number"
@@ -391,11 +394,26 @@ const StockInward = () => {
                                 value={formData.quantity}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                placeholder="Enter quantity"
+                                placeholder="Usable stock quantity"
                             />
                         </div>
 
                         <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Damaged Quantity
+                            </label>
+                            <input
+                                type="number"
+                                name="damagedQuantity"
+                                min="0"
+                                value={formData.damagedQuantity}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-red-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-red-600"
+                                placeholder="Damaged stock (optional)"
+                            />
+                        </div>
+
+                        <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Reason
                             </label>

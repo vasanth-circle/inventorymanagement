@@ -17,6 +17,7 @@ export const getPurchaseOrders = async (req, res, next) => {
 
         const orders = await PurchaseOrder.find(query)
             .populate('vendor', 'name companyName')
+            .populate('items.item', 'name sku barcode')
             .sort({ createdAt: -1 })
             .limit(limit * 1)
             .skip((page - 1) * limit);
@@ -71,6 +72,7 @@ export const createPurchaseOrder = async (req, res, next) => {
             expectedDeliveryDate,
             notes,
             user: req.user._id,
+            tenantId: req.tenantId,
         });
 
         sendResponse(res, 201, order, 'Purchase order created successfully');
@@ -91,33 +93,80 @@ export const updatePOStatus = async (req, res, next) => {
             return sendError(res, 404, 'Purchase order not found');
         }
 
-        // Logic for inventory update when status becomes 'received'
+        // Logic for inventory update is now handled in receivePurchaseOrder
+        // If status is updated manually without receiving items, we just update the text
         if (status === 'received' && order.status !== 'received') {
-            for (const lineItem of order.items) {
-                const itemDoc = await Item.findById(lineItem.item);
-                if (itemDoc) {
-                    const previousQuantity = itemDoc.quantity;
-                    itemDoc.quantity += lineItem.quantity;
-                    await itemDoc.save();
-
-                    // Create transaction record
-                    await Transaction.create({
-                        item: lineItem.item,
-                        type: 'inward',
-                        quantity: lineItem.quantity,
-                        reason: `Purchase Order ${order.orderNumber}`,
-                        user: req.user._id,
-                        previousQuantity,
-                        newQuantity: itemDoc.quantity,
-                    });
-                }
-            }
+            return sendError(res, 400, "Please use the 'Receive Order' feature to mark this PO as received.");
         }
 
         order.status = status;
         await order.save();
 
         sendResponse(res, 200, order, `Purchase order status updated to ${status}`);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Receive purchase order and update stock
+// @route   POST /api/purchase-orders/:id/receive
+// @access  Private
+export const receivePurchaseOrder = async (req, res, next) => {
+    try {
+        const { receivedItems } = req.body; 
+        const order = await PurchaseOrder.findOne({ _id: req.params.id, tenantId: req.tenantId });
+
+        if (!order) {
+            return sendError(res, 404, 'Purchase order not found');
+        }
+
+        if (order.status === 'received') {
+            return sendError(res, 400, 'Purchase order is already received');
+        }
+
+        if (!receivedItems || !Array.isArray(receivedItems)) {
+            return sendError(res, 400, 'Invalid items data received');
+        }
+
+        for (const rItem of receivedItems) {
+            const itemDoc = await Item.findOne({ _id: rItem.item, tenantId: req.tenantId });
+            if (itemDoc) {
+                const previousQuantity = itemDoc.quantity;
+                const recQty = parseInt(rItem.receivedQuantity) || 0;
+                const dmgQty = parseInt(rItem.damagedQuantity) || 0;
+
+                const goodStock = recQty - dmgQty;
+                
+                if (goodStock > 0) {
+                    itemDoc.quantity += goodStock;
+                }
+                if (dmgQty > 0) {
+                    itemDoc.damagedQuantity += dmgQty;
+                }
+
+                if (goodStock > 0 || dmgQty > 0) {
+                    await itemDoc.save();
+
+                    // Create transaction record
+                    await Transaction.create({
+                        item: rItem.item,
+                        type: 'inward',
+                        quantity: goodStock > 0 ? goodStock : 0,
+                        damagedQuantity: dmgQty,
+                        reason: `PO ${order.orderNumber} Received`,
+                        user: req.user._id,
+                        previousQuantity,
+                        newQuantity: itemDoc.quantity,
+                        tenantId: req.tenantId,
+                    });
+                }
+            }
+        }
+
+        order.status = 'received';
+        await order.save();
+
+        sendResponse(res, 200, order, 'Purchase order received successfully');
     } catch (error) {
         next(error);
     }

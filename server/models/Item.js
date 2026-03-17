@@ -27,6 +27,11 @@ const itemSchema = new mongoose.Schema({
         default: 0,
         min: 0,
     },
+    damagedQuantity: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
     minStockThreshold: {
         type: Number,
         default: 10,

@@ -55,7 +55,7 @@ export const getCustomer = async (req, res, next) => {
 // @access  Private
 export const createCustomer = async (req, res, next) => {
     try {
-        const customer = await Customer.create(req.body);
+        const customer = await Customer.create({ ...req.body, tenantId: req.tenantId });
         sendResponse(res, 201, customer, 'Customer created successfully');
     } catch (error) {
         next(error);

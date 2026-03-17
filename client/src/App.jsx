@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { InventoryProvider } from './context/InventoryContext';
+import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
 import Login from './pages/Login';
@@ -11,6 +12,7 @@ import Inventory from './pages/Inventory';
 import StockInward from './pages/StockInward';
 import StockOutward from './pages/StockOutward';
 import StockReturn from './pages/StockReturn';
+import StockAdjustment from './pages/StockAdjustment';
 import Reports from './pages/Reports';
 import Stocks from './pages/Stocks';
 import Categories from './pages/Categories';
@@ -25,8 +27,9 @@ import Locations from './pages/Locations';
 function App() {
     return (
         <AuthProvider>
-            <InventoryProvider>
-                <Router>
+            <ThemeProvider>
+                <InventoryProvider>
+                    <Router>
                     <Toaster position="top-right" />
                     <Routes>
                         {/* Public Routes */}
@@ -47,6 +50,7 @@ function App() {
                                                 <Route path="/stock-inward" element={<StockInward />} />
                                                 <Route path="/stock-outward" element={<StockOutward />} />
                                                 <Route path="/stock-return" element={<StockReturn />} />
+                                                <Route path="/stock-adjustment" element={<StockAdjustment />} />
                                                 <Route path="/reports" element={<Reports />} />
                                                 <Route path="/stocks" element={<Stocks />} />
                                                 <Route path="/categories" element={<Categories />} />
@@ -68,6 +72,7 @@ function App() {
                     </Routes>
                 </Router>
             </InventoryProvider>
+            </ThemeProvider>
         </AuthProvider>
     );
 }

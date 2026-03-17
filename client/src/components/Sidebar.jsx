@@ -1,9 +1,11 @@
 import { useContext, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { ThemeContext } from '../context/ThemeContext';
 
 const Sidebar = () => {
     const { user, logout } = useContext(AuthContext);
+    const { theme, toggleTheme } = useContext(ThemeContext);
     const location = useLocation();
     const navigate = useNavigate();
     const [expandedGroup, setExpandedGroup] = useState('inventory');
@@ -19,7 +21,8 @@ const Sidebar = () => {
                 { name: 'Categories', path: '/categories', id: 'categories' },
                 { name: 'Locations', path: '/locations', id: 'inventory' },
                 { name: 'Bulk Import', path: '/bulk-import', id: 'bulk-import' },
-                { name: 'Adjustments', path: '/stocks', id: 'stocks' },
+                { name: 'Stock Summary', path: '/stocks', id: 'stocks' },
+                { name: 'Make Adjustment', path: '/stock-adjustment', id: 'stocks' },
             ]
         },
         {
@@ -128,6 +131,13 @@ const Sidebar = () => {
                         <Link to="/profile" className="text-[10px] text-slate-400 hover:text-white transition-colors uppercase font-bold tracking-tighter">View Profile</Link>
                     </div>
                 </div>
+                <button
+                    onClick={toggleTheme}
+                    className="p-1.5 mr-2 text-slate-400 hover:text-yellow-400 hover:bg-slate-700 rounded-lg transition-all"
+                    title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                >
+                    {theme === 'dark' ? '☀️' : '🌙'}
+                </button>
                 <button
                     onClick={() => {
                         logout();

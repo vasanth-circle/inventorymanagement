@@ -54,7 +54,7 @@ export const getVendor = async (req, res, next) => {
 // @access  Private
 export const createVendor = async (req, res, next) => {
     try {
-        const vendor = await Vendor.create(req.body);
+        const vendor = await Vendor.create({ ...req.body, tenantId: req.tenantId });
         sendResponse(res, 201, vendor, 'Vendor created successfully');
     } catch (error) {
         next(error);

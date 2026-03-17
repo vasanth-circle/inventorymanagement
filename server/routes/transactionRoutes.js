@@ -4,6 +4,7 @@ import {
     stockOutward,
     stockTransfer,
     stockReturn,
+    stockAdjustment,
     getTransactions,
     getItemHistory,
 } from '../controllers/transactionController.js';
@@ -17,6 +18,7 @@ router.post('/inward', protect, checkMenuAccess('stock-inward'), validateRequest
 router.post('/outward', protect, checkMenuAccess('stock-outward'), validateRequest(schemas.createTransaction), stockOutward);
 router.post('/transfer', protect, checkMenuAccess('inventory'), validateRequest(schemas.createTransaction), stockTransfer);
 router.post('/return', protect, checkMenuAccess('stock-return'), validateRequest(schemas.createTransaction), stockReturn);
+router.post('/adjustment', protect, checkMenuAccess('stocks'), validateRequest(schemas.createTransaction), stockAdjustment);
 router.get('/', protect, getTransactions);
 router.get('/item/:itemId', protect, getItemHistory);
 

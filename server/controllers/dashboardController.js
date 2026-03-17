@@ -30,6 +30,12 @@ export const getDashboardStats = async (req, res, next) => {
         // Out of stock items count
         const outOfStockItems = await Item.countDocuments({ ...tenantQuery, quantity: 0 });
 
+        // Damaged items total quantity
+        const totalDamagedItems = await Item.aggregate([
+            { $match: tenantQuery },
+            { $group: { _id: null, totalDamaged: { $sum: '$damagedQuantity' } } }
+        ]);
+
         // Today's inward transactions
         const todayInward = await Transaction.aggregate([
             {
@@ -182,7 +188,8 @@ export const getDashboardStats = async (req, res, next) => {
             totalItemsCount: totalItems, // Fixed bug: was totalItemsCount
             pendingReceipts,
             totalCategories,
-            topSellingItems
+            topSellingItems,
+            totalDamagedItems: totalDamagedItems[0]?.totalDamaged || 0
         });
     } catch (error) {
         next(error);

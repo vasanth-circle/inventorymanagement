@@ -35,9 +35,11 @@ export const exportToCSV = (data, filename) => {
         headers.join(','),
         ...data.map(row =>
             headers.map(header => {
-                const cell = row[header];
-                // Escape commas and quotes
-                if (typeof cell === 'string' && (cell.includes(',') || cell.includes('"'))) {
+                let cell = row[header];
+                if (cell === null || cell === undefined) cell = '';
+                else cell = String(cell);
+                
+                if (cell.includes(',') || cell.includes('"') || cell.includes('\n')) {
                     return `"${cell.replace(/"/g, '""')}"`;
                 }
                 return cell;

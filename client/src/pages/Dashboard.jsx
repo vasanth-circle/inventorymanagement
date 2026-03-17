@@ -91,7 +91,8 @@ const Dashboard = () => {
                                     { label: 'Low Stock Items', value: stats?.lowStockItems || 0, color: 'text-rose-600', path: '/inventory' },
                                     { label: 'Active Item Groups', value: stats?.totalCategories || 0, color: 'text-slate-700' },
                                     { label: 'Active Items', value: stats?.totalItems || 0, color: 'text-slate-700' },
-                                    { label: 'Unconfirmed Items', value: stats?.outOfStockItems || 0, color: 'text-yellow-600' }
+                                    { label: 'Unconfirmed Items', value: stats?.outOfStockItems || 0, color: 'text-yellow-600' },
+                                    { label: 'Damaged Stock', value: stats?.totalDamagedItems || 0, color: 'text-red-500' }
                                 ].map((row, i) => (
                                     <div key={i} className="flex justify-between items-center p-2 hover:bg-gray-50 rounded-lg transition-colors group cursor-pointer">
                                         <span className="text-xs text-gray-500 font-medium group-hover:text-gray-700">{row.label}</span>

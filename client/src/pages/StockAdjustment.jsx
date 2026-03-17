@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { InventoryContext } from '../context/InventoryContext';
 import toast from 'react-hot-toast';
 
-const StockReturn = () => {
+const StockAdjustment = () => {
     const { items, fetchItems, createTransaction } = useContext(InventoryContext);
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         item: '',
-        returnType: 'customer',
+        adjustmentType: 'add',
         quantity: '',
         reason: '',
         notes: '',
@@ -30,19 +30,19 @@ const StockReturn = () => {
         try {
             const result = await createTransaction({
                 item: formData.item,
-                type: 'return',
-                returnType: formData.returnType,
+                type: 'adjustment',
+                adjustmentType: formData.adjustmentType,
                 quantity: parseInt(formData.quantity),
                 reason: formData.reason,
                 notes: formData.notes,
             });
 
             if (result.success) {
-                toast.success('Stock return recorded successfully!');
+                toast.success('Stock adjustment recorded successfully!');
                 navigate('/inventory');
             }
         } catch (error) {
-            toast.error('Failed to record stock return');
+            toast.error('Failed to record stock adjustment');
         } finally {
             setLoading(false);
         }
@@ -51,8 +51,8 @@ const StockReturn = () => {
     return (
         <div className="max-w-4xl mx-auto space-y-6">
             <div>
-                <h1 className="text-3xl font-bold text-gray-900">Stock Return</h1>
-                <p className="text-gray-600 mt-2">Record items returned to stock</p>
+                <h1 className="text-3xl font-bold text-gray-900">Stock Adjustment</h1>
+                <p className="text-gray-600 mt-2">Manually correct stock levels due to damage, loss, or audits</p>
             </div>
 
             <div className="bg-white rounded-lg shadow-md p-6">
@@ -80,23 +80,23 @@ const StockReturn = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Return Type <span className="text-red-500">*</span>
+                                Adjustment Type <span className="text-red-500">*</span>
                             </label>
                             <select
-                                name="returnType"
-                                value={formData.returnType}
+                                name="adjustmentType"
+                                value={formData.adjustmentType}
                                 onChange={handleChange}
                                 required
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                             >
-                                <option value="customer">Return from Customer (Adds to Stock)</option>
-                                <option value="vendor">Return to Vendor (Removes from Stock)</option>
+                                <option value="add">Add Stock (+)</option>
+                                <option value="subtract">Subtract Stock (-)</option>
                             </select>
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Quantity <span className="text-red-500">*</span>
+                                Amount to Adjust <span className="text-red-500">*</span>
                             </label>
                             <input
                                 type="number"
@@ -106,11 +106,11 @@ const StockReturn = () => {
                                 value={formData.quantity}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                placeholder="Enter quantity"
+                                placeholder="Enter adjustment quantity"
                             />
                         </div>
 
-                        <div>
+                        <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Reason
                             </label>
@@ -120,7 +120,7 @@ const StockReturn = () => {
                                 value={formData.reason}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                placeholder="Customer Return, Damaged, etc."
+                                placeholder="Inventory Audit, Physical Discrepancy, etc."
                             />
                         </div>
                     </div>
@@ -145,7 +145,7 @@ const StockReturn = () => {
                             disabled={loading}
                             className="flex-1 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
                         >
-                            {loading ? 'Processing...' : '↩️ Record Return'}
+                            {loading ? 'Processing...' : '⚖️ Record Adjustment'}
                         </button>
                         <button
                             type="button"
@@ -161,4 +161,4 @@ const StockReturn = () => {
     );
 };
 
-export default StockReturn;
+export default StockAdjustment;

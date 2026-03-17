@@ -17,6 +17,11 @@ const transactionSchema = new mongoose.Schema({
         required: [true, 'Quantity is required'],
         min: 1,
     },
+    damagedQuantity: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
     reason: {
         type: String,
         trim: true,

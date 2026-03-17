@@ -68,11 +68,14 @@ export const schemas = {
     createTransaction: Joi.object({
         item: Joi.string().required(),
         type: Joi.string().valid('inward', 'outward', 'transfer', 'adjustment', 'return').required(),
+        returnType: Joi.string().valid('customer', 'vendor').optional(),
+        adjustmentType: Joi.string().valid('add', 'subtract').optional(),
         quantity: Joi.number().min(1).required(),
-        reason: Joi.string().optional().trim(),
+        damagedQuantity: Joi.number().min(0).optional(),
+        reason: Joi.string().optional().trim().allow(''),
         fromLocation: Joi.string().optional().trim(),
         toLocation: Joi.string().optional().trim(),
-        notes: Joi.string().optional().trim(),
+        notes: Joi.string().optional().trim().allow(''),
     }),
 
     createCategory: Joi.object({

@@ -83,6 +83,7 @@ export const createSalesOrder = async (req, res, next) => {
             notes,
             terms,
             user: req.user._id,
+            tenantId: req.tenantId,
         });
 
         sendResponse(res, 201, order, 'Sales order created successfully');
