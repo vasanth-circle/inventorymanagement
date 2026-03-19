@@ -19,8 +19,20 @@ export const getDashboardStats = async (req, res, next) => {
         const tenant = await Tenant.findOne({ tenantId: req.tenantId });
         const companyName = tenant ? tenant.businessName : 'Inventory Management';
 
-        // Total items count
-        const totalItems = await Item.countDocuments(tenantQuery);
+        // Total items count (number of unique items/SKUs)
+        const totalItemsCount = await Item.countDocuments(tenantQuery);
+
+        // Total quantity in hand (sum of all item quantities)
+        const inventorySummary = await Item.aggregate([
+            { $match: tenantQuery },
+            {
+                $group: {
+                    _id: null,
+                    totalQty: { $sum: '$quantity' }
+                }
+            }
+        ]);
+        const totalQuantity = inventorySummary[0]?.totalQty || 0;
 
         // Low stock items count
         const lowStockItems = await Item.countDocuments({
@@ -153,6 +165,7 @@ export const getDashboardStats = async (req, res, next) => {
 
         // Pending Purchase Orders (issued status)
         const pendingOrders = await PurchaseOrder.find({ ...tenantQuery, status: 'issued' });
+        const pendingOrdersCount = pendingOrders.length;
         const pendingReceipts = pendingOrders.reduce((acc, order) => {
             return acc + order.items.reduce((sum, item) => sum + item.quantity, 0);
         }, 0);
@@ -172,10 +185,21 @@ export const getDashboardStats = async (req, res, next) => {
             { $limit: 5 }
         ]);
 
+        // Damaged Items List (top 5)
+        const damagedItemsList = await Item.find({ 
+            ...tenantQuery, 
+            damagedQuantity: { $gt: 0 } 
+        })
+        .select('name sku damagedQuantity price')
+        .sort({ damagedQuantity: -1 })
+        .limit(5);
+
         res.json({
             userName: req.user.name,
             companyName,
-            totalItems,
+            totalItems: totalItemsCount,
+            totalQuantity,
+            quantityInHand: totalQuantity,
             lowStockItems,
             outOfStockItems,
             todayInward: todayInward[0] || { total: 0, count: 0 },
@@ -186,11 +210,13 @@ export const getDashboardStats = async (req, res, next) => {
             purchaseActivity: purchaseActivity.reduce((acc, curr) => ({ ...acc, [curr._id]: curr.count }), {}),
             totalSales: salesStats[0]?.totalSales || 0,
             totalPurchase: purchaseStats[0]?.totalPurchase || 0,
-            totalItemsCount: totalItems, // Fixed bug: was totalItemsCount
+            totalItemsCount: totalItemsCount,
             pendingReceipts,
+            pendingOrdersCount,
             totalCategories,
             topSellingItems,
-            totalDamagedItems: totalDamagedItems[0]?.totalDamaged || 0
+            totalDamagedItems: totalDamagedItems[0]?.totalDamaged || 0,
+            damagedItemsList
         });
     } catch (error) {
         next(error);
@@ -220,7 +246,7 @@ export const getLowStockItems = async (req, res, next) => {
 // @access  Private
 export const getRecentTransactions = async (req, res, next) => {
     try {
-        const transactions = await Transaction.find()
+        const transactions = await Transaction.find({ tenantId: req.tenantId })
             .populate('item', 'name barcode')
             .populate({ path: 'user', model: User, select: 'name' })
             .sort({ createdAt: -1 })
@@ -243,6 +269,7 @@ export const getStockTrend = async (req, res, next) => {
         const trend = await Transaction.aggregate([
             {
                 $match: {
+                    tenantId: req.tenantId,
                     createdAt: { $gte: sevenDaysAgo }
                 }
             },

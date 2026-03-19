@@ -9,7 +9,7 @@ import { sendResponse, sendError } from '../utils/standardResponse.js';
 export const getPurchaseOrders = async (req, res, next) => {
     try {
         const { status = '', page = 1, limit = 10 } = req.query;
-        const query = {};
+        const query = { tenantId: req.tenantId };
 
         if (status) {
             query.status = status;
@@ -40,7 +40,7 @@ export const getPurchaseOrders = async (req, res, next) => {
 // @access  Private
 export const getPurchaseOrder = async (req, res, next) => {
     try {
-        const order = await PurchaseOrder.findById(req.params.id)
+        const order = await PurchaseOrder.findOne({ _id: req.params.id, tenantId: req.tenantId })
             .populate('vendor')
             .populate('items.item', 'name sku barcode');
 
@@ -61,7 +61,7 @@ export const createPurchaseOrder = async (req, res, next) => {
         const { vendor, items, orderDate, expectedDeliveryDate, notes } = req.body;
 
         // Generate Order Number
-        const count = await PurchaseOrder.countDocuments();
+        const count = await PurchaseOrder.countDocuments({ tenantId: req.tenantId });
         const orderNumber = `PO-${String(count + 1).padStart(5, '0')}`;
 
         const order = await PurchaseOrder.create({
@@ -87,7 +87,7 @@ export const createPurchaseOrder = async (req, res, next) => {
 export const updatePOStatus = async (req, res, next) => {
     try {
         const { status } = req.body;
-        const order = await PurchaseOrder.findById(req.params.id);
+        const order = await PurchaseOrder.findOne({ _id: req.params.id, tenantId: req.tenantId });
 
         if (!order) {
             return sendError(res, 404, 'Purchase order not found');

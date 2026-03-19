@@ -7,7 +7,7 @@ import { sendResponse, sendError } from '../utils/standardResponse.js';
 export const getCustomers = async (req, res, next) => {
     try {
         const { search = '', page = 1, limit = 10 } = req.query;
-        const query = { isActive: true };
+        const query = { tenantId: req.tenantId, isActive: true };
 
         if (search) {
             query.$or = [
@@ -40,7 +40,7 @@ export const getCustomers = async (req, res, next) => {
 // @access  Private
 export const getCustomer = async (req, res, next) => {
     try {
-        const customer = await Customer.findById(req.params.id);
+        const customer = await Customer.findOne({ _id: req.params.id, tenantId: req.tenantId });
         if (!customer) {
             return sendError(res, 404, 'Customer not found');
         }
@@ -67,10 +67,14 @@ export const createCustomer = async (req, res, next) => {
 // @access  Private
 export const updateCustomer = async (req, res, next) => {
     try {
-        const customer = await Customer.findByIdAndUpdate(req.params.id, req.body, {
-            new: true,
-            runValidators: true
-        });
+        const customer = await Customer.findOneAndUpdate(
+            { _id: req.params.id, tenantId: req.tenantId },
+            req.body,
+            {
+                new: true,
+                runValidators: true
+            }
+        );
         if (!customer) {
             return sendError(res, 404, 'Customer not found');
         }
@@ -85,7 +89,11 @@ export const updateCustomer = async (req, res, next) => {
 // @access  Private/Admin
 export const deleteCustomer = async (req, res, next) => {
     try {
-        const customer = await Customer.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
+        const customer = await Customer.findOneAndUpdate(
+            { _id: req.params.id, tenantId: req.tenantId },
+            { isActive: false },
+            { new: true }
+        );
         if (!customer) {
             return sendError(res, 404, 'Customer not found');
         }

@@ -9,7 +9,7 @@ import { sendResponse, sendError } from '../utils/standardResponse.js';
 export const getSalesOrders = async (req, res, next) => {
     try {
         const { status = '', page = 1, limit = 10 } = req.query;
-        const query = {};
+        const query = { tenantId: req.tenantId };
 
         if (status) {
             query.status = status;
@@ -39,7 +39,7 @@ export const getSalesOrders = async (req, res, next) => {
 // @access  Private
 export const getSalesOrder = async (req, res, next) => {
     try {
-        const order = await SalesOrder.findById(req.params.id)
+        const order = await SalesOrder.findOne({ _id: req.params.id, tenantId: req.tenantId })
             .populate('customer')
             .populate('items.item', 'name sku barcode');
 
@@ -61,7 +61,7 @@ export const createSalesOrder = async (req, res, next) => {
 
         // Check if items have enough stock
         for (const lineItem of items) {
-            const itemDoc = await Item.findById(lineItem.item);
+            const itemDoc = await Item.findOne({ _id: lineItem.item, tenantId: req.tenantId });
             if (!itemDoc) {
                 return sendError(res, 400, `Item not found`);
             }
@@ -71,7 +71,7 @@ export const createSalesOrder = async (req, res, next) => {
         }
 
         // Generate Order Number (Simple logic)
-        const count = await SalesOrder.countDocuments();
+        const count = await SalesOrder.countDocuments({ tenantId: req.tenantId });
         const orderNumber = `SO-${String(count + 1).padStart(5, '0')}`;
 
         const order = await SalesOrder.create({
@@ -98,7 +98,7 @@ export const createSalesOrder = async (req, res, next) => {
 export const updateSOStatus = async (req, res, next) => {
     try {
         const { status } = req.body;
-        const order = await SalesOrder.findById(req.params.id);
+        const order = await SalesOrder.findOne({ _id: req.params.id, tenantId: req.tenantId });
 
         if (!order) {
             return sendError(res, 404, 'Sales order not found');
@@ -108,7 +108,7 @@ export const updateSOStatus = async (req, res, next) => {
         if (status === 'shipped' && order.status !== 'shipped') {
             // Check stock for all items first
             for (const lineItem of order.items) {
-                const itemDoc = await Item.findById(lineItem.item);
+                const itemDoc = await Item.findOne({ _id: lineItem.item, tenantId: req.tenantId });
                 if (!itemDoc) {
                     return sendError(res, 400, `Item not found`);
                 }
@@ -119,7 +119,7 @@ export const updateSOStatus = async (req, res, next) => {
 
             // Deduct stock and record transactions
             for (const lineItem of order.items) {
-                const itemDoc = await Item.findById(lineItem.item);
+                const itemDoc = await Item.findOne({ _id: lineItem.item, tenantId: req.tenantId });
                 if (itemDoc) {
                     const previousQuantity = itemDoc.quantity;
                     itemDoc.quantity -= lineItem.quantity;
@@ -134,6 +134,7 @@ export const updateSOStatus = async (req, res, next) => {
                         user: req.user._id,
                         previousQuantity,
                         newQuantity: itemDoc.quantity,
+                        tenantId: req.tenantId,
                     });
                 }
             }

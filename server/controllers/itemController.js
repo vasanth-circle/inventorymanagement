@@ -76,6 +76,8 @@ export const getItems = async (req, res, next) => {
             query.quantity = 0;
         } else if (status === 'in-stock') {
             query.$expr = { $gt: ['$quantity', '$minStockThreshold'] };
+        } else if (status === 'damaged') {
+            query.damagedQuantity = { $gt: 0 };
         }
 
         const sort = {};

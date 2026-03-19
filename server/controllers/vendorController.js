@@ -7,7 +7,7 @@ import { sendResponse, sendError } from '../utils/standardResponse.js';
 export const getVendors = async (req, res, next) => {
     try {
         const { search = '', page = 1, limit = 10 } = req.query;
-        const query = { isActive: true };
+        const query = { tenantId: req.tenantId, isActive: true };
 
         if (search) {
             query.$or = [
@@ -39,7 +39,7 @@ export const getVendors = async (req, res, next) => {
 // @access  Private
 export const getVendor = async (req, res, next) => {
     try {
-        const vendor = await Vendor.findById(req.params.id);
+        const vendor = await Vendor.findOne({ _id: req.params.id, tenantId: req.tenantId });
         if (!vendor) {
             return sendError(res, 404, 'Vendor not found');
         }
@@ -66,10 +66,14 @@ export const createVendor = async (req, res, next) => {
 // @access  Private
 export const updateVendor = async (req, res, next) => {
     try {
-        const vendor = await Vendor.findByIdAndUpdate(req.params.id, req.body, {
-            new: true,
-            runValidators: true
-        });
+        const vendor = await Vendor.findOneAndUpdate(
+            { _id: req.params.id, tenantId: req.tenantId },
+            req.body,
+            {
+                new: true,
+                runValidators: true
+            }
+        );
         if (!vendor) {
             return sendError(res, 404, 'Vendor not found');
         }
@@ -84,7 +88,11 @@ export const updateVendor = async (req, res, next) => {
 // @access  Private/Admin
 export const deleteVendor = async (req, res, next) => {
     try {
-        const vendor = await Vendor.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
+        const vendor = await Vendor.findOneAndUpdate(
+            { _id: req.params.id, tenantId: req.tenantId },
+            { isActive: false },
+            { new: true }
+        );
         if (!vendor) {
             return sendError(res, 404, 'Vendor not found');
         }
