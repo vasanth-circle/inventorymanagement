@@ -1,5 +1,6 @@
 import Item from '../models/Item.js';
 import Transaction from '../models/Transaction.js';
+import User from '../models/User.js';
 import Category from '../models/Category.js';
 import SalesOrder from '../models/SalesOrder.js';
 import PurchaseOrder from '../models/PurchaseOrder.js';
@@ -221,7 +222,7 @@ export const getRecentTransactions = async (req, res, next) => {
     try {
         const transactions = await Transaction.find()
             .populate('item', 'name barcode')
-            .populate('user', 'name')
+            .populate({ path: 'user', model: User, select: 'name' })
             .sort({ createdAt: -1 })
             .limit(10);
 

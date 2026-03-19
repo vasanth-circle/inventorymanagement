@@ -51,6 +51,10 @@ const transactionSchema = new mongoose.Schema({
         type: Number,
         required: true,
     },
+    invoiceImage: {
+        type: String,
+        trim: true,
+    },
     tenantId: {
         type: String,
         required: [true, 'Tenant ID is required'],

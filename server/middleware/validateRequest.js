@@ -80,6 +80,15 @@ export const schemas = {
 
     createCategory: Joi.object({
         name: Joi.string().required().trim(),
-        description: Joi.string().optional().trim(),
+        description: Joi.string().optional().allow('').trim(),
+    }),
+    createLocation: Joi.object({
+        name: Joi.string().required().trim(),
+        description: Joi.string().optional().allow('').trim(),
+    }),
+    updateLocation: Joi.object({
+        name: Joi.string().optional().trim(),
+        description: Joi.string().optional().allow('').trim(),
+        isActive: Joi.boolean().optional(),
     }),
 };

@@ -1,15 +1,59 @@
 import Item from '../models/Item.js';
 import Transaction from '../models/Transaction.js';
+import User from '../models/User.js';
+import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Configure multer for invoice image upload
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadPath = path.join(__dirname, '../uploads/invoices');
+        if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
+        }
+        cb(null, uploadPath);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'invoice-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+export const upload = multer({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = /jpeg|jpg|png|pdf/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        if (mimetype || extname) {
+            return cb(null, true);
+        } else {
+            cb(new Error('Only image or PDF files are allowed for invoices'));
+        }
+    }
+});
 
 // @desc    Create stock inward transaction
 // @route   POST /api/transactions/inward
 // @access  Private
 export const stockInward = async (req, res, next) => {
     try {
-        const { item, quantity, damagedQuantity, reason, notes } = req.body;
+        const { item: itemId, quantity, damagedQuantity, reason, notes } = req.body;
 
-        const itemDoc = await Item.findOne({ _id: item, tenantId: req.tenantId });
+        let invoiceImage = '';
+        if (req.file) {
+            invoiceImage = `/uploads/invoices/${req.file.filename}`;
+        }
+
+        const itemDoc = await Item.findOne({ _id: itemId, tenantId: req.tenantId });
         if (!itemDoc) {
             return sendError(res, 404, 'Item not found');
         }
@@ -27,7 +71,7 @@ export const stockInward = async (req, res, next) => {
 
         // Create transaction record
         const transaction = await Transaction.create({
-            item,
+            item: itemId,
             type: 'inward',
             quantity,
             damagedQuantity: dmgQty,
@@ -37,12 +81,13 @@ export const stockInward = async (req, res, next) => {
             previousQuantity,
             newQuantity,
             toLocation: itemDoc.location,
+            invoiceImage,
             tenantId: req.tenantId
         });
 
         const populatedTransaction = await Transaction.findOne({ _id: transaction._id, tenantId: req.tenantId })
             .populate('item', 'name barcode')
-            .populate('user', 'name email');
+            .populate({ path: 'user', model: User, select: 'name email' });
 
         sendResponse(res, 201, populatedTransaction, 'Stock inward recorded successfully');
     } catch (error) {
@@ -89,7 +134,7 @@ export const stockOutward = async (req, res, next) => {
 
         const populatedTransaction = await Transaction.findOne({ _id: transaction._id, tenantId: req.tenantId })
             .populate('item', 'name barcode')
-            .populate('user', 'name email');
+            .populate({ path: 'user', model: User, select: 'name email' });
 
         res.status(201).json(populatedTransaction);
     } catch (error) {
@@ -145,7 +190,7 @@ export const stockReturn = async (req, res, next) => {
 
         const populatedTransaction = await Transaction.findOne({ _id: transaction._id, tenantId: req.tenantId })
             .populate('item', 'name barcode')
-            .populate('user', 'name email');
+            .populate({ path: 'user', model: User, select: 'name email' });
 
         res.status(201).json(populatedTransaction);
     } catch (error) {
@@ -187,7 +232,7 @@ export const stockTransfer = async (req, res, next) => {
 
         const populatedTransaction = await Transaction.findOne({ _id: transaction._id, tenantId: req.tenantId })
             .populate('item', 'name barcode')
-            .populate('user', 'name email');
+            .populate({ path: 'user', model: User, select: 'name email' });
 
         res.status(201).json(populatedTransaction);
     } catch (error) {
@@ -233,7 +278,7 @@ export const getTransactions = async (req, res, next) => {
 
         const transactions = await Transaction.find(query)
             .populate('item', 'name barcode category')
-            .populate('user', 'name email')
+            .populate({ path: 'user', model: User, select: 'name email' })
             .sort({ createdAt: -1 })
             .limit(limit * 1)
             .skip((page - 1) * limit)
@@ -310,7 +355,7 @@ export const stockAdjustment = async (req, res, next) => {
 export const getItemHistory = async (req, res, next) => {
     try {
         const transactions = await Transaction.find({ item: req.params.itemId, tenantId: req.tenantId })
-            .populate('user', 'name email')
+            .populate({ path: 'user', model: User, select: 'name email' })
             .sort({ createdAt: -1 });
 
         res.json(transactions);
