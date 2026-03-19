@@ -3,7 +3,7 @@ export const checkMenuAccess = (menuName) => {
         const { user } = req;
 
         // Super admins, admins and tenant owners have access to everything
-        if (user.role === 'super_admin' || user.role === 'admin' || user.role === 'tenant_owner') {
+        if (user.role === 'super_admin' || user.role === 'admin' || user.role === 'tenant_owner' || user.role === 'tenant_admin') {
             return next();
         }
 

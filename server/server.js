@@ -43,6 +43,17 @@ app.use('/api', limiter);
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+import { appConn, coreConn } from './config/db.js';
+import { checkTenantStatus } from './middleware/tenantMiddleware.js';
+
+// Apply tenant check middleware to all /api routes (except health and auth)
+app.use('/api', (req, res, next) => {
+    if (req.path.startsWith('/auth') || req.path === '/health') {
+        return next();
+    }
+    checkTenantStatus(req, res, next);
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
@@ -64,16 +75,6 @@ app.get('/api/health', (req, res) => {
 // Error handler (must be last)
 app.use(errorHandler);
 
-import { appConn, coreConn } from './config/db.js';
-import { checkTenantStatus } from './middleware/tenantMiddleware.js';
-
-// Apply tenant check middleware to all /api routes (except health and auth)
-app.use('/api', (req, res, next) => {
-    if (req.path.startsWith('/auth') || req.path === '/health') {
-        return next();
-    }
-    checkTenantStatus(req, res, next);
-});
 
 // MongoDB connection status check
 const startServer = async () => {
@@ -123,6 +124,8 @@ const startServer = async () => {
     }
 };
 
-startServer();
+if (process.env.NODE_ENV !== 'test') {
+    startServer();
+}
 
 export default app;

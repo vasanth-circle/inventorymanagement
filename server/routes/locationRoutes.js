@@ -12,11 +12,11 @@ const router = express.Router();
 router
     .route('/')
     .get(protect, getLocations)
-    .post(protect, authorize('admin', 'tenant_owner'), createLocation);
+    .post(protect, authorize('admin', 'tenant_owner', 'tenant_admin'), createLocation);
 
 router
     .route('/:id')
-    .put(protect, authorize('admin', 'tenant_owner'), updateLocation)
-    .delete(protect, authorize('admin', 'tenant_owner'), deleteLocation);
+    .put(protect, authorize('admin', 'tenant_owner', 'tenant_admin'), updateLocation)
+    .delete(protect, authorize('admin', 'tenant_owner', 'tenant_admin'), deleteLocation);
 
 export default router;
