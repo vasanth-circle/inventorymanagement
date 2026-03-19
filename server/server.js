@@ -46,12 +46,18 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 import { appConn, coreConn } from './config/db.js';
 import { checkTenantStatus } from './middleware/tenantMiddleware.js';
 
+import { protect } from './middleware/authMiddleware.js';
+
 // Apply tenant check middleware to all /api routes (except health and auth)
 app.use('/api', (req, res, next) => {
     if (req.path.startsWith('/auth') || req.path === '/health') {
         return next();
     }
-    checkTenantStatus(req, res, next);
+    // Run protect first to get req.user, then checkTenantStatus to get req.tenantId
+    protect(req, res, (err) => {
+        if (err) return next(err);
+        checkTenantStatus(req, res, next);
+    });
 });
 
 // Routes

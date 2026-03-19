@@ -7,7 +7,7 @@ import {
     deleteItem,
     upload,
 } from '../controllers/itemController.js';
-import { protect, authorize } from '../middleware/authMiddleware.js';
+import { authorize } from '../middleware/authMiddleware.js';
 import { checkMenuAccess } from '../middleware/accessMiddleware.js';
 import { validateRequest, schemas } from '../middleware/validateRequest.js';
 
@@ -15,13 +15,13 @@ const router = express.Router();
 
 router
     .route('/')
-    .get(protect, checkMenuAccess('inventory'), getItems)
-    .post(protect, checkMenuAccess('inventory'), upload.single('image'), validateRequest(schemas.createItem), createItem);
+    .get(checkMenuAccess('inventory'), getItems)
+    .post(checkMenuAccess('inventory'), upload.single('image'), validateRequest(schemas.createItem), createItem);
 
 router
     .route('/:id')
-    .get(protect, checkMenuAccess('inventory'), getItem)
-    .put(protect, checkMenuAccess('inventory'), upload.single('image'), updateItem)
-    .delete(protect, authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), checkMenuAccess('inventory'), deleteItem);
+    .get(checkMenuAccess('inventory'), getItem)
+    .put(checkMenuAccess('inventory'), upload.single('image'), updateItem)
+    .delete(authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), checkMenuAccess('inventory'), deleteItem);
 
 export default router;

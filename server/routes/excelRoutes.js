@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import { parseExcel, importExcelData, downloadTemplate } from '../controllers/excelController.js';
-import { protect } from '../middleware/authMiddleware.js';
+// import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -26,8 +26,8 @@ const upload = multer({
 });
 
 // Routes
-router.post('/parse', protect, upload.single('file'), parseExcel);
-router.post('/import', protect, importExcelData);
-router.get('/template', protect, downloadTemplate);
+router.post('/parse', upload.single('file'), parseExcel);
+router.post('/import', importExcelData);
+router.get('/template', downloadTemplate);
 
 export default router;

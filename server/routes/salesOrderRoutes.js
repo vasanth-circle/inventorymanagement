@@ -5,12 +5,12 @@ import {
     createSalesOrder,
     updateSOStatus,
 } from '../controllers/salesOrderController.js';
-import { protect } from '../middleware/authMiddleware.js';
+// import { protect } from '../middleware/authMiddleware.js';
 import { checkMenuAccess } from '../middleware/accessMiddleware.js';
 
 const router = express.Router();
 
-router.use(protect);
+// router.use(protect); // Global middleware handles this now
 router.use(checkMenuAccess('sales'));
 
 router.route('/')

@@ -6,12 +6,12 @@ import {
     updatePOStatus,
     receivePurchaseOrder
 } from '../controllers/purchaseOrderController.js';
-import { protect } from '../middleware/authMiddleware.js';
+// import { protect } from '../middleware/authMiddleware.js';
 import { checkMenuAccess } from '../middleware/accessMiddleware.js';
 
 const router = express.Router();
 
-router.use(protect);
+// router.use(protect); // Global middleware handles this now
 router.use(checkMenuAccess('purchases'));
 
 router.route('/')

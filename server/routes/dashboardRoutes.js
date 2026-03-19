@@ -5,13 +5,13 @@ import {
     getRecentTransactions,
     getStockTrend,
 } from '../controllers/dashboardController.js';
-import { protect } from '../middleware/authMiddleware.js';
+// import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.get('/stats', protect, getDashboardStats);
-router.get('/low-stock', protect, getLowStockItems);
-router.get('/recent-transactions', protect, getRecentTransactions);
-router.get('/stock-trend', protect, getStockTrend);
+router.get('/stats', getDashboardStats);
+router.get('/low-stock', getLowStockItems);
+router.get('/recent-transactions', getRecentTransactions);
+router.get('/stock-trend', getStockTrend);
 
 export default router;
