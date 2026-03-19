@@ -11,42 +11,41 @@ export const checkTenantStatus = async (req, res, next) => {
         if (req.path === '/health' || req.path.startsWith('/auth')) return next();
 
         // 1. Identify tenant
-        let tenant;
         if (req.user && req.user.tenantId) {
-            // Find by user's specific tenantId from core DB
-            tenant = await Tenant.findOne({
+            req.tenantId = req.user.tenantId;
+            console.log(`Tenant identified from user: ${req.tenantId}`);
+            
+            // Find tenant object to check status and app access
+            const tenant = await Tenant.findOne({
                 $or: [
                     { tenantId: req.user.tenantId },
-                    { _id: req.user.tenantId } // In case the ID itself is the tenantId
+                    { _id: req.user.tenantId }
                 ]
             });
+
+            if (tenant) {
+                // Check if app is enabled for this tenant
+                const inventoryApp = tenant.apps.find(app => app.name === 'inventory');
+
+                if (!inventoryApp || !inventoryApp.enabled || tenant.status === 'Inactive' || tenant.status === 'Suspended') {
+                    console.warn(`Access denied for tenant ${req.tenantId}: Status=${tenant.status}, AppEnabled=${inventoryApp?.enabled}`);
+                    return res.status(403).json({
+                        success: false,
+                        message: 'Your access to this application has been disabled. Please contact support.',
+                        code: 'TENANT_DISABLED'
+                    });
+                }
+                
+                // Use the standardized tenantId from the tenant object if available
+                req.tenantId = tenant.tenantId || tenant._id.toString();
+            } else {
+                console.warn(`Tenant object not found in DB for tenantId: ${req.user.tenantId}`);
+                // If we have a tenantId from user but no tenant object, we still allow it for now 
+                // but log the warning. In a strict system, we would block here.
+            }
+        } else {
+            console.warn('No user or tenantId found in request');
         }
-
-        // 2. Fallback to generic inventory app check if no specific user tenant found
-        if (!tenant) {
-            tenant = await Tenant.findOne({
-                'apps.name': 'inventory'
-            });
-        }
-
-        if (!tenant) {
-            console.warn('No tenant configuration found for inventory app');
-            return next(); // Fail-open for now or block if strict
-        }
-
-        // 3. Check if app is enabled for this tenant
-        const inventoryApp = tenant.apps.find(app => app.name === 'inventory');
-
-        if (!inventoryApp || !inventoryApp.enabled || tenant.status === 'Inactive' || tenant.status === 'Suspended') {
-            return res.status(403).json({
-                success: false,
-                message: 'Your access to this application has been disabled. Please contact support.',
-                code: 'TENANT_DISABLED'
-            });
-        }
-
-        // Attach tenantId to request for use in controllers
-        req.tenantId = tenant.tenantId || tenant._id;
 
         next();
     } catch (error) {
