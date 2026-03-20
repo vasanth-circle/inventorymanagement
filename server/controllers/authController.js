@@ -129,6 +129,24 @@ export const login = async (req, res, next) => {
             return res.status(401).json({ message: 'User account is inactive' });
         }
 
+        // Validate Tenant Status
+        if (user.tenantId) {
+            const tenant = await Tenant.findOne({ tenantId: user.tenantId });
+            if (!tenant) {
+                console.warn(`Login blocked: Tenant ${user.tenantId} not found for user ${email}`);
+                return res.status(403).json({ message: 'Tenant record not found. Please contact support.' });
+            }
+
+            const inventoryApp = tenant.apps?.find(app => app.name === 'inventory');
+            if (!inventoryApp || !inventoryApp.enabled || tenant.status === 'Inactive' || tenant.status === 'Suspended') {
+                console.warn(`Login blocked: Tenant ${user.tenantId} status is ${tenant.status} or app disabled`);
+                return res.status(403).json({
+                    message: 'Your access to this application has been disabled. Please contact support.',
+                    code: 'TENANT_DISABLED'
+                });
+            }
+        }
+
         console.log(`Login successful for user: ${email}`);
         res.json({
             _id: user._id,

@@ -229,6 +229,7 @@ export const getDashboardStats = async (req, res, next) => {
 export const getLowStockItems = async (req, res, next) => {
     try {
         const lowStockItems = await Item.find({
+            tenantId: req.tenantId,
             $expr: { $lte: ['$quantity', '$minStockThreshold'] }
         })
             .populate('category', 'name')

@@ -54,7 +54,7 @@ const Sidebar = () => {
         }
     ];
 
-    if (user?.role === 'super_admin' || user?.role === 'admin' || user?.role === 'tenant_owner') {
+    if (user?.role === 'super_admin' || user?.role === 'admin' || user?.role === 'tenant_owner' || user?.role === 'tenant_admin') {
         navGroups.push({
             name: 'Settings',
             id: 'settings',
@@ -66,7 +66,7 @@ const Sidebar = () => {
     }
 
     const checkAccess = (itemId) => {
-        if (user?.role === 'super_admin' || user?.role === 'admin' || user?.menuAccess === 'all') return true;
+        if (user?.role === 'super_admin' || user?.role === 'admin' || user?.role === 'tenant_owner' || user?.role === 'tenant_admin' || user?.menuAccess === 'all') return true;
         return user?.allowedMenus?.includes(itemId);
     };
 
