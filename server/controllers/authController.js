@@ -131,7 +131,12 @@ export const login = async (req, res, next) => {
 
         // Validate Tenant Status
         if (user.tenantId) {
-            const tenant = await Tenant.findOne({ tenantId: user.tenantId });
+            const tenant = await Tenant.findOne({
+                $or: [
+                    { tenantId: user.tenantId },
+                    { _id: user.tenantId }
+                ]
+            });
             if (!tenant) {
                 console.warn(`Login blocked: Tenant ${user.tenantId} not found for user ${email}`);
                 return res.status(403).json({ message: 'Tenant record not found. Please contact support.' });
