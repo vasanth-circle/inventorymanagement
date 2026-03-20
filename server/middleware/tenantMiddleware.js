@@ -24,14 +24,23 @@ export const checkTenantStatus = async (req, res, next) => {
             });
 
             if (tenant) {
-                // Check if app is enabled for this tenant
-                const inventoryApp = tenant.apps.find(app => app.name === 'inventory');
+                // Determine if inventory app is enabled - handle both Array and Object formats
+                let inventoryApp = null;
+                if (Array.isArray(tenant.apps)) {
+                    inventoryApp = tenant.apps.find(app => (app.name === 'inventory' || app.slug === 'inventory'));
+                } else if (tenant.apps && typeof tenant.apps === 'object') {
+                    // Check for key 'inventory' or an object with name 'inventory'
+                    inventoryApp = tenant.apps.inventory || Object.values(tenant.apps).find(app => (app.name === 'inventory' || app.slug === 'inventory'));
+                }
 
-                if (!inventoryApp || !inventoryApp.enabled || tenant.status === 'Inactive' || tenant.status === 'Suspended') {
-                    console.warn(`Access denied for tenant ${req.tenantId}: Status=${tenant.status}, AppEnabled=${inventoryApp?.enabled}`);
+                // Treat Active, Trial, Trialing as valid active statuses
+                const isActiveStatus = ['Active', 'Trial', 'Trialing'].includes(tenant.status);
+                
+                if (!inventoryApp || (inventoryApp.enabled === false) || !isActiveStatus) {
+                    console.warn(`Access denied for tenant ${req.tenantId}: Status=${tenant.status}, hasApp=${!!inventoryApp}, appEnabled=${inventoryApp?.enabled}`);
                     return res.status(403).json({
                         success: false,
-                        message: 'Your access to this application has been disabled. Please contact support.',
+                        message: 'Your access to this application has been disabled or your trial has expired. Please contact support.',
                         code: 'TENANT_DISABLED'
                     });
                 }

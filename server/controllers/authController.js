@@ -142,11 +142,22 @@ export const login = async (req, res, next) => {
             });
             
             if (tenant) {
-                const inventoryApp = tenant.apps?.find(app => (app.name === 'inventory' || app.slug === 'inventory'));
-                if (!inventoryApp || !inventoryApp.enabled || tenant.status === 'Inactive' || tenant.status === 'Suspended') {
-                    console.warn(`Login blocked: Tenant ${tenantIdStr} status is ${tenant.status} or app disabled`);
+                // Determine if inventory app is enabled - handle both Array and Object formats
+                let inventoryApp = null;
+                if (Array.isArray(tenant.apps)) {
+                    inventoryApp = tenant.apps.find(app => (app.name === 'inventory' || app.slug === 'inventory'));
+                } else if (tenant.apps && typeof tenant.apps === 'object') {
+                    // Check for key 'inventory' or an object with name 'inventory'
+                    inventoryApp = tenant.apps.inventory || Object.values(tenant.apps).find(app => (app.name === 'inventory' || app.slug === 'inventory'));
+                }
+
+                // Treat Active, Trial, Trialing as valid active statuses
+                const isActiveStatus = ['Active', 'Trial', 'Trialing'].includes(tenant.status);
+                
+                if (!inventoryApp || (inventoryApp.enabled === false) || !isActiveStatus) {
+                    console.warn(`Login blocked: Tenant ${tenantIdStr} status=${tenant.status}, hasApp=${!!inventoryApp}, appEnabled=${inventoryApp?.enabled}`);
                     return res.status(403).json({
-                        message: 'Your access to this application has been disabled. Please contact support.',
+                        message: 'Your access to this application has been disabled or your trial has expired. Please contact support.',
                         code: 'TENANT_DISABLED'
                     });
                 }
