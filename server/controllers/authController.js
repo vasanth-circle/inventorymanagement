@@ -131,15 +131,21 @@ export const login = async (req, res, next) => {
 
         // Validate Tenant Status
         if (user.tenantId) {
-            console.log(`Verifying tenant for user: ${email}, tenantId: ${user.tenantId}`);
+            const tenantCount = await Tenant.countDocuments({});
+            console.log(`Diagnostic: Total Tenants in Core DB: ${tenantCount}`);
+            console.log(`Verifying tenant for user: ${email}, tenantId: ${user.tenantId} (Type: ${typeof user.tenantId})`);
+            
             const tenant = await Tenant.findOne({
                 $or: [
-                    { tenantId: user.tenantId },
+                    { tenantId: user.tenantId.toString() },
                     { _id: user.tenantId }
                 ]
             });
             
             console.log(`Tenant found: ${tenant ? tenant.businessName : 'NULL'}`);
+            if (tenant) {
+                console.log(`Tenant details: Status=${tenant.status}, ID=${tenant._id}, tenantIdField=${tenant.tenantId}`);
+            }
             
             if (!tenant) {
                 console.warn(`Login blocked: Tenant ${user.tenantId} not found for user ${email}`);
