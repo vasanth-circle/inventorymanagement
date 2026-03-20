@@ -152,6 +152,13 @@ export const login = async (req, res, next) => {
                 }
             } else {
                 console.warn(`Login blocked: Tenant ${tenantIdStr} NOT FOUND in core DB for user ${email}`);
+                const allTenants = await Tenant.find({}, '_id tenantId businessName');
+                console.log('Available tenants in DB:', JSON.stringify(allTenants.map(t => ({ 
+                    id: t._id, 
+                    tid: t.tenantId, 
+                    name: t.businessName 
+                }))));
+                
                 return res.status(403).json({ 
                     message: 'Tenant record not found. Please contact support.'
                 });
