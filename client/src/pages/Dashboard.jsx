@@ -170,11 +170,11 @@ const Dashboard = () => {
                         <div className="p-0">
                             <div className="flex items-center justify-between p-5 border-b border-gray-50 hover:bg-slate-50/30 transition-colors">
                                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-tighter">Quantity in Hand</span>
-                                <span className="text-lg font-black text-gray-800">{stats?.totalItemsCount || '0'}</span>
+                                <span className="text-lg font-black text-gray-800">{stats?.totalItemsCount || 0}</span>
                             </div>
                             <div className="flex items-center justify-between p-5 hover:bg-slate-50/30 transition-colors">
                                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-tighter">Quantity to be Received</span>
-                                <span className="text-lg font-black text-gray-800">{stats?.pendingReceipts || '168'}</span>
+                                <span className="text-lg font-black text-gray-800">{stats?.pendingReceipts || 0}</span>
                             </div>
                         </div>
                     </div>

@@ -224,8 +224,18 @@ export const getMe = async (req, res, next) => {
 // @access  Private/Admin
 export const getUsers = async (req, res, next) => {
     try {
-        // Only get users belonging to the same tenant
-        const users = await User.find({ tenantId: req.user.tenantId });
+        let query = {};
+        
+        // Super admin can see all users, others only their own tenant's users
+        if (req.user.role !== 'super_admin') {
+            if (!req.user.tenantId) {
+                console.warn(`getUsers: Non-superadmin user ${req.user.email} has no tenantId`);
+                return res.status(403).json({ success: false, message: 'Tenant context missing' });
+            }
+            query.tenantId = req.user.tenantId;
+        }
+
+        const users = await User.find(query).select('-password');
         res.json(users);
     } catch (error) {
         next(error);
