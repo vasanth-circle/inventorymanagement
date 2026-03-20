@@ -20,14 +20,13 @@ const tenantSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['Trial', 'Active', 'Inactive', 'Suspended'],
+        enum: ['Active', 'Inactive', 'Suspended', 'Trial', 'trial'],
         default: 'Trial',
     },
-    apps: [{
-        name: String, // e.g., 'inventory'
-        enabled: Boolean,
-        settings: mongoose.Schema.Types.Mixed
-    }],
+    apps: {
+        type: mongoose.Schema.Types.Mixed,
+        default: []
+    },
     owner: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

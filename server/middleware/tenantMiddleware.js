@@ -26,18 +26,39 @@ export const checkTenantStatus = async (req, res, next) => {
             if (tenant) {
                 // Determine if inventory app is enabled - handle both Array and Object formats
                 let inventoryApp = null;
+                const searchNames = ['inventory', 'inventory-api', 'inventory-webapp'];
+                
                 if (Array.isArray(tenant.apps)) {
-                    inventoryApp = tenant.apps.find(app => (app.name === 'inventory' || app.slug === 'inventory'));
+                    inventoryApp = tenant.apps.find(app => 
+                        searchNames.includes(app.name?.toLowerCase()) || 
+                        searchNames.includes(app.slug?.toLowerCase())
+                    );
                 } else if (tenant.apps && typeof tenant.apps === 'object') {
-                    // Check for key 'inventory' or an object with name 'inventory'
-                    inventoryApp = tenant.apps.inventory || Object.values(tenant.apps).find(app => (app.name === 'inventory' || app.slug === 'inventory'));
+                    // Try direct key access first
+                    for (const name of searchNames) {
+                        if (tenant.apps[name]) {
+                            inventoryApp = tenant.apps[name];
+                            break;
+                        }
+                    }
+                    // Fallback to searching object values
+                    if (!inventoryApp) {
+                        inventoryApp = Object.values(tenant.apps).find(app => 
+                            searchNames.includes(app.name?.toLowerCase()) || 
+                            searchNames.includes(app.slug?.toLowerCase())
+                        );
+                    }
                 }
 
-                // Treat Active, Trial, Trialing as valid active statuses
-                const isActiveStatus = ['Active', 'Trial', 'Trialing'].includes(tenant.status);
+                // Treat Case-insensitive status check
+                const status = tenant.status?.toLowerCase();
+                const isActiveStatus = ['active', 'trial', 'trialing'].includes(status);
                 
-                if (!inventoryApp || (inventoryApp.enabled === false) || !isActiveStatus) {
-                    console.warn(`Access denied for tenant ${req.tenantId}: Status=${tenant.status}, hasApp=${!!inventoryApp}, appEnabled=${inventoryApp?.enabled}`);
+                const isAppEnabled = (inventoryApp === true) || (inventoryApp && inventoryApp.enabled !== false);
+                
+                if (!isAppEnabled || !isActiveStatus) {
+                    const appKeys = tenant.apps ? Object.keys(tenant.apps) : 'none';
+                    console.warn(`Access denied for tenant ${req.tenantId}: status=${tenant.status}, isAppEnabled=${isAppEnabled}, appKeys=[${appKeys}]`);
                     return res.status(403).json({
                         success: false,
                         message: 'Your access to this application has been disabled or your trial has expired. Please contact support.',
