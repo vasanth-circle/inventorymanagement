@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import Tenant from '../models/Tenant.js';
@@ -131,27 +132,16 @@ export const login = async (req, res, next) => {
 
         // Validate Tenant Status
         if (user.tenantId) {
-            const tenantCount = await Tenant.countDocuments({});
             const tenantIdStr = user.tenantId.toString();
-            console.log(`Diagnostic: Total Tenants in Core DB: ${tenantCount}`);
-            console.log(`Verifying tenant for user: ${email}, tenantId: ${tenantIdStr} (Type: ${typeof user.tenantId})`);
             
-            // Try explicit ObjectId if valid
-            let query = {
+            const tenant = await Tenant.findOne({
                 $or: [
                     { tenantId: tenantIdStr },
                     { _id: tenantIdStr }
                 ]
-            };
-            
-            if (mongoose.Types.ObjectId.isValid(tenantIdStr)) {
-                query.$or.push({ _id: new mongoose.Types.ObjectId(tenantIdStr) });
-            }
-
-            const tenant = await Tenant.findOne(query);
+            });
             
             if (tenant) {
-                console.log(`Tenant found: ${tenant.businessName}, Status: ${tenant.status}`);
                 const inventoryApp = tenant.apps?.find(app => (app.name === 'inventory' || app.slug === 'inventory'));
                 if (!inventoryApp || !inventoryApp.enabled || tenant.status === 'Inactive' || tenant.status === 'Suspended') {
                     console.warn(`Login blocked: Tenant ${tenantIdStr} status is ${tenant.status} or app disabled`);
@@ -161,11 +151,9 @@ export const login = async (req, res, next) => {
                     });
                 }
             } else {
-                console.warn(`Login blocked: Tenant ${tenantIdStr} NOT FOUND in core DB (Total tenants: ${tenantCount})`);
-                // Use a descriptive error for debugging
+                console.warn(`Login blocked: Tenant ${tenantIdStr} NOT FOUND in core DB for user ${email}`);
                 return res.status(403).json({ 
-                    message: `Tenant record not found (ID: ${tenantIdStr}). Please contact support.`,
-                    debug: { count: tenantCount, type: typeof user.tenantId }
+                    message: 'Tenant record not found. Please contact support.'
                 });
             }
         }
