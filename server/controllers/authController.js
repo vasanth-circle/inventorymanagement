@@ -132,32 +132,40 @@ export const login = async (req, res, next) => {
         // Validate Tenant Status
         if (user.tenantId) {
             const tenantCount = await Tenant.countDocuments({});
+            const tenantIdStr = user.tenantId.toString();
             console.log(`Diagnostic: Total Tenants in Core DB: ${tenantCount}`);
-            console.log(`Verifying tenant for user: ${email}, tenantId: ${user.tenantId} (Type: ${typeof user.tenantId})`);
+            console.log(`Verifying tenant for user: ${email}, tenantId: ${tenantIdStr} (Type: ${typeof user.tenantId})`);
             
-            const tenant = await Tenant.findOne({
+            // Try explicit ObjectId if valid
+            let query = {
                 $or: [
-                    { tenantId: user.tenantId.toString() },
-                    { _id: user.tenantId }
+                    { tenantId: tenantIdStr },
+                    { _id: tenantIdStr }
                 ]
-            });
+            };
             
-            console.log(`Tenant found: ${tenant ? tenant.businessName : 'NULL'}`);
-            if (tenant) {
-                console.log(`Tenant details: Status=${tenant.status}, ID=${tenant._id}, tenantIdField=${tenant.tenantId}`);
-            }
-            
-            if (!tenant) {
-                console.warn(`Login blocked: Tenant ${user.tenantId} not found for user ${email}`);
-                return res.status(403).json({ message: 'Tenant record not found. Please contact support.' });
+            if (mongoose.Types.ObjectId.isValid(tenantIdStr)) {
+                query.$or.push({ _id: new mongoose.Types.ObjectId(tenantIdStr) });
             }
 
-            const inventoryApp = tenant.apps?.find(app => app.name === 'inventory');
-            if (!inventoryApp || !inventoryApp.enabled || tenant.status === 'Inactive' || tenant.status === 'Suspended') {
-                console.warn(`Login blocked: Tenant ${user.tenantId} status is ${tenant.status} or app disabled`);
-                return res.status(403).json({
-                    message: 'Your access to this application has been disabled. Please contact support.',
-                    code: 'TENANT_DISABLED'
+            const tenant = await Tenant.findOne(query);
+            
+            if (tenant) {
+                console.log(`Tenant found: ${tenant.businessName}, Status: ${tenant.status}`);
+                const inventoryApp = tenant.apps?.find(app => (app.name === 'inventory' || app.slug === 'inventory'));
+                if (!inventoryApp || !inventoryApp.enabled || tenant.status === 'Inactive' || tenant.status === 'Suspended') {
+                    console.warn(`Login blocked: Tenant ${tenantIdStr} status is ${tenant.status} or app disabled`);
+                    return res.status(403).json({
+                        message: 'Your access to this application has been disabled. Please contact support.',
+                        code: 'TENANT_DISABLED'
+                    });
+                }
+            } else {
+                console.warn(`Login blocked: Tenant ${tenantIdStr} NOT FOUND in core DB (Total tenants: ${tenantCount})`);
+                // Use a descriptive error for debugging
+                return res.status(403).json({ 
+                    message: `Tenant record not found (ID: ${tenantIdStr}). Please contact support.`,
+                    debug: { count: tenantCount, type: typeof user.tenantId }
                 });
             }
         }
