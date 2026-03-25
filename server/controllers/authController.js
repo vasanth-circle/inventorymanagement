@@ -15,7 +15,7 @@ const generateToken = (id) => {
 // @access  Public
 export const register = async (req, res, next) => {
     try {
-        const { name, email, password, companyName } = req.body;
+        const { name, email, password, companyName, phone, termsAccepted } = req.body;
 
         // Check if user exists
         const userExists = await User.findOne({ email });
@@ -24,7 +24,9 @@ export const register = async (req, res, next) => {
         }
 
         // Create Tenant
-        const slug = companyName.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+        const randomStr = Math.random().toString(36).substring(2, 10);
+        const baseSlug = companyName.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+        const slug = `${baseSlug}-${randomStr}`;
         const tenantId = `T-${Date.now()}`;
         
         const tenant = await Tenant.create({
@@ -32,7 +34,21 @@ export const register = async (req, res, next) => {
             tenantId: tenantId,
             slug: slug,
             status: 'Trial',
-            apps: [{ name: 'inventory', enabled: true }]
+            contactEmail: email,
+            isActive: true,
+            apps: {
+                proposal: true,
+                crm: false,
+                hr: false,
+                task: true,
+                inventory: true,
+                billing: false
+            },
+            config: {
+                status: "trial",
+                contactEmail: email,
+                isActive: true
+            }
         });
 
         // Create user
@@ -40,9 +56,20 @@ export const register = async (req, res, next) => {
             name,
             email,
             password,
-            role: 'tenant_owner',
+            phone,
+            termsAccepted: termsAccepted || true,
+            role: 'tenant_admin',
             menuAccess: 'all',
             tenantId: tenant.tenantId,
+            isActive: true,
+            appRoles: {
+                crm: null,
+                proposal: null,
+                hr: null,
+                task: null,
+                inventory: null,
+                billing: null
+            }
         });
 
         // Update tenant owner
@@ -53,6 +80,7 @@ export const register = async (req, res, next) => {
             _id: user._id,
             name: user.name,
             email: user.email,
+            phone: user.phone,
             role: user.role,
             tenantId: user.tenantId,
             menuAccess: user.menuAccess,

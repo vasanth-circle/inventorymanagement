@@ -25,6 +25,25 @@ const userSchema = new mongoose.Schema({
         enum: ['admin', 'manager', 'staff', 'tenant_owner', 'tenant_admin', 'super_admin'],
         default: 'staff',
     },
+    phone: {
+        type: String,
+        trim: true,
+    },
+    termsAccepted: {
+        type: Boolean,
+        default: false,
+    },
+    appRoles: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {
+            crm: null,
+            proposal: null,
+            hr: null,
+            task: null,
+            inventory: null,
+            billing: null
+        }
+    },
     isActive: {
         type: Boolean,
         default: true,

@@ -25,7 +25,15 @@ const tenantSchema = new mongoose.Schema({
     },
     apps: {
         type: mongoose.Schema.Types.Mixed,
-        default: []
+        default: {}
+    },
+    config: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {}
+    },
+    contactEmail: {
+        type: String,
+        trim: true,
     },
     owner: {
         type: mongoose.Schema.Types.ObjectId,

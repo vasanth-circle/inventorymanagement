@@ -8,8 +8,10 @@ const Register = () => {
         name: '',
         email: '',
         companyName: '',
+        phone: '',
         password: '',
         confirmPassword: '',
+        termsAccepted: true,
     });
     const [loading, setLoading] = useState(false);
     const { user, register } = useContext(AuthContext);
@@ -40,7 +42,14 @@ const Register = () => {
 
         setLoading(true);
 
-        const result = await register(formData.name, formData.email, formData.password, formData.companyName);
+        const result = await register(
+            formData.name, 
+            formData.email, 
+            formData.password, 
+            formData.companyName, 
+            formData.phone, 
+            formData.termsAccepted
+        );
 
         if (result.success) {
             toast.success(`Welcome to InventoryPro, ${result.user.name || 'User'}!`, {
@@ -147,6 +156,36 @@ const Register = () => {
                                 className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                                 placeholder="Enter your company name"
                             />
+                        </div>
+
+                        <div>
+                            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                                Phone Number
+                            </label>
+                            <input
+                                id="phone"
+                                name="phone"
+                                type="tel"
+                                required
+                                value={formData.phone}
+                                onChange={handleChange}
+                                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                                placeholder="Enter your phone number"
+                            />
+                        </div>
+
+                        <div className="flex items-center">
+                            <input
+                                id="termsAccepted"
+                                name="termsAccepted"
+                                type="checkbox"
+                                checked={formData.termsAccepted}
+                                onChange={(e) => setFormData({ ...formData, termsAccepted: e.target.checked })}
+                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                            />
+                            <label htmlFor="termsAccepted" className="ml-2 block text-sm text-gray-900">
+                                I accept the <a href="#" className="text-primary-600 hover:text-primary-500">Terms and Conditions</a>
+                            </label>
                         </div>
                     </div>
 
