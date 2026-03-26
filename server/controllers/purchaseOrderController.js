@@ -61,20 +61,37 @@ export const createPurchaseOrder = async (req, res, next) => {
     try {
         const { vendor, items, orderDate, expectedDeliveryDate, notes } = req.body;
 
-        // Generate Order Number
-        const seq = await getNextSequenceValue('PO', req.tenantId);
-        const orderNumber = `PO-${String(seq).padStart(5, '0')}`;
+        // Generate Order Number with retry logic
+        let order;
+        let retries = 0;
+        while (!order && retries < 10) {
+            const seq = await getNextSequenceValue('PO', req.tenantId);
+            const orderNumber = `PO-${String(seq).padStart(5, '0')}`;
+            
+            try {
+                order = await PurchaseOrder.create({
+                    orderNumber,
+                    vendor,
+                    items,
+                    orderDate,
+                    expectedDeliveryDate,
+                    notes,
+                    user: req.user._id,
+                    tenantId: req.tenantId,
+                });
+            } catch (error) {
+                // If it's a duplicate key error on orderNumber, retry with next sequence
+                if (error.code === 11000 && (error.message.includes('orderNumber') || (error.keyPattern && error.keyPattern.orderNumber))) {
+                    retries++;
+                    continue;
+                }
+                throw error;
+            }
+        }
 
-        const order = await PurchaseOrder.create({
-            orderNumber,
-            vendor,
-            items,
-            orderDate,
-            expectedDeliveryDate,
-            notes,
-            user: req.user._id,
-            tenantId: req.tenantId,
-        });
+        if (!order) {
+            return sendError(res, 500, 'Failed to generate a unique order number after multiple attempts');
+        }
 
         sendResponse(res, 201, order, 'Purchase order created successfully');
     } catch (error) {
