@@ -2,6 +2,7 @@ import PurchaseOrder from '../models/PurchaseOrder.js';
 import Item from '../models/Item.js';
 import Transaction from '../models/Transaction.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
+import { getNextSequenceValue } from '../utils/sequence.js';
 
 // @desc    Get all purchase orders
 // @route   GET /api/purchase-orders
@@ -61,8 +62,8 @@ export const createPurchaseOrder = async (req, res, next) => {
         const { vendor, items, orderDate, expectedDeliveryDate, notes } = req.body;
 
         // Generate Order Number
-        const count = await PurchaseOrder.countDocuments({ tenantId: req.tenantId });
-        const orderNumber = `PO-${String(count + 1).padStart(5, '0')}`;
+        const seq = await getNextSequenceValue('PO', req.tenantId);
+        const orderNumber = `PO-${String(seq).padStart(5, '0')}`;
 
         const order = await PurchaseOrder.create({
             orderNumber,

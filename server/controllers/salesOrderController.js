@@ -2,6 +2,7 @@ import SalesOrder from '../models/SalesOrder.js';
 import Item from '../models/Item.js';
 import Transaction from '../models/Transaction.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
+import { getNextSequenceValue } from '../utils/sequence.js';
 
 // @desc    Get all sales orders
 // @route   GET /api/sales-orders
@@ -70,9 +71,9 @@ export const createSalesOrder = async (req, res, next) => {
             }
         }
 
-        // Generate Order Number (Simple logic)
-        const count = await SalesOrder.countDocuments({ tenantId: req.tenantId });
-        const orderNumber = `SO-${String(count + 1).padStart(5, '0')}`;
+        // Generate Order Number
+        const seq = await getNextSequenceValue('SO', req.tenantId);
+        const orderNumber = `SO-${String(seq).padStart(5, '0')}`;
 
         const order = await SalesOrder.create({
             orderNumber,
