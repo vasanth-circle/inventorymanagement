@@ -42,7 +42,8 @@ export const register = async (req, res, next) => {
                 hr: false,
                 task: true,
                 inventory: true,
-                billing: false
+                billing: false,
+                whatsapp: true
             },
             config: {
                 status: "trial",
@@ -67,8 +68,9 @@ export const register = async (req, res, next) => {
                 proposal: null,
                 hr: null,
                 task: null,
-                inventory: null,
-                billing: null
+                inventory: "inventory_admin",
+                billing: null,
+                whatsapp: null
             }
         });
 
@@ -162,12 +164,14 @@ export const login = async (req, res, next) => {
         if (user.tenantId) {
             const tenantIdStr = user.tenantId.toString();
             
-            const tenant = await Tenant.findOne({
-                $or: [
-                    { tenantId: tenantIdStr },
-                    { _id: tenantIdStr }
-                ]
-            });
+            const tenantQuery = {
+                $or: [{ tenantId: tenantIdStr }]
+            };
+            if (mongoose.Types.ObjectId.isValid(tenantIdStr)) {
+                tenantQuery.$or.push({ _id: tenantIdStr });
+            }
+            
+            const tenant = await Tenant.findOne(tenantQuery);
             
             if (tenant) {
                 // Determine if inventory app is enabled - handle both Array and Object formats

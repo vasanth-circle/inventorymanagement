@@ -16,12 +16,16 @@ export const checkTenantStatus = async (req, res, next) => {
             console.log(`Tenant identified from user: ${req.tenantId}`);
             
             // Find tenant object to check status and app access
-            const tenant = await Tenant.findOne({
-                $or: [
-                    { tenantId: req.user.tenantId },
-                    { _id: req.user.tenantId }
-                ]
-            });
+            const query = {
+                $or: [{ tenantId: req.user.tenantId }]
+            };
+            
+            // Only add _id to query if it's a valid ObjectId to avoid CastError
+            if (mongoose.Types.ObjectId.isValid(req.user.tenantId)) {
+                query.$or.push({ _id: req.user.tenantId });
+            }
+
+            const tenant = await Tenant.findOne(query);
 
             if (tenant) {
                 // Determine if inventory app is enabled - handle both Array and Object formats

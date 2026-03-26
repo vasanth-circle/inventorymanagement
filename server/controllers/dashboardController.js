@@ -16,7 +16,14 @@ export const getDashboardStats = async (req, res, next) => {
         const tenantQuery = { tenantId: req.tenantId };
         
         // Fetch Tenant Info
-        const tenant = await Tenant.findOne({ tenantId: req.tenantId });
+        const query = {
+            $or: [{ tenantId: req.tenantId }]
+        };
+        if (mongoose.Types.ObjectId.isValid(req.tenantId)) {
+            query.$or.push({ _id: req.tenantId });
+        }
+        
+        const tenant = await Tenant.findOne(query);
         const companyName = tenant ? tenant.businessName : 'Inventory Management';
 
         // Total items count (number of unique items/SKUs)

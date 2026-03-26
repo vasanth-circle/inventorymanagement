@@ -41,7 +41,8 @@ const userSchema = new mongoose.Schema({
             hr: null,
             task: null,
             inventory: null,
-            billing: null
+            billing: null,
+            whatsapp: null
         }
     },
     isActive: {
