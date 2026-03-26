@@ -37,13 +37,13 @@ export const register = async (req, res, next) => {
             contactEmail: email,
             isActive: true,
             apps: {
-                proposal: true,
+                proposal: false,
                 crm: false,
                 hr: false,
-                task: true,
+                task: false,
                 inventory: true,
                 billing: false,
-                whatsapp: true
+                whatsapp: false
             },
             config: {
                 status: "trial",
