@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Item from '../models/Item.js';
 import Transaction from '../models/Transaction.js';
 import User from '../models/User.js';
