@@ -236,6 +236,40 @@ export const InventoryProvider = ({ children }) => {
         }
     };
 
+    // Get Excel headers for bulk mapping (Additive)
+    const getExcelHeadersBulk = async (file) => {
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const { data } = await api.post('/excel/headers', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            return { success: true, data };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to extract headers');
+            return { success: false };
+        }
+    };
+
+    // Import mapped data (Additive)
+    const importMappedData = async (file, mapping) => {
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('mapping', JSON.stringify(mapping));
+            
+            const { data } = await api.post('/excel/import-mapped', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            toast.success(data.message || 'Import completed');
+            fetchItems();
+            return { success: true, data };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Import failed');
+            return { success: false };
+        }
+    };
+
     useEffect(() => {
         if (user) {
             fetchCategories();
@@ -268,6 +302,8 @@ export const InventoryProvider = ({ children }) => {
                 parseExcelFile,
                 importExcelData,
                 downloadTemplate,
+                getExcelHeadersBulk,
+                importMappedData,
             }}
         >
             {children}

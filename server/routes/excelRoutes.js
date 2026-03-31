@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { parseExcel, importExcelData, downloadTemplate } from '../controllers/excelController.js';
+import { parseExcel, importExcelData, downloadTemplate, getExcelHeaders, importBulkMapped } from '../controllers/excelController.js';
 // import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -29,5 +29,9 @@ const upload = multer({
 router.post('/parse', upload.single('file'), parseExcel);
 router.post('/import', importExcelData);
 router.get('/template', downloadTemplate);
+
+// New additive routes for Mapping Bulk Upload
+router.post('/headers', upload.single('file'), getExcelHeaders);
+router.post('/import-mapped', upload.single('file'), importBulkMapped);
 
 export default router;

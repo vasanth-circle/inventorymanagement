@@ -3,6 +3,7 @@ import Item from '../models/Item.js';
 import Category from '../models/Category.js';
 import Transaction from '../models/Transaction.js';
 import Location from '../models/Location.js';
+import { appConn } from '../config/db.js';
 
 // Parse Excel file and return data
 export const parseExcel = async (req, res, next) => {
@@ -324,6 +325,184 @@ export const downloadTemplate = async (req, res, next) => {
         res.setHeader('Content-Disposition', 'attachment; filename=stock_inward_template.xlsx');
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.send(buffer);
+    } catch (error) {
+        next(error);
+    }
+};
+// Get headers and preview from Excel file
+export const getExcelHeaders = async (req, res, next) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+
+        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+
+        // Get headers (first row)
+        const range = xlsx.utils.decode_range(worksheet['!ref']);
+        const headers = [];
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+            const address = xlsx.utils.encode_col(C) + '1';
+            const cell = worksheet[address];
+            headers.push(cell ? cell.v : `Column ${C + 1}`);
+        }
+
+        // Get first 5 rows for preview
+        const data = xlsx.utils.sheet_to_json(worksheet, { range: 0, header: 1 });
+        const previewRows = data.slice(1, 6); // Skip header, take next 5
+
+        res.json({
+            headers,
+            previewRows,
+            totalRows: data.length - 1
+        });
+    } catch (error) {
+        console.error('Error extracting headers:', error);
+        res.status(500).json({ message: 'Error parsing Excel file', error: error.message });
+    }
+};
+
+// Bulk import with custom mapping
+export const importBulkMapped = async (req, res, next) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+
+        const mapping = JSON.parse(req.body.mapping || '{}');
+        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const rawData = xlsx.utils.sheet_to_json(worksheet);
+
+        if (rawData.length === 0) {
+            return res.status(400).json({ message: 'Excel file is empty' });
+        }
+
+        const results = {
+            success: [],
+            failed: [],
+            updated: [],
+        };
+
+        // Standard fields mapping: { appField: excelHeader }
+        for (const row of rawData) {
+            try {
+                // Transform row based on mapping
+                const itemData = {
+                    name: row[mapping.name]?.toString().trim(),
+                    sku: row[mapping.sku]?.toString().trim() || row[mapping.barcode]?.toString().trim(),
+                    barcode: row[mapping.barcode]?.toString().trim(),
+                    category: row[mapping.category]?.toString().trim(),
+                    quantity: parseFloat(row[mapping.quantity]) || 0,
+                    price: parseFloat(row[mapping.price]) || 0,
+                    location: row[mapping.location]?.toString().trim(),
+                    minStockThreshold: parseFloat(row[mapping.minStockThreshold]) || 10,
+                    description: row[mapping.description]?.toString().trim(),
+                };
+
+                // Ensure required fields
+                if (!itemData.name) throw new Error('Item name is missing or mapped to empty column');
+                
+                // Resolve Category
+                let categoryId;
+                const categoryName = itemData.category || 'Uncategorized';
+                const category = await Category.findOne({ 
+                    name: { $regex: new RegExp(`^${categoryName}$`, 'i') },
+                    tenantId: req.tenantId
+                });
+
+                if (category) {
+                    categoryId = category._id;
+                } else {
+                    const newCategory = await Category.create({ 
+                        name: categoryName,
+                        tenantId: req.tenantId
+                    });
+                    categoryId = newCategory._id;
+                }
+
+                // Check for existing item
+                let item = null;
+                if (itemData.sku) {
+                    item = await Item.findOne({ sku: itemData.sku, tenantId: req.tenantId });
+                }
+                
+                if (!item) {
+                    item = await Item.findOne({ name: itemData.name, tenantId: req.tenantId });
+                }
+
+                if (item) {
+                    // Update existing
+                    const previousQuantity = item.quantity;
+                    item.quantity += itemData.quantity;
+                    item.price = itemData.price || item.price;
+                    if (itemData.location) item.location = itemData.location;
+                    if (itemData.description) item.description = itemData.description;
+                    if (itemData.barcode) item.barcode = itemData.barcode;
+                    
+                    await item.save();
+
+                    // Log transaction
+                    await Transaction.create({
+                        item: item._id,
+                        type: 'inward',
+                        quantity: itemData.quantity,
+                        previousQuantity: previousQuantity,
+                        newQuantity: item.quantity,
+                        reason: 'Bulk Mapping Import',
+                        location: itemData.location || item.location,
+                        user: req.user._id,
+                        tenantId: req.tenantId
+                    });
+
+                    results.updated.push({ name: item.name, sku: item.sku });
+                } else {
+                    // Create new
+                    item = await Item.create({
+                        name: itemData.name,
+                        sku: itemData.sku || `SKU-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                        barcode: itemData.barcode,
+                        category: categoryId,
+                        quantity: itemData.quantity,
+                        price: itemData.price,
+                        location: itemData.location,
+                        minStockThreshold: itemData.minStockThreshold,
+                        description: itemData.description,
+                        tenantId: req.tenantId
+                    });
+
+                    // Log transaction
+                    await Transaction.create({
+                        item: item._id,
+                        type: 'inward',
+                        quantity: itemData.quantity,
+                        previousQuantity: 0,
+                        newQuantity: item.quantity,
+                        reason: 'Bulk Mapping Import',
+                        location: itemData.location || item.location,
+                        user: req.user._id,
+                        tenantId: req.tenantId
+                    });
+
+                    results.success.push({ name: item.name, sku: item.sku });
+                }
+            } catch (error) {
+                results.failed.push({ name: row[mapping.name] || 'Unknown', error: error.message });
+            }
+        }
+
+        res.json({
+            message: 'Bulk import completed',
+            totalProcessed: rawData.length,
+            successCount: results.success.length,
+            updatedCount: results.updated.length,
+            failedCount: results.failed.length,
+            results
+        });
+
     } catch (error) {
         next(error);
     }
