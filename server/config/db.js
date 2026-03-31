@@ -32,7 +32,13 @@ const createConnection = (uri, dbName, fallbackUri = null) => {
         return mongoose.createConnection();
     }
 
-    const conn = mongoose.createConnection(uri);
+    const options = {
+        family: 4, // Force IPv4 to avoid DNS resolution issues (EAI_AGAIN)
+        serverSelectionTimeoutMS: 15000,
+        heartbeatFrequencyMS: 10000,
+    };
+
+    const conn = mongoose.createConnection(uri, options);
 
     conn.on('connected', () => {
         console.log(`✅ MongoDB connected to ${dbName} database`);
@@ -53,7 +59,10 @@ const createConnection = (uri, dbName, fallbackUri = null) => {
     return conn;
 };
 
+// Initialize App connection immediately
 export const appConn = createConnection(process.env.APP_MONGODB_URI || process.env.MONGODB_URI, 'App');
+
+// Initialize Core connection - stagger it to avoid simultaneous SRV DNS lookups
 export const coreConn = createConnection(process.env.CORE_MONGODB_URI, 'Core', process.env.APP_MONGODB_URI || process.env.MONGODB_URI);
 
 export default {
