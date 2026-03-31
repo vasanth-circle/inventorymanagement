@@ -59,13 +59,31 @@ const createConnection = (uri, dbName, fallbackUri = null) => {
     return conn;
 };
 
-// Initialize App connection immediately
-export const appConn = createConnection(process.env.APP_MONGODB_URI || process.env.MONGODB_URI, 'App');
+// Helper to extract DB name from Atlas URI
+const getDbNameFromUri = (uri, defaultName) => {
+    if (!uri) return defaultName;
+    try {
+        const withoutPrefix = uri.replace('mongodb+srv://', '');
+        const hostPath = withoutPrefix.split('/')[1];
+        if (!hostPath) return defaultName;
+        return hostPath.split('?')[0] || defaultName;
+    } catch (e) {
+        return defaultName;
+    }
+};
 
-// Initialize Core connection - stagger it to avoid simultaneous SRV DNS lookups
-export const coreConn = createConnection(process.env.CORE_MONGODB_URI, 'Core', process.env.APP_MONGODB_URI || process.env.MONGODB_URI);
+// Create the shared base connection
+const clusterUri = process.env.APP_MONGODB_URI || process.env.MONGODB_URI || process.env.CORE_MONGODB_URI;
+const baseConn = createConnection(clusterUri, 'Cluster-Base');
+
+// Export specific database connections sharing the same pool
+export const appConn = baseConn.useDb(getDbNameFromUri(process.env.APP_MONGODB_URI || process.env.MONGODB_URI, 'inventorymanagement'));
+export const coreConn = baseConn.useDb(getDbNameFromUri(process.env.CORE_MONGODB_URI, 'triomar_core'));
+
+console.log('✅ Shared connection pool established for App and Core databases');
 
 export default {
     appConn,
-    coreConn
+    coreConn,
+    baseConn
 };
