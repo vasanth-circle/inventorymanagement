@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, onClose }) => {
     const { user, logout } = useContext(AuthContext);
     const { theme, toggleTheme } = useContext(ThemeContext);
     const location = useLocation();
@@ -71,11 +71,34 @@ const Sidebar = () => {
     };
 
     return (
-        <aside className="w-64 bg-[#1a1f2e] text-slate-300 min-h-screen flex flex-col sticky top-0">
-            <div className="p-6 border-b border-slate-700/50 flex items-center space-x-3">
-                <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white text-xl">📦</div>
-                <h1 className="text-xl font-bold text-white tracking-tight">InventoryPro</h1>
-            </div>
+        <>
+            {/* Mobile Backdrop */}
+            {isOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm transition-opacity duration-300"
+                    onClick={onClose}
+                />
+            )}
+
+            <aside className={`
+                w-64 bg-[#1a1f2e] text-slate-300 h-screen flex flex-col fixed inset-y-0 left-0 z-50 
+                transform transition-transform duration-300 ease-in-out
+                lg:relative lg:translate-x-0
+                ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+            `}>
+                <div className="p-6 border-b border-slate-700/50 flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white text-xl">📦</div>
+                        <h1 className="text-xl font-bold text-white tracking-tight">InventoryPro</h1>
+                    </div>
+                    {/* Close button for mobile */}
+                    <button 
+                        onClick={onClose}
+                        className="lg:hidden p-2 text-slate-400 hover:text-white"
+                    >
+                        ✕
+                    </button>
+                </div>
 
             <nav className="flex-1 mt-4 overflow-y-auto custom-scrollbar">
                 {navGroups.map((group) => {
@@ -105,6 +128,9 @@ const Sidebar = () => {
                                             <Link
                                                 key={item.path}
                                                 to={item.path}
+                                                onClick={() => {
+                                                    if (window.innerWidth < 1024) onClose();
+                                                }}
                                                 className={`flex items-center px-4 py-2 text-xs font-medium rounded-md transition-all ${isActive
                                                     ? 'bg-rose-600 text-white'
                                                     : 'text-slate-400 hover:bg-slate-800 hover:text-white'
@@ -150,6 +176,7 @@ const Sidebar = () => {
                 </button>
             </div>
         </aside>
+        </>
     );
 };
 

@@ -1,10 +1,12 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { InventoryProvider } from './context/InventoryContext';
 import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
+import Navbar from './components/Navbar';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -24,6 +26,24 @@ import Vendors from './pages/Vendors';
 import PurchaseOrders from './pages/PurchaseOrders';
 import Locations from './pages/Locations';
 
+function AppLayout({ children }) {
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    return (
+        <div className="flex h-screen bg-gray-100 overflow-hidden">
+            {/* Sidebar with mobile responsiveness */}
+            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+            
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                <Navbar toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+                <main className="flex-1 overflow-y-auto p-4 lg:p-8">
+                    {children}
+                </main>
+            </div>
+        </div>
+    );
+}
+
 function App() {
     return (
         <AuthProvider>
@@ -41,31 +61,28 @@ function App() {
                             path="/*"
                             element={
                                 <ProtectedRoute>
-                                    <div className="flex min-h-screen bg-gray-100">
-                                        <Sidebar />
-                                        <main className="flex-1 p-6 overflow-y-auto">
-                                            <Routes>
-                                                <Route path="/dashboard" element={<Dashboard />} />
-                                                <Route path="/inventory" element={<Inventory />} />
-                                                <Route path="/stock-inward" element={<StockInward />} />
-                                                <Route path="/stock-outward" element={<StockOutward />} />
-                                                <Route path="/stock-return" element={<StockReturn />} />
-                                                <Route path="/stock-adjustment" element={<StockAdjustment />} />
-                                                <Route path="/reports" element={<Reports />} />
-                                                <Route path="/stocks" element={<Stocks />} />
-                                                <Route path="/categories" element={<Categories />} />
-                                                <Route path="/bulk-import" element={<BulkImport />} />
-                                                <Route path="/users" element={<Users />} />
-                                                <Route path="/customers" element={<Customers />} />
-                                                <Route path="/sales-orders" element={<SalesOrders />} />
-                                                <Route path="/vendors" element={<Vendors />} />
-                                                <Route path="/purchase-orders" element={<PurchaseOrders />} />
-                                                <Route path="/locations" element={<Locations />} />
-                                                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                                                <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                                            </Routes>
-                                        </main>
-                                    </div>
+                                    <AppLayout>
+                                        <Routes>
+                                            <Route path="/dashboard" element={<Dashboard />} />
+                                            <Route path="/inventory" element={<Inventory />} />
+                                            <Route path="/stock-inward" element={<StockInward />} />
+                                            <Route path="/stock-outward" element={<StockOutward />} />
+                                            <Route path="/stock-return" element={<StockReturn />} />
+                                            <Route path="/stock-adjustment" element={<StockAdjustment />} />
+                                            <Route path="/reports" element={<Reports />} />
+                                            <Route path="/stocks" element={<Stocks />} />
+                                            <Route path="/categories" element={<Categories />} />
+                                            <Route path="/bulk-import" element={<BulkImport />} />
+                                            <Route path="/users" element={<Users />} />
+                                            <Route path="/customers" element={<Customers />} />
+                                            <Route path="/sales-orders" element={<SalesOrders />} />
+                                            <Route path="/vendors" element={<Vendors />} />
+                                            <Route path="/purchase-orders" element={<PurchaseOrders />} />
+                                            <Route path="/locations" element={<Locations />} />
+                                            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                                            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                                        </Routes>
+                                    </AppLayout>
                                 </ProtectedRoute>
                             }
                         />
