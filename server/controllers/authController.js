@@ -99,7 +99,7 @@ export const register = async (req, res, next) => {
 // @access  Private/Admin
 export const addUser = async (req, res, next) => {
     try {
-        const { name, email, password, role, menuAccess, allowedMenus } = req.body;
+        const { name, email, password, role, inventoryRole, isActive, menuAccess, allowedMenus } = req.body;
 
         // Check if user exists
         const userExists = await User.findOne({ email });
@@ -116,6 +116,16 @@ export const addUser = async (req, res, next) => {
             menuAccess: menuAccess || 'all',
             allowedMenus: allowedMenus || [],
             tenantId: req.user.tenantId, // Automatically associate with requester's tenant
+            isActive: isActive !== undefined ? isActive : true,
+            appRoles: {
+                crm: null,
+                proposal: null,
+                hr: null,
+                task: null,
+                inventory: inventoryRole || (role === 'admin' ? "inventory_admin" : "inventory_user"),
+                billing: null,
+                whatsapp: null
+            }
         });
 
         res.status(201).json({
@@ -123,6 +133,8 @@ export const addUser = async (req, res, next) => {
             name: user.name,
             email: user.email,
             role: user.role,
+            isActive: user.isActive,
+            appRoles: user.appRoles,
             menuAccess: user.menuAccess,
             allowedMenus: user.allowedMenus,
         });
@@ -174,6 +186,15 @@ export const login = async (req, res, next) => {
             const tenant = await Tenant.findOne(tenantQuery);
             
             if (tenant) {
+                // Check if user has access to this specific app via appRoles
+                const inventoryRole = user.appRoles?.inventory;
+                if (!inventoryRole || inventoryRole === 'none') {
+                    console.warn(`Login blocked: User ${email} does not have an inventory app role assigned.`);
+                    return res.status(403).json({
+                        message: 'You do not have access to the Inventory application. Please contact your administrator.'
+                    });
+                }
+
                 // Determine if inventory app is enabled - handle both Array and Object formats
                 let inventoryApp = null;
                 const searchNames = ['inventory', 'inventory-api', 'inventory-webapp'];
@@ -317,7 +338,7 @@ export const updateProfile = async (req, res, next) => {
 // @access  Private/Admin
 export const updateUser = async (req, res, next) => {
     try {
-        const { name, email, role, menuAccess, allowedMenus } = req.body;
+        const { name, email, role, inventoryRole, isActive, menuAccess, allowedMenus } = req.body;
         const userId = req.params.id;
 
         // Check if user exists and belongs to the same tenant
@@ -338,8 +359,23 @@ export const updateUser = async (req, res, next) => {
         if (name) user.name = name;
         if (email) user.email = email;
         if (role) user.role = role;
+        if (isActive !== undefined) user.isActive = isActive;
         if (menuAccess) user.menuAccess = menuAccess;
         if (allowedMenus !== undefined) user.allowedMenus = allowedMenus;
+
+        // Update appRoles.inventory if inventoryRole is provided
+        if (inventoryRole) {
+            if (!user.appRoles) {
+                user.appRoles = { inventory: inventoryRole };
+            } else {
+                user.appRoles.inventory = inventoryRole;
+                user.markModified('appRoles'); // Important for Mixed type
+            }
+        } else if (role && !user.appRoles.inventory) {
+            // Default mapping if not set
+            user.appRoles.inventory = (role === 'admin' ? "inventory_admin" : "inventory_user");
+            user.markModified('appRoles');
+        }
 
         await user.save();
 
@@ -349,6 +385,7 @@ export const updateUser = async (req, res, next) => {
             email: user.email,
             role: user.role,
             isActive: user.isActive,
+            appRoles: user.appRoles,
             menuAccess: user.menuAccess,
             allowedMenus: user.allowedMenus,
         });
