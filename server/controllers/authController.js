@@ -107,6 +107,8 @@ export const addUser = async (req, res, next) => {
             return res.status(400).json({ message: 'User already exists' });
         }
 
+        const tenantId = req.user.tenantId ? req.user.tenantId.toString() : null;
+
         // Create user
         const user = await User.create({
             name,
@@ -115,7 +117,7 @@ export const addUser = async (req, res, next) => {
             role: role || 'staff',
             menuAccess: menuAccess || 'all',
             allowedMenus: allowedMenus || [],
-            tenantId: req.user.tenantId, // Automatically associate with requester's tenant
+            tenantId: tenantId, // Automatically associate with requester's tenant
             isActive: isActive !== undefined ? isActive : true,
             appRoles: {
                 crm: null,
@@ -285,10 +287,25 @@ export const getUsers = async (req, res, next) => {
                 console.warn(`getUsers: Non-superadmin user ${req.user.email} has no tenantId`);
                 return res.status(403).json({ success: false, message: 'Tenant context missing' });
             }
-            query.tenantId = req.user.tenantId;
+            
+            const tenantIdStr = req.user.tenantId.toString();
+            console.log(`getUsers: Fetching users for tenant ${tenantIdStr} (request by ${req.user.email})`);
+
+            // Use $or to be robust against different storage formats (String vs ObjectId)
+            query = {
+                $or: [
+                    { tenantId: tenantIdStr }
+                ]
+            };
+
+            // If it's a valid ObjectId, also check for it as an Object (just in case schema was bypassed)
+            if (mongoose.Types.ObjectId.isValid(tenantIdStr)) {
+                query.$or.push({ tenantId: new mongoose.Types.ObjectId(tenantIdStr) });
+            }
         }
 
         const users = await User.find(query).select('-password');
+        console.log(`getUsers: Found ${users.length} users for query:`, JSON.stringify(query));
         res.json(users);
     } catch (error) {
         next(error);
@@ -341,8 +358,16 @@ export const updateUser = async (req, res, next) => {
         const { name, email, role, inventoryRole, isActive, menuAccess, allowedMenus } = req.body;
         const userId = req.params.id;
 
+        const tenantId = req.user.tenantId ? req.user.tenantId.toString() : null;
+
         // Check if user exists and belongs to the same tenant
-        const user = await User.findOne({ _id: userId, tenantId: req.user.tenantId });
+        const user = await User.findOne({ 
+            _id: userId, 
+            $or: [
+                { tenantId: tenantId },
+                { tenantId: mongoose.Types.ObjectId.isValid(tenantId) ? new mongoose.Types.ObjectId(tenantId) : null }
+            ].filter(q => q.tenantId !== null)
+        });
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
