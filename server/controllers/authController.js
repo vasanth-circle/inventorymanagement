@@ -279,35 +279,65 @@ export const getMe = async (req, res, next) => {
 // @access  Private/Admin
 export const getUsers = async (req, res, next) => {
     try {
-        let query = {};
-        
-        // Super admin can see all users, others only their own tenant's users
-        if (req.user.role !== 'super_admin') {
-            if (!req.user.tenantId) {
-                console.warn(`getUsers: Non-superadmin user ${req.user.email} has no tenantId`);
-                return res.status(403).json({ success: false, message: 'Tenant context missing' });
-            }
-            
-            const tenantIdStr = req.user.tenantId.toString();
-            console.log(`getUsers: Fetching users for tenant ${tenantIdStr} (request by ${req.user.email})`);
-
-            // Use $or to be robust against different storage formats (String vs ObjectId)
-            query = {
-                $or: [
-                    { tenantId: tenantIdStr }
-                ]
-            };
-
-            // If it's a valid ObjectId, also check for it as an Object (just in case schema was bypassed)
-            if (mongoose.Types.ObjectId.isValid(tenantIdStr)) {
-                query.$or.push({ tenantId: new mongoose.Types.ObjectId(tenantIdStr) });
-            }
+        // Super admin can see all users
+        if (req.user.role === 'super_admin') {
+            const users = await User.find({}).select('-password');
+            return res.json(users);
         }
 
-        const users = await User.find(query).select('-password');
-        console.log(`getUsers: Found ${users.length} users for query:`, JSON.stringify(query));
+        if (!req.user.tenantId) {
+            console.warn(`getUsers: User ${req.user.email} has no tenantId`);
+            return res.status(403).json({ success: false, message: 'Tenant context missing' });
+        }
+
+        const currentTenantId = req.user.tenantId.toString();
+        
+        // 1. Find the actual Tenant document to get both its custom tenantId and its _id
+        const tenantQuery = {
+            $or: [
+                { tenantId: currentTenantId }
+            ]
+        };
+        if (mongoose.Types.ObjectId.isValid(currentTenantId)) {
+            tenantQuery.$or.push({ _id: currentTenantId });
+        }
+
+        const tenant = await Tenant.findOne(tenantQuery);
+        
+        // 2. Build a robust query for Users
+        // We match Users where their tenantId matches either the string T-ID OR the ObjectId
+        let userSearchQuery = {
+            $or: [
+                { tenantId: currentTenantId }
+            ]
+        };
+
+        if (tenant) {
+            // Also include the other variant from the tenant document
+            if (tenant.tenantId && tenant.tenantId !== currentTenantId) {
+                userSearchQuery.$or.push({ tenantId: tenant.tenantId });
+            }
+            const tenantObjectIdStr = tenant._id.toString();
+            if (tenantObjectIdStr !== currentTenantId) {
+                userSearchQuery.$or.push({ tenantId: tenantObjectIdStr });
+            }
+            
+            // Also allow matching by actual ObjectId in DB (just in case)
+            userSearchQuery.$or.push({ tenantId: tenant._id });
+        }
+
+        // Add ObjectId variant for the currentTenantId if it's a valid ID
+        if (mongoose.Types.ObjectId.isValid(currentTenantId)) {
+            userSearchQuery.$or.push({ tenantId: new mongoose.Types.ObjectId(currentTenantId) });
+        }
+
+        console.log(`getUsers: Fetching users for tenant search: ${currentTenantId}`);
+        const users = await User.find(userSearchQuery).select('-password');
+        
+        console.log(`getUsers: Found ${users.length} users matching query:`, JSON.stringify(userSearchQuery));
         res.json(users);
     } catch (error) {
+        console.error('getUsers error:', error);
         next(error);
     }
 };
