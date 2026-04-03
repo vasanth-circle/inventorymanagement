@@ -285,13 +285,9 @@ export const getUsers = async (req, res, next) => {
             return res.json(users);
         }
 
-        if (!req.user.tenantId && req.user.role !== 'tenant_admin' && req.user.role !== 'admin') {
-            console.warn(`getUsers: Non-admin user ${req.user.email} has no tenantId`);
-            return res.status(403).json({ success: false, message: 'Tenant context missing' });
-        }
-
         // 1. Identify the Tenant through all possible links
         const searchId = req.user.tenantId ? req.user.tenantId.toString() : null;
+        const currentUserId = req.user._id.toString();
         
         let tenantQuery = {
             $or: []
@@ -302,23 +298,32 @@ export const getUsers = async (req, res, next) => {
             tenantQuery.$or.push({ slug: searchId });
             if (mongoose.Types.ObjectId.isValid(searchId)) {
                 tenantQuery.$or.push({ _id: searchId });
+                tenantQuery.$or.push({ _id: new mongoose.Types.ObjectId(searchId) });
             }
         }
         
-        // Also look by owner if the current user is an admin
-        tenantQuery.$or.push({ owner: req.user._id });
-
-        const tenant = await Tenant.findOne(tenantQuery);
-        
-        if (!tenant && !searchId) {
-            return res.status(403).json({ success: false, message: 'Tenant context could not be determined' });
+        // Also look by owner - check both string and ObjectId formats
+        tenantQuery.$or.push({ owner: currentUserId });
+        if (mongoose.Types.ObjectId.isValid(currentUserId)) {
+            tenantQuery.$or.push({ owner: new mongoose.Types.ObjectId(currentUserId) });
         }
 
-        // 2. Build the User search query matching ANY tenant identifier
+        console.log(`getUsers: Searching for tenant record with query:`, JSON.stringify(tenantQuery));
+        const tenant = await Tenant.findOne(tenantQuery);
+        
+        if (tenant) {
+            console.log(`getUsers: Found tenant: ${tenant.businessName} (ID: ${tenant._id}, Slug: ${tenant.slug})`);
+        } else {
+            console.warn(`getUsers: No tenant found for user ${req.user.email}`);
+            // If user has a tenantId assigned but no tenant doc found, we'll still try to use the tenantId for users
+        }
+
+        // 2. Build the User search query matching ANY possible tenant identifier we know
         let userSearchQuery = {
             $or: []
         };
 
+        // Add identifiers from req.user
         if (searchId) {
             userSearchQuery.$or.push({ tenantId: searchId });
             if (mongoose.Types.ObjectId.isValid(searchId)) {
@@ -326,28 +331,30 @@ export const getUsers = async (req, res, next) => {
             }
         }
 
+        // Add identifiers from the tenant record (if found)
         if (tenant) {
-            // Add all variants from the found tenant document
-            userSearchQuery.$or.push({ tenantId: tenant._id.toString() });
-            userSearchQuery.$or.push({ tenantId: tenant._id }); // As ObjectId
+            const tId = tenant._id.toString();
+            userSearchQuery.$or.push({ tenantId: tId });
+            userSearchQuery.$or.push({ tenantId: tenant._id }); // As binary ObjectId
             
-            if (tenant.tenantId) {
+            if (tenant.tenantId && tenant.tenantId !== tId) {
                 userSearchQuery.$or.push({ tenantId: tenant.tenantId });
             }
-            if (tenant.slug) {
+            if (tenant.slug && tenant.slug !== tId) {
                 userSearchQuery.$or.push({ tenantId: tenant.slug });
             }
         }
 
-        // If we still have no search criteria, fail
+        // If we have NO search criteria at all, return empty (unauthorized)
         if (userSearchQuery.$or.length === 0) {
-             return res.status(403).json({ success: false, message: 'Tenant identification failed' });
+             console.warn(`getUsers: Could not establish any search identity for user ${req.user.email}`);
+             return res.json([]);
         }
 
-        console.log(`getUsers: Searching users for tenant variants of: ${searchId || 'owner:' + req.user._id}`);
+        console.log(`getUsers: Searching users with query:`, JSON.stringify(userSearchQuery));
         const users = await User.find(userSearchQuery).select('-password');
         
-        console.log(`getUsers: Found ${users.length} users for query:`, JSON.stringify(userSearchQuery));
+        console.log(`getUsers: Found ${users.length} users for query result.`);
         res.json(users);
     } catch (error) {
         console.error('getUsers error:', error);
