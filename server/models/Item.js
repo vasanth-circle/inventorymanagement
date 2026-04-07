@@ -54,6 +54,24 @@ const itemSchema = new mongoose.Schema({
         type: String,
         trim: true,
     },
+    brand: {
+        type: String,
+        trim: true,
+    },
+    size: {
+        type: String, // e.g., '4x4', '18x12'
+        trim: true,
+    },
+    pcsPerBox: {
+        type: Number,
+        default: 1,
+        min: 1,
+    },
+    sqFtPerPc: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
     customFields: {
         type: Map,
         of: mongoose.Schema.Types.Mixed,

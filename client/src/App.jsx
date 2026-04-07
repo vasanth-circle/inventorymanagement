@@ -25,6 +25,7 @@ import SalesOrders from './pages/SalesOrders';
 import Vendors from './pages/Vendors';
 import PurchaseOrders from './pages/PurchaseOrders';
 import Locations from './pages/Locations';
+import DispatchManagement from './pages/DispatchManagement';
 
 function AppLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -79,6 +80,7 @@ function App() {
                                             <Route path="/vendors" element={<Vendors />} />
                                             <Route path="/purchase-orders" element={<PurchaseOrders />} />
                                             <Route path="/locations" element={<Locations />} />
+                                            <Route path="/dispatch-management" element={<DispatchManagement />} />
                                             <Route path="/" element={<Navigate to="/dashboard" replace />} />
                                             <Route path="*" element={<Navigate to="/dashboard" replace />} />
                                         </Routes>

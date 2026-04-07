@@ -64,6 +64,10 @@ export const schemas = {
         price: Joi.number().min(0).required(),
         location: Joi.string().optional().trim(),
         description: Joi.string().optional().allow('').trim(),
+        size: Joi.string().optional().allow('').trim(),
+        brand: Joi.string().optional().allow('').trim(),
+        pcsPerBox: Joi.number().min(1).default(1),
+        sqFtPerPc: Joi.number().min(0).optional(),
         customFields: Joi.any().optional(),
     }),
 
@@ -76,6 +80,10 @@ export const schemas = {
         price: Joi.number().min(0).optional(),
         location: Joi.string().optional().trim(),
         description: Joi.string().optional().allow('').trim(),
+        size: Joi.string().optional().allow('').trim(),
+        brand: Joi.string().optional().allow('').trim(),
+        pcsPerBox: Joi.number().min(1).optional(),
+        sqFtPerPc: Joi.number().min(0).optional(),
         customFields: Joi.any().optional(),
     }),
 

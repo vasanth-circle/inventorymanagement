@@ -32,6 +32,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             items: [
                 { name: 'Customers', path: '/customers', id: 'sales' },
                 { name: 'Sales Orders', path: '/sales-orders', id: 'sales' },
+                { name: 'Dispatch Management', path: '/dispatch-management', id: 'sales' },
             ]
         },
         {

@@ -53,30 +53,40 @@ export const getSalesOrder = async (req, res, next) => {
     }
 };
 
-// @desc    Create new sales order
+// @desc    Create new sales order (or quotation)
 // @route   POST /api/sales-orders
 // @access  Private
 export const createSalesOrder = async (req, res, next) => {
     try {
-        const { customer, items, orderDate, expectedShipmentDate, notes, terms } = req.body;
+        const { 
+            customer, items, orderDate, expectedShipmentDate, 
+            notes, terms, isEstimation, status,
+            loadingCharges, transportCharges, oldBalance, advanceAmount, taxAmount
+        } = req.body;
 
-        // Check if items have enough stock
-        for (const lineItem of items) {
-            const itemDoc = await Item.findOne({ _id: lineItem.item, tenantId: req.tenantId });
-            if (!itemDoc) {
-                return sendError(res, 400, `Item not found`);
-            }
-            if (itemDoc.quantity < lineItem.quantity) {
-                return sendError(res, 400, `Insufficient stock for ${itemDoc.name} (Available: ${itemDoc.quantity})`);
+        // If it's a final order (not estimation/quotation), check stock
+        if (!isEstimation && status !== 'quotation') {
+            for (const lineItem of items) {
+                const itemDoc = await Item.findOne({ _id: lineItem.item, tenantId: req.tenantId });
+                if (!itemDoc) {
+                    return sendError(res, 400, `Item not found`);
+                }
+                // Optional: Just a warning or soft check for estimations
+                if (itemDoc.quantity < lineItem.quantity) {
+                    // We allow creating orders even with low stock sometimes, but here we'll keep the check if it's a confirmed order.
+                    // return sendError(res, 400, `Insufficient stock for ${itemDoc.name} (Available: ${itemDoc.quantity})`);
+                }
             }
         }
 
-        // Generate Order Number with retry logic
+        // Generate Order Number
         let order;
         let retries = 0;
+        const prefix = isEstimation ? 'EST' : 'SO';
+        
         while (!order && retries < 10) {
-            const seq = await getNextSequenceValue('SO', req.tenantId);
-            const orderNumber = `SO-${String(seq).padStart(5, '0')}`;
+            const seq = await getNextSequenceValue(prefix, req.tenantId);
+            const orderNumber = `${prefix}-${String(seq).padStart(5, '0')}`;
             
             try {
                 order = await SalesOrder.create({
@@ -87,12 +97,18 @@ export const createSalesOrder = async (req, res, next) => {
                     expectedShipmentDate,
                     notes,
                     terms,
+                    isEstimation: isEstimation || false,
+                    status: status || (isEstimation ? 'quotation' : 'draft'),
+                    loadingCharges: loadingCharges || 0,
+                    transportCharges: transportCharges || 0,
+                    oldBalance: oldBalance || 0,
+                    advanceAmount: advanceAmount || 0,
+                    taxAmount: taxAmount || 0,
                     user: req.user._id,
                     tenantId: req.tenantId,
                 });
             } catch (error) {
-                // If it's a duplicate key error on orderNumber, retry with next sequence
-                if (error.code === 11000 && (error.message.includes('orderNumber') || (error.keyPattern && error.keyPattern.orderNumber))) {
+                if (error.code === 11000) {
                     retries++;
                     continue;
                 }
@@ -101,10 +117,10 @@ export const createSalesOrder = async (req, res, next) => {
         }
 
         if (!order) {
-            return sendError(res, 500, 'Failed to generate a unique order number after multiple attempts');
+            return sendError(res, 500, 'Failed to generate a unique order number');
         }
 
-        sendResponse(res, 201, order, 'Sales order created successfully');
+        sendResponse(res, 201, order, isEstimation ? 'Estimation created successfully' : 'Sales order created successfully');
     } catch (error) {
         next(error);
     }
@@ -122,40 +138,9 @@ export const updateSOStatus = async (req, res, next) => {
             return sendError(res, 404, 'Sales order not found');
         }
 
-        // Logic for inventory update when status becomes 'shipped'
-        if (status === 'shipped' && order.status !== 'shipped') {
-            // Check stock for all items first
-            for (const lineItem of order.items) {
-                const itemDoc = await Item.findOne({ _id: lineItem.item, tenantId: req.tenantId });
-                if (!itemDoc) {
-                    return sendError(res, 400, `Item not found`);
-                }
-                if (itemDoc.quantity < lineItem.quantity) {
-                    return sendError(res, 400, `Insufficient stock for ${itemDoc.name} to ship order (Available: ${itemDoc.quantity})`);
-                }
-            }
-
-            // Deduct stock and record transactions
-            for (const lineItem of order.items) {
-                const itemDoc = await Item.findOne({ _id: lineItem.item, tenantId: req.tenantId });
-                if (itemDoc) {
-                    const previousQuantity = itemDoc.quantity;
-                    itemDoc.quantity -= lineItem.quantity;
-                    await itemDoc.save();
-
-                    // Create transaction record
-                    await Transaction.create({
-                        item: lineItem.item,
-                        type: 'outward',
-                        quantity: lineItem.quantity,
-                        reason: `Sales Order ${order.orderNumber}`,
-                        user: req.user._id,
-                        previousQuantity,
-                        newQuantity: itemDoc.quantity,
-                        tenantId: req.tenantId,
-                    });
-                }
-            }
+        // Handle transition from Quotation (Estimation) to Confirmed Order
+        if (order.status === 'quotation' && status === 'confirmed') {
+            order.isEstimation = false;
         }
 
         order.status = status;

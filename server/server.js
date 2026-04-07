@@ -21,6 +21,7 @@ import salesOrderRoutes from './routes/salesOrderRoutes.js';
 import vendorRoutes from './routes/vendorRoutes.js';
 import purchaseOrderRoutes from './routes/purchaseOrderRoutes.js';
 import locationRoutes from './routes/locationRoutes.js';
+import dispatchRoutes from './routes/dispatchRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -75,6 +76,7 @@ app.use('/api/sales-orders', salesOrderRoutes);
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/purchase-orders', purchaseOrderRoutes);
 app.use('/api/locations', locationRoutes);
+app.use('/api/dispatches', dispatchRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

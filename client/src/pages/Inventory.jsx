@@ -24,7 +24,11 @@ const Inventory = () => {
         price: '',
         minStockThreshold: '',
         location: '',
-        description: ''
+        description: '',
+        brand: '',
+        size: '',
+        pcsPerBox: 1,
+        sqFtPerPc: 0
     });
     const [editCustomFields, setEditCustomFields] = useState([]);
     const [editLoading, setEditLoading] = useState(false);
@@ -37,7 +41,11 @@ const Inventory = () => {
         price: '',
         minStockThreshold: '',
         location: '',
-        description: ''
+        description: '',
+        brand: '',
+        size: '',
+        pcsPerBox: 1,
+        sqFtPerPc: 0
     });
     const [createCustomFields, setCreateCustomFields] = useState([]);
     const [createLoading, setCreateLoading] = useState(false);
@@ -78,7 +86,11 @@ const Inventory = () => {
             price: item.price,
             minStockThreshold: item.minStockThreshold,
             location: item.location || '',
-            description: item.description || ''
+            description: item.description || '',
+            brand: item.brand || '',
+            size: item.size || '',
+            pcsPerBox: item.pcsPerBox || 1,
+            sqFtPerPc: item.sqFtPerPc || 0
         });
 
         // Convert customFields Map to array
@@ -186,7 +198,11 @@ const Inventory = () => {
                     price: '',
                     minStockThreshold: '',
                     location: '',
-                    description: ''
+                    description: '',
+                    brand: '',
+                    size: '',
+                    pcsPerBox: 1,
+                    sqFtPerPc: 0
                 });
                 setCreateCustomFields([]);
                 loadItems();
@@ -483,6 +499,49 @@ const Inventory = () => {
                                         ))}
                                     </select>
                                 </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+                                    <input
+                                        type="text"
+                                        name="brand"
+                                        value={editFormData.brand}
+                                        onChange={handleEditChange}
+                                        placeholder="e.g. Kajaria"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Size (Dimensions)</label>
+                                    <input
+                                        type="text"
+                                        name="size"
+                                        value={editFormData.size}
+                                        onChange={handleEditChange}
+                                        placeholder="e.g. 4x4 or 18x12"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pcs per Box</label>
+                                    <input
+                                        type="number"
+                                        name="pcsPerBox"
+                                        value={editFormData.pcsPerBox}
+                                        onChange={handleEditChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Sq.Ft per Piece</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        name="sqFtPerPc"
+                                        value={editFormData.sqFtPerPc}
+                                        onChange={handleEditChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                    />
+                                </div>
                             </div>
 
                             <div className="space-y-4">
@@ -625,6 +684,49 @@ const Inventory = () => {
                                             <option key={loc._id} value={loc.name}>{loc.name}</option>
                                         ))}
                                     </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+                                    <input
+                                        type="text"
+                                        name="brand"
+                                        value={createFormData.brand}
+                                        onChange={handleCreateChange}
+                                        placeholder="e.g. Kajaria"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Size (Dimensions)</label>
+                                    <input
+                                        type="text"
+                                        name="size"
+                                        value={createFormData.size}
+                                        onChange={handleCreateChange}
+                                        placeholder="e.g. 4x4 or 18x12"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pcs per Box</label>
+                                    <input
+                                        type="number"
+                                        name="pcsPerBox"
+                                        value={createFormData.pcsPerBox}
+                                        onChange={handleCreateChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Sq.Ft per Piece</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        name="sqFtPerPc"
+                                        value={createFormData.sqFtPerPc}
+                                        onChange={handleCreateChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                    />
                                 </div>
                             </div>
 

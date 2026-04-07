@@ -23,10 +23,24 @@ const salesOrderSchema = new mongoose.Schema({
             required: true,
         },
         name: String,
-        quantity: {
+        brand: String,
+        size: String,
+        boxCount: {
+            type: Number,
+            default: 0,
+        },
+        totalPcs: {
+            type: Number,
+            default: 0,
+        },
+        totalSqFt: {
+            type: Number,
+            default: 0,
+        },
+        quantity: { // For tiles, this might be total SqFt or total Pcs depending on pricing.
             type: Number,
             required: true,
-            min: 1,
+            min: 0,
         },
         price: {
             type: Number,
@@ -34,14 +48,42 @@ const salesOrderSchema = new mongoose.Schema({
         },
         total: Number,
     }],
-    totalAmount: {
+    totalAmount: { // Final net amount
         type: Number,
         required: true,
     },
+    itemsTotal: { // Sum of individual items
+        type: Number,
+        default: 0,
+    },
+    taxAmount: {
+        type: Number,
+        default: 0,
+    },
+    loadingCharges: {
+        type: Number,
+        default: 0,
+    },
+    transportCharges: {
+        type: Number,
+        default: 0,
+    },
+    oldBalance: {
+        type: Number,
+        default: 0,
+    },
+    advanceAmount: {
+        type: Number,
+        default: 0,
+    },
+    isEstimation: {
+        type: Boolean,
+        default: false,
+    },
     status: {
         type: String,
-        enum: ['draft', 'confirmed', 'packed', 'shipped', 'delivered', 'invoiced', 'void'],
-        default: 'draft',
+        enum: ['quotation', 'confirmed', 'dispatched', 'partially_dispatched', 'completed', 'cancelled', 'draft', 'packed', 'shipped', 'delivered', 'invoiced', 'void'],
+        default: 'quotation',
     },
     orderDate: {
         type: Date,
@@ -64,7 +106,19 @@ salesOrderSchema.pre('validate', function (next) {
     this.items.forEach(item => {
         item.total = item.quantity * item.price;
     });
-    this.totalAmount = this.items.reduce((sum, item) => sum + item.total, 0);
+    
+    this.itemsTotal = this.items.reduce((sum, item) => sum + item.total, 0);
+    
+    // Final Amount = Items + Loading + Transport + Tax + OldBalance - Advance
+    this.totalAmount = (
+        this.itemsTotal + 
+        (Number(this.loadingCharges) || 0) + 
+        (Number(this.transportCharges) || 0) + 
+        (Number(this.taxAmount) || 0) + 
+        (Number(this.oldBalance) || 0) - 
+        (Number(this.advanceAmount) || 0)
+    );
+    
     next();
 });
 
