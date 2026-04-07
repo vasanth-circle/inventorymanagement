@@ -63,6 +63,7 @@ const customerSchema = new mongoose.Schema({
 });
 
 customerSchema.index({ name: 'text', companyName: 'text', email: 'text', tenantId: 1 });
+customerSchema.index({ name: 1, tenantId: 1 }, { unique: true });
 customerSchema.index({ isActive: 1, tenantId: 1 });
 
 const Customer = appConn.model('Customer', customerSchema);

@@ -50,6 +50,7 @@ const vendorSchema = new mongoose.Schema({
 });
 
 vendorSchema.index({ name: 'text', companyName: 'text', tenantId: 1 });
+vendorSchema.index({ name: 1, tenantId: 1 }, { unique: true });
 
 const Vendor = appConn.model('Vendor', vendorSchema);
 

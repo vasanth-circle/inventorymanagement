@@ -22,6 +22,7 @@ import vendorRoutes from './routes/vendorRoutes.js';
 import purchaseOrderRoutes from './routes/purchaseOrderRoutes.js';
 import locationRoutes from './routes/locationRoutes.js';
 import dispatchRoutes from './routes/dispatchRoutes.js';
+import fixLegacyIndexes from './utils/fixIndexes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -92,10 +93,15 @@ const startServer = async () => {
     const PORT = process.env.PORT || 5000;
 
     // Start listening immediately to avoid 502 Bad Gateway
-    const server = app.listen(PORT, '0.0.0.0', () => {
+    const server = app.listen(PORT, '0.0.0.0', async () => {
         console.log(`Server running on port ${PORT}`);
         console.log(`Environment: ${process.env.NODE_ENV}`);
         console.log('Waiting for database connections...');
+        
+        // Wait for connection then fix indexes
+        appConn.on('connected', async () => {
+            await fixLegacyIndexes();
+        });
     });
 
     try {
