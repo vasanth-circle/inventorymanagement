@@ -1,158 +1,217 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { InventoryContext } from '../context/InventoryContext';
+import api from '../utils/api';
 import toast from 'react-hot-toast';
 
 const StockReturn = () => {
-    const { items, fetchItems, createTransaction } = useContext(InventoryContext);
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
+    const [items, setItems] = useState([]);
+    const [customers, setCustomers] = useState([]);
+    const [vendors, setVendors] = useState([]);
+    
     const [formData, setFormData] = useState({
         item: '',
         returnType: 'customer',
         quantity: '',
+        referenceOrder: '',
+        customer: '',
+        vendor: '',
         reason: '',
         notes: '',
     });
 
     useEffect(() => {
-        fetchItems({ limit: 1000 });
+        fetchInitialData();
     }, []);
 
+    const fetchInitialData = async () => {
+        try {
+            const [itemsRes, custRes, vendRes] = await Promise.all([
+                api.get('/items?limit=1000'),
+                api.get('/customers?limit=1000'),
+                api.get('/vendors?limit=1000')
+            ]);
+            setItems(itemsRes.data.data.items);
+            setCustomers(custRes.data.data.customers);
+            setVendors(vendRes.data.data.vendors);
+        } catch (error) {
+            toast.error('Failed to load initial data');
+        }
+    };
+
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!formData.item || !formData.quantity || !formData.returnType) {
+            return toast.error('Please fill all required fields');
+        }
+
         setLoading(true);
-
         try {
-            const result = await createTransaction({
-                item: formData.item,
-                type: 'return',
-                returnType: formData.returnType,
-                quantity: parseInt(formData.quantity),
-                reason: formData.reason,
-                notes: formData.notes,
+            await api.post('/transactions/return', {
+                ...formData,
+                quantity: parseInt(formData.quantity)
             });
-
-            if (result.success) {
-                toast.success('Stock return recorded successfully!');
-                navigate('/inventory');
-            }
+            toast.success('Return recorded successfully');
+            navigate('/inventory');
         } catch (error) {
-            toast.error('Failed to record stock return');
+            toast.error(error.response?.data?.message || 'Failed to record return');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold text-gray-900">Stock Return</h1>
-                <p className="text-gray-600 mt-2">Record items returned to stock</p>
+        <div className="p-1 space-y-6 max-w-[1000px] mx-auto">
+             {/* Header Section */}
+             <div className="flex justify-between items-end pb-2 border-b border-gray-100">
+                <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-white shadow-sm border border-gray-100 rounded-lg flex items-center justify-center text-xl">↩️</div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-800">Stock Return Management</h1>
+                        <p className="text-xs text-gray-400 font-medium">Record returns from customers or to vendors</p>
+                    </div>
+                </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Select Item <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                            name="item"
-                            value={formData.item}
-                            onChange={handleChange}
-                            required
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                            <option value="">-- Choose an item --</option>
-                            {items.map(item => (
-                                <option key={item._id} value={item._id}>
-                                    {item.name} {item.barcode ? `(${item.barcode})` : ''} - Current: {item.quantity}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Return Type <span className="text-red-500">*</span>
-                            </label>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <form onSubmit={handleSubmit} className="divide-y divide-gray-50">
+                    {/* Basic Info */}
+                    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Return Type</label>
                             <select
                                 name="returnType"
                                 value={formData.returnType}
                                 onChange={handleChange}
-                                required
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                className="w-full h-11 px-4 bg-gray-50 border-none rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all cursor-pointer"
                             >
-                                <option value="customer">Return from Customer (Adds to Stock)</option>
-                                <option value="vendor">Return to Vendor (Removes from Stock)</option>
+                                <option value="customer">Return from Customer (Stock In)</option>
+                                <option value="vendor">Return to Vendor (Stock Out)</option>
                             </select>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Quantity <span className="text-red-500">*</span>
-                            </label>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Select Item</label>
+                            <select
+                                name="item"
+                                value={formData.item}
+                                onChange={handleChange}
+                                required
+                                className="w-full h-11 px-4 bg-gray-50 border-none rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all cursor-pointer"
+                            >
+                                <option value="">-- Choose Item --</option>
+                                {items.map(i => (
+                                    <option key={i._id} value={i._id}>{i.name} ({i.brand} - {i.size})</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Specific Details */}
+                    <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50/30">
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Quantity</label>
                             <input
                                 type="number"
                                 name="quantity"
-                                required
-                                min="1"
                                 value={formData.quantity}
                                 onChange={handleChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                placeholder="Enter quantity"
+                                required
+                                min="1"
+                                placeholder="0.00"
+                                className="w-full h-11 px-4 bg-white border border-gray-100 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all"
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Reason
-                            </label>
+                        {formData.returnType === 'customer' ? (
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Customer</label>
+                                <select
+                                    name="customer"
+                                    value={formData.customer}
+                                    onChange={handleChange}
+                                    className="w-full h-11 px-4 bg-white border border-gray-100 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all"
+                                >
+                                    <option value="">-- Select Customer --</option>
+                                    {customers.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                                </select>
+                            </div>
+                        ) : (
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Vendor</label>
+                                <select
+                                    name="vendor"
+                                    value={formData.vendor}
+                                    onChange={handleChange}
+                                    className="w-full h-11 px-4 bg-white border border-gray-100 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all"
+                                >
+                                    <option value="">-- Select Vendor --</option>
+                                    {vendors.map(v => <option key={v._id} value={v._id}>{v.name}</option>)}
+                                </select>
+                        </div>
+                        )}
+
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Order # / Ref</label>
+                            <input
+                                type="text"
+                                name="referenceOrder"
+                                value={formData.referenceOrder}
+                                onChange={handleChange}
+                                placeholder="Ref Order Number"
+                                className="w-full h-11 px-4 bg-white border border-gray-100 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Reasons & Notes */}
+                    <div className="p-6 space-y-6">
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Return Reason</label>
                             <input
                                 type="text"
                                 name="reason"
                                 value={formData.reason}
                                 onChange={handleChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                placeholder="Customer Return, Damaged, etc."
+                                placeholder="e.g., Wrong Size, Damaged on arrival, Customer Choice"
+                                className="w-full h-11 px-4 bg-gray-50 border-none rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all"
+                            />
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Internal Notes</label>
+                            <textarea
+                                name="notes"
+                                value={formData.notes}
+                                onChange={handleChange}
+                                rows="3"
+                                placeholder="Any additional internal details..."
+                                className="w-full p-4 bg-gray-50 border-none rounded-lg text-sm font-medium text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all"
                             />
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Notes
-                        </label>
-                        <textarea
-                            name="notes"
-                            value={formData.notes}
-                            onChange={handleChange}
-                            rows="3"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                            placeholder="Additional details (optional)"
-                        />
-                    </div>
-
-                    <div className="flex space-x-4">
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="flex-1 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-                        >
-                            {loading ? 'Processing...' : '↩️ Record Return'}
-                        </button>
+                    {/* Action Bar */}
+                    <div className="p-6 bg-gray-50 flex items-center justify-end space-x-3">
                         <button
                             type="button"
                             onClick={() => navigate('/inventory')}
-                            className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                            className="px-6 py-2.5 text-xs font-black text-gray-400 uppercase tracking-widest hover:text-gray-600"
                         >
                             Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="px-8 py-2.5 bg-rose-600 text-white rounded-lg text-xs font-black uppercase tracking-widest hover:bg-rose-700 transition-all shadow-lg hover:shadow-rose-100 disabled:opacity-50"
+                        >
+                            {loading ? 'Processing...' : 'Confirm Stock Return ↩️'}
                         </button>
                     </div>
                 </form>

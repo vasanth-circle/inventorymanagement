@@ -3,10 +3,15 @@ import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import { formatCurrency } from '../utils/helpers';
 import toast from 'react-hot-toast';
+import { 
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, 
+    BarChart, Bar, Cell 
+} from 'recharts';
 
 const Dashboard = () => {
     const [stats, setStats] = useState(null);
     const [lowStockItems, setLowStockItems] = useState([]);
+    const [trendData, setTrendData] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -16,17 +21,34 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
         try {
             setLoading(true);
-            const [statsRes, lowStockRes] = await Promise.all([
+            const [statsRes, lowStockRes, trendRes] = await Promise.all([
                 api.get('/dashboard/stats'),
                 api.get('/dashboard/low-stock'),
+                api.get('/dashboard/stock-trend'),
             ]);
             setStats(statsRes.data);
             setLowStockItems(lowStockRes.data);
+            
+            // Process trend data for Recharts
+            const processedTrend = processTrendData(trendRes.data);
+            setTrendData(processedTrend);
         } catch (error) {
             toast.error('Failed to fetch dashboard data');
         } finally {
             setLoading(false);
         }
+    };
+
+    const processTrendData = (data) => {
+        const dateMap = {};
+        data.forEach(item => {
+            const date = item._id.date;
+            if (!dateMap[date]) {
+                dateMap[date] = { date, inward: 0, outward: 0 };
+            }
+            dateMap[date][item._id.type] = item.total;
+        });
+        return Object.values(dateMap).sort((a, b) => new Date(a.date) - new Date(b.date));
     };
 
     if (loading) {
@@ -79,6 +101,54 @@ const Dashboard = () => {
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+
+                    {/* Stock Movement Graph */}
+                    <div className="zoho-card p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Stock Movement Trend (Last 7 Days)</h3>
+                            <div className="flex items-center space-x-3">
+                                <div className="flex items-center space-x-1">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase">Inward</span>
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                    <div className="w-2 h-2 rounded-full bg-rose-500"></div>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase">Sales</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="h-[250px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={trendData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorIn" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
+                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                        </linearGradient>
+                                        <linearGradient id="colorOut" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.1}/>
+                                            <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis 
+                                        dataKey="date" 
+                                        axisLine={false} 
+                                        tickLine={false} 
+                                        tick={{fontSize: 10, fill: '#94a3b8', fontWeight: 600}}
+                                        tickFormatter={(str) => new Date(str).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                                    />
+                                    <YAxis hide />
+                                    <Tooltip 
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '10px', fontWeight: 'bold' }}
+                                        itemStyle={{ padding: '2px 0' }}
+                                    />
+                                    <Area type="monotone" dataKey="inward" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIn)" />
+                                    <Area type="monotone" dataKey="outward" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorOut)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
 

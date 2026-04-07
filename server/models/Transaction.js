@@ -55,6 +55,22 @@ const transactionSchema = new mongoose.Schema({
         type: String,
         trim: true,
     },
+    referenceOrder: {
+        type: String, // Dynamic reference to SO or PO handle
+        trim: true,
+    },
+    returnType: {
+        type: String,
+        enum: ['customer', 'vendor'],
+    },
+    customer: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Customer',
+    },
+    vendor: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Vendor',
+    },
     tenantId: {
         type: String,
         required: [true, 'Tenant ID is required'],

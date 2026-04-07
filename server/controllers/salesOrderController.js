@@ -82,11 +82,11 @@ export const createSalesOrder = async (req, res, next) => {
         // Generate Order Number
         let order;
         let retries = 0;
-        const prefix = isEstimation ? 'EST' : 'SO';
+        const prefix = isEstimation ? 'EST' : 'INV';
         
         while (!order && retries < 10) {
             const seq = await getNextSequenceValue(prefix, req.tenantId);
-            const orderNumber = `${prefix}-${String(seq).padStart(5, '0')}`;
+            const orderNumber = isEstimation ? `E-${seq}` : `${seq}`;
             
             try {
                 order = await SalesOrder.create({

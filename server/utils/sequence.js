@@ -7,10 +7,20 @@ import Counter from '../models/Counter.js';
  * @returns {Promise<number>} - The next sequence value
  */
 export const getNextSequenceValue = async (id, tenantId) => {
-    const sequenceDocument = await Counter.findOneAndUpdate(
+    let sequenceDocument = await Counter.findOneAndUpdate(
         { id, tenantId },
         { $inc: { seq: 1 } },
         { new: true, upsert: true }
     );
+
+    // If sequence exceeds 1000, reset it back to 1
+    if (sequenceDocument.seq > 1000) {
+        sequenceDocument = await Counter.findOneAndUpdate(
+            { id, tenantId },
+            { $set: { seq: 1 } },
+            { new: true }
+        );
+    }
+    
     return sequenceDocument.seq;
 };

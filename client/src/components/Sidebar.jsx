@@ -22,6 +22,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 { name: 'Locations', path: '/locations', id: 'inventory' },
                 { name: 'Bulk Import', path: '/bulk-import', id: 'bulk-import' },
                 { name: 'Stock Summary', path: '/stocks', id: 'stocks' },
+                { name: 'Stock Returns', path: '/stock-return', id: 'stock-return' },
                 { name: 'Make Adjustment', path: '/stock-adjustment', id: 'stocks' },
             ]
         },

@@ -142,61 +142,6 @@ export const stockOutward = async (req, res, next) => {
     }
 };
 
-// @desc    Create stock return transaction
-// @route   POST /api/transactions/return
-// @access  Private
-export const stockReturn = async (req, res, next) => {
-    try {
-        const { item, quantity, returnType, reason, notes } = req.body;
-
-        const itemDoc = await Item.findOne({ _id: item, tenantId: req.tenantId });
-        if (!itemDoc) {
-            return sendError(res, 404, 'Item not found');
-        }
-
-        const previousQuantity = itemDoc.quantity;
-        let newQuantity = previousQuantity;
-        let finalReason = reason;
-        
-        if (returnType === 'vendor') {
-            if (previousQuantity < quantity) {
-                return sendError(res, 400, 'Insufficient stock to return to vendor');
-            }
-            newQuantity -= parseInt(quantity);
-            if (!finalReason) finalReason = 'Return to Vendor';
-        } else {
-            // Default is customer return (inward to stock)
-            newQuantity += parseInt(quantity);
-            if (!finalReason) finalReason = 'Customer Return';
-        }
-
-        // Update item quantity
-        itemDoc.quantity = newQuantity;
-        await itemDoc.save();
-
-        // Create transaction record
-        const transaction = await Transaction.create({
-            item,
-            type: 'return', // Could be 'return_outward' or 'outward', but keeping 'return' for logs.
-            quantity,
-            reason: finalReason,
-            notes,
-            user: req.user._id,
-            previousQuantity,
-            newQuantity,
-            toLocation: itemDoc.location,
-            tenantId: req.tenantId
-        });
-
-        const populatedTransaction = await Transaction.findOne({ _id: transaction._id, tenantId: req.tenantId })
-            .populate('item', 'name barcode')
-            .populate({ path: 'user', model: User, select: 'name email' });
-
-        res.status(201).json(populatedTransaction);
-    } catch (error) {
-        next(error);
-    }
-};
 
 // @desc    Create stock transfer transaction
 // @route   POST /api/transactions/transfer
@@ -359,6 +304,62 @@ export const getItemHistory = async (req, res, next) => {
             .sort({ createdAt: -1 });
 
         res.json(transactions);
+    } catch (error) {
+        next(error);
+    }
+};
+// @desc    Create stock return transaction
+// @route   POST /api/transactions/return
+// @access  Private
+export const stockReturn = async (req, res, next) => {
+    try {
+        const { item: itemId, quantity, returnType, referenceOrder, reason, notes, customer, vendor } = req.body;
+
+        const itemDoc = await Item.findOne({ _id: itemId, tenantId: req.tenantId });
+        if (!itemDoc) {
+            return sendError(res, 404, 'Item not found');
+        }
+
+        const qty = parseInt(quantity) || 0;
+        const previousQuantity = itemDoc.quantity;
+        let newQuantity = previousQuantity;
+
+        // returnType 'customer' adds to stock, 'vendor' removes from stock
+        if (returnType === 'customer') {
+            newQuantity += qty;
+        } else if (returnType === 'vendor') {
+            if (previousQuantity < qty) {
+                return sendError(res, 400, 'Insufficient stock for return to vendor');
+            }
+            newQuantity -= qty;
+        }
+
+        // Update item quantity
+        itemDoc.quantity = newQuantity;
+        await itemDoc.save();
+
+        // Create transaction record
+        const transaction = await Transaction.create({
+            item: itemId,
+            type: 'return',
+            returnType,
+            quantity: qty,
+            referenceOrder,
+            reason,
+            notes,
+            customer: customer || null,
+            vendor: vendor || null,
+            user: req.user._id,
+            previousQuantity,
+            newQuantity,
+            tenantId: req.tenantId
+        });
+
+        const populatedTransaction = await Transaction.findOne({ _id: transaction._id, tenantId: req.tenantId })
+            .populate('item', 'name barcode')
+            .populate({ path: 'user', model: User, select: 'name email' });
+
+        sendResponse(res, 201, populatedTransaction, `Stock return from ${returnType} recorded successfully`);
     } catch (error) {
         next(error);
     }
