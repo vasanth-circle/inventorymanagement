@@ -36,10 +36,22 @@ export const schemas = {
     updateUser: Joi.object({
         name: Joi.string().optional().trim(),
         email: Joi.string().email().optional().trim().lowercase(),
-        role: Joi.string().valid('admin', 'manager', 'staff', 'tenant_owner').optional(),
+        role: Joi.string().valid('admin', 'manager', 'staff', 'tenant_owner', 'tenant_admin').optional(),
+        inventoryRole: Joi.string().optional().allow('', null),
         menuAccess: Joi.string().valid('all', 'specific', null).optional(),
         allowedMenus: Joi.array().items(Joi.string().allow('')).optional(),
         isActive: Joi.boolean().optional(),
+    }),
+
+    addUser: Joi.object({
+        name: Joi.string().required().trim(),
+        email: Joi.string().email().required().trim().lowercase(),
+        password: Joi.string().min(6).required(),
+        role: Joi.string().valid('admin', 'manager', 'staff', 'tenant_owner', 'tenant_admin').optional().default('staff'),
+        inventoryRole: Joi.string().optional().allow('', null),
+        isActive: Joi.boolean().optional().default(true),
+        menuAccess: Joi.string().valid('all', 'specific', null).optional().default('all'),
+        allowedMenus: Joi.array().items(Joi.string().allow('')).optional().default([]),
     }),
 
     createItem: Joi.object({
