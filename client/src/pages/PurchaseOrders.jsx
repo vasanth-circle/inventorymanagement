@@ -277,9 +277,9 @@ const PurchaseOrders = () => {
                                     <thead className="bg-gray-50">
                                         <tr>
                                             <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Item Name</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24">Expected</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32">Received</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32 text-red-600">Damaged</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-center">Expected</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-36 text-center text-green-700 font-bold">Good Qty (to Stock)</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32 text-center text-red-600 font-bold">Damaged Qty</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">

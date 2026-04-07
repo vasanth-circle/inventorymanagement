@@ -153,23 +153,21 @@ export const receivePurchaseOrder = async (req, res, next) => {
                 const recQty = parseInt(rItem.receivedQuantity) || 0;
                 const dmgQty = parseInt(rItem.damagedQuantity) || 0;
 
-                const goodStock = recQty - dmgQty;
-                
-                if (goodStock > 0) {
-                    itemDoc.quantity += goodStock;
+                if (recQty > 0) {
+                    itemDoc.quantity += recQty;
                 }
                 if (dmgQty > 0) {
                     itemDoc.damagedQuantity += dmgQty;
                 }
 
-                if (goodStock > 0 || dmgQty > 0) {
+                if (recQty > 0 || dmgQty > 0) {
                     await itemDoc.save();
 
                     // Create transaction record
                     await Transaction.create({
                         item: rItem.item,
                         type: 'inward',
-                        quantity: goodStock > 0 ? goodStock : 0,
+                        quantity: recQty > 0 ? recQty : 0,
                         damagedQuantity: dmgQty,
                         reason: `PO ${order.orderNumber} Received`,
                         user: req.user._id,

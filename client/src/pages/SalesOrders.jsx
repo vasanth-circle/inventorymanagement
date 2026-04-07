@@ -88,6 +88,7 @@ const SalesOrders = () => {
         if (field === 'item') {
             const selectedItem = items.find(i => i._id === value);
             if (selectedItem) {
+                newItems[index].name = selectedItem.name;
                 newItems[index].price = selectedItem.price;
                 newItems[index].brand = selectedItem.brand || '';
                 newItems[index].size = selectedItem.size || '';
@@ -351,10 +352,10 @@ const SalesOrders = () => {
                                     <table className="w-full text-left min-w-[800px]">
                                         <thead className="bg-gray-100">
                                             <tr>
-                                                <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider">Item</th>
+                                                <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider">Item Name / Brand</th>
                                                 <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-24">Boxes</th>
-                                                <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-32">Qty (SqFt/Pcs)</th>
-                                                <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-28">Rate (₹)</th>
+                                                <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-32">Billing Qty (SqFt)</th>
+                                                <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-32">Rate (₹/sqft)</th>
                                                 <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider text-right w-32">Total</th>
                                             </tr>
                                         </thead>
