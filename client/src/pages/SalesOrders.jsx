@@ -51,7 +51,8 @@ const SalesOrders = () => {
             });
             setOrders(res.data.data.orders);
         } catch (error) {
-            toast.error('Failed to fetch sales orders');
+            console.error('Fetch Orders Error:', error.response || error);
+            toast.error(`Order list failed: ${error.response?.data?.message || 'Server Error'}`);
         } finally {
             setLoading(false);
         }
@@ -502,8 +503,8 @@ const SalesOrders = () => {
             )}
 
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 overflow-y-auto backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl my-8">
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm overflow-hidden">
+                    <div className="bg-white rounded-2xl shadow-2xl w-[95%] max-w-5xl max-h-[95vh] flex flex-col overflow-hidden">
                         <div className="px-8 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-2xl">
                             <div>
                                 <h2 className="text-2xl font-black text-gray-800">
@@ -511,9 +512,10 @@ const SalesOrders = () => {
                                 </h2>
                                 <p className="text-xs text-gray-500 font-medium">Specialized Tiles & Granites Billing</p>
                             </div>
-                            <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600 text-3xl">&times;</button>
+                            <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600 text-3xl transition-colors">&times;</button>
                         </div>
-                        <form onSubmit={handleSubmit} className="p-8 space-y-8">
+                        <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+                            <form onSubmit={handleSubmit} className="space-y-8 pb-4">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                                 <div className="md:col-span-1">
                                     <label className="block text-sm font-bold text-gray-700 mb-2">Select Customer *</label>
@@ -660,16 +662,22 @@ const SalesOrders = () => {
                                             <span className="text-primary-700">₹{netTotal.toLocaleString()}</span>
                                         </div>
                                     </div>
-                                </div>
                             </div>
-
-                            <div className="flex justify-end gap-4 pt-6 border-t">
-                                <button type="button" onClick={handleCloseModal} className="px-8 py-3 text-gray-600 font-bold border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">Cancel</button>
-                                <button type="submit" className="px-10 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 font-black shadow-lg shadow-primary-200 transition-all active:scale-95">
-                                    {editingOrder ? '💾 Update Changes' : (formData.isEstimation ? '💾 Save Quotation' : '✅ Generate Final Bill')}
-                                </button>
-                            </div>
+                        </div>
                         </form>
+                        </div>
+                        <div className="flex justify-end gap-4 p-6 border-t bg-gray-50 rounded-b-2xl">
+                            <button type="button" onClick={handleCloseModal} className="px-8 py-3 text-gray-600 font-bold border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">Cancel</button>
+                            <button 
+                                onClick={() => {
+                                    const form = document.querySelector('form');
+                                    if(form) form.requestSubmit();
+                                }}
+                                className="px-10 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 font-black shadow-lg shadow-primary-200 transition-all active:scale-95"
+                            >
+                                {editingOrder ? '💾 Update Changes' : (formData.isEstimation ? '💾 Save Quotation' : '✅ Generate Final Bill')}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
