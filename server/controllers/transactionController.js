@@ -46,7 +46,7 @@ export const upload = multer({
 // @access  Private
 export const stockInward = async (req, res, next) => {
     try {
-        const { item: itemId, quantity, damagedQuantity, reason, notes } = req.body;
+        const { item: itemId, quantity, damagedQuantity, reason, notes, batchNumber, price } = req.body;
 
         let invoiceImage = '';
         if (req.file) {
@@ -58,15 +58,35 @@ export const stockInward = async (req, res, next) => {
             return sendError(res, 404, 'Item not found');
         }
 
+        const qty = parseInt(quantity);
         const previousQuantity = itemDoc.quantity;
-        const newQuantity = previousQuantity + parseInt(quantity);
+        const newQuantity = previousQuantity + qty;
         const dmgQty = parseInt(damagedQuantity) || 0;
+        const rate = parseFloat(price) || itemDoc.price;
 
         // Update item quantity
         itemDoc.quantity = newQuantity;
         if (dmgQty > 0) {
             itemDoc.damagedQuantity = (itemDoc.damagedQuantity || 0) + dmgQty;
         }
+
+        // Handle Batches
+        if (!itemDoc.batches) itemDoc.batches = [];
+        
+        let batch = itemDoc.batches.find(b => b.price === rate && (batchNumber ? b.batchNumber === batchNumber : true));
+        
+        if (batch) {
+            batch.quantity += qty;
+        } else {
+            itemDoc.batches.push({
+                batchNumber: batchNumber || `B-${Date.now()}`,
+                quantity: qty,
+                price: rate,
+                receivedDate: Date.now()
+            });
+            batch = itemDoc.batches[itemDoc.batches.length - 1];
+        }
+
         await itemDoc.save();
 
         // Create transaction record
@@ -82,6 +102,8 @@ export const stockInward = async (req, res, next) => {
             newQuantity,
             toLocation: itemDoc.location,
             invoiceImage,
+            batchId: batch._id,
+            batchNumber: batch.batchNumber,
             tenantId: req.tenantId
         });
 
@@ -100,21 +122,52 @@ export const stockInward = async (req, res, next) => {
 // @access  Private
 export const stockOutward = async (req, res, next) => {
     try {
-        const { item, quantity, reason, notes } = req.body;
+        const { item, quantity, reason, notes, batchId } = req.body;
 
         const itemDoc = await Item.findOne({ _id: item, tenantId: req.tenantId });
         if (!itemDoc) {
             return sendError(res, 404, 'Item not found');
         }
 
-        if (itemDoc.quantity < quantity) {
-            return sendError(res, 400, 'Insufficient stock available');
+        const qtyToSubtract = parseInt(quantity);
+        if (itemDoc.quantity < qtyToSubtract) {
+            return sendError(res, 400, 'Insufficient total stock available');
         }
 
         const previousQuantity = itemDoc.quantity;
-        const newQuantity = previousQuantity - parseInt(quantity);
+        const newQuantity = previousQuantity - qtyToSubtract;
 
-        // Update item quantity
+        let selectedBatchNumber = '';
+        let selectedBatchId = '';
+
+        // Handle Batch deduction
+        if (batchId) {
+            const batch = itemDoc.batches.id(batchId);
+            if (!batch || batch.quantity < qtyToSubtract) {
+                return sendError(res, 400, 'Insufficient stock in selected batch');
+            }
+            batch.quantity -= qtyToSubtract;
+            selectedBatchNumber = batch.batchNumber;
+            selectedBatchId = batch._id;
+        } else {
+            // FIFO deduction if no batch specificly requested
+            let remaining = qtyToSubtract;
+            // Sort batches by date to ensure FIFO
+            const sortedBatches = itemDoc.batches.sort((a, b) => new Date(a.receivedDate) - new Date(b.receivedDate));
+            
+            for (const batch of sortedBatches) {
+                if (remaining <= 0) break;
+                const deduct = Math.min(batch.quantity, remaining);
+                batch.quantity -= deduct;
+                remaining -= deduct;
+                if (remaining <= 0) {
+                    selectedBatchNumber = batch.batchNumber;
+                    selectedBatchId = batch._id;
+                }
+            }
+        }
+
+        // Update item total quantity
         itemDoc.quantity = newQuantity;
         await itemDoc.save();
 
@@ -129,6 +182,8 @@ export const stockOutward = async (req, res, next) => {
             previousQuantity,
             newQuantity,
             fromLocation: itemDoc.location,
+            batchId: selectedBatchId,
+            batchNumber: selectedBatchNumber,
             tenantId: req.tenantId
         });
 

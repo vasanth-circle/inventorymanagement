@@ -82,6 +82,13 @@ const itemSchema = new mongoose.Schema({
         required: [true, 'Tenant ID is required'],
         index: true,
     },
+    batches: [{
+        batchNumber: { type: String, trim: true },
+        quantity: { type: Number, default: 0 },
+        price: { type: Number, required: true }, // Selling price for this specific batch
+        purchasePrice: { type: Number, default: 0 },
+        receivedDate: { type: Date, default: Date.now },
+    }],
 }, {
     timestamps: true,
 });

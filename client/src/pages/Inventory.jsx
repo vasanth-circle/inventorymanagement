@@ -343,7 +343,17 @@ const Inventory = () => {
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                    <div>{item.name}</div>
+                                                    <div className="font-bold">{item.name}</div>
+                                                    {item.batches && item.batches.length > 0 && (
+                                                        <div className="mt-2 space-y-1">
+                                                            {item.batches.map((batch, idx) => (
+                                                                <div key={idx} className="flex items-center text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100 w-fit">
+                                                                    <span className="font-bold mr-1">{batch.batchNumber || 'Batch'}:</span>
+                                                                    <span>{batch.quantity} SqFt @ ₹{batch.price}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                     {item.customFields && Object.keys(item.customFields).length > 0 && (
                                                         <div className="flex flex-wrap gap-1 mt-1">
                                                             {Object.entries(item.customFields).map(([key, value]) => (

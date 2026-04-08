@@ -22,7 +22,9 @@ const SalesOrders = () => {
             totalPcs: 0, 
             totalSqFt: 0,
             brand: '',
-            size: ''
+            size: '',
+            batchId: '',
+            availableBatches: []
         }],
         notes: '',
         isEstimation: false,
@@ -80,7 +82,9 @@ const SalesOrders = () => {
                 totalPcs: 0, 
                 totalSqFt: 0,
                 brand: '',
-                size: ''
+                size: '',
+                batchId: '',
+                availableBatches: []
             }]
         });
     };
@@ -98,6 +102,25 @@ const SalesOrders = () => {
                 newItems[index].size = selectedItem.size || '';
                 newItems[index].pcsPerBox = selectedItem.pcsPerBox || 1;
                 newItems[index].sqFtPerPc = selectedItem.sqFtPerPc || 0;
+                newItems[index].availableBatches = selectedItem.batches || [];
+                // Default to first batch if available
+                if (selectedItem.batches && selectedItem.batches.length > 0) {
+                    newItems[index].batchId = selectedItem.batches[0]._id;
+                    newItems[index].price = selectedItem.batches[0].price;
+                    newItems[index].batchNumber = selectedItem.batches[0].batchNumber;
+                } else {
+                    newItems[index].price = selectedItem.price;
+                }
+            }
+        }
+
+        if (field === 'batchId') {
+            const row = newItems[index];
+            const batch = row.availableBatches.find(b => b._id === value);
+            if (batch) {
+                row.batchId = batch._id;
+                row.price = batch.price;
+                row.batchNumber = batch.batchNumber;
             }
         }
 
@@ -172,7 +195,9 @@ const SalesOrders = () => {
                 totalPcs: 0, 
                 totalSqFt: 0,
                 brand: '',
-                size: ''
+                size: '',
+                batchId: '',
+                availableBatches: []
             }],
             notes: '',
             isEstimation: false,
@@ -550,7 +575,23 @@ const SalesOrders = () => {
                                                             <option value="">Select Item</option>
                                                             {items.map(i => <option key={i._id} value={i._id}>{i.name} ({i.brand} - {i.size})</option>)}
                                                         </select>
-                                                        {row.brand && <div className="text-[10px] text-gray-400 mt-1 pl-1">{row.brand} | {row.size}</div>}
+                                                        {row.availableBatches && row.availableBatches.length > 0 && (
+                                                            <div className="mt-2 group relative">
+                                                                <label className="text-[9px] font-bold text-primary-600 block mb-1 px-1">SELECT RATE/BATCH:</label>
+                                                                <select
+                                                                    value={row.batchId}
+                                                                    onChange={(e) => handleItemChange(index, 'batchId', e.target.value)}
+                                                                    className="w-full text-[10px] px-2 py-1.5 border-2 border-primary-200 rounded-lg bg-primary-50 text-primary-800 font-bold outline-none focus:border-primary-400 shadow-sm"
+                                                                >
+                                                                    {row.availableBatches.map(b => (
+                                                                        <option key={b._id} value={b._id}>
+                                                                            {b.batchNumber || 'Batch'} - ₹{b.price} ({b.quantity} Left)
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+                                                        )}
+                                                        {row.brand && !row.availableBatches?.length && <div className="text-[10px] text-gray-400 mt-1 pl-1">{row.brand} | {row.size}</div>}
                                                     </td>
                                                     <td className="px-4 py-3">
                                                         <input type="number" step="0.01" min="0" value={row.boxCount} onChange={(e) => handleItemChange(index, 'boxCount', e.target.value)} className="w-full px-3 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 text-center font-bold" />

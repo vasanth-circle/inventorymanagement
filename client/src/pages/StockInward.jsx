@@ -19,6 +19,7 @@ const StockInward = () => {
         location: '',
         reason: '',
         notes: '',
+        batchNumber: '',
     });
     const [customFields, setCustomFields] = useState([]);
     const [imageFile, setImageFile] = useState(null);
@@ -137,6 +138,8 @@ const StockInward = () => {
                     damagedQuantity: parseFloat(formData.damagedQuantity) || 0,
                     reason: formData.reason || 'Restocking',
                     notes: formData.notes,
+                    batchNumber: formData.batchNumber,
+                    price: formData.price,
                 });
 
                 if (result.success) {
@@ -417,6 +420,37 @@ const StockInward = () => {
                                 placeholder="Damaged stock (optional)"
                             />
                         </div>
+
+                        <div className="md:col-span-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Batch / Lot Number
+                            </label>
+                            <input
+                                type="text"
+                                name="batchNumber"
+                                value={formData.batchNumber}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                placeholder="e.g. B-01 or Date"
+                            />
+                        </div>
+
+                        {!isNewItem && (
+                            <div className="md:col-span-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-2 font-bold text-primary-700">
+                                    Inward Rate (SqFt)
+                                </label>
+                                <input
+                                    type="number"
+                                    name="price"
+                                    step="0.01"
+                                    value={formData.price}
+                                    onChange={handleChange}
+                                    className="w-full px-3 py-2 border-2 border-primary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-bold"
+                                    placeholder="Rate for this stock"
+                                />
+                            </div>
+                        )}
 
                         <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-2">

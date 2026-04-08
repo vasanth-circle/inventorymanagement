@@ -26,6 +26,12 @@ const transactionSchema = new mongoose.Schema({
         type: String,
         trim: true,
     },
+    batchId: {
+        type: String, // Tracks the _id of the batch in the Item object
+    },
+    batchNumber: {
+        type: String, // Human readable batch number
+    },
     fromLocation: {
         type: String,
         trim: true,

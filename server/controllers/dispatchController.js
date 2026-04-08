@@ -41,6 +41,19 @@ export const createDispatch = async (req, res, next) => {
                 const previousQuantity = itemDoc.quantity;
                 const dispatchQty = Number(dispatchItem.quantity);
                 
+                // Find corresponding Sales Order item to get batchId
+                const orderItem = order.items.find(oi => oi.item.toString() === dispatchItem.item.toString());
+                const batchId = orderItem?.batchId;
+                let usedBatchNumber = '';
+
+                if (batchId && itemDoc.batches) {
+                    const batch = itemDoc.batches.id(batchId);
+                    if (batch) {
+                        batch.quantity -= dispatchQty;
+                        usedBatchNumber = batch.batchNumber;
+                    }
+                }
+
                 itemDoc.quantity -= dispatchQty;
                 await itemDoc.save();
 
@@ -55,6 +68,8 @@ export const createDispatch = async (req, res, next) => {
                     previousQuantity,
                     newQuantity: itemDoc.quantity,
                     fromLocation: itemDoc.location,
+                    batchId: batchId || null,
+                    batchNumber: usedBatchNumber || null,
                     tenantId: req.tenantId
                 });
             }

@@ -25,6 +25,8 @@ const salesOrderSchema = new mongoose.Schema({
         name: String,
         brand: String,
         size: String,
+        batchId: String,
+        batchNumber: String,
         boxCount: {
             type: Number,
             default: 0,
