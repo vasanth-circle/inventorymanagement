@@ -23,12 +23,28 @@ const purchaseOrderSchema = new mongoose.Schema({
             required: true,
         },
         name: String,
-        quantity: {
+        quantity: { // This will represent Total SqFt for tiles
             type: Number,
             required: true,
-            min: 1,
+            min: 0,
         },
-        price: {
+        boxCount: {
+            type: Number,
+            default: 0,
+        },
+        pcsPerBox: {
+            type: Number,
+            default: 1,
+        },
+        sqFtPerPc: {
+            type: Number,
+            default: 0,
+        },
+        totalSqFt: {
+            type: Number,
+            default: 0,
+        },
+        price: { // Rate per SqFt
             type: Number,
             required: true,
         },
@@ -60,7 +76,13 @@ const purchaseOrderSchema = new mongoose.Schema({
 
 purchaseOrderSchema.pre('validate', function (next) {
     this.items.forEach(item => {
-        item.total = item.quantity * item.price;
+        // If totalSqFt is provided (tiles), use it for the final amount
+        if (item.totalSqFt > 0) {
+            item.quantity = item.totalSqFt;
+            item.total = item.totalSqFt * item.price;
+        } else {
+            item.total = item.quantity * item.price;
+        }
     });
     this.totalAmount = this.items.reduce((sum, item) => sum + item.total, 0);
     next();

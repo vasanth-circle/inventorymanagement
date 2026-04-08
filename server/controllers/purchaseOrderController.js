@@ -149,30 +149,49 @@ export const receivePurchaseOrder = async (req, res, next) => {
         for (const rItem of receivedItems) {
             const itemDoc = await Item.findOne({ _id: rItem.item, tenantId: req.tenantId });
             if (itemDoc) {
-                const previousQuantity = itemDoc.quantity;
-                const recQty = parseInt(rItem.receivedQuantity) || 0;
-                const dmgQty = parseInt(rItem.damagedQuantity) || 0;
-
-                if (recQty > 0) {
-                    itemDoc.quantity += recQty;
-                }
-                if (dmgQty > 0) {
-                    itemDoc.damagedQuantity += dmgQty;
-                }
+                const previousQuantity = itemDoc.quantity || 0;
+                const recQty = parseFloat(rItem.receivedQuantity) || 0;
+                const dmgQty = parseFloat(rItem.damagedQuantity) || 0;
+                const batchNum = rItem.batchNumber || `PO-${order.orderNumber}`;
+                const rate = parseFloat(rItem.price) || itemDoc.price;
 
                 if (recQty > 0 || dmgQty > 0) {
+                    // Update total quantities
+                    itemDoc.quantity = (itemDoc.quantity || 0) + recQty;
+                    if (dmgQty > 0) {
+                        itemDoc.damagedQuantity = (itemDoc.damagedQuantity || 0) + dmgQty;
+                    }
+
+                    // Handle Batches
+                    if (!itemDoc.batches) itemDoc.batches = [];
+                    let batch = itemDoc.batches.find(b => b.price === rate && b.batchNumber === batchNum);
+                    
+                    if (batch) {
+                        batch.quantity += recQty;
+                    } else {
+                        itemDoc.batches.push({
+                            batchNumber: batchNum,
+                            quantity: recQty,
+                            price: rate,
+                            receivedDate: Date.now()
+                        });
+                        batch = itemDoc.batches[itemDoc.batches.length - 1];
+                    }
+
                     await itemDoc.save();
 
                     // Create transaction record
                     await Transaction.create({
                         item: rItem.item,
                         type: 'inward',
-                        quantity: recQty > 0 ? recQty : 0,
+                        quantity: recQty,
                         damagedQuantity: dmgQty,
                         reason: `PO ${order.orderNumber} Received`,
                         user: req.user._id,
                         previousQuantity,
                         newQuantity: itemDoc.quantity,
+                        batchId: batch._id,
+                        batchNumber: batch.batchNumber,
                         tenantId: req.tenantId,
                     });
                 }

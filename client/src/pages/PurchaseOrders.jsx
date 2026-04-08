@@ -13,7 +13,15 @@ const PurchaseOrders = () => {
     const [receiveData, setReceiveData] = useState([]);
     const [formData, setFormData] = useState({
         vendor: '',
-        items: [{ item: '', quantity: 1, price: 0 }],
+        items: [{ 
+            item: '', 
+            quantity: 1, 
+            price: 0, 
+            boxCount: 0, 
+            pcsPerBox: 1, 
+            sqFtPerPc: 0, 
+            totalSqFt: 0 
+        }],
         notes: '',
     });
 
@@ -54,7 +62,15 @@ const PurchaseOrders = () => {
     const handleAddItem = () => {
         setFormData({
             ...formData,
-            items: [...formData.items, { item: '', quantity: 1, price: 0 }]
+            items: [...formData.items, { 
+                item: '', 
+                quantity: 1, 
+                price: 0, 
+                boxCount: 0, 
+                pcsPerBox: 1, 
+                sqFtPerPc: 0, 
+                totalSqFt: 0 
+            }]
         });
     };
 
@@ -65,8 +81,28 @@ const PurchaseOrders = () => {
         if (field === 'item') {
             const selectedItem = items.find(i => i._id === value);
             if (selectedItem) {
-                newItems[index].price = selectedItem.price; // Cost price would be better but using price for now
+                newItems[index].name = selectedItem.name;
+                newItems[index].price = selectedItem.price; 
+                newItems[index].pcsPerBox = selectedItem.pcsPerBox || 1;
+                newItems[index].sqFtPerPc = selectedItem.sqFtPerPc || 0;
             }
+        }
+
+        // Auto-calculations
+        const row = newItems[index];
+        if (field === 'boxCount' || field === 'item' || field === 'price') {
+            const boxes = parseFloat(row.boxCount) || 0;
+            const pcb = parseFloat(row.pcsPerBox) || 1;
+            const sfp = parseFloat(row.sqFtPerPc) || 0;
+            
+            if (sfp > 0) {
+                row.totalSqFt = parseFloat((boxes * pcb * sfp).toFixed(2));
+                row.quantity = row.totalSqFt; // Total SqFt is the main unit for inventory
+            } else {
+                row.totalSqFt = 0;
+                row.quantity = boxes; // Fallback to boxes if not a SqFt item
+            }
+            row.total = row.quantity * (parseFloat(row.price) || 0);
         }
 
         setFormData({ ...formData, items: newItems });
@@ -102,11 +138,13 @@ const PurchaseOrders = () => {
         setSelectedOrder(order);
         // order.items have item populated with name and sku
         const initialReceiveData = order.items.map(i => ({
-            item: i.item._id || i.item,
-            name: i.item.name || 'Unknown Item',
-            expected: i.quantity,
+            item: i.item?._id || i.item,
+            name: i.item?.name || i.name || 'Unknown Item',
+            expected: i.quantity, // This is totalSqFt
             receivedQuantity: i.quantity,
-            damagedQuantity: 0
+            damagedQuantity: 0,
+            price: i.price, // Preserve the PO rate
+            batchNumber: `PO-${order.orderNumber}` // Default batch name
         }));
         setReceiveData(initialReceiveData);
         setIsReceiveModalOpen(true);
@@ -222,9 +260,10 @@ const PurchaseOrders = () => {
                                     <thead className="bg-gray-50">
                                         <tr>
                                             <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Item</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24">Qty</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32">Rate</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32">Amount</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-center">Boxes</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32 text-center">Total SqFt</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32">Rate (SqFt)</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32 text-right">Amount</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
@@ -237,13 +276,17 @@ const PurchaseOrders = () => {
                                                     </select>
                                                 </td>
                                                 <td className="px-2 py-2">
-                                                    <input required type="number" min="1" value={row.quantity} onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value))} className="w-full px-2 py-1 border rounded border-gray-200" />
+                                                    <input required type="number" step="0.01" min="0" value={row.boxCount} onChange={(e) => handleItemChange(index, 'boxCount', e.target.value)} className="w-full px-2 py-1 border rounded border-gray-200 text-center font-bold" />
+                                                </td>
+                                                <td className="px-2 py-2 text-center">
+                                                    <div className="font-bold text-primary-700">{row.totalSqFt || '-'}</div>
+                                                    {row.sqFtPerPc > 0 && <div className="text-[9px] text-gray-400">{row.sqFtPerPc} / pc</div>}
                                                 </td>
                                                 <td className="px-2 py-2">
-                                                    <input required type="number" value={row.price} onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value))} className="w-full px-2 py-1 border rounded border-gray-200" />
+                                                    <input required type="number" step="0.01" value={row.price} onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value))} className="w-full px-2 py-1 border rounded border-gray-200" />
                                                 </td>
-                                                <td className="px-2 py-2 font-medium text-gray-700 text-right">
-                                                    ₹{(row.quantity * row.price).toLocaleString()}
+                                                <td className="px-2 py-2 font-bold text-gray-800 text-right">
+                                                    ₹{(row.total || 0).toLocaleString()}
                                                 </td>
                                             </tr>
                                         ))}
@@ -277,9 +320,9 @@ const PurchaseOrders = () => {
                                     <thead className="bg-gray-50">
                                         <tr>
                                             <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Item Name</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-center">Expected</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-36 text-center text-green-700 font-bold">Good Qty (to Stock)</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32 text-center text-red-600 font-bold">Damaged Qty</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-center">Expected (SqFt)</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-36 text-center text-green-700 font-bold">Good Qty (SqFt)</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32 text-center text-red-600 font-bold">Damaged (SqFt)</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
@@ -292,10 +335,10 @@ const PurchaseOrders = () => {
                                                     {row.expected}
                                                 </td>
                                                 <td className="px-3 py-3">
-                                                    <input required type="number" min="0" value={row.receivedQuantity} onChange={(e) => handleReceiveDataChange(index, 'receivedQuantity', parseInt(e.target.value))} className="w-full px-2 py-1 border rounded border-gray-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none" />
+                                                    <input required type="number" step="0.01" min="0" value={row.receivedQuantity} onChange={(e) => handleReceiveDataChange(index, 'receivedQuantity', e.target.value)} className="w-full px-2 py-1 border rounded border-gray-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none" />
                                                 </td>
                                                 <td className="px-3 py-3">
-                                                    <input required type="number" min="0" value={row.damagedQuantity} onChange={(e) => handleReceiveDataChange(index, 'damagedQuantity', parseInt(e.target.value))} className="w-full px-2 py-1 border rounded border-red-200 text-red-600 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none" />
+                                                    <input required type="number" step="0.01" min="0" value={row.damagedQuantity} onChange={(e) => handleReceiveDataChange(index, 'damagedQuantity', e.target.value)} className="w-full px-2 py-1 border rounded border-red-200 text-red-600 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none" />
                                                 </td>
                                             </tr>
                                         ))}
