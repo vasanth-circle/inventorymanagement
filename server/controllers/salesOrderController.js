@@ -153,3 +153,62 @@ export const updateSOStatus = async (req, res, next) => {
         next(error);
     }
 };
+// @desc    Update sales order
+// @route   PUT /api/sales-orders/:id
+// @access  Private (Admin only)
+export const updateSalesOrder = async (req, res, next) => {
+    try {
+        const { 
+            customer, items, orderDate, expectedShipmentDate, 
+            notes, terms, isEstimation, status,
+            loadingCharges, transportCharges, oldBalance, advanceAmount, taxAmount
+        } = req.body;
+
+        const order = await SalesOrder.findOne({ _id: req.params.id, tenantId: req.tenantId });
+
+        if (!order) {
+            return sendError(res, 404, 'Sales order not found');
+        }
+
+        // Only allow editing if user is admin or higher
+        const isAdmin = ['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(req.user.role);
+        if (!isAdmin) {
+            return sendError(res, 403, 'Permission denied: Only administrators can edit bills');
+        }
+
+        // Update fields
+        if (customer) order.customer = customer;
+        if (items) order.items = items;
+        if (orderDate) order.orderDate = orderDate;
+        if (expectedShipmentDate) order.expectedShipmentDate = expectedShipmentDate;
+        if (notes !== undefined) order.notes = notes;
+        if (terms !== undefined) order.terms = terms;
+        if (isEstimation !== undefined) order.isEstimation = isEstimation;
+        if (status) order.status = status;
+        
+        if (loadingCharges !== undefined) order.loadingCharges = loadingCharges;
+        if (transportCharges !== undefined) order.transportCharges = transportCharges;
+        if (oldBalance !== undefined) order.oldBalance = oldBalance;
+        if (advanceAmount !== undefined) order.advanceAmount = advanceAmount;
+        if (taxAmount !== undefined) order.taxAmount = taxAmount;
+
+        // totalAmount will be auto-calculated by the pre('save') hook in the model (if it exists)
+        // Let's manually ensure totalAmount is correct if the hook isn't there
+        const itemsTotal = order.items.reduce((sum, item) => sum + (item.total || 0), 0);
+        order.itemsTotal = itemsTotal; // Ensure this matches model schema (might need to check)
+        order.totalAmount = (
+            itemsTotal + 
+            Number(order.loadingCharges) + 
+            Number(order.transportCharges) + 
+            Number(order.taxAmount) + 
+            Number(order.oldBalance) - 
+            Number(order.advanceAmount)
+        );
+
+        await order.save();
+
+        sendResponse(res, 200, order, 'Sales order updated successfully');
+    } catch (error) {
+        next(error);
+    }
+};

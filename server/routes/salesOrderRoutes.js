@@ -4,6 +4,7 @@ import {
     getSalesOrder,
     createSalesOrder,
     updateSOStatus,
+    updateSalesOrder,
 } from '../controllers/salesOrderController.js';
 // import { protect } from '../middleware/authMiddleware.js';
 import { checkMenuAccess } from '../middleware/accessMiddleware.js';
@@ -18,7 +19,8 @@ router.route('/')
     .post(createSalesOrder);
 
 router.route('/:id')
-    .get(getSalesOrder);
+    .get(getSalesOrder)
+    .put(updateSalesOrder);
 
 router.route('/:id/status')
     .patch(updateSOStatus);

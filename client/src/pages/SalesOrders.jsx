@@ -1,14 +1,17 @@
 import { useState, useEffect, useContext } from 'react';
 import { InventoryContext } from '../context/InventoryContext';
+import { AuthContext } from '../context/AuthContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
 const SalesOrders = () => {
     const { items, billingSettings } = useContext(InventoryContext);
+    const { user } = useContext(AuthContext);
     const [orders, setOrders] = useState([]);
     const [customers, setCustomers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingOrder, setEditingOrder] = useState(null);
     const [formData, setFormData] = useState({
         customer: '',
         items: [{ 
@@ -133,17 +136,75 @@ const SalesOrders = () => {
         return { itemsTotal, netTotal };
     };
 
+    const handleEdit = (order) => {
+        setEditingOrder(order);
+        setFormData({
+            customer: order.customer?._id || order.customer,
+            items: order.items.map(item => ({
+                ...item,
+                item: item.item?._id || item.item,
+                // Ensure calculations are preserved or recalculated
+                total: item.total || (item.quantity * item.price)
+            })),
+            notes: order.notes || '',
+            isEstimation: order.isEstimation || false,
+            status: order.status || (order.isEstimation ? 'quotation' : 'confirmed'),
+            loadingCharges: order.loadingCharges || 0,
+            transportCharges: order.transportCharges || 0,
+            oldBalance: order.oldBalance || 0,
+            advanceAmount: order.advanceAmount || 0,
+            taxAmount: order.taxAmount || 0,
+            orderDate: order.orderDate
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setEditingOrder(null);
+        setFormData({
+            customer: '',
+            items: [{ 
+                item: '', 
+                quantity: 1, 
+                price: 0, 
+                boxCount: 0, 
+                totalPcs: 0, 
+                totalSqFt: 0,
+                brand: '',
+                size: ''
+            }],
+            notes: '',
+            isEstimation: false,
+            status: 'quotation',
+            loadingCharges: 0,
+            transportCharges: 0,
+            oldBalance: 0,
+            advanceAmount: 0,
+            taxAmount: 0,
+            orderDate: new Date().toISOString()
+        });
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post(API_URL, formData, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
-            toast.success(formData.isEstimation ? 'Estimation created' : 'Sales order created');
-            setIsModalOpen(false);
+            const token = localStorage.getItem('token');
+            if (editingOrder) {
+                await axios.put(`${API_URL}/${editingOrder._id}`, formData, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                toast.success('Order updated successfully');
+            } else {
+                await axios.post(API_URL, formData, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                toast.success(formData.isEstimation ? 'Estimation created' : 'Sales order created');
+            }
+            handleCloseModal();
             fetchOrders();
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Error creating order');
+            toast.error(error.response?.data?.message || 'Error saving order');
         }
     };
 
@@ -346,7 +407,10 @@ const SalesOrders = () => {
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-800">Sales Orders & Estimations</h1>
                 <button
-                    onClick={() => setIsModalOpen(true)}
+                    onClick={() => {
+                        setEditingOrder(null);
+                        setIsModalOpen(true);
+                    }}
                     className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-bold shadow-md"
                 >
                     + Create New (Order/Quote)
@@ -386,15 +450,24 @@ const SalesOrders = () => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right space-x-2">
-                                        <button onClick={() => handlePrint(order)} className="text-primary-600 hover:text-primary-800 text-sm font-bold border-2 border-primary-100 px-3 py-1.5 rounded-lg bg-primary-50 transition-all flex items-center inline-flex">
-                                            <span className="mr-1">📄</span> View & Download Bill
-                                        </button>
-                                        {order.status === 'quotation' && (
-                                            <button onClick={() => handleStatusUpdate(order._id, 'confirmed')} className="bg-blue-600 text-white hover:bg-blue-700 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-all">Accept</button>
-                                        )}
-                                        {order.status === 'confirmed' && (
-                                            <span className="text-xs text-gray-400 italic">Ready for Dispatch</span>
-                                        )}
+                                        <div className="flex justify-end gap-2">
+                                            <button onClick={() => handlePrint(order)} className="text-primary-600 hover:text-primary-800 text-sm font-bold border-2 border-primary-100 px-3 py-1.5 rounded-lg bg-primary-50 transition-all flex items-center inline-flex">
+                                                <span className="mr-1">📄</span> Bill
+                                            </button>
+                                            
+                                            {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
+                                                <button 
+                                                    onClick={() => handleEdit(order)} 
+                                                    className="text-amber-600 hover:text-amber-800 text-sm font-bold border-2 border-amber-100 px-3 py-1.5 rounded-lg bg-amber-50 transition-all flex items-center inline-flex"
+                                                >
+                                                    <span className="mr-1">✏️</span> Edit
+                                                </button>
+                                            )}
+
+                                            {order.status === 'quotation' && (
+                                                <button onClick={() => handleStatusUpdate(order._id, 'confirmed')} className="bg-blue-600 text-white hover:bg-blue-700 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-all">Accept</button>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -408,10 +481,12 @@ const SalesOrders = () => {
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl my-8">
                         <div className="px-8 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-2xl">
                             <div>
-                                <h2 className="text-2xl font-black text-gray-800">Create {formData.isEstimation ? 'Quotation' : 'Sales Order'}</h2>
+                                <h2 className="text-2xl font-black text-gray-800">
+                                    {editingOrder ? 'Edit' : 'Create'} {formData.isEstimation ? 'Quotation' : 'Sales Order'}
+                                </h2>
                                 <p className="text-xs text-gray-500 font-medium">Specialized Tiles & Granites Billing</p>
                             </div>
-                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-3xl">&times;</button>
+                            <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600 text-3xl">&times;</button>
                         </div>
                         <form onSubmit={handleSubmit} className="p-8 space-y-8">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
@@ -548,9 +623,9 @@ const SalesOrders = () => {
                             </div>
 
                             <div className="flex justify-end gap-4 pt-6 border-t">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-3 text-gray-600 font-bold border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">Cancel</button>
+                                <button type="button" onClick={handleCloseModal} className="px-8 py-3 text-gray-600 font-bold border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">Cancel</button>
                                 <button type="submit" className="px-10 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 font-black shadow-lg shadow-primary-200 transition-all active:scale-95">
-                                    {formData.isEstimation ? '💾 Save Quotation' : '✅ Generate Final Bill'}
+                                    {editingOrder ? '💾 Update Changes' : (formData.isEstimation ? '💾 Save Quotation' : '✅ Generate Final Bill')}
                                 </button>
                             </div>
                         </form>
