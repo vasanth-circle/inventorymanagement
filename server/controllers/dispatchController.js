@@ -1,6 +1,7 @@
 import Dispatch from '../models/Dispatch.js';
 import SalesOrder from '../models/SalesOrder.js';
 import Item from '../models/Item.js';
+import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 
@@ -95,6 +96,7 @@ export const getDispatches = async (req, res, next) => {
         const dispatches = await Dispatch.find({ tenantId: req.tenantId })
             .populate('order', 'orderNumber status')
             .populate('items.item', 'name brand size')
+            .populate({ path: 'createdBy', model: User, select: 'name' })
             .sort({ createdAt: -1 });
 
         sendResponse(res, 200, dispatches);
@@ -113,6 +115,7 @@ export const getOrderDispatches = async (req, res, next) => {
             tenantId: req.tenantId 
         })
         .populate('items.item', 'name brand size')
+        .populate({ path: 'createdBy', model: User, select: 'name' })
         .sort({ createdAt: -1 });
 
         sendResponse(res, 200, dispatches);

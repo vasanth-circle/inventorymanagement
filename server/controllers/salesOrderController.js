@@ -1,5 +1,6 @@
 import SalesOrder from '../models/SalesOrder.js';
 import Item from '../models/Item.js';
+import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { getNextSequenceValue } from '../utils/sequence.js';
@@ -18,7 +19,7 @@ export const getSalesOrders = async (req, res, next) => {
 
         const orders = await SalesOrder.find(query)
             .populate('customer', 'name companyName')
-            .populate('user', 'name')
+            .populate({ path: 'user', model: User, select: 'name' })
             .sort({ createdAt: -1 })
             .limit(limit * 1)
             .skip((page - 1) * limit);
@@ -43,7 +44,7 @@ export const getSalesOrder = async (req, res, next) => {
     try {
         const order = await SalesOrder.findOne({ _id: req.params.id, tenantId: req.tenantId })
             .populate('customer')
-            .populate('user', 'name')
+            .populate({ path: 'user', model: User, select: 'name' })
             .populate('items.item', 'name sku barcode');
 
         if (!order) {

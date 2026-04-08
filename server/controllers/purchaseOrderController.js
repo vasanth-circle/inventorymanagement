@@ -1,5 +1,6 @@
 import PurchaseOrder from '../models/PurchaseOrder.js';
 import Item from '../models/Item.js';
+import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { getNextSequenceValue } from '../utils/sequence.js';
@@ -19,6 +20,7 @@ export const getPurchaseOrders = async (req, res, next) => {
         const orders = await PurchaseOrder.find(query)
             .populate('vendor', 'name companyName')
             .populate('items.item', 'name sku barcode')
+            .populate({ path: 'user', model: User, select: 'name' })
             .sort({ createdAt: -1 })
             .limit(limit * 1)
             .skip((page - 1) * limit);
@@ -43,7 +45,8 @@ export const getPurchaseOrder = async (req, res, next) => {
     try {
         const order = await PurchaseOrder.findOne({ _id: req.params.id, tenantId: req.tenantId })
             .populate('vendor')
-            .populate('items.item', 'name sku barcode');
+            .populate('items.item', 'name sku barcode')
+            .populate({ path: 'user', model: User, select: 'name' });
 
         if (!order) {
             return sendError(res, 404, 'Purchase order not found');

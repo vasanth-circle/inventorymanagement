@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { appConn } from '../config/db.js';
 
 const settingSchema = new mongoose.Schema({
     tenantId: {
@@ -41,5 +42,5 @@ const settingSchema = new mongoose.Schema({
     },
 }, { timestamps: true });
 
-const Setting = mongoose.model('Setting', settingSchema);
+const Setting = appConn.model('Setting', settingSchema);
 export default Setting;
