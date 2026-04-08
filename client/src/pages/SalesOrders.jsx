@@ -538,7 +538,7 @@ const SalesOrders = () => {
                                                 <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider">Item Name / Brand</th>
                                                 <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-24">Boxes (Qty)</th>
                                                 <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-32">Total SqFt</th>
-                                                <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-32">Rate (₹/Box)</th>
+                                                <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-32">Rate (₹/SqFt)</th>
                                                 <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider text-right w-32">Total</th>
                                             </tr>
                                         </thead>
@@ -562,7 +562,7 @@ const SalesOrders = () => {
                                                         <input required type="number" step="0.01" value={row.price} onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value))} className="w-full px-3 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 font-bold" />
                                                     </td>
                                                     <td className="px-4 py-3 text-right font-black text-gray-800">
-                                                        ₹{(row.boxCount * row.price).toLocaleString()}
+                                                        ₹{(row.totalSqFt * row.price).toLocaleString()}
                                                     </td>
                                                 </tr>
                                             ))}

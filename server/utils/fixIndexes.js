@@ -29,6 +29,13 @@ const fixLegacyIndexes = async () => {
                     await collection.dropIndex(index.name);
                     console.log(`✅ Index "${index.name}" dropped.`);
                 }
+                
+                // Special case for items: drop the old {tenantId, sku} index if it has tenantId first
+                if (col.name === 'items' && index.unique && Object.keys(index.key).length === 2 && Object.keys(index.key)[0] === 'tenantId') {
+                    console.log(`⚠️  Found outdated item index "${index.name}" with tenantId as first key. Dropping it...`);
+                    await collection.dropIndex(index.name);
+                    console.log(`✅ Outdated item index dropped.`);
+                }
             }
         } catch (error) {
             // Collection might not exist yet, which is fine

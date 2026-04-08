@@ -140,6 +140,10 @@ export const createItem = async (req, res, next) => {
             itemData.image = `/uploads/${req.file.filename}`;
         }
 
+        // Sanitize for partial indexing: empty strings should be undefined
+        if (itemData.sku === '') delete itemData.sku;
+        if (itemData.barcode === '') delete itemData.barcode;
+
         itemData.tenantId = req.tenantId;
 
         const item = await Item.create(itemData);
@@ -183,6 +187,10 @@ export const updateItem = async (req, res, next) => {
         if (req.file) {
             updateData.image = `/uploads/${req.file.filename}`;
         }
+
+        // Sanitize for partial indexing
+        if (updateData.sku === '') updateData.sku = undefined;
+        if (updateData.barcode === '') updateData.barcode = undefined;
 
         const updatedItem = await Item.findOneAndUpdate(
             { _id: req.params.id, tenantId: req.tenantId },

@@ -90,7 +90,17 @@ const itemSchema = new mongoose.Schema({
 itemSchema.index({ name: 'text', barcode: 'text', description: 'text', tenantId: 1 });
 itemSchema.index({ tenantId: 1, category: 1 });
 itemSchema.index({ tenantId: 1, quantity: 1 });
-itemSchema.index({ tenantId: 1, sku: 1 }, { unique: true });
+
+// Unique per tenant, but only if SKU/Barcode is provided (Partial Index)
+itemSchema.index({ sku: 1, tenantId: 1 }, { 
+    unique: true, 
+    partialFilterExpression: { sku: { $type: "string", $gt: "" } } 
+});
+
+itemSchema.index({ barcode: 1, tenantId: 1 }, { 
+    unique: true, 
+    partialFilterExpression: { barcode: { $type: "string", $gt: "" } } 
+});
 
 // Virtual field for stock status
 itemSchema.virtual('stockStatus').get(function () {
