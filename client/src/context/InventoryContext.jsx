@@ -109,8 +109,8 @@ export const InventoryProvider = ({ children }) => {
     const fetchBillingSettings = async () => {
         try {
             const { data } = await api.get('/settings/billing');
-            setBillingSettings(data);
-            return data;
+            setBillingSettings(data.data);
+            return data.data;
         } catch (error) {
             console.error('Failed to fetch billing settings');
         }
@@ -119,9 +119,9 @@ export const InventoryProvider = ({ children }) => {
     const updateBillingSettings = async (settingsData) => {
         try {
             const { data } = await api.patch('/settings/billing', settingsData);
-            setBillingSettings(data);
+            setBillingSettings(data.data);
             toast.success('Billing settings updated');
-            return { success: true, data };
+            return { success: true, data: data.data };
         } catch (error) {
             toast.error('Failed to update settings');
             return { success: false };
