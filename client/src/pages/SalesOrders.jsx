@@ -106,10 +106,11 @@ const SalesOrders = () => {
                 if (item.sqFtPerPc) {
                     item.totalSqFt = item.totalPcs * item.sqFtPerPc;
                     // Usually quantity is tracked in SqFt for tiles
-                    item.quantity = item.totalSqFt; 
+                    // BUT for billing by boxes, we set quantity as boxes
+                    item.quantity = boxes; 
                 } else {
-                    // Fallback to total pieces if sqft is not set
-                    item.quantity = item.totalPcs;
+                    // Fallback to boxes if sqft is not set
+                    item.quantity = boxes;
                 }
             }
         }
@@ -118,7 +119,7 @@ const SalesOrders = () => {
     };
 
     const calculateTotals = () => {
-        const itemsTotal = formData.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+        const itemsTotal = formData.items.reduce((sum, item) => sum + (item.boxCount * item.price), 0);
         const netTotal = (
             itemsTotal + 
             Number(formData.loadingCharges) + 
@@ -257,8 +258,8 @@ const SalesOrders = () => {
                                             <td class="text-center">${i + 1}</td>
                                             <td>${(item.name || '').toUpperCase()} ${item.brand || ''} ${item.size || ''}</td>
                                             <td class="text-center">690721</td>
-                                            <td class="text-center">${item.quantity.toFixed(2)}</td>
-                                            <td class="text-right">${item.price.toFixed(2)}</td>
+                                            <td class="text-center">${item.boxCount ? item.boxCount.toFixed(2) : (item.quantity / (item.pcsPerBox * item.sqFtPerPc || 1)).toFixed(2)} Boxes</td>
+                                            <td class="text-right">${(item.total / (item.boxCount || 1)).toFixed(2)}</td>
                                             <td class="text-right">${item.total.toFixed(2)}</td>
                                             <td class="text-center">${order.taxAmount > 0 ? '18%' : '0'}</td>
                                             <td class="text-right">${item.total.toFixed(2)}</td>
@@ -368,9 +369,11 @@ const SalesOrders = () => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right space-x-2">
-                                        <button onClick={() => handlePrint(order)} className="text-gray-600 hover:text-gray-900 text-sm border px-2 py-1 rounded">🖨️ Print</button>
+                                        <button onClick={() => handlePrint(order)} className="text-primary-600 hover:text-primary-800 text-sm font-bold border-2 border-primary-100 px-3 py-1.5 rounded-lg bg-primary-50 transition-all flex items-center inline-flex">
+                                            <span className="mr-1">📄</span> View & Download Bill
+                                        </button>
                                         {order.status === 'quotation' && (
-                                            <button onClick={() => handleStatusUpdate(order._id, 'confirmed')} className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-2 py-1 rounded text-sm font-bold">Accept</button>
+                                            <button onClick={() => handleStatusUpdate(order._id, 'confirmed')} className="bg-blue-600 text-white hover:bg-blue-700 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-all">Accept</button>
                                         )}
                                         {order.status === 'confirmed' && (
                                             <span className="text-xs text-gray-400 italic">Ready for Dispatch</span>
@@ -441,9 +444,9 @@ const SalesOrders = () => {
                                         <thead className="bg-gray-100">
                                             <tr>
                                                 <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider">Item Name / Brand</th>
-                                                <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-24">Boxes</th>
-                                                <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-32">Billing Qty (SqFt)</th>
-                                                <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-32">Rate (₹/sqft)</th>
+                                                <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-24">Boxes (Qty)</th>
+                                                <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-32">Total SqFt</th>
+                                                <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-32">Rate (₹/Box)</th>
                                                 <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider text-right w-32">Total</th>
                                             </tr>
                                         </thead>
@@ -458,7 +461,7 @@ const SalesOrders = () => {
                                                         {row.brand && <div className="text-[10px] text-gray-400 mt-1 pl-1">{row.brand} | {row.size}</div>}
                                                     </td>
                                                     <td className="px-4 py-3">
-                                                        <input type="number" min="0" value={row.boxCount} onChange={(e) => handleItemChange(index, 'boxCount', e.target.value)} className="w-full px-3 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 text-center font-bold" />
+                                                        <input type="number" step="0.01" min="0" value={row.boxCount} onChange={(e) => handleItemChange(index, 'boxCount', e.target.value)} className="w-full px-3 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 text-center font-bold" />
                                                     </td>
                                                     <td className="px-4 py-3">
                                                         <input required type="number" step="0.01" value={row.quantity} onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value))} className="w-full px-3 py-2 border rounded-lg border-gray-200 outline-none bg-gray-50 font-medium" />
@@ -467,7 +470,7 @@ const SalesOrders = () => {
                                                         <input required type="number" step="0.01" value={row.price} onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value))} className="w-full px-3 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 font-bold" />
                                                     </td>
                                                     <td className="px-4 py-3 text-right font-black text-gray-800">
-                                                        ₹{(row.quantity * row.price).toLocaleString()}
+                                                        ₹{(row.boxCount * row.price).toLocaleString()}
                                                     </td>
                                                 </tr>
                                             ))}

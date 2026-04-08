@@ -114,8 +114,8 @@ const StockInward = () => {
                     await createTransaction({
                         item: result.data._id,
                         type: 'inward',
-                        quantity: parseInt(formData.quantity),
-                        damagedQuantity: parseInt(formData.damagedQuantity) || 0,
+                        quantity: parseFloat(formData.quantity),
+                        damagedQuantity: parseFloat(formData.damagedQuantity) || 0,
                         reason: formData.reason || 'Initial stock',
                         notes: formData.notes,
                     });
@@ -133,8 +133,8 @@ const StockInward = () => {
                 const result = await createTransaction({
                     item: selectedItem,
                     type: 'inward',
-                    quantity: parseInt(formData.quantity),
-                    damagedQuantity: parseInt(formData.damagedQuantity) || 0,
+                    quantity: parseFloat(formData.quantity),
+                    damagedQuantity: parseFloat(formData.damagedQuantity) || 0,
                     reason: formData.reason || 'Restocking',
                     notes: formData.notes,
                 });
@@ -390,7 +390,8 @@ const StockInward = () => {
                                 type="number"
                                 name="quantity"
                                 required
-                                min="1"
+                                min="0.01"
+                                step="0.01"
                                 value={formData.quantity}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -406,6 +407,7 @@ const StockInward = () => {
                                 type="number"
                                 name="damagedQuantity"
                                 min="0"
+                                step="0.01"
                                 value={formData.damagedQuantity}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-red-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-red-600"

@@ -37,7 +37,7 @@ const StockOutward = () => {
             return;
         }
 
-        if (parseInt(formData.quantity) > selectedItem.quantity) {
+        if (parseFloat(formData.quantity) > selectedItem.quantity) {
             toast.error(`Insufficient stock. Available: ${selectedItem.quantity}`);
             return;
         }
@@ -47,7 +47,7 @@ const StockOutward = () => {
         const result = await createTransaction({
             item: formData.item,
             type: 'outward',
-            quantity: parseInt(formData.quantity),
+            quantity: parseFloat(formData.quantity),
             reason: formData.reason,
             notes: formData.notes,
         });
@@ -127,7 +127,8 @@ const StockOutward = () => {
                                 type="number"
                                 name="quantity"
                                 required
-                                min="1"
+                                min="0.01"
+                                step="0.01"
                                 max={selectedItem?.quantity || 0}
                                 value={formData.quantity}
                                 onChange={handleChange}

@@ -13,6 +13,8 @@ const DispatchManagement = () => {
         notes: ''
     });
     const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+    const [orderDetails, setOrderDetails] = useState(null);
 
     useEffect(() => {
         fetchPendingOrders();
@@ -69,6 +71,22 @@ const DispatchManagement = () => {
         const newItems = [...dispatchData.items];
         newItems[index].quantity = parseFloat(value) || 0;
         setDispatchData({ ...dispatchData, items: newItems });
+    };
+
+    const handleViewDetails = async (order) => {
+        setSelectedOrder(order);
+        try {
+            const res = await axios.get(`/api/dispatches/order/${order._id}`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            setOrderDetails({
+                ...order,
+                dispatches: res.data.data
+            });
+            setIsDetailsModalOpen(true);
+        } catch (error) {
+            toast.error('Failed to fetch dispatch details');
+        }
     };
 
     const handleSubmitDispatch = async (e) => {
@@ -144,12 +162,20 @@ const DispatchManagement = () => {
                                         ))}
                                         {order.items.length > 3 && <p className="text-[10px] text-gray-400 italic">+{order.items.length - 3} more items...</p>}
                                     </div>
-                                    <button 
-                                        onClick={() => handleOpenDispatch(order)}
-                                        className="w-full mt-4 bg-primary-600 text-white py-3 rounded-xl font-black text-sm hover:bg-primary-700 shadow-md shadow-primary-200 transition-all active:scale-95"
-                                    >
-                                        🚚 Record Dispatch
-                                    </button>
+                                    <div className="flex gap-2 mt-4">
+                                        <button 
+                                            onClick={() => handleViewDetails(order)}
+                                            className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all"
+                                        >
+                                            👁️ View Details
+                                        </button>
+                                        <button 
+                                            onClick={() => handleOpenDispatch(order)}
+                                            className="flex-[2] bg-primary-600 text-white py-3 rounded-xl font-black text-sm hover:bg-primary-700 shadow-md shadow-primary-200 transition-all active:scale-95"
+                                        >
+                                            🚚 Record Dispatch
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         ))
@@ -233,6 +259,83 @@ const DispatchManagement = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+            {isDetailsModalOpen && orderDetails && (
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 overflow-y-auto backdrop-blur-sm">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl my-8">
+                        <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-3xl">
+                            <div>
+                                <h2 className="text-2xl font-black text-gray-800">Order & Dispatch Details</h2>
+                                <p className="text-xs text-gray-500 font-bold">Order # {orderDetails.orderNumber} | {orderDetails.customer?.name}</p>
+                            </div>
+                            <button onClick={() => setIsDetailsModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-3xl">&times;</button>
+                        </div>
+                        <div className="p-8 space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-black text-gray-800 border-b pb-2">📦 Items in Order</h3>
+                                    <div className="space-y-3">
+                                        {orderDetails.items.map((item, idx) => {
+                                            const totalDispatched = orderDetails.dispatches.reduce((sum, d) => {
+                                                const dItem = d.items.find(di => (di.item._id || di.item) === (item.item._id || item.item));
+                                                return sum + (dItem ? dItem.quantity : 0);
+                                            }, 0);
+                                            const pending = item.quantity - totalDispatched;
+                                            
+                                            return (
+                                                <div key={idx} className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <p className="font-bold text-gray-800">{item.name}</p>
+                                                            <p className="text-[10px] text-gray-400 font-black uppercase">{item.brand} | {item.size}</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="text-[10px] text-gray-400 font-black uppercase">Order Total</p>
+                                                            <p className="font-black text-primary-600">{item.quantity} Boxes</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-2 flex gap-4 text-xs font-bold">
+                                                        <div className="text-green-600">Dispatched: {totalDispatched}</div>
+                                                        <div className={pending > 0 ? "text-orange-600" : "text-gray-400"}>Pending: {pending}</div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-black text-gray-800 border-b pb-2">🚚 Dispatch History</h3>
+                                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                                        {orderDetails.dispatches.length > 0 ? (
+                                            orderDetails.dispatches.map((dispatch, idx) => (
+                                                <div key={idx} className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-wider">{dispatch.dispatchNumber}</span>
+                                                        <span className="text-[10px] text-gray-400 font-bold">{new Date(dispatch.dispatchDate).toLocaleDateString()}</span>
+                                                    </div>
+                                                    <p className="text-xs font-bold text-gray-800">Vehicle: <span className="text-blue-700">{dispatch.vehicleNumber}</span></p>
+                                                    <div className="mt-2 space-y-1">
+                                                        {dispatch.items.map((di, didx) => (
+                                                            <div key={didx} className="flex justify-between text-[10px] font-bold text-gray-600 border-l-2 border-blue-200 pl-2">
+                                                                <span>{di.item?.name || 'Item'}</span>
+                                                                <span>{di.quantity} Boxes</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-center text-gray-400 py-8 italic">No dispatches recorded yet</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex justify-end pt-4">
+                                <button onClick={() => setIsDetailsModalOpen(false)} className="px-10 py-3 bg-gray-800 text-white rounded-2xl font-bold hover:bg-gray-900 transition-all">Close Details</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

@@ -55,7 +55,7 @@ const StockReturn = () => {
         try {
             await api.post('/transactions/return', {
                 ...formData,
-                quantity: parseInt(formData.quantity)
+                quantity: parseFloat(formData.quantity)
             });
             toast.success('Return recorded successfully');
             navigate('/inventory');
@@ -123,7 +123,8 @@ const StockReturn = () => {
                                 value={formData.quantity}
                                 onChange={handleChange}
                                 required
-                                min="1"
+                                min="0.01"
+                                step="0.01"
                                 placeholder="0.00"
                                 className="w-full h-11 px-4 bg-white border border-gray-100 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all"
                             />
