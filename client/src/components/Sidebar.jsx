@@ -62,7 +62,8 @@ const Sidebar = ({ isOpen, onClose }) => {
             id: 'settings',
             icon: '⚙️',
             items: [
-                { name: 'Users', path: '/users', id: 'users' }
+                { name: 'Users', path: '/users', id: 'users' },
+                { name: 'Billing Settings', path: '/settings', id: 'settings' }
             ]
         });
     }

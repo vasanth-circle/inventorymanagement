@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
+import { InventoryContext } from '../context/InventoryContext';
 import axios from 'axios';
-import { toast } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 const DispatchManagement = () => {
+    const { billingSettings } = useContext(InventoryContext);
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedOrder, setSelectedOrder] = useState(null);
@@ -71,6 +73,119 @@ const DispatchManagement = () => {
         const newItems = [...dispatchData.items];
         newItems[index].quantity = parseFloat(value) || 0;
         setDispatchData({ ...dispatchData, items: newItems });
+    };
+
+    const handlePrintSummary = (order, dispatches) => {
+        const printContent = `
+            <html>
+                <head>
+                    <title>Dispatch Summary - ${order.orderNumber}</title>
+                    <style>
+                        @page { size: A4; margin: 15mm; }
+                        body { font-family: 'Segoe UI', sans-serif; font-size: 11px; line-height: 1.4; color: #333; }
+                        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+                        .header h1 { margin: 0; font-size: 20px; text-transform: uppercase; }
+                        .summary-title { text-align: center; font-weight: bold; font-size: 14px; text-decoration: underline; margin-bottom: 20px; }
+                        
+                        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; border: 1px solid #ddd; padding: 10px; margin-bottom: 20px; background: #f9f9f9; }
+                        .info-label { font-weight: bold; width: 100px; display: inline-block; }
+                        
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                        th { border: 1px solid #000; padding: 8px; background: #eee; text-align: left; }
+                        td { border: 1px solid #000; padding: 6px; }
+                        
+                        .total-summary { margin-top: 30px; }
+                        .footer { margin-top: 50px; display: flex; justify-content: space-between; }
+                        .sign-box { border-top: 1px solid #000; width: 150px; text-align: center; padding-top: 5px; font-weight: bold; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>${billingSettings?.companyName || 'INVENTORY SYSTEM'}</h1>
+                        <p>${billingSettings?.address || ''}</p>
+                        <p>Phone: ${billingSettings?.phone1 || ''}</p>
+                    </div>
+                    
+                    <div class="summary-title">CUSTOMER DISPATCH SUMMARY REPORT</div>
+                    
+                    <div class="info-grid">
+                        <div>
+                            <div><span class="info-label">Customer:</span> ${(order.customer?.companyName || order.customer?.name || '').toUpperCase()}</div>
+                            <div><span class="info-label">Order No:</span> ${order.orderNumber}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div><span class="info-label">Order Date:</span> ${new Date(order.orderDate).toLocaleDateString()}</div>
+                            <div><span class="info-label">Printed On:</span> ${new Date().toLocaleDateString()}</div>
+                        </div>
+                    </div>
+
+                    <h3>1. ITEM DISPATCH LOG (DATE-WISE)</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Vehicle No</th>
+                                <th>Items Dispatched</th>
+                                <th>Weight/Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${dispatches.length > 0 ? dispatches.map(d => `
+                                <tr>
+                                    <td>${new Date(d.createdAt).toLocaleDateString()}</td>
+                                    <td>${d.vehicleNumber || 'N/A'}</td>
+                                    <td>
+                                        ${d.items.map(i => `<div>- ${i.item.name}</div>`).join('')}
+                                    </td>
+                                    <td>
+                                        ${d.items.map(i => `<div>${i.quantity} Units</div>`).join('')}
+                                    </td>
+                                </tr>
+                            `).join('') : '<tr><td colspan="4" style="text-align:center">No dispatches recorded yet</td></tr>'}
+                        </tbody>
+                    </table>
+
+                    <h3>2. PENDING STATUS SUMMARY</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Item Name</th>
+                                <th>Total Ordered</th>
+                                <th>Total Dispatched</th>
+                                <th>Balance Pending</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${order.items.map(oi => {
+                                const totalDisp = dispatches.reduce((sum, d) => {
+                                    const match = d.items.find(di => di.item._id === oi.item._id || di.item === oi.item._id);
+                                    return sum + (match ? match.quantity : 0);
+                                }, 0);
+                                return `
+                                    <tr>
+                                        <td>${oi.name}</td>
+                                        <td>${oi.quantity}</td>
+                                        <td>${totalDisp}</td>
+                                        <td style="font-weight:bold; color:${oi.quantity - totalDisp > 0 ? 'red' : 'green'}">${(oi.quantity - totalDisp).toFixed(2)}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+
+                    <div class="footer">
+                        <div class="sign-box">Customer Signature</div>
+                        <div class="sign-box">Dispatch Officer</div>
+                        <div class="sign-box">Authorized Signatory</div>
+                    </div>
+                </body>
+            </html>
+        `;
+        const win = window.open('', '_blank');
+        win.document.write(printContent);
+        win.document.close();
+        win.focus();
+        setTimeout(() => win.print(), 500);
     };
 
     const handleViewDetails = async (order) => {
@@ -162,20 +277,33 @@ const DispatchManagement = () => {
                                         ))}
                                         {order.items.length > 3 && <p className="text-[10px] text-gray-400 italic">+{order.items.length - 3} more items...</p>}
                                     </div>
-                                    <div className="flex gap-2 mt-4">
-                                        <button 
-                                            onClick={() => handleViewDetails(order)}
-                                            className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all"
-                                        >
-                                            👁️ View Details
-                                        </button>
-                                        <button 
-                                            onClick={() => handleOpenDispatch(order)}
-                                            className="flex-[2] bg-primary-600 text-white py-3 rounded-xl font-black text-sm hover:bg-primary-700 shadow-md shadow-primary-200 transition-all active:scale-95"
-                                        >
-                                            🚚 Record Dispatch
-                                        </button>
-                                    </div>
+                                        <div className="flex gap-2 mt-4">
+                                            <button 
+                                                onClick={() => handleViewDetails(order)}
+                                                className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all flex items-center justify-center"
+                                                title="View Details"
+                                            >
+                                                👁️
+                                            </button>
+                                            <button 
+                                                onClick={async () => {
+                                                    const res = await axios.get(`/api/dispatches/order/${order._id}`, {
+                                                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                                                    });
+                                                    handlePrintSummary(order, res.data.data);
+                                                }}
+                                                className="flex-1 bg-emerald-100 text-emerald-700 py-3 rounded-xl font-bold text-sm hover:bg-emerald-200 transition-all flex items-center justify-center"
+                                                title="Print Summary"
+                                            >
+                                                🖨️
+                                            </button>
+                                            <button 
+                                                onClick={() => handleOpenDispatch(order)}
+                                                className="flex-[2] bg-primary-600 text-white py-3 rounded-xl font-black text-sm hover:bg-primary-700 shadow-md shadow-primary-200 transition-all active:scale-95 flex items-center justify-center"
+                                            >
+                                                🚚 Dispatch Load
+                                            </button>
+                                        </div>
                                 </div>
                             </div>
                         ))
@@ -266,11 +394,19 @@ const DispatchManagement = () => {
                 <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 overflow-y-auto backdrop-blur-sm">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl my-8">
                         <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-3xl">
-                            <div>
+                            <div className="flex-1">
                                 <h2 className="text-2xl font-black text-gray-800">Order & Dispatch Details</h2>
                                 <p className="text-xs text-gray-500 font-bold">Order # {orderDetails.orderNumber} | {orderDetails.customer?.name}</p>
                             </div>
-                            <button onClick={() => setIsDetailsModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-3xl">&times;</button>
+                            <div className="flex items-center space-x-3">
+                                <button
+                                    onClick={() => handlePrintSummary(orderDetails, orderDetails.dispatches)}
+                                    className="px-4 py-2 bg-emerald-600 text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all flex items-center"
+                                >
+                                    <span className="mr-2">🖨️ Print Summary</span>
+                                </button>
+                                <button onClick={() => setIsDetailsModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-3xl">&times;</button>
+                            </div>
                         </div>
                         <div className="p-8 space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

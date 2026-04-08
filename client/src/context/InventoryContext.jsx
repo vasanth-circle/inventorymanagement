@@ -11,6 +11,7 @@ export const InventoryProvider = ({ children }) => {
     const [categories, setCategories] = useState([]);
     const [locations, setLocations] = useState([]);
     const [transactions, setTransactions] = useState([]);
+    const [billingSettings, setBillingSettings] = useState(null);
     const [loading, setLoading] = useState(false);
 
     // Fetch categories
@@ -101,6 +102,39 @@ export const InventoryProvider = ({ children }) => {
             return data;
         } catch (error) {
             toast.error('Failed to fetch transactions');
+        }
+    };
+
+    // Billing Settings functions
+    const fetchBillingSettings = async () => {
+        try {
+            const { data } = await api.get('/settings/billing');
+            setBillingSettings(data);
+            return data;
+        } catch (error) {
+            console.error('Failed to fetch billing settings');
+        }
+    };
+
+    const updateBillingSettings = async (settingsData) => {
+        try {
+            const { data } = await api.patch('/settings/billing', settingsData);
+            setBillingSettings(data);
+            toast.success('Billing settings updated');
+            return { success: true, data };
+        } catch (error) {
+            toast.error('Failed to update settings');
+            return { success: false };
+        }
+    };
+
+    // Fetch Sales Orders (for reporting or lists)
+    const fetchSalesOrders = async (params = {}) => {
+        try {
+            const { data } = await api.get('/sales-orders', { params });
+            return data;
+        } catch (error) {
+            toast.error('Failed to fetch sales orders');
         }
     };
 
@@ -274,6 +308,7 @@ export const InventoryProvider = ({ children }) => {
         if (user) {
             fetchCategories();
             fetchLocations();
+            fetchBillingSettings();
         }
     }, [user]);
 
@@ -304,6 +339,10 @@ export const InventoryProvider = ({ children }) => {
                 downloadTemplate,
                 getExcelHeadersBulk,
                 importMappedData,
+                billingSettings,
+                fetchBillingSettings,
+                updateBillingSettings,
+                fetchSalesOrders,
             }}
         >
             {children}

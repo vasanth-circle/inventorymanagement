@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
+import { InventoryContext } from '../context/InventoryContext';
 import axios from 'axios';
-import { toast } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 const SalesOrders = () => {
+    const { items, billingSettings } = useContext(InventoryContext);
     const [orders, setOrders] = useState([]);
     const [customers, setCustomers] = useState([]);
-    const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [formData, setFormData] = useState({
@@ -99,18 +100,19 @@ const SalesOrders = () => {
 
         // Auto-calculations for tiles
         const item = newItems[index];
-        if (field === 'boxCount' || field === 'item' || field === 'quantity') {
+        if (field === 'boxCount' || field === 'item' || field === 'quantity' || field === 'price') {
             if (item.pcsPerBox) {
                 const boxes = Number(item.boxCount) || 0;
                 item.totalPcs = boxes * item.pcsPerBox;
                 if (item.sqFtPerPc) {
-                    item.totalSqFt = item.totalPcs * item.sqFtPerPc;
-                    // Usually quantity is tracked in SqFt for tiles
-                    // BUT for billing by boxes, we set quantity as boxes
-                    item.quantity = boxes; 
+                    item.totalSqFt = Number((item.totalPcs * item.sqFtPerPc).toFixed(2));
+                    // Bill by SqFt
+                    item.quantity = item.totalSqFt; 
+                    item.total = Number((item.totalSqFt * (Number(item.price) || 0)).toFixed(2));
                 } else {
                     // Fallback to boxes if sqft is not set
                     item.quantity = boxes;
+                    item.total = Number((boxes * (Number(item.price) || 0)).toFixed(2));
                 }
             }
         }
@@ -119,7 +121,7 @@ const SalesOrders = () => {
     };
 
     const calculateTotals = () => {
-        const itemsTotal = formData.items.reduce((sum, item) => sum + (item.boxCount * item.price), 0);
+        const itemsTotal = formData.items.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
         const netTotal = (
             itemsTotal + 
             Number(formData.loadingCharges) + 
@@ -178,63 +180,69 @@ const SalesOrders = () => {
                 <head>
                     <title>Bill - ${order.orderNumber}</title>
                     <style>
-                        @page { size: A4; margin: 15mm; }
-                        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; line-height: 1.4; padding: 0px; font-size: 11px; }
-                        .container { border: 1px solid #000; padding: 1px; }
-                        .header { text-align: center; border-bottom: 2px solid #000; padding: 10px 0; position: relative; }
-                        .header h1 { margin: 0; font-size: 22px; text-transform: uppercase; letter-spacing: 2px; }
-                        .header p { margin: 2px 0; font-size: 10px; font-weight: bold; }
-                        .header .cell { position: absolute; right: 10px; top: 5px; font-size: 9px; font-weight: bold; }
+                        @page { size: A4; margin: 10mm; }
+                        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; line-height: 1.2; padding: 0px; font-size: 10px; }
+                        .container { border: 2px solid #000; padding: 0px; min-height: 280mm; display: flex; flex-column: column; }
                         
-                        .doc-title { text-align: center; border-bottom: 1px solid #000; padding: 5px; font-weight: bold; font-size: 13px; background: #f9f9f9; text-transform: uppercase; }
+                        .header { text-align: center; border-bottom: 2px solid #000; padding: 10px 0; position: relative; background: #fff; }
+                        .header h1 { margin: 0; font-size: 24px; text-transform: uppercase; letter-spacing: 1px; color: #000; }
+                        .header p { margin: 2px 0; font-size: 10px; font-weight: bold; }
+                        .header .cell { position: absolute; right: 15px; top: 10px; font-size: 10px; font-weight: bold; border: 1px solid #000; padding: 2px 5px; }
+                        
+                        .doc-title { text-align: center; border-bottom: 1px solid #000; padding: 4px; font-weight: 900; font-size: 14px; background: #eee; text-transform: uppercase; letter-spacing: 3px; }
                         
                         .info-section { display: flex; border-bottom: 1px solid #000; }
-                        .customer-box { flex: 2; padding: 8px; border-right: 1px solid #000; }
-                        .order-box { flex: 1; padding: 8px; }
-                        .info-row { display: flex; margin-bottom: 3px; }
-                        .info-label { width: 100px; font-weight: bold; }
+                        .customer-box { flex: 1.5; padding: 10px; border-right: 1px solid #000; }
+                        .order-box { flex: 1; padding: 10px; }
+                        .info-row { display: flex; margin-bottom: 4px; }
+                        .info-label { width: 90px; font-weight: bold; color: #555; font-size: 9px; text-transform: uppercase; }
+                        .info-val { font-weight: bold; color: #000; }
                         
-                        table { width: 100%; border-collapse: collapse; }
-                        th { border-bottom: 1px solid #000; border-right: 1px solid #000; padding: 6px 4px; text-align: center; font-size: 9px; text-transform: uppercase; background: #eee; }
-                        td { border-right: 1px solid #000; padding: 6px 4px; vertical-align: top; font-size: 10px; height: 20px; }
+                        table { width: 100%; border-collapse: collapse; flex: 1; }
+                        th { border-bottom: 1px solid #000; border-right: 1px solid #000; padding: 8px 4px; text-align: center; font-size: 9px; text-transform: uppercase; background: #f2f2f2; font-weight: 900; }
+                        td { border-right: 1px solid #000; padding: 6px 4px; vertical-align: top; font-size: 10px; height: 18px; font-weight: 600; }
                         th:last-child, td:last-child { border-right: none; }
                         
-                        .items-table { border-bottom: 1px solid #000; min-height: 400px; }
+                        .items-table { border-bottom: 1px solid #000; min-height: 520px; }
                         
-                        .footer { border-top: 1px solid #000; }
-                        .totals-grid { display: flex; border-bottom: 1px solid #000; }
-                        .words-box { flex: 2; padding: 8px; border-right: 1px solid #000; }
+                        .footer { margin-top: auto; }
+                        .totals-grid { display: flex; border-top: 2px solid #000; }
+                        .words-box { flex: 1.5; padding: 10px; border-right: 1px solid #000; background: #fafafa; }
                         .math-box { flex: 1; padding: 0px; }
-                        .math-row { display: flex; justify-content: space-between; padding: 4px 8px; border-bottom: 1px solid #eee; }
-                        .math-row:last-child { border-bottom: none; font-weight: bold; font-size: 13px; background: #f0f0f0; border-top: 1px solid #000; }
+                        .math-row { display: flex; justify-content: space-between; padding: 5px 10px; border-bottom: 1px solid #ddd; }
+                        .math-row:last-child { border-bottom: none; font-weight: 900; font-size: 14px; background: #eee; border-top: 1px solid #000; padding: 8px 10px; }
                         
-                        .sign-section { display: flex; justify-content: space-between; padding: 30px 10px 10px 10px; }
-                        .sign-box { text-align: center; border-top: 1px solid #eee; width: 150px; padding-top: 5px; font-weight: bold; }
+                        .sign-section { display: flex; justify-content: space-between; padding: 20px 15px 15px 15px; border-top: 1px solid #000; }
+                        .sign-box { text-align: center; width: 200px; }
+                        .sign-line { border-top: 1px solid #000; margin-top: 40px; padding-top: 5px; font-weight: bold; text-transform: uppercase; font-size: 9px; }
                         
                         .text-right { text-align: right; }
                         .text-center { text-align: center; }
+                        .bold { font-weight: bold; }
                     </style>
                 </head>
                 <body>
                     <div class="container">
                         <div class="header">
-                            <div class="cell">CELL: 90473 48191, 90470 48191</div>
-                            <h1>SRI ALAGAR TILES & GRANITES</h1>
-                            <p>No. 29, M.M. Complex, Thiru Senthil Nagar,</p>
-                            <p>K. Vadamadurai, MTP Road, Coimbatore.</p>
+                            <div class="cell">PH: ${billingSettings?.phone1 || ''} / ${billingSettings?.phone2 || ''}</div>
+                            <h1>${billingSettings?.companyName || 'INVENTORY MANAGEMENT SYSTEM'}</h1>
+                            <p>${billingSettings?.address || 'Address not set'}</p>
+                            ${billingSettings?.gstNumber ? `<p>GSTIN: ${billingSettings.gstNumber}</p>` : ''}
                         </div>
                         
-                        <div class="doc-title">${order.isEstimation ? 'ESTIMATE CR' : 'SALES INVOICE'}</div>
+                        <div class="doc-title">${order.isEstimation ? 'Estimation / Quotation' : 'Tax Invoice / Sales Bill'}</div>
                         
                         <div class="info-section">
                             <div class="customer-box">
-                                <div class="info-row"><span class="info-label">To:</span> <span>${(order.customer?.companyName || order.customer?.name || '').toUpperCase()}</span></div>
+                                <div class="info-row"><span class="info-label">Customer:</span> <span class="info-val">${(order.customer?.companyName || order.customer?.name || '').toUpperCase()}</span></div>
                                 <div class="info-row"><span class="info-label">Address:</span> <span>${order.customer?.address || ''}</span></div>
+                                <div class="info-row"><span class="info-label">Contact:</span> <span>${order.customer?.phone || ''}</span></div>
                             </div>
                             <div class="order-box">
-                                <div class="info-row"><span class="info-label">Payment Terms:</span> <span>${order.terms || 'Credit'}</span></div>
-                                <div class="info-row"><span class="info-label">Invoice No:</span> <span style="font-weight: bold; font-size: 13px;">${order.orderNumber}</span></div>
-                                <div class="info-row"><span class="info-label">Date:</span> <span>${new Date(order.orderDate).toLocaleDateString()}</span></div>
+                                <div class="info-row"><span class="info-label">Bill Number:</span> <span class="info-val" style="font-size: 14px;">${order.orderNumber}</span></div>
+                                <div class="info-row"><span class="info-label">Date:</span> <span class="info-val">${new Date(order.orderDate).toLocaleDateString()}</span></div>
+                                <div class="info-row"><span class="info-label">Billed By:</span> <span class="info-val">${order.user?.name || 'Admin'}</span></div>
+                                <div class="info-row"><span class="info-label">Terms:</span> <span>${order.terms || 'Credit'}</span></div>
                             </div>
                         </div>
                         
@@ -243,31 +251,31 @@ const SalesOrders = () => {
                                 <thead>
                                     <tr>
                                         <th width="30">S.No</th>
-                                        <th>Description</th>
-                                        <th width="60">HSN Code</th>
-                                        <th width="40">Qty</th>
-                                        <th width="70">Rate</th>
-                                        <th width="80">Amount</th>
-                                        <th width="40">Tax %</th>
-                                        <th width="80">Total</th>
+                                        <th>Description of Goods</th>
+                                        <th width="40">Boxes</th>
+                                        <th width="60">Total SqFt</th>
+                                        <th width="70">Rate (SqFt)</th>
+                                        <th width="90">Amount</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     ${order.items.map((item, i) => `
                                         <tr>
                                             <td class="text-center">${i + 1}</td>
-                                            <td>${(item.name || '').toUpperCase()} ${item.brand || ''} ${item.size || ''}</td>
-                                            <td class="text-center">690721</td>
-                                            <td class="text-center">${item.boxCount ? item.boxCount.toFixed(2) : (item.quantity / (item.pcsPerBox * item.sqFtPerPc || 1)).toFixed(2)} Boxes</td>
-                                            <td class="text-right">${(item.total / (item.boxCount || 1)).toFixed(2)}</td>
-                                            <td class="text-right">${item.total.toFixed(2)}</td>
-                                            <td class="text-center">${order.taxAmount > 0 ? '18%' : '0'}</td>
-                                            <td class="text-right">${item.total.toFixed(2)}</td>
+                                            <td>
+                                                <div class="bold">${(item.name || '').toUpperCase()}</div>
+                                                <div style="font-size: 8px; color: #555;">${item.brand || ''} | ${item.size || ''}</div>
+                                            </td>
+                                            <td class="text-center">${item.boxCount ? item.boxCount.toFixed(2) : '-'}</td>
+                                            <td class="text-center bold">${item.totalSqFt ? item.totalSqFt.toFixed(2) : item.quantity.toFixed(2)}</td>
+                                            <td class="text-right">${item.price.toFixed(2)}</td>
+                                            <td class="text-right bold">${item.total.toFixed(2)}</td>
                                         </tr>
                                     `).join('')}
-                                    <!-- Filler rows to maintain height -->
-                                    ${Array(Math.max(0, 12 - order.items.length)).fill(0).map(() => `
-                                        <tr><td class="text-center"></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                                    ${Array(Math.max(0, 15 - order.items.length)).fill(0).map(() => `
+                                        <tr>
+                                            <td class="text-center"></td><td></td><td></td><td></td><td></td><td></td>
+                                        </tr>
                                     `).join('')}
                                 </tbody>
                             </table>
@@ -276,26 +284,35 @@ const SalesOrders = () => {
                         <div class="footer">
                             <div class="totals-grid">
                                 <div class="words-box">
-                                    <p style="font-weight: bold; margin-bottom: 5px;">E. & O.E.</p>
-                                    <p style="font-style: italic;">${numberToWords(Math.round(order.totalAmount))}</p>
+                                    <p style="font-weight: bold; margin-bottom: 2px; font-size: 8px; text-decoration: underline;">AMOUNT IN WORDS</p>
+                                    <p style="font-weight: bold; text-transform: uppercase; font-size: 9px;">Rupees ${numberToWords(Math.round(order.totalAmount))} Only</p>
+                                    
+                                    <div style="margin-top: 20px; font-size: 8px;">
+                                        <p><b>Terms & Conditions:</b></p>
+                                        <p>1. Goods once sold will not be taken back or exchanged.</p>
+                                        <p>2. We are not responsible for any damage after the goods leave our premises.</p>
+                                    </div>
                                 </div>
                                 <div class="math-box">
                                     <div class="math-row"><span>Items Total:</span> <span>₹${order.itemsTotal?.toLocaleString() || '0.00'}</span></div>
-                                    <div class="math-row"><span>Loading Charges:</span> <span>₹${order.loadingCharges || '0.00'}</span></div>
-                                    <div class="math-row"><span>Transport:</span> <span>₹${order.transportCharges || '0.00'}</span></div>
-                                    <div class="math-row"><span>Tax (GST):</span> <span>₹${order.taxAmount || '0.00'}</span></div>
-                                    <div class="math-row"><span>Old Balance:</span> <span>₹${order.oldBalance || '0.00'}</span></div>
-                                    <div class="math-row"><span>Net Amount:</span> <span>₹${order.totalAmount.toLocaleString()}</span></div>
+                                    ${order.loadingCharges > 0 ? `<div class="math-row"><span>Loading:</span> <span>₹${order.loadingCharges.toLocaleString()}</span></div>` : ''}
+                                    ${order.transportCharges > 0 ? `<div class="math-row"><span>Transport:</span> <span>₹${order.transportCharges.toLocaleString()}</span></div>` : ''}
+                                    ${order.taxAmount > 0 ? `<div class="math-row"><span>Tax (GST):</span> <span>₹${order.taxAmount.toLocaleString()}</span></div>` : ''}
+                                    ${order.oldBalance > 0 ? `<div class="math-row"><span>Old Balance:</span> <span>₹${order.oldBalance.toLocaleString()}</span></div>` : ''}
+                                    <div class="math-row"><span style="font-size: 11px;">GRAND TOTAL:</span> <span>₹${order.totalAmount.toLocaleString()}</span></div>
                                 </div>
                             </div>
                             
                             <div class="sign-section">
-                                <div style="font-size: 8px; color: #777;">* This is a computer generated document. No signature required.</div>
                                 <div class="sign-box">
-                                    <div style="font-size: 9px; margin-bottom: 30px;">For SRI ALAGAR TILES & GRANITES</div>
-                                    <div>Authorized Signatory</div>
+                                    <div class="sign-line">Receiver's Signature</div>
+                                </div>
+                                <div class="sign-box">
+                                    <div style="font-size: 8px; margin-bottom: 10px;">For ${billingSettings?.companyName || 'INVENTORY SYSTEM'}</div>
+                                    <div class="sign-line">Authorized Signatory</div>
                                 </div>
                             </div>
+                            <div style="text-align: center; font-size: 7px; color: #888; padding: 5px;">* This is a computer generated bill and does not require a physical signature. E. & O.E.</div>
                         </div>
                     </div>
                 </body>

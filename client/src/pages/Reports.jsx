@@ -4,7 +4,7 @@ import { formatCurrency, formatDateTime, exportToCSV } from '../utils/helpers';
 import toast from 'react-hot-toast';
 
 const Reports = () => {
-    const { fetchTransactions } = useContext(InventoryContext);
+    const { fetchTransactions, fetchSalesOrders } = useContext(InventoryContext);
     const [reportType, setReportType] = useState('transactions');
     const [filters, setFilters] = useState({
         startDate: '',
@@ -12,15 +12,41 @@ const Reports = () => {
         type: '',
     });
     const [reportData, setReportData] = useState([]);
+    const [aggregatedData, setAggregatedData] = useState([]);
     const [loading, setLoading] = useState(false);
 
     const handleGenerateReport = async () => {
         setLoading(true);
         try {
-            const data = await fetchTransactions(filters);
-            if (data) {
-                setReportData(data.transactions);
-                toast.success('Report generated successfully');
+            if (reportType === 'transactions') {
+                const data = await fetchTransactions(filters);
+                if (data) {
+                    setReportData(data.transactions);
+                    setAggregatedData([]);
+                    toast.success('Transaction report generated');
+                }
+            } else {
+                const data = await fetchSalesOrders({
+                    ...filters,
+                    limit: 1000 // Get more for aggregation
+                });
+                if (data && data.orders) {
+                    setReportData(data.orders);
+                    
+                    // Aggregate by user
+                    const userMap = {};
+                    data.orders.forEach(order => {
+                        const userName = order.user?.name || 'Unknown';
+                        if (!userMap[userName]) {
+                            userMap[userName] = { name: userName, totalAmount: 0, orderCount: 0 };
+                        }
+                        userMap[userName].totalAmount += (order.totalAmount || 0);
+                        userMap[userName].orderCount += 1;
+                    });
+                    
+                    setAggregatedData(Object.values(userMap).sort((a, b) => b.totalAmount - a.totalAmount));
+                    toast.success('Sales by Person report generated');
+                }
             }
         } catch (error) {
             toast.error('Failed to generate report');
@@ -35,147 +61,161 @@ const Reports = () => {
             return;
         }
 
-        const exportData = reportData.map(transaction => ({
-            Date: formatDateTime(transaction.createdAt),
-            Item: transaction.item?.name || 'N/A',
-            Type: transaction.type,
-            Quantity: transaction.quantity,
-            Reason: transaction.reason || 'N/A',
-            User: transaction.user?.name || 'N/A',
-        }));
+        let exportData = [];
+        if (reportType === 'transactions') {
+            exportData = reportData.map(transaction => ({
+                Date: formatDateTime(transaction.createdAt),
+                Item: transaction.item?.name || 'N/A',
+                Type: transaction.type,
+                Quantity: transaction.quantity,
+                Reason: transaction.reason || 'N/A',
+                User: transaction.user?.name || 'N/A',
+            }));
+        } else {
+            exportData = aggregatedData.map(user => ({
+                'Sales Person': user.name,
+                'Total Bill Count': user.orderCount,
+                'Total Sales Amount': formatCurrency(user.totalAmount)
+            }));
+        }
 
-        exportToCSV(exportData, `report-${new Date().toISOString().split('T')[0]}`);
-        toast.success('Report exported successfully');
+        exportToCSV(exportData, `report-${reportType}-${new Date().toISOString().split('T')[0]}`);
+        toast.success(`${reportType} report exported`);
     };
 
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-gray-900">Reports & Analytics</h1>
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Intelligence & Analytics</h1>
+                    <p className="text-gray-500">Track your inventory flows and sales performance</p>
+                </div>
                 <button
                     onClick={handleExport}
                     disabled={reportData.length === 0}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                 >
-                    📊 Export Report
+                    <span className="mr-2">📊</span> Export CSV
                 </button>
             </div>
 
-            {/* Filters */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Generate Report</h2>
+            {/* Layout Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {/* Controls */}
+                <div className="lg:col-span-1 space-y-6">
+                    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 space-y-4">
+                        <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest px-1">Report Type</h2>
+                        <div className="space-y-2">
+                            <button
+                                onClick={() => { setReportType('transactions'); setReportData([]); setAggregatedData([]); }}
+                                className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm transition-all ${reportType === 'transactions' ? 'bg-primary-600 text-white shadow-lg shadow-primary-100' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                            >
+                                📦 Inventory Flow
+                            </button>
+                            <button
+                                onClick={() => { setReportType('sales'); setReportData([]); setAggregatedData([]); }}
+                                className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm transition-all ${reportType === 'sales' ? 'bg-primary-600 text-white shadow-lg shadow-primary-100' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                            >
+                                👤 Sales by User
+                            </button>
+                        </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
-                        <input
-                            type="date"
-                            value={filters.startDate}
-                            onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        />
+                        <div className="pt-4 space-y-4 border-t border-gray-50">
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 px-1">Start Date</label>
+                                <input type="date" value={filters.startDate} onChange={(e) => setFilters({ ...filters, startDate: e.target.value })} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold outline-none focus:ring-2 focus:ring-primary-500" />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 px-1">End Date</label>
+                                <input type="date" value={filters.endDate} onChange={(e) => setFilters({ ...filters, endDate: e.target.value })} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold outline-none focus:ring-2 focus:ring-primary-500" />
+                            </div>
+                            <button onClick={handleGenerateReport} disabled={loading} className="w-full py-3 bg-gray-900 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-black transition-all shadow-xl shadow-gray-200 disabled:opacity-50">
+                                {loading ? 'Processing...' : 'Generate Analysis'}
+                            </button>
+                        </div>
                     </div>
+                </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-                        <input
-                            type="date"
-                            value={filters.endDate}
-                            onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        />
-                    </div>
+                {/* Results Section */}
+                <div className="lg:col-span-3">
+                    {reportData.length > 0 ? (
+                        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+                                <h2 className="text-sm font-black text-gray-800 uppercase tracking-wider">
+                                    {reportType === 'transactions' ? 'Inventory Transaction Ledger' : 'Sales Representative Performance'}
+                                </h2>
+                                <span className="text-[10px] font-bold bg-white px-2 py-1 rounded-full text-gray-500 border border-gray-200 italic">
+                                    {reportData.length} records found
+                                </span>
+                            </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Transaction Type</label>
-                        <select
-                            value={filters.type}
-                            onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                            <option value="">All Types</option>
-                            <option value="inward">Inward</option>
-                            <option value="outward">Outward</option>
-                            <option value="transfer">Transfer</option>
-                            <option value="adjustment">Adjustment</option>
-                        </select>
-                    </div>
-
-                    <div className="flex items-end">
-                        <button
-                            onClick={handleGenerateReport}
-                            disabled={loading}
-                            className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {loading ? 'Generating...' : '🔍 Generate'}
-                        </button>
-                    </div>
+                            {reportType === 'transactions' ? (
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full">
+                                        <thead className="bg-white border-b border-gray-100">
+                                            <tr>
+                                                <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
+                                                <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Item</th>
+                                                <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Action</th>
+                                                <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Qty</th>
+                                                <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">User</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50 font-medium">
+                                            {reportData.map((transaction) => (
+                                                <tr key={transaction._id} className="hover:bg-gray-50/50">
+                                                    <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-900">{formatDateTime(transaction.createdAt)}</td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-gray-900">{transaction.item?.name || 'N/A'}</td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className={`px-2 py-1 text-[9px] font-black uppercase rounded-lg ${transaction.type === 'inward' ? 'bg-green-100 text-green-700' : 'bg-rose-100 text-rose-700'}`}>
+                                                            {transaction.type}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-xs font-black text-gray-900">{transaction.quantity}</td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500 italic">{transaction.user?.name || 'System'}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="p-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {aggregatedData.map((user, idx) => (
+                                            <div key={idx} className="bg-gray-50/50 border border-gray-100 p-6 rounded-2xl space-y-3 relative overflow-hidden group hover:border-primary-200 transition-all">
+                                                <div className="absolute top-0 right-0 w-16 h-16 bg-primary-600/5 rounded-bl-full -mr-4 -mt-4 transition-all group-hover:scale-150"></div>
+                                                <div className="flex justify-between items-start relative">
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Representative</p>
+                                                        <p className="text-xl font-black text-gray-800">{user.name}</p>
+                                                    </div>
+                                                    <span className="text-2xl">🎖️</span>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4 relative">
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-gray-400 uppercase">Bills Generated</p>
+                                                        <p className="text-lg font-bold text-gray-700">{user.orderCount}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-gray-400 uppercase">Total Billed</p>
+                                                        <p className="text-lg font-black text-emerald-600">{formatCurrency(user.totalAmount)}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="h-full bg-white rounded-2xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center p-12 text-center">
+                            <div className="text-6xl mb-6 grayscale opacity-20">📊</div>
+                            <h3 className="text-lg font-black text-gray-800 uppercase tracking-widest">No Intelligence Generated</h3>
+                            <p className="text-sm text-gray-400 max-w-xs mt-2">Select your filters and report type to generate a performance analysis.</p>
+                        </div>
+                    )}
                 </div>
             </div>
-
-            {/* Report Results */}
-            {reportData.length > 0 && (
-                <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                    <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                        <h2 className="text-xl font-semibold text-gray-900">
-                            Transaction Report ({reportData.length} records)
-                        </h2>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {reportData.map((transaction) => (
-                                    <tr key={transaction._id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {formatDateTime(transaction.createdAt)}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                            {transaction.item?.name || 'N/A'}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${transaction.type === 'inward' ? 'bg-green-100 text-green-800' :
-                                                    transaction.type === 'outward' ? 'bg-red-100 text-red-800' :
-                                                        transaction.type === 'transfer' ? 'bg-blue-100 text-blue-800' :
-                                                            'bg-orange-100 text-orange-800'
-                                                }`}>
-                                                {transaction.type}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                                            {transaction.quantity}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                            {transaction.reason || 'N/A'}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                            {transaction.user?.name || 'N/A'}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
-
-            {reportData.length === 0 && !loading && (
-                <div className="bg-white rounded-lg shadow-md p-12 text-center">
-                    <div className="text-6xl mb-4">📊</div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">No Report Generated</h3>
-                    <p className="text-gray-600">Select filters and click "Generate" to view transaction reports</p>
-                </div>
-            )}
         </div>
     );
 };
