@@ -4,7 +4,7 @@ import { InventoryContext } from '../context/InventoryContext';
 import toast from 'react-hot-toast';
 
 const StockInward = () => {
-    const { items, fetchItems, categories, createItem, createTransaction } = useContext(InventoryContext);
+    const { items, fetchItems, categories, locations, createItem, createTransaction } = useContext(InventoryContext);
     const navigate = useNavigate();
     const [isNewItem, setIsNewItem] = useState(true);
     const [loading, setLoading] = useState(false);
@@ -16,7 +16,7 @@ const StockInward = () => {
         damagedQuantity: 0,
         price: '',
         minStockThreshold: '10',
-        location: 'Main Warehouse',
+        location: '',
         reason: '',
         notes: '',
     });
@@ -283,14 +283,17 @@ const StockInward = () => {
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Location
                                     </label>
-                                    <input
-                                        type="text"
+                                    <select
                                         name="location"
                                         value={formData.location}
                                         onChange={handleChange}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                        placeholder="Storage location"
-                                    />
+                                    >
+                                        <option value="">Select location</option>
+                                        {locations.map(loc => (
+                                            <option key={loc._id} value={loc.name}>{loc.name}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
 
