@@ -27,6 +27,7 @@ const Inventory = () => {
         description: '',
         brand: '',
         size: '',
+        hsn: '',
         pcsPerBox: 1,
         sqFtPerPc: 0
     });
@@ -44,6 +45,7 @@ const Inventory = () => {
         description: '',
         brand: '',
         size: '',
+        hsn: '',
         pcsPerBox: 1,
         sqFtPerPc: 0
     });
@@ -89,6 +91,7 @@ const Inventory = () => {
             description: item.description || '',
             brand: item.brand || '',
             size: item.size || '',
+            hsn: item.hsn || '',
             pcsPerBox: item.pcsPerBox || 1,
             sqFtPerPc: item.sqFtPerPc || 0
         });
@@ -201,6 +204,7 @@ const Inventory = () => {
                     description: '',
                     brand: '',
                     size: '',
+                    hsn: '',
                     pcsPerBox: 1,
                     sqFtPerPc: 0
                 });
@@ -522,6 +526,17 @@ const Inventory = () => {
                                     />
                                 </div>
                                 <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">HSN Code</label>
+                                    <input
+                                        type="text"
+                                        name="hsn"
+                                        value={editFormData.hsn}
+                                        onChange={handleEditChange}
+                                        placeholder="Optional"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                    />
+                                </div>
+                                <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Size (Dimensions)</label>
                                     <input
                                         type="text"
@@ -705,6 +720,17 @@ const Inventory = () => {
                                         value={createFormData.brand}
                                         onChange={handleCreateChange}
                                         placeholder="e.g. Kajaria"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">HSN Code</label>
+                                    <input
+                                        type="text"
+                                        name="hsn"
+                                        value={createFormData.hsn}
+                                        onChange={handleCreateChange}
+                                        placeholder="Optional"
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                                     />
                                 </div>

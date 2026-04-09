@@ -11,6 +11,10 @@ const itemSchema = new mongoose.Schema({
         type: String,
         trim: true,
     },
+    hsn: {
+        type: String,
+        trim: true,
+    },
     sku: {
         type: String,
         trim: true,

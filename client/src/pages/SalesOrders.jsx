@@ -101,6 +101,7 @@ const SalesOrders = () => {
                 newItems[index].price = selectedItem.price;
                 newItems[index].brand = selectedItem.brand || '';
                 newItems[index].size = selectedItem.size || '';
+                newItems[index].hsn = selectedItem.hsn || '';
                 newItems[index].pcsPerBox = selectedItem.pcsPerBox || 1;
                 newItems[index].sqFtPerPc = selectedItem.sqFtPerPc || 0;
                 newItems[index].availableBatches = selectedItem.batches || [];
@@ -353,6 +354,7 @@ const SalesOrders = () => {
                         }
                         table {
                             width: 100%;
+                            height: 100%;
                             border-collapse: collapse;
                         }
                         th, td {
@@ -479,7 +481,7 @@ const SalesOrders = () => {
                                                 <div style="font-weight: bold;">${(item.name || '').toUpperCase()}</div>
                                                 <div style="font-size: 8px; color: #444;">${item.brand || ''} | ${item.size || ''}</div>
                                             </td>
-                                            <td style="text-align: center;">690721</td>
+                                            <td style="text-align: center;">${item.hsn || '690721'}</td>
                                             <td style="text-align: center;">${item.boxCount ? item.boxCount.toFixed(2) : '-'}</td>
                                             <td style="text-align: center; font-weight: bold;">${item.totalSqFt ? item.totalSqFt.toFixed(2) : item.quantity.toFixed(2)}</td>
                                             <td style="text-align: right;">${item.price.toFixed(2)}</td>

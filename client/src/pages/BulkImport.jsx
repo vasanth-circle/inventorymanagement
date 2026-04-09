@@ -28,6 +28,7 @@ const BulkImport = () => {
         { key: 'location', label: 'Storage Location', required: false, synonyms: ['location', 'warehouse', 'rack', 'shelf'] },
         { key: 'minStockThreshold', label: 'Min Stock Level', required: false, synonyms: ['min', 'threshold', 'alert', 'reorder'] },
         { key: 'description', label: 'Description', required: false, synonyms: ['description', 'desc', 'notes', 'info'] },
+        { key: 'hsn', label: 'HSN Code', required: false, synonyms: ['hsn', 'hsn code', 'sac', 'tax code'] },
     ];
 
     const handleFileChange = (e) => {
