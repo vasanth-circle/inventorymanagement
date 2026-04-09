@@ -108,16 +108,42 @@ const Quotations = () => {
 
     const calcTotals = () => {
         const itemsTotal = formData.items.reduce((s, i) => s + (Number(i.total) || 0), 0);
-        const tax = Number(formData.taxAmount) || 0;
-        const net = itemsTotal + Number(formData.loadingCharges) + Number(formData.transportCharges) + tax - Number(formData.discountAmount);
-        return { itemsTotal, net };
+        
+        // Auto-calculate tax amount if taxRate is provided
+        const taxRate = Number(formData.taxRate) || 0;
+        let taxAmt = Number(formData.taxAmount) || 0;
+        
+        if (taxRate > 0) {
+            taxAmt = parseFloat((itemsTotal * taxRate / 100).toFixed(2));
+        }
+
+        const net = itemsTotal + (Number(formData.loadingCharges) || 0) + (Number(formData.transportCharges) || 0) + taxAmt - (Number(formData.discountAmount) || 0);
+        return { itemsTotal, taxAmount: taxAmt, net };
     };
 
     /* ── CRUD ──────────────────────────────────────────────────────── */
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const { itemsTotal, net } = calcTotals();
-        const payload = { ...formData, itemsTotal, totalAmount: net };
+        const { itemsTotal, taxAmount, net } = calcTotals();
+        
+        // Clean numeric payloads to avoid Mongoose CastErrors with empty strings
+        const payload = { 
+            ...formData, 
+            items: formData.items.map(i => ({
+                ...i,
+                quantity: Number(i.quantity) || 0,
+                price: Number(i.price) || 0,
+                total: Number(i.total) || 0
+            })),
+            taxRate: Number(formData.taxRate) || 0,
+            taxAmount, 
+            loadingCharges: Number(formData.loadingCharges) || 0,
+            transportCharges: Number(formData.transportCharges) || 0,
+            discountAmount: Number(formData.discountAmount) || 0,
+            itemsTotal, 
+            totalAmount: net 
+        };
+        
         try {
             if (editingQuotation) {
                 await axios.put(`/api/quotations/${editingQuotation._id}`, payload, headers());
@@ -400,20 +426,38 @@ const Quotations = () => {
                             </div>
 
                             {/* Charges */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-xl">
-                                {[
-                                    { key: 'taxAmount', label: 'Tax Amount' },
-                                    { key: 'loadingCharges', label: 'Loading' },
-                                    { key: 'transportCharges', label: 'Transport' },
-                                    { key: 'discountAmount', label: 'Discount' },
-                                ].map(({ key, label }) => (
-                                    <div key={key} className="space-y-1">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</label>
-                                        <input type="number" min="0" step="0.01" value={formData[key]}
-                                            onChange={e => setFormData(p => ({ ...p, [key]: e.target.value }))}
-                                            className="w-full h-10 px-3 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-rose-500" />
-                                    </div>
-                                ))}
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 bg-gray-50 p-4 rounded-xl">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Tax Rate (%)</label>
+                                    <input type="number" min="0" step="0.1" value={formData.taxRate}
+                                        onChange={e => setFormData(p => ({ ...p, taxRate: e.target.value }))}
+                                        className="w-full h-10 px-3 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-rose-500" placeholder="e.g. 18" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Tax Amount</label>
+                                    <input type="number" min="0" step="0.01" value={formData.taxRate > 0 ? parseFloat((itemsTotal * formData.taxRate / 100).toFixed(2)) : formData.taxAmount}
+                                        onChange={e => setFormData(p => ({ ...p, taxAmount: e.target.value }))}
+                                        disabled={formData.taxRate > 0}
+                                        className={`w-full h-10 px-3 border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-rose-500 ${formData.taxRate > 0 ? 'bg-gray-100 text-gray-500' : 'bg-white'}`} />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Loading</label>
+                                    <input type="number" min="0" step="0.01" value={formData.loadingCharges}
+                                        onChange={e => setFormData(p => ({ ...p, loadingCharges: e.target.value }))}
+                                        className="w-full h-10 px-3 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-rose-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Transport</label>
+                                    <input type="number" min="0" step="0.01" value={formData.transportCharges}
+                                        onChange={e => setFormData(p => ({ ...p, transportCharges: e.target.value }))}
+                                        className="w-full h-10 px-3 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-rose-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Discount</label>
+                                    <input type="number" min="0" step="0.01" value={formData.discountAmount}
+                                        onChange={e => setFormData(p => ({ ...p, discountAmount: e.target.value }))}
+                                        className="w-full h-10 px-3 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-rose-500" />
+                                </div>
                             </div>
 
                             {/* Totals summary */}
