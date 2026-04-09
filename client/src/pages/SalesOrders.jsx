@@ -349,16 +349,13 @@ const SalesOrders = () => {
                         }
 
                         .items-table {
-                            flex-grow: 1;
                             border-bottom: 1.5px solid #000;
-                            position: relative;
-                            /* Removed gradient to support printing without 'background-graphics' */
+                            height: 170mm;
                         }
                         table {
                             width: 100%;
+                            height: 100%;
                             border-collapse: collapse;
-                            position: relative;
-                            z-index: 1;
                         }
                         th, td {
                             padding: 4px 6px;
@@ -377,6 +374,7 @@ const SalesOrders = () => {
                         }
                         td {
                             vertical-align: top;
+                            border-bottom: none;
                         }
                         
                         .summary-section {
@@ -487,17 +485,6 @@ const SalesOrders = () => {
                         </div>
                         
                         <div class="items-table">
-                            <!-- SVG Vertical Lines (Most reliable for printing without backgrounds) -->
-                            <svg style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2;">
-                                <line x1="10mm" y1="0" x2="10mm" y2="100%" stroke="black" stroke-width="1.2" />
-                                <line x1="85mm" y1="0" x2="85mm" y2="100%" stroke="black" stroke-width="1.2" />
-                                <line x1="100mm" y1="0" x2="100mm" y2="100%" stroke="black" stroke-width="1.2" />
-                                <line x1="118mm" y1="0" x2="118mm" y2="100%" stroke="black" stroke-width="1.2" />
-                                <line x1="136mm" y1="0" x2="136mm" y2="100%" stroke="black" stroke-width="1.2" />
-                                <line x1="158mm" y1="0" x2="158mm" y2="100%" stroke="black" stroke-width="1.2" />
-                                <line x1="170mm" y1="0" x2="170mm" y2="100%" stroke="black" stroke-width="1.2" />
-                            </svg>
-                            
                             <table>
                                 <thead>
                                     <tr>
@@ -534,9 +521,9 @@ const SalesOrders = () => {
                                             </tr>
                                         `;
                                     }).join('')}
-                                    ${Array(Math.max(0, 15 - order.items.length)).fill(0).map(() => `
-                                        <tr style="height: 20px;">
-                                            <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                                    ${Array(Math.max(0, 18 - order.items.length)).fill(0).map((_, ri) => `
+                                        <tr>
+                                            <td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
