@@ -350,25 +350,96 @@ const Settings = () => {
                                 <div className="pt-4 border-t border-gray-100">
                                     <h2 className="text-sm font-black text-gray-700 flex items-center gap-2 mb-4">
                                         <span className="w-7 h-7 bg-gray-100 text-gray-600 rounded-lg flex items-center justify-center text-sm">🖨️</span>
-                                        Print Template
+                                        Print Template Preview
                                     </h2>
-                                    <div className="grid grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                         {[1, 2, 3].map(t => (
                                             <button key={t} type="button"
                                                 onClick={() => handleNested('documentConfig', 'invoiceTemplate', t)}
                                                 className={`border-2 rounded-xl p-4 text-center transition-all ${
                                                     formData.documentConfig.invoiceTemplate === t
-                                                        ? 'border-rose-500 bg-rose-50 text-rose-700'
-                                                        : 'border-gray-200 text-gray-400 hover:border-gray-300'
+                                                        ? 'border-rose-500 bg-rose-50 text-rose-700 shadow-sm transform scale-[1.02]'
+                                                        : 'border-gray-200 text-gray-400 hover:border-gray-400 hover:bg-gray-50'
                                                 }`}
                                             >
-                                                <div className="text-2xl mb-1">📊</div>
-                                                <div className="text-xs font-black">Template {t}</div>
-                                                <div className="text-[9px] mt-1 text-gray-400">
-                                                    {t === 1 ? 'Standard (Current)' : t === 2 ? 'Minimal / Clean' : 'Classic with header'}
+                                                <div className="w-full aspect-[3/4] bg-white border border-gray-300 shadow-sm rounded-md mb-4 flex flex-col p-2 relative overflow-hidden mx-auto pointer-events-none">
+                                                    {t === 1 && (
+                                                        <>
+                                                            <div className="w-full border-b-[2px] border-gray-900 pb-2 flex flex-col items-center">
+                                                                <div className="w-3/4 h-2.5 bg-gray-900 rounded-sm mb-1.5"></div>
+                                                                <div className="w-1/2 h-1.5 bg-gray-500 rounded-sm"></div>
+                                                            </div>
+                                                            <div className="w-full border-b border-gray-300 py-1.5 flex justify-between">
+                                                                <div className="w-1/3 h-1.5 bg-gray-400 rounded-sm"></div>
+                                                                <div className="w-1/3 h-1.5 bg-gray-400 rounded-sm flex flex-col items-end gap-1"><div className="w-full h-1.5 bg-gray-400"></div><div className="w-1/2 h-1 bg-gray-300"></div></div>
+                                                            </div>
+                                                            <div className="w-full flex-1 border-b-[2px] border-gray-900 my-1.5 flex">
+                                                                <div className="w-full h-3 bg-gray-200 mb-0.5 border-b border-gray-800"></div>
+                                                            </div>
+                                                            <div className="mt-auto flex justify-between pt-1 h-12">
+                                                                <div className="w-[45%] h-full border border-gray-800 p-1 flex flex-col gap-1"><div className="w-full h-0.5 bg-gray-300"></div><div className="w-3/4 h-0.5 bg-gray-300"></div></div>
+                                                                <div className="w-[45%] h-full flex flex-col justify-end gap-1"><div className="w-full flex justify-between"><div className="w-1/3 h-0.5 bg-gray-400"></div><div className="w-1/3 h-0.5 bg-gray-400"></div></div><div className="w-full h-3 bg-gray-900 rounded-sm"></div></div>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                    {t === 2 && (
+                                                        <>
+                                                            <div className="flex justify-between items-start pb-2 border-b border-gray-200">
+                                                                <div className="flex flex-col gap-1.5 w-[55%]">
+                                                                    <div className="w-full h-2.5 bg-indigo-600 rounded-sm"></div>
+                                                                    <div className="w-3/4 h-1.5 bg-gray-500 rounded-sm mb-1"></div>
+                                                                    <div className="w-1/2 h-1 bg-gray-400 rounded-sm"></div>
+                                                                </div>
+                                                                <div className="flex flex-col gap-1 items-end w-1/3 text-right">
+                                                                    <div className="w-full h-3 bg-gray-100 rounded-sm flex items-center justify-center text-[5px] text-gray-500 tracking-widest font-black uppercase">INVOICE</div>
+                                                                    <div className="w-3/4 h-1 bg-gray-800 rounded-sm mt-1"></div>
+                                                                    <div className="w-full h-1 bg-gray-400 rounded-sm"></div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="w-full flex-1 mt-2 flex">
+                                                                <div className="w-full h-3 bg-indigo-50 border-y border-indigo-100"></div>
+                                                            </div>
+                                                            <div className="mt-auto flex flex-col items-end gap-1 pt-2 w-full border-t border-gray-200">
+                                                                <div className="w-1/3 h-1 bg-gray-300 rounded-sm"></div>
+                                                                <div className="w-1/3 h-1 bg-gray-300 rounded-sm"></div>
+                                                                <div className="w-1/2 h-4 bg-indigo-600 rounded-sm mt-1"></div>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                    {t === 3 && (
+                                                        <div className="h-full border border-gray-300 p-1 flex flex-col relative w-full">
+                                                            <div className="w-full border-b border-gray-400 pb-1 pt-1">
+                                                                <div className="flex justify-between items-center mb-1">
+                                                                    <div className="w-1/5 h-1 bg-gray-400 rounded-sm"></div>
+                                                                    <div className="w-1/2 h-2.5 bg-gray-800 rounded-sm"></div>
+                                                                    <div className="w-1/5 h-1 bg-gray-400 rounded-sm"></div>
+                                                                </div>
+                                                                <div className="flex justify-center">
+                                                                    <div className="w-1/3 h-1 bg-gray-300 rounded-sm"></div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex gap-1 py-1.5 border-b border-gray-400">
+                                                                <div className="flex-1 h-4 bg-gray-50 border-r border-gray-300"></div>
+                                                                <div className="flex-1 h-4 bg-gray-50"></div>
+                                                            </div>
+                                                            <div className="w-full flex-1 flex border-b border-gray-400 my-1">
+                                                                <div className="w-full h-2 bg-gray-200"></div>
+                                                            </div>
+                                                            <div className="mt-auto flex justify-between h-8">
+                                                                <div className="w-1/2 h-full bg-gray-50 p-1"><div className="w-full h-1 bg-gray-300"></div></div>
+                                                                <div className="w-[45%] h-full bg-gray-800 rounded-sm border-2 border-white flex flex-col items-end text-white text-[4px] p-1 justify-center">NET AMOUNT</div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="text-sm font-black text-gray-800">Template {t}</div>
+                                                <div className="text-[10px] mt-1 font-bold text-gray-500 uppercase tracking-widest">
+                                                    {t === 1 ? 'Standard' : t === 2 ? 'Minimal' : 'Classic'}
                                                 </div>
                                                 {formData.documentConfig.invoiceTemplate === t && (
-                                                    <div className="text-[9px] mt-1 text-rose-600 font-bold">✓ Selected</div>
+                                                    <div className="text-[10px] mt-2 text-rose-600 font-extrabold flex items-center justify-center gap-1">
+                                                        <span>✓</span> SELECTED
+                                                    </div>
                                                 )}
                                             </button>
                                         ))}
