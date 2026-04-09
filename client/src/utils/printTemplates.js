@@ -476,3 +476,35 @@ export const printDocument = (order, settings, docType = 'invoice') => {
     w.document.close();
     setTimeout(() => { w.focus(); w.print(); }, 600);
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Preview HTML generator
+// ─────────────────────────────────────────────────────────────────────────────
+export const generatePreviewHtml = (templateNo, settings) => {
+    const dummyOrder = {
+        orderNumber: 'INV-0001',
+        orderDate: new Date().toISOString(),
+        customer: { name: 'Acme Corporation', companyName: 'Acme Corp', address: '123 Main St, Tech City', phone: '+91 9876543210' },
+        terms: 'Payment within 7 days. Subject to local jurisdiction.',
+        items: [
+            { name: 'Premium Ceramic Tile', brand: 'Kajaria', size: '2x2', hsn: '6907', quantity: 15, primaryQty: 15, totalSqFt: 60, boxCount: 15, price: 50, total: 3000 },
+            { name: 'Adhesive 20Kg', brand: 'Fevimate', size: '', hsn: '3506', quantity: 2, primaryQty: 2, price: 400, total: 800 },
+            { name: 'Spacer 2mm', brand: 'Generic', size: '2mm', hsn: '3926', quantity: 10, primaryQty: 10, price: 50, total: 500 },
+        ],
+        itemsTotal: 4300,
+        taxAmount: 774, // 18% of 4300
+        loadingCharges: 100,
+        transportCharges: 300,
+        discountAmount: 150,
+        advanceAmount: 0,
+        oldBalance: 0,
+        totalAmount: 5324
+    };
+
+    let html;
+    if (templateNo === 2) html = template2(dummyOrder, settings, 'invoice');
+    else if (templateNo === 3) html = template3(dummyOrder, settings, 'invoice');
+    else html = template1(dummyOrder, settings, 'invoice');
+    
+    return html;
+};

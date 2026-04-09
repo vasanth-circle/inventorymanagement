@@ -1,5 +1,6 @@
 import { useState, useContext, useEffect } from 'react';
 import { InventoryContext } from '../context/InventoryContext';
+import { generatePreviewHtml } from '../utils/printTemplates';
 import toast from 'react-hot-toast';
 
 const TABS = [
@@ -41,6 +42,7 @@ const Settings = () => {
     const { billingSettings, updateBillingSettings } = useContext(InventoryContext);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('company');
+    const [previewTemplate, setPreviewTemplate] = useState(null);
 
     const [formData, setFormData] = useState({
         // Company
@@ -356,13 +358,14 @@ const Settings = () => {
                                         {[1, 2, 3].map(t => (
                                             <button key={t} type="button"
                                                 onClick={() => handleNested('documentConfig', 'invoiceTemplate', t)}
-                                                className={`border-2 rounded-xl p-4 text-center transition-all ${
+                                                className={`group border-2 rounded-xl p-4 text-center transition-all relative ${
                                                     formData.documentConfig.invoiceTemplate === t
                                                         ? 'border-rose-500 bg-rose-50 text-rose-700 shadow-sm transform scale-[1.02]'
                                                         : 'border-gray-200 text-gray-400 hover:border-gray-400 hover:bg-gray-50'
                                                 }`}
                                             >
                                                 <div className="w-full aspect-[3/4] bg-white border border-gray-300 shadow-sm rounded-md mb-4 flex flex-col p-2 relative overflow-hidden mx-auto pointer-events-none">
+                                                    {/* existing specific template code */}
                                                     {t === 1 && (
                                                         <>
                                                             <div className="w-full border-b-[2px] border-gray-900 pb-2 flex flex-col items-center">
@@ -431,6 +434,9 @@ const Settings = () => {
                                                             </div>
                                                         </div>
                                                     )}
+                                                </div>
+                                                <div className="absolute inset-0 bg-gray-900/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl pointer-events-auto cursor-pointer" onClick={(e) => { e.stopPropagation(); setPreviewTemplate(t); }}>
+                                                    <span className="bg-white text-gray-900 text-[10px] font-black px-3 py-2 rounded-lg shadow border border-gray-200 hover:bg-gray-50 flex items-center gap-1 transform transition hover:scale-105">👁️ VIEW SAMPLE</span>
                                                 </div>
                                                 <div className="text-sm font-black text-gray-800">Template {t}</div>
                                                 <div className="text-[10px] mt-1 font-bold text-gray-500 uppercase tracking-widest">
@@ -527,6 +533,33 @@ const Settings = () => {
                     </div>
                 </div>
             </form>
+
+            {/* Preview Modal */}
+            {previewTemplate && (
+                <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-4xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-fade-in-up">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <div>
+                                <h3 className="text-sm font-black text-gray-800 flex items-center gap-2">
+                                    <span className="text-xl">👁️</span> 
+                                    Sample Preview: Template {previewTemplate}
+                                </h3>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">
+                                    This uses dummy data to showcase the layout.
+                                </p>
+                            </div>
+                            <button type="button" onClick={() => setPreviewTemplate(null)} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 text-gray-500 hover:bg-gray-300 hover:text-gray-800 transition">✕</button>
+                        </div>
+                        <div className="flex-1 bg-gray-200 p-4 md:p-8 overflow-hidden flex justify-center">
+                            <iframe 
+                                srcDoc={generatePreviewHtml(previewTemplate, formData)} 
+                                className="w-[210mm] max-w-full h-full bg-white shadow-lg border-0"
+                                title="Print Preview"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
