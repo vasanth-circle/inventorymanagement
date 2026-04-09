@@ -521,7 +521,10 @@ const SalesOrders = () => {
                                                     <div style="font-size: 7.5px; color: #444;">${item.brand || ''} | ${item.size || ''}</div>
                                                 </td>
                                                 <td style="text-align: center;">${item.hsn || '690721'}</td>
-                                                <td style="text-align: center; font-weight: bold;">${item.totalSqFt ? item.totalSqFt.toFixed(2) : item.quantity.toFixed(2)}</td>
+                                                <td style="text-align: center; font-weight: bold;">
+                                                    ${item.totalSqFt ? item.totalSqFt.toFixed(2) : item.quantity.toFixed(2)}<br/>
+                                                    <span style="font-size: 7px; font-weight: normal;">(${item.boxCount || 0} Box)</span>
+                                                </td>
                                                 <td style="text-align: right;">${item.price.toFixed(2)}</td>
                                                 <td style="text-align: right;">${item.total.toFixed(2)}</td>
                                                 <td style="text-align: center;">${taxPct}%</td>
