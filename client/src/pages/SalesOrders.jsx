@@ -350,16 +350,17 @@ const SalesOrders = () => {
 
                         .items-table {
                             flex-grow: 1;
-                            border-bottom: 1px solid #000;
+                            border-bottom: 1.5px solid #000;
                             position: relative;
                             background-image: linear-gradient(to right, 
                                 transparent 10mm, #000 10mm, #000 10.2mm, 
-                                transparent 10.2mm, transparent 105mm, #000 105mm, #000 105.2mm, 
-                                transparent 105.2mm, transparent 120mm, #000 120mm, #000 120.2mm, 
-                                transparent 120.2mm, transparent 132mm, #000 132mm, #000 132.2mm, 
-                                transparent 132.2mm, transparent 150mm, #000 150mm, #000 150.2mm, 
-                                transparent 150.2mm, transparent 168mm, #000 168mm, #000 168.2mm, 
-                                transparent 168.2mm
+                                transparent 10.2mm, transparent 85mm, #000 85mm, #000 85.2mm, 
+                                transparent 85.2mm, transparent 100mm, #000 100mm, #000 100.2mm, 
+                                transparent 100.2mm, transparent 118mm, #000 118mm, #000 118.2mm, 
+                                transparent 118.2mm, transparent 136mm, #000 136mm, #000 136.2mm, 
+                                transparent 136.2mm, transparent 158mm, #000 158mm, #000 158.2mm, 
+                                transparent 158.2mm, transparent 170mm, #000 170mm, #000 170.2mm, 
+                                transparent 170.2mm
                             );
                             background-size: 100% 100%;
                             background-repeat: no-repeat;
@@ -369,78 +370,103 @@ const SalesOrders = () => {
                             border-collapse: collapse;
                         }
                         th, td {
-                            padding: 5px;
-                            font-size: 10px;
-                            border-right: 1px solid #000;
+                            padding: 4px 6px;
+                            font-size: 9px; /* Slightly smaller to fit 8 columns */
+                            border-right: 1.5px solid #000;
                         }
                         th:last-child, td:last-child {
                             border-right: none;
                         }
                         th {
-                            border-bottom: 1px solid #000;
-                            background-color: #f2f2f2;
+                            border-bottom: 1.5px solid #000;
+                            background-color: #fff;
                             font-weight: bold;
                             text-transform: uppercase;
-                            font-size: 9px;
+                            font-size: 8px;
                         }
                         td {
                             vertical-align: top;
                         }
                         
-                        .row-empty {
-                            height: 20px;
-                        }
-                        
                         .summary-section {
                             display: flex;
-                            border-bottom: 1px solid #000;
+                            border-bottom: 1.5px solid #000;
+                            min-height: 120px;
                         }
-                        .words-panel {
-                            flex: 1.5;
-                            padding: 10px;
-                            border-right: 1px solid #000;
+                        .summary-left {
+                            flex: 1.8;
+                            padding: 0;
+                            display: flex;
+                            flex-direction: column;
+                            border-right: 1.5px solid #000;
                         }
-                        .totals-panel {
+                        .summary-right {
                             flex: 1;
                             padding: 0;
                         }
+                        
+                        .tax-table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            font-size: 8px;
+                        }
+                        .tax-table th, .tax-table td {
+                            border: 1px solid #000;
+                            padding: 2px 4px;
+                            text-align: right;
+                        }
+                        
                         .math-row {
                             display: flex;
                             justify-content: space-between;
-                            padding: 4px 10px;
-                            border-bottom: 1px solid #eee;
+                            padding: 3px 8px;
+                            font-size: 9px;
                         }
                         .grand-total {
                             background-color: #000;
                             color: #fff;
                             font-weight: bold;
-                            font-size: 14px;
-                            padding: 8px 10px;
-                            border-top: 1px solid #000;
+                            font-size: 12px;
+                            padding: 6px 8px;
+                            margin-top: auto;
                         }
                         
-                        .footer-section {
+                        .meta-grid {
+                            display: grid;
+                            grid-template-columns: 1.5fr 1fr;
+                            border-bottom: 1.5px solid #000;
+                        }
+                        .meta-box {
+                            padding: 5px 8px;
+                            border-right: 1.5px solid #000;
+                        }
+                        .meta-box:last-child {
+                            border-right: none;
+                        }
+                        .meta-item {
+                            display: flex;
+                            margin-bottom: 2px;
+                            font-size: 10px;
+                        }
+                        .meta-label {
+                            width: 100px;
+                            font-weight: bold;
+                        }
+                        .meta-val {
+                            flex: 1;
+                            font-weight: bold;
+                        }
+                        
+                        .footer {
+                            padding: 10px;
                             display: flex;
                             justify-content: space-between;
-                            padding: 15px;
-                            min-height: 80px;
                             align-items: flex-end;
-                        }
-                        .signature-box {
-                            text-align: center;
-                            width: 180px;
-                        }
-                        .sign-line {
-                            border-top: 1px solid #000;
-                            padding-top: 5px;
-                            font-weight: bold;
                             font-size: 9px;
-                            text-transform: uppercase;
                         }
-                        
                         .terms {
-                            font-size: 8px;
-                            margin-top: 10px;
+                            font-size: 7.5px;
+                            line-height: 1.2;
                         }
                     </style>
                 </head>
@@ -448,26 +474,24 @@ const SalesOrders = () => {
                     <div class="container">
                         <div class="company-header">
                             <div class="contact-info">
-                                CELL: ${billingSettings?.phone1 || ''}${billingSettings?.phone2 ? ', ' + billingSettings.phone2 : ''}
+                                CELL: ${billingSettings?.phone1 || '90473 48191'}${billingSettings?.phone2 ? ', ' + billingSettings.phone2 : ', 90470 48191'}
                             </div>
-                            <h1>${(billingSettings?.companyName || 'INVENTORY SYSTEM').toUpperCase()}</h1>
-                            <p>${billingSettings?.address || 'Your Company Address'}</p>
-                            ${billingSettings?.gstNumber ? `<p>GSTIN: ${billingSettings.gstNumber}</p>` : ''}
+                            <h1>SRI ALAGAR TILES & GRANITES</h1>
+                            <p>No.29, M.M.Complex, Thiru Senthil Nagar,</p>
+                            <p>K.Vadamudurai, MTP Road, Coimbatore.</p>
                         </div>
                         
-                        <div class="bill-type">${order.isEstimation ? 'ESTIMATE / CR' : 'TAX INVOICE / SALES BILL'}</div>
+                        <div class="bill-type">ESTIMATE CR</div>
                         
-                        <div class="details-grid">
-                            <div class="bill-to">
-                                <div class="label-val"><span class="label">To:</span> <span class="val">${(order.customer?.companyName || order.customer?.name || 'Cash Sales').toUpperCase()}</span></div>
-                                <div class="label-val"><span class="label">Address:</span> <span class="val">${order.customer?.address || ''}</span></div>
-                                <div class="label-val"><span class="label">Contact:</span> <span class="val">${order.customer?.phone || ''}</span></div>
+                        <div class="meta-grid">
+                            <div class="meta-box">
+                                <div class="meta-item"><span class="meta-label">To:</span> <span class="meta-val">${(order.customer?.companyName || order.customer?.name || 'Cash Sales').toUpperCase()}</span></div>
+                                <div class="meta-item"><span class="meta-label"></span> <span class="meta-val">${order.customer?.address || ''}</span></div>
                             </div>
-                            <div class="bill-stats">
-                                <div class="label-val"><span class="label">Bill No:</span> <span class="val" style="font-size: 14px;">${order.orderNumber}</span></div>
-                                <div class="label-val"><span class="label">Date:</span> <span class="val">${new Date(order.orderDate).toLocaleDateString()}</span></div>
-                                <div class="label-val"><span class="label">Terms:</span> <span class="val">${order.terms || 'Credit'}</span></div>
-                                <div class="label-val"><span class="label">Billed By:</span> <span class="val">${order.user?.name || 'Admin'}</span></div>
+                            <div class="meta-box">
+                                <div class="meta-item"><span class="meta-label">Payment Terms:</span> <span class="meta-val">${order.terms || 'Credit'}</span></div>
+                                <div class="meta-item"><span class="meta-label">No:</span> <span class="meta-val" style="font-size: 14px;">${order.orderNumber}</span></div>
+                                <div class="meta-item"><span class="meta-label">Date:</span> <span class="meta-val">${new Date(order.orderDate).toLocaleDateString()}</span></div>
                             </div>
                         </div>
                         
@@ -476,32 +500,38 @@ const SalesOrders = () => {
                                 <thead>
                                     <tr>
                                         <th width="10mm">S.No</th>
-                                        <th width="95mm">Description of Goods</th>
-                                        <th width="15mm">HSN</th>
-                                        <th width="12mm">Box</th>
+                                        <th width="85mm">Description of Goods</th>
+                                        <th width="15mm">HSN Code</th>
                                         <th width="18mm">Qty (SqFt)</th>
                                         <th width="18mm">Rate</th>
-                                        <th width="22mm">Amount</th>
+                                        <th width="18mm">Amount</th>
+                                        <th width="12mm">Tax %</th>
+                                        <th width="14mm">Total</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${order.items.map((item, i) => `
-                                        <tr>
-                                            <td style="text-align: center;">${i + 1}</td>
-                                            <td>
-                                                <div style="font-weight: bold;">${(item.name || '').toUpperCase()}</div>
-                                                <div style="font-size: 8px; color: #444;">${item.brand || ''} | ${item.size || ''}</div>
-                                            </td>
-                                            <td style="text-align: center;">${item.hsn || '690721'}</td>
-                                            <td style="text-align: center;">${item.boxCount ? item.boxCount.toFixed(2) : '-'}</td>
-                                            <td style="text-align: center; font-weight: bold;">${item.totalSqFt ? item.totalSqFt.toFixed(2) : item.quantity.toFixed(2)}</td>
-                                            <td style="text-align: right;">${item.price.toFixed(2)}</td>
-                                            <td style="text-align: right; font-weight: bold;">${item.total.toFixed(2)}</td>
-                                        </tr>
-                                    `).join('')}
-                                    ${Array(Math.max(0, 18 - order.items.length)).fill(0).map(() => `
-                                        <tr class="row-empty">
-                                            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                                    ${order.items.map((item, i) => {
+                                        const taxPct = order.taxAmount > 0 ? 18 : 0;
+                                        const totalAmt = item.total + (item.total * taxPct / 100);
+                                        return `
+                                            <tr>
+                                                <td style="text-align: center;">${i + 1}</td>
+                                                <td>
+                                                    <div style="font-weight: bold;">${(item.name || '').toUpperCase()}</div>
+                                                    <div style="font-size: 7.5px; color: #444;">${item.brand || ''} | ${item.size || ''}</div>
+                                                </td>
+                                                <td style="text-align: center;">${item.hsn || '690721'}</td>
+                                                <td style="text-align: center; font-weight: bold;">${item.totalSqFt ? item.totalSqFt.toFixed(2) : item.quantity.toFixed(2)}</td>
+                                                <td style="text-align: right;">${item.price.toFixed(2)}</td>
+                                                <td style="text-align: right;">${item.total.toFixed(2)}</td>
+                                                <td style="text-align: center;">${taxPct}%</td>
+                                                <td style="text-align: right; font-weight: bold;">${(item.total + (item.total * taxPct / 100)).toFixed(2)}</td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                    ${Array(Math.max(0, 15 - order.items.length)).fill(0).map(() => `
+                                        <tr style="height: 20px;">
+                                            <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
@@ -509,38 +539,63 @@ const SalesOrders = () => {
                         </div>
                         
                         <div class="summary-section">
-                            <div class="words-panel">
-                                <div style="font-size: 9px; font-weight: bold; text-decoration: underline; margin-bottom: 5px;">AMOUNT IN WORDS:</div>
-                                <div style="font-weight: bold; text-transform: uppercase;">${numberToWords(Math.round(order.totalAmount))}</div>
-                                
-                                <div class="terms">
-                                    <strong>Terms & Conditions:</strong><br/>
-                                    1. Goods once sold will not be taken back.<br/>
-                                    2. No responsibility for breakages after leaving premises.<br/>
-                                    3. E. & O.E.
+                            <div class="summary-left">
+                                <div style="padding: 10px; border-bottom: 1px solid #000;">
+                                    <div style="font-size: 8px; font-weight: bold; margin-bottom: 4px;">TAX ANALYSIS:</div>
+                                    <table class="tax-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Taxable Value</th>
+                                                <th>CGST%</th>
+                                                <th>CGST Amt</th>
+                                                <th>SGST%</th>
+                                                <th>SGST Amt</th>
+                                                <th>Total Tax</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>${(order.itemsTotal || 0).toFixed(2)}</td>
+                                                <td>${order.taxAmount > 0 ? '9%' : '0%'}</td>
+                                                <td>${(order.taxAmount / 2).toFixed(2)}</td>
+                                                <td>${order.taxAmount > 0 ? '9%' : '0%'}</td>
+                                                <td>${(order.taxAmount / 2).toFixed(2)}</td>
+                                                <td>${(order.taxAmount || 0).toFixed(2)}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div style="padding: 10px; flex: 1;">
+                                    <div style="font-size: 8px; font-weight: bold; text-decoration: underline; margin-bottom: 3px;">AMOUNT IN WORDS:</div>
+                                    <div style="font-weight: bold; text-transform: uppercase; font-size: 9px;">${numberToWords(Math.round(order.totalAmount))}</div>
+                                    
+                                    <div class="terms" style="margin-top: 10px;">
+                                        <strong>E. & O.E.</strong><br/>
+                                        1. Goods once sold will not be taken back.<br/>
+                                        2. No responsibility for breakages after leaving premises.
+                                    </div>
                                 </div>
                             </div>
-                            <div class="totals-panel">
-                                <div class="math-row"><span>Sub Total:</span> <span>₹${(order.itemsTotal || 0).toLocaleString()}</span></div>
+                            <div class="summary-right">
+                                <div class="math-row" style="border-bottom: 1px solid #eee;"><span>Total Taxable Value:</span> <span>₹${(order.itemsTotal || 0).toLocaleString()}</span></div>
                                 ${order.loadingCharges > 0 ? `<div class="math-row"><span>Loading:</span> <span>₹${order.loadingCharges.toLocaleString()}</span></div>` : ''}
-                                ${order.transportCharges > 0 ? `<div class="math-row"><span>Transport:</span> <span>₹${order.transportCharges.toLocaleString()}</span></div>` : ''}
-                                ${order.taxAmount > 0 ? `<div class="math-row"><span>CGST / SGST:</span> <span>₹${order.taxAmount.toLocaleString()}</span></div>` : ''}
+                                ${order.transportCharges > 0 ? `<div class="math-row"><span>Auto Charges:</span> <span>₹${order.transportCharges.toLocaleString()}</span></div>` : ''}
                                 ${order.oldBalance > 0 ? `<div class="math-row"><span>Old Balance:</span> <span>₹${order.oldBalance.toLocaleString()}</span></div>` : ''}
-                                ${order.advanceAmount > 0 ? `<div class="math-row"><span>Advance Paid:</span> <span>- ₹${order.advanceAmount.toLocaleString()}</span></div>` : ''}
+                                ${order.advanceAmount > 0 ? `<div class="math-row" style="color: green;"><span>Advance Paid:</span> <span>- ₹${order.advanceAmount.toLocaleString()}</span></div>` : ''}
                                 <div class="math-row grand-total">
                                     <span>NET AMOUNT:</span>
-                                    <span>₹${order.totalTotalAmount || order.totalAmount.toLocaleString()}</span>
+                                    <span>₹${(order.totalTotalAmount || order.totalAmount).toLocaleString()}</span>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="footer-section">
-                            <div class="signature-box">
-                                <div class="sign-line">Receiver's Signature</div>
+                        <div class="footer">
+                            <div style="text-align: center; border-top: 1px solid #000; width: 150px; padding-top: 3px;">
+                                RECEIVER'S SIGNATURE
                             </div>
-                            <div class="signature-box">
-                                <div style="font-size: 8px; margin-bottom: 40px; font-weight: bold;">For ${billingSettings?.companyName || 'INVENTORY SYSTEM'}</div>
-                                <div class="sign-line">Authorized Signatory</div>
+                            <div style="text-align: center; width: 220px;">
+                                <div style="font-weight: bold; margin-bottom: 40px;">For SRI ALAGAR TILES & GRANITES</div>
+                                <div style="border-top: 1px solid #000; padding-top: 3px;">AUTHORIZED SIGNATORY</div>
                             </div>
                         </div>
                     </div>
