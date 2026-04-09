@@ -4,6 +4,7 @@ import { InventoryContext } from '../context/InventoryContext';
 import { AuthContext } from '../context/AuthContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { printDocument } from '../utils/printTemplates';
 
 const STATUS_COLORS = {
     draft:     'bg-gray-100 text-gray-600',
@@ -187,113 +188,7 @@ const Quotations = () => {
 
     /* ── Print ─────────────────────────────────────────────────────── */
     const handlePrint = (q) => {
-        const s = billingSettings || {};
-        const { itemsTotal, net } = (() => {
-            const it = q.items.reduce((acc, i) => acc + (i.total || 0), 0);
-            return { itemsTotal: it, net: q.totalAmount || it };
-        })();
-
-        const html = `
-<html><head><title>Quotation - ${q.quotationNumber}</title>
-<style>
-  @page { size: A4; margin: 8mm; }
-  body { font-family: Arial, sans-serif; font-size: 10px; color: #000; margin: 0; }
-  .container { border: 1.5px solid #000; }
-  .header { text-align: center; padding: 10px; border-bottom: 1.5px solid #000; }
-  .header h1 { margin: 0; font-size: 22px; font-weight: 800; }
-  .header p { margin: 2px 0; font-size: 10px; }
-  .doc-title { text-align: center; font-size: 13px; font-weight: bold; letter-spacing: 4px; padding: 5px; border-bottom: 1.5px solid #000; }
-  .meta { display: grid; grid-template-columns: 1.5fr 1fr; border-bottom: 1.5px solid #000; }
-  .meta-box { padding: 6px 10px; }
-  .meta-box:first-child { border-right: 1.5px solid #000; }
-  .meta-row { display: flex; margin-bottom: 2px; font-size: 9.5px; }
-  .meta-label { width: 110px; font-weight: bold; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { padding: 4px 6px; font-size: 8.5px; border-right: 1.5px solid #000; }
-  th:last-child, td:last-child { border-right: none; }
-  th { border-bottom: 1.5px solid #000; font-weight: bold; text-transform: uppercase; background: #f8f8f8; }
-  .items-wrapper { border-bottom: 1.5px solid #000; }
-  .summary { display: flex; border-bottom: 1.5px solid #000; }
-  .summary-left { flex: 2; padding: 10px; border-right: 1.5px solid #000; font-size: 9px; }
-  .summary-right { flex: 1; }
-  .math-row { display: flex; justify-content: space-between; padding: 3px 10px; font-size: 9px; }
-  .net-row { background: #000; color: #fff; font-weight: bold; font-size: 12px; padding: 6px 10px; display: flex; justify-content: space-between; }
-  .footer { display: flex; justify-content: space-between; padding: 12px 15px; align-items: flex-end; font-size: 9px; }
-  .sig-block { text-align: center; }
-  .sig-line { border-top: 1px solid #000; padding-top: 3px; margin-top: 40px; font-size: 8px; font-weight: bold; }
-</style></head><body>
-<div class="container">
-  <div class="header">
-    <h1>${s.companyName || 'Your Company'}</h1>
-    <p>${s.address || ''}</p>
-    ${s.gstNumber ? `<p>GSTIN: ${s.gstNumber}</p>` : ''}
-    <p>Phone: ${s.phone1 || ''}${s.phone2 ? ', ' + s.phone2 : ''}</p>
-  </div>
-  <div class="doc-title">${s.documentConfig?.quotationTitle || 'QUOTATION'}</div>
-  <div class="meta">
-    <div class="meta-box">
-      <div class="meta-row"><span class="meta-label">To:</span> <strong>${(q.customer?.companyName || q.customer?.name || '').toUpperCase()}</strong></div>
-      <div class="meta-row"><span class="meta-label"></span> ${q.customer?.address || ''}</div>
-      <div class="meta-row"><span class="meta-label">Phone:</span> ${q.customer?.phone || ''}</div>
-    </div>
-    <div class="meta-box">
-      <div class="meta-row"><span class="meta-label">Quotation No:</span> <strong style="font-size:13px;">${q.quotationNumber}</strong></div>
-      <div class="meta-row"><span class="meta-label">Date:</span> ${new Date(q.quotationDate || q.createdAt).toLocaleDateString()}</div>
-      <div class="meta-row"><span class="meta-label">Valid Until:</span> ${q.validUntil ? new Date(q.validUntil).toLocaleDateString() : '-'}</div>
-    </div>
-  </div>
-  <div class="items-wrapper">
-    <table>
-      <thead><tr>
-        <th style="width:6%">S.No</th>
-        <th>Description</th>
-        <th style="width:10%">HSN</th>
-        <th style="width:10%">Qty</th>
-        <th style="width:10%">Rate</th>
-        <th style="width:12%">Amount</th>
-      </tr></thead>
-      <tbody>
-        ${q.items.map((item, i) => `<tr>
-          <td style="text-align:center">${i + 1}</td>
-          <td><strong>${(item.name || '').toUpperCase()}</strong><br/><span style="font-size:7.5px;color:#555">${item.brand || ''} ${item.size || ''}</span></td>
-          <td style="text-align:center">${item.hsn || ''}</td>
-          <td style="text-align:center">${item.quantity}</td>
-          <td style="text-align:right">${item.price?.toFixed(2)}</td>
-          <td style="text-align:right">${(item.total || item.quantity * item.price)?.toFixed(2)}</td>
-        </tr>`).join('')}
-        ${Array(Math.max(0, 15 - q.items.length)).fill(0).map(() => `<tr style="height:18px"><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>`).join('')}
-      </tbody>
-    </table>
-  </div>
-  <div class="summary">
-    <div class="summary-left">
-      <strong>Terms & Conditions:</strong><br/>
-      ${(q.terms || s.branding?.termsAndConditions || 'E. & O.E.').replace(/\n/g, '<br/>')}
-      ${q.notes ? `<br/><br/><strong>Notes:</strong> ${q.notes}` : ''}
-    </div>
-    <div class="summary-right">
-      <div class="math-row"><span>Sub Total:</span> <span>₹${(itemsTotal).toLocaleString()}</span></div>
-      ${q.taxAmount > 0 ? `<div class="math-row"><span>Tax:</span> <span>₹${q.taxAmount.toLocaleString()}</span></div>` : ''}
-      ${q.loadingCharges > 0 ? `<div class="math-row"><span>Loading:</span> <span>₹${q.loadingCharges.toLocaleString()}</span></div>` : ''}
-      ${q.transportCharges > 0 ? `<div class="math-row"><span>Transport:</span> <span>₹${q.transportCharges.toLocaleString()}</span></div>` : ''}
-      ${q.discountAmount > 0 ? `<div class="math-row" style="color:green"><span>Discount:</span> <span>- ₹${q.discountAmount.toLocaleString()}</span></div>` : ''}
-      <div class="net-row"><span>TOTAL:</span><span>₹${net.toLocaleString()}</span></div>
-    </div>
-  </div>
-  <div class="footer">
-    <div class="sig-block"><div class="sig-line">CUSTOMER SIGNATURE</div></div>
-    <div class="sig-block">
-      <div style="font-size:8px;font-weight:bold;margin-bottom:5px;">For ${s.companyName || 'Company'}</div>
-      <div class="sig-line">AUTHORIZED SIGNATORY</div>
-    </div>
-  </div>
-</div>
-</body></html>`;
-
-        const w = window.open('', '_blank', 'width=900,height=700');
-        w.document.write(html);
-        w.document.close();
-        setTimeout(() => { w.focus(); w.print(); }, 500);
+        printDocument(q, billingSettings, 'quotation');
     };
 
     /* ── Filtered list ─────────────────────────────────────────────── */
