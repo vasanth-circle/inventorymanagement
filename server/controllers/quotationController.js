@@ -1,6 +1,7 @@
 import Quotation from '../models/Quotation.js';
 import SalesOrder from '../models/SalesOrder.js';
 import Setting from '../models/Setting.js';
+import User from '../models/User.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 
 // ── Helper: generate next quotation number ─────────────────────────────────
@@ -32,7 +33,7 @@ export const getQuotations = async (req, res, next) => {
 
         const quotations = await Quotation.find(query)
             .populate('customer', 'name companyName phone address')
-            .populate('user', 'name')
+            .populate({ path: 'user', model: User, select: 'name' })
             .sort({ createdAt: -1 })
             .limit(limit * 1)
             .skip((page - 1) * limit);
@@ -57,7 +58,7 @@ export const getQuotation = async (req, res, next) => {
     try {
         const quotation = await Quotation.findOne({ _id: req.params.id, tenantId: req.tenantId })
             .populate('customer', 'name companyName phone address')
-            .populate('user', 'name')
+            .populate({ path: 'user', model: User, select: 'name' })
             .populate('items.item', 'name brand size hsn');
 
         if (!quotation) return sendError(res, 404, 'Quotation not found');
@@ -83,7 +84,7 @@ export const createQuotation = async (req, res, next) => {
 
         const populated = await Quotation.findById(quotation._id)
             .populate('customer', 'name companyName phone address')
-            .populate('user', 'name');
+            .populate({ path: 'user', model: User, select: 'name' });
 
         sendResponse(res, 201, populated, 'Quotation created successfully');
     } catch (error) {
@@ -104,7 +105,7 @@ export const updateQuotation = async (req, res, next) => {
             req.params.id,
             { $set: req.body },
             { new: true, runValidators: true }
-        ).populate('customer', 'name companyName phone address').populate('user', 'name');
+        ).populate('customer', 'name companyName phone address').populate({ path: 'user', model: User, select: 'name' });
 
         sendResponse(res, 200, updated, 'Quotation updated successfully');
     } catch (error) {
