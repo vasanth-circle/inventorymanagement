@@ -354,13 +354,6 @@ const SalesOrders = () => {
                             position: relative;
                             /* Removed gradient to support printing without 'background-graphics' */
                         }
-                        .print-v-line {
-                            position: absolute;
-                            top: 0;
-                            bottom: 0;
-                            border-right: 1.5px solid #000;
-                            pointer-events: none;
-                        }
                         table {
                             width: 100%;
                             border-collapse: collapse;
@@ -494,14 +487,16 @@ const SalesOrders = () => {
                         </div>
                         
                         <div class="items-table">
-                            <!-- Vertical Lines for Print Reliability -->
-                            <div class="print-v-line" style="left: 10mm;"></div>
-                            <div class="print-v-line" style="left: 85mm;"></div>
-                            <div class="print-v-line" style="left: 100mm;"></div>
-                            <div class="print-v-line" style="left: 118mm;"></div>
-                            <div class="print-v-line" style="left: 136mm;"></div>
-                            <div class="print-v-line" style="left: 158mm;"></div>
-                            <div class="print-v-line" style="left: 170mm;"></div>
+                            <!-- SVG Vertical Lines (Most reliable for printing without backgrounds) -->
+                            <svg style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2;">
+                                <line x1="10mm" y1="0" x2="10mm" y2="100%" stroke="black" stroke-width="1.2" />
+                                <line x1="85mm" y1="0" x2="85mm" y2="100%" stroke="black" stroke-width="1.2" />
+                                <line x1="100mm" y1="0" x2="100mm" y2="100%" stroke="black" stroke-width="1.2" />
+                                <line x1="118mm" y1="0" x2="118mm" y2="100%" stroke="black" stroke-width="1.2" />
+                                <line x1="136mm" y1="0" x2="136mm" y2="100%" stroke="black" stroke-width="1.2" />
+                                <line x1="158mm" y1="0" x2="158mm" y2="100%" stroke="black" stroke-width="1.2" />
+                                <line x1="170mm" y1="0" x2="170mm" y2="100%" stroke="black" stroke-width="1.2" />
+                            </svg>
                             
                             <table>
                                 <thead>
