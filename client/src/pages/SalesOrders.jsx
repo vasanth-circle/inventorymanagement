@@ -351,16 +351,30 @@ const SalesOrders = () => {
                         .items-table {
                             flex-grow: 1;
                             border-bottom: 1px solid #000;
+                            position: relative;
+                            background-image: linear-gradient(to right, 
+                                transparent 10mm, #000 10mm, #000 10.2mm, 
+                                transparent 10.2mm, transparent 105mm, #000 105mm, #000 105.2mm, 
+                                transparent 105.2mm, transparent 120mm, #000 120mm, #000 120.2mm, 
+                                transparent 120.2mm, transparent 132mm, #000 132mm, #000 132.2mm, 
+                                transparent 132.2mm, transparent 150mm, #000 150mm, #000 150.2mm, 
+                                transparent 150.2mm, transparent 168mm, #000 168mm, #000 168.2mm, 
+                                transparent 168.2mm
+                            );
+                            background-size: 100% 100%;
+                            background-repeat: no-repeat;
                         }
                         table {
                             width: 100%;
-                            height: 100%;
                             border-collapse: collapse;
                         }
                         th, td {
-                            border-right: 1px solid #000;
                             padding: 5px;
                             font-size: 10px;
+                            border-right: 1px solid #000;
+                        }
+                        th:last-child, td:last-child {
+                            border-right: none;
                         }
                         th {
                             border-bottom: 1px solid #000;
@@ -371,9 +385,6 @@ const SalesOrders = () => {
                         }
                         td {
                             vertical-align: top;
-                        }
-                        th:last-child, td:last-child {
-                            border-right: none;
                         }
                         
                         .row-empty {
@@ -464,13 +475,13 @@ const SalesOrders = () => {
                             <table>
                                 <thead>
                                     <tr>
-                                        <th width="30">S.No</th>
-                                        <th>Description of Goods</th>
-                                        <th width="50">HSN</th>
-                                        <th width="40">Box</th>
-                                        <th width="60">Qty (SqFt)</th>
-                                        <th width="60">Rate</th>
-                                        <th width="80">Amount</th>
+                                        <th width="10mm">S.No</th>
+                                        <th width="95mm">Description of Goods</th>
+                                        <th width="15mm">HSN</th>
+                                        <th width="12mm">Box</th>
+                                        <th width="18mm">Qty (SqFt)</th>
+                                        <th width="18mm">Rate</th>
+                                        <th width="22mm">Amount</th>
                                     </tr>
                                 </thead>
                                 <tbody>
