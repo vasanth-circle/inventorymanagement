@@ -352,26 +352,24 @@ const SalesOrders = () => {
                             flex-grow: 1;
                             border-bottom: 1.5px solid #000;
                             position: relative;
-                            background-image: linear-gradient(to right, 
-                                transparent 10mm, #000 10mm, #000 10.2mm, 
-                                transparent 10.2mm, transparent 85mm, #000 85mm, #000 85.2mm, 
-                                transparent 85.2mm, transparent 100mm, #000 100mm, #000 100.2mm, 
-                                transparent 100.2mm, transparent 118mm, #000 118mm, #000 118.2mm, 
-                                transparent 118.2mm, transparent 136mm, #000 136mm, #000 136.2mm, 
-                                transparent 136.2mm, transparent 158mm, #000 158mm, #000 158.2mm, 
-                                transparent 158.2mm, transparent 170mm, #000 170mm, #000 170.2mm, 
-                                transparent 170.2mm
-                            );
-                            background-size: 100% 100%;
-                            background-repeat: no-repeat;
+                            /* Removed gradient to support printing without 'background-graphics' */
+                        }
+                        .print-v-line {
+                            position: absolute;
+                            top: 0;
+                            bottom: 0;
+                            border-right: 1.5px solid #000;
+                            pointer-events: none;
                         }
                         table {
                             width: 100%;
                             border-collapse: collapse;
+                            position: relative;
+                            z-index: 1;
                         }
                         th, td {
                             padding: 4px 6px;
-                            font-size: 9px; /* Slightly smaller to fit 8 columns */
+                            font-size: 9px;
                             border-right: 1.5px solid #000;
                         }
                         th:last-child, td:last-child {
@@ -496,6 +494,15 @@ const SalesOrders = () => {
                         </div>
                         
                         <div class="items-table">
+                            <!-- Vertical Lines for Print Reliability -->
+                            <div class="print-v-line" style="left: 10mm;"></div>
+                            <div class="print-v-line" style="left: 85mm;"></div>
+                            <div class="print-v-line" style="left: 100mm;"></div>
+                            <div class="print-v-line" style="left: 118mm;"></div>
+                            <div class="print-v-line" style="left: 136mm;"></div>
+                            <div class="print-v-line" style="left: 158mm;"></div>
+                            <div class="print-v-line" style="left: 170mm;"></div>
+                            
                             <table>
                                 <thead>
                                     <tr>
