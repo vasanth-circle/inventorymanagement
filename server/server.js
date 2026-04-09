@@ -23,6 +23,7 @@ import purchaseOrderRoutes from './routes/purchaseOrderRoutes.js';
 import locationRoutes from './routes/locationRoutes.js';
 import dispatchRoutes from './routes/dispatchRoutes.js';
 import settingRoutes from './routes/settingRoutes.js';
+import quotationRoutes from './routes/quotationRoutes.js';
 import fixLegacyIndexes from './utils/fixIndexes.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -80,6 +81,7 @@ app.use('/api/purchase-orders', purchaseOrderRoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/api/dispatches', dispatchRoutes);
 app.use('/api/settings', settingRoutes);
+app.use('/api/quotations', quotationRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

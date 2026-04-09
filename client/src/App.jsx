@@ -27,6 +27,7 @@ import PurchaseOrders from './pages/PurchaseOrders';
 import Locations from './pages/Locations';
 import DispatchManagement from './pages/DispatchManagement';
 import Settings from './pages/Settings';
+import Quotations from './pages/Quotations';
 
 function AppLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -83,6 +84,7 @@ function App() {
                                             <Route path="/locations" element={<Locations />} />
                                             <Route path="/dispatch-management" element={<DispatchManagement />} />
                                             <Route path="/settings" element={<Settings />} />
+                                            <Route path="/quotations" element={<Quotations />} />
                                             <Route path="/" element={<Navigate to="/dashboard" replace />} />
                                             <Route path="*" element={<Navigate to="/dashboard" replace />} />
                                         </Routes>

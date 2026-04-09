@@ -99,7 +99,14 @@ const salesOrderSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true,
-    }
+    },
+    // Quotation conversion tracking
+    quotationRef: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Quotation',
+        default: null,
+    },
+    quotationNumber: { type: String, default: null },
 }, {
     timestamps: true,
 });

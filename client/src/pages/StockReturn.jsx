@@ -32,10 +32,14 @@ const StockReturn = () => {
                 api.get('/customers?limit=1000'),
                 api.get('/vendors?limit=1000')
             ]);
-            setItems(itemsRes.data.data.items);
-            setCustomers(custRes.data.data.customers);
-            setVendors(vendRes.data.data.vendors);
+            
+            // Items API doesn't use the standardResponse wrapper (res.json directly)
+            setItems(itemsRes.data.items || itemsRes.data.data?.items || []);
+            // Customers and Vendors use standardResponse (res.json({ success, data }))
+            setCustomers(custRes.data.data?.customers || []);
+            setVendors(vendRes.data.data?.vendors || []);
         } catch (error) {
+            console.error('Failed to load initial data:', error);
             toast.error('Failed to load initial data');
         }
     };
