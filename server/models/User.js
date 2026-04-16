@@ -59,7 +59,8 @@ const userSchema = new mongoose.Schema({
         default: [],
     },
     tenantId: {
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Tenant',
         index: true,
     },
 }, {

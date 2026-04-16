@@ -78,7 +78,8 @@ const transactionSchema = new mongoose.Schema({
         ref: 'Vendor',
     },
     tenantId: {
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Tenant',
         required: [true, 'Tenant ID is required'],
         index: true,
     },

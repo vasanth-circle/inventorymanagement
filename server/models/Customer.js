@@ -54,7 +54,8 @@ const customerSchema = new mongoose.Schema({
         default: true,
     },
     tenantId: {
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Tenant',
         required: [true, 'Tenant ID is required'],
         index: true,
     },

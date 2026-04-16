@@ -61,7 +61,7 @@ export const register = async (req, res, next) => {
             termsAccepted: termsAccepted || true,
             role: 'tenant_admin',
             menuAccess: 'all',
-            tenantId: tenant.tenantId,
+            tenantId: tenant._id,
             isActive: true,
             appRoles: {
                 crm: null,
@@ -107,7 +107,7 @@ export const addUser = async (req, res, next) => {
             return res.status(400).json({ message: 'User already exists' });
         }
 
-        const tenantId = req.user.tenantId ? req.user.tenantId.toString() : null;
+        const tenantId = req.user.tenantId;
 
         // Create user
         const user = await User.create({
@@ -291,8 +291,13 @@ export const getUsers = async (req, res, next) => {
         }
 
 
-        // Direct query: tenantId is ObjectId in schema, Mongoose casts automatically
-        const users = await User.find({ tenantId: req.user.tenantId }).select('-password');
+        // Match both ObjectId and String formats for robustness during transition
+        const users = await User.find({ 
+            $or: [
+                { tenantId: req.user.tenantId },
+                { tenantId: req.user.tenantId.toString() }
+            ]
+        }).select('-password');
         console.log(`getUsers: Found ${users.length} users for tenant ${req.user.tenantId}`);
         res.json(users);
     } catch (error) {

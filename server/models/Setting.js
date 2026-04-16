@@ -3,7 +3,8 @@ import { appConn } from '../config/db.js';
 
 const settingSchema = new mongoose.Schema({
     tenantId: {
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Tenant',
         required: true,
         unique: true,
     },

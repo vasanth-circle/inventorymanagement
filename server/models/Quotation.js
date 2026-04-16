@@ -7,7 +7,8 @@ const quotationSchema = new mongoose.Schema({
         required: true,
     },
     tenantId: {
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Tenant',
         required: [true, 'Tenant ID is required'],
         index: true,
     },

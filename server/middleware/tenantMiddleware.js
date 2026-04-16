@@ -71,8 +71,8 @@ export const checkTenantStatus = async (req, res, next) => {
                     });
                 }
                 
-                // Use the standardized tenantId from the tenant object if available
-                req.tenantId = tenant.tenantId || tenant._id.toString();
+                // Standardize on tenant._id for internal relational mapping
+                req.tenantId = tenant._id;
             } else {
                 console.warn(`Tenant object not found in DB for tenantId: ${req.user.tenantId}`);
                 // If we have a tenantId from user but no tenant object, we still allow it for now 
