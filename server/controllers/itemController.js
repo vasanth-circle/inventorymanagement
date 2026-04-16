@@ -4,6 +4,7 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { tenantQuery } from '../utils/tenantQuery.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,7 +55,7 @@ export const getItems = async (req, res, next) => {
             sortOrder = 'desc'
         } = req.query;
 
-        const query = { tenantId: req.tenantId };
+        const query = { ...tenantQuery(req) };
 
         // Search by name or barcode
         if (search) {
@@ -108,7 +109,7 @@ export const getItems = async (req, res, next) => {
 // @access  Private
 export const getItem = async (req, res, next) => {
     try {
-        const item = await Item.findOne({ _id: req.params.id, tenantId: req.tenantId }).populate('category', 'name');
+        const item = await Item.findOne({ _id: req.params.id, ...tenantQuery(req) }).populate('category', 'name');
 
         if (!item) {
             return res.status(404).json({ message: 'Item not found' });
@@ -147,7 +148,7 @@ export const createItem = async (req, res, next) => {
         itemData.tenantId = req.tenantId;
 
         const item = await Item.create(itemData);
-        const populatedItem = await Item.findOne({ _id: item._id, tenantId: req.tenantId }).populate('category', 'name');
+        const populatedItem = await Item.findOne({ _id: item._id, ...tenantQuery(req) }).populate('category', 'name');
 
         res.status(201).json(populatedItem);
     } catch (error) {
@@ -160,7 +161,7 @@ export const createItem = async (req, res, next) => {
 // @access  Private
 export const updateItem = async (req, res, next) => {
     try {
-        const item = await Item.findOne({ _id: req.params.id, tenantId: req.tenantId });
+        const item = await Item.findOne({ _id: req.params.id, ...tenantQuery(req) });
 
         if (!item) {
             return sendError(res, 404, 'Item not found');
@@ -193,7 +194,7 @@ export const updateItem = async (req, res, next) => {
         if (updateData.barcode === '') updateData.barcode = undefined;
 
         const updatedItem = await Item.findOneAndUpdate(
-            { _id: req.params.id, tenantId: req.tenantId },
+            { _id: req.params.id, ...tenantQuery(req) },
             updateData,
             { new: true, runValidators: true }
         ).populate('category', 'name');
@@ -209,13 +210,13 @@ export const updateItem = async (req, res, next) => {
 // @access  Private/Admin
 export const deleteItem = async (req, res, next) => {
     try {
-        const item = await Item.findOne({ _id: req.params.id, tenantId: req.tenantId });
+        const item = await Item.findOne({ _id: req.params.id, ...tenantQuery(req) });
 
         if (!item) {
             return res.status(404).json({ message: 'Item not found' });
         }
 
-        await Item.findOneAndDelete({ _id: req.params.id, tenantId: req.tenantId });
+        await Item.findOneAndDelete({ _id: req.params.id, ...tenantQuery(req) });
 
         res.json({ message: 'Item deleted successfully' });
     } catch (error) {

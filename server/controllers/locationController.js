@@ -1,11 +1,12 @@
 import Location from '../models/Location.js';
+import { tenantQuery } from '../utils/tenantQuery.js';
 
 // @desc    Get all locations
 // @route   GET /api/locations
 // @access  Private
 export const getLocations = async (req, res, next) => {
     try {
-        const locations = await Location.find({ tenantId: req.tenantId, isActive: true }).sort({ name: 1 });
+        const locations = await Location.find({ ...tenantQuery(req), isActive: true }).sort({ name: 1 });
         res.json(locations);
     } catch (error) {
         next(error);
@@ -21,7 +22,7 @@ export const createLocation = async (req, res, next) => {
 
         const locationExists = await Location.findOne({ 
             name: { $regex: new RegExp(`^${name}$`, 'i') },
-            tenantId: req.tenantId 
+            ...tenantQuery(req) 
         });
 
         if (locationExists) {
@@ -47,7 +48,7 @@ export const updateLocation = async (req, res, next) => {
     try {
         const { name, description, isActive } = req.body;
 
-        let location = await Location.findOne({ _id: req.params.id, tenantId: req.tenantId });
+        let location = await Location.findOne({ _id: req.params.id, ...tenantQuery(req) });
 
         if (!location) {
             return res.status(404).json({ message: 'Location not found' });
@@ -70,7 +71,7 @@ export const updateLocation = async (req, res, next) => {
 // @access  Private/Admin
 export const deleteLocation = async (req, res, next) => {
     try {
-        const location = await Location.findOne({ _id: req.params.id, tenantId: req.tenantId });
+        const location = await Location.findOne({ _id: req.params.id, ...tenantQuery(req) });
 
         if (!location) {
             return res.status(404).json({ message: 'Location not found' });

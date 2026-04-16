@@ -4,6 +4,7 @@ import Category from '../models/Category.js';
 import Transaction from '../models/Transaction.js';
 import Location from '../models/Location.js';
 import { appConn } from '../config/db.js';
+import { tenantQuery } from '../utils/tenantQuery.js';
 
 // Parse Excel file and return data
 export const parseExcel = async (req, res, next) => {
@@ -133,7 +134,7 @@ export const importExcelData = async (req, res, next) => {
                 let categoryId;
                 const category = await Category.findOne({ 
                     name: { $regex: new RegExp(`^${itemData.category}$`, 'i') },
-                    tenantId: req.tenantId
+                    ...tenantQuery(req)
                 });
 
                 if (category) {
@@ -153,7 +154,7 @@ export const importExcelData = async (req, res, next) => {
                         { sku: itemData.sku },
                         { name: itemData.name }
                     ],
-                    tenantId: req.tenantId
+                    ...tenantQuery(req)
                 });
 
                 if (item) {
@@ -178,7 +179,7 @@ export const importExcelData = async (req, res, next) => {
                         reason: 'Excel Import',
                         location: itemData.location || item.location,
                         user: req.user._id,
-                        tenantId: req.tenantId
+                        ...tenantQuery(req)
                     });
 
                     results.updated.push({
@@ -197,7 +198,7 @@ export const importExcelData = async (req, res, next) => {
                         location: itemData.location,
                         minStockThreshold: itemData.minStockLevel || 0,
                         customFields: itemData.customFields || {},
-                        tenantId: req.tenantId
+                        ...tenantQuery(req)
                     });
 
                     // Create inward transaction
@@ -210,7 +211,7 @@ export const importExcelData = async (req, res, next) => {
                         reason: 'Excel Import',
                         location: itemData.location || item.location,
                         user: req.user._id,
-                        tenantId: req.tenantId
+                        ...tenantQuery(req)
                     });
 
                     results.success.push({
@@ -245,7 +246,7 @@ export const importExcelData = async (req, res, next) => {
 export const downloadTemplate = async (req, res, next) => {
     try {
         // Fetch all unique custom field keys across all items for this tenant
-        const allItems = await Item.find({ tenantId: req.tenantId }, 'customFields');
+        const allItems = await Item.find({ ...tenantQuery(req) }, 'customFields');
         const customFieldKeys = new Set();
         allItems.forEach(item => {
             if (item.customFields) {
@@ -254,7 +255,7 @@ export const downloadTemplate = async (req, res, next) => {
         });
 
         // Fetch all managed locations for this tenant
-        const locations = await Location.find({ tenantId: req.tenantId, isActive: true });
+        const locations = await Location.find({ ...tenantQuery(req), isActive: true });
         const locationNames = locations.map(loc => loc.name).join(', ') || 'Main Warehouse';
 
         // Create sample data with dynamic headers
@@ -411,7 +412,7 @@ export const importBulkMapped = async (req, res, next) => {
                 const categoryName = itemData.category || 'Uncategorized';
                 const category = await Category.findOne({ 
                     name: { $regex: new RegExp(`^${categoryName}$`, 'i') },
-                    tenantId: req.tenantId
+                    ...tenantQuery(req)
                 });
 
                 if (category) {
@@ -427,11 +428,11 @@ export const importBulkMapped = async (req, res, next) => {
                 // Check for existing item
                 let item = null;
                 if (itemData.sku) {
-                    item = await Item.findOne({ sku: itemData.sku, tenantId: req.tenantId });
+                    item = await Item.findOne({ sku: itemData.sku, ...tenantQuery(req) });
                 }
                 
                 if (!item) {
-                    item = await Item.findOne({ name: itemData.name, tenantId: req.tenantId });
+                    item = await Item.findOne({ name: itemData.name, ...tenantQuery(req) });
                 }
 
                 if (item) {
@@ -455,7 +456,7 @@ export const importBulkMapped = async (req, res, next) => {
                         reason: 'Bulk Mapping Import',
                         location: itemData.location || item.location,
                         user: req.user._id,
-                        tenantId: req.tenantId
+                        ...tenantQuery(req)
                     });
 
                     results.updated.push({ name: item.name, sku: item.sku });
@@ -471,7 +472,7 @@ export const importBulkMapped = async (req, res, next) => {
                         location: itemData.location,
                         minStockThreshold: itemData.minStockThreshold,
                         description: itemData.description,
-                        tenantId: req.tenantId
+                        ...tenantQuery(req)
                     });
 
                     // Log transaction
@@ -484,7 +485,7 @@ export const importBulkMapped = async (req, res, next) => {
                         reason: 'Bulk Mapping Import',
                         location: itemData.location || item.location,
                         user: req.user._id,
-                        tenantId: req.tenantId
+                        ...tenantQuery(req)
                     });
 
                     results.success.push({ name: item.name, sku: item.sku });

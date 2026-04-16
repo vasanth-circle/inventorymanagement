@@ -1,6 +1,7 @@
 import Customer from '../models/Customer.js';
 import CustomerLedger from '../models/CustomerLedger.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
+import { tenantQuery } from '../utils/tenantQuery.js';
 
 // @desc    Get all customers
 // @route   GET /api/customers
@@ -8,7 +9,7 @@ import { sendResponse, sendError } from '../utils/standardResponse.js';
 export const getCustomers = async (req, res, next) => {
     try {
         const { search = '', page = 1, limit = 10 } = req.query;
-        const query = { tenantId: req.tenantId, isActive: true };
+        const query = { ...tenantQuery(req), isActive: true };
 
         if (search) {
             query.$or = [
@@ -41,7 +42,7 @@ export const getCustomers = async (req, res, next) => {
 // @access  Private
 export const getCustomer = async (req, res, next) => {
     try {
-        const customer = await Customer.findOne({ _id: req.params.id, tenantId: req.tenantId });
+        const customer = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
         if (!customer) {
             return sendError(res, 404, 'Customer not found');
         }
@@ -57,6 +58,7 @@ export const getCustomer = async (req, res, next) => {
 export const createCustomer = async (req, res, next) => {
     try {
         const customer = await Customer.create({ ...req.body, tenantId: req.tenantId });
+
         sendResponse(res, 201, customer, 'Customer created successfully');
     } catch (error) {
         next(error);
@@ -69,7 +71,7 @@ export const createCustomer = async (req, res, next) => {
 export const updateCustomer = async (req, res, next) => {
     try {
         const customer = await Customer.findOneAndUpdate(
-            { _id: req.params.id, tenantId: req.tenantId },
+            { _id: req.params.id, ...tenantQuery(req) },
             req.body,
             {
                 new: true,
@@ -91,7 +93,7 @@ export const updateCustomer = async (req, res, next) => {
 export const deleteCustomer = async (req, res, next) => {
     try {
         const customer = await Customer.findOneAndUpdate(
-            { _id: req.params.id, tenantId: req.tenantId },
+            { _id: req.params.id, ...tenantQuery(req) },
             { isActive: false },
             { new: true }
         );
@@ -113,13 +115,13 @@ export const deleteCustomer = async (req, res, next) => {
 // @access  Private
 export const getCustomerBalance = async (req, res, next) => {
     try {
-        const customer = await Customer.findOne({ _id: req.params.id, tenantId: req.tenantId });
+        const customer = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
         if (!customer) return sendError(res, 404, 'Customer not found');
 
         // Get the last ledger entry to determine running balance
         const lastEntry = await CustomerLedger.findOne({
             customer: req.params.id,
-            tenantId: req.tenantId,
+            ...tenantQuery(req),
         }).sort({ date: -1, createdAt: -1 });
 
         const balance = lastEntry ? lastEntry.balance : (customer.openingBalance || 0);
@@ -135,10 +137,10 @@ export const getCustomerBalance = async (req, res, next) => {
 export const getCustomerLedger = async (req, res, next) => {
     try {
         const { from, to, page = 1, limit = 50 } = req.query;
-        const customer = await Customer.findOne({ _id: req.params.id, tenantId: req.tenantId });
+        const customer = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
         if (!customer) return sendError(res, 404, 'Customer not found');
 
-        const query = { customer: req.params.id, tenantId: req.tenantId };
+        const query = { customer: req.params.id, ...tenantQuery(req) };
         if (from || to) {
             query.date = {};
             if (from) query.date.$gte = new Date(from);
@@ -154,7 +156,7 @@ export const getCustomerLedger = async (req, res, next) => {
         const total = await CustomerLedger.countDocuments(query);
 
         // Last entry's balance = current balance
-        const lastEntry = await CustomerLedger.findOne({ customer: req.params.id, tenantId: req.tenantId })
+        const lastEntry = await CustomerLedger.findOne({ customer: req.params.id, ...tenantQuery(req) })
             .sort({ date: -1, createdAt: -1 });
         const currentBalance = lastEntry ? lastEntry.balance : (customer.openingBalance || 0);
 
@@ -179,13 +181,13 @@ export const recordPayment = async (req, res, next) => {
         const { amount, paymentMode = 'cash', date, notes, refNumber } = req.body;
         if (!amount || amount <= 0) return sendError(res, 400, 'Payment amount must be greater than 0');
 
-        const customer = await Customer.findOne({ _id: req.params.id, tenantId: req.tenantId });
+        const customer = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
         if (!customer) return sendError(res, 404, 'Customer not found');
 
         // Get current running balance
         const lastEntry = await CustomerLedger.findOne({
             customer: req.params.id,
-            tenantId: req.tenantId,
+            ...tenantQuery(req),
         }).sort({ date: -1, createdAt: -1 });
         const previousBalance = lastEntry ? lastEntry.balance : (customer.openingBalance || 0);
         const newBalance = previousBalance - amount;
@@ -222,10 +224,10 @@ export const recordPayment = async (req, res, next) => {
 export const getCustomerStatement = async (req, res, next) => {
     try {
         const { from, to } = req.query;
-        const customer = await Customer.findOne({ _id: req.params.id, tenantId: req.tenantId });
+        const customer = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
         if (!customer) return sendError(res, 404, 'Customer not found');
 
-        const query = { customer: req.params.id, tenantId: req.tenantId };
+        const query = { customer: req.params.id, ...tenantQuery(req) };
         if (from || to) {
             query.date = {};
             if (from) query.date.$gte = new Date(from);

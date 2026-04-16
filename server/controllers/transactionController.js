@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
+import { tenantQuery } from '../utils/tenantQuery.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -53,7 +54,7 @@ export const stockInward = async (req, res, next) => {
             invoiceImage = `/uploads/invoices/${req.file.filename}`;
         }
 
-        const itemDoc = await Item.findOne({ _id: itemId, tenantId: req.tenantId });
+        const itemDoc = await Item.findOne({ _id: itemId, ...tenantQuery(req) });
         if (!itemDoc) {
             return sendError(res, 404, 'Item not found');
         }
@@ -107,7 +108,7 @@ export const stockInward = async (req, res, next) => {
             tenantId: req.tenantId
         });
 
-        const populatedTransaction = await Transaction.findOne({ _id: transaction._id, tenantId: req.tenantId })
+        const populatedTransaction = await Transaction.findOne({ _id: transaction._id, ...tenantQuery(req) })
             .populate('item', 'name barcode')
             .populate({ path: 'user', model: User, select: 'name email' });
 
@@ -124,7 +125,7 @@ export const stockOutward = async (req, res, next) => {
     try {
         const { item, quantity, reason, notes, batchId } = req.body;
 
-        const itemDoc = await Item.findOne({ _id: item, tenantId: req.tenantId });
+        const itemDoc = await Item.findOne({ _id: item, ...tenantQuery(req) });
         if (!itemDoc) {
             return sendError(res, 404, 'Item not found');
         }
@@ -187,7 +188,7 @@ export const stockOutward = async (req, res, next) => {
             tenantId: req.tenantId
         });
 
-        const populatedTransaction = await Transaction.findOne({ _id: transaction._id, tenantId: req.tenantId })
+        const populatedTransaction = await Transaction.findOne({ _id: transaction._id, ...tenantQuery(req) })
             .populate('item', 'name barcode')
             .populate({ path: 'user', model: User, select: 'name email' });
 
@@ -205,7 +206,7 @@ export const stockTransfer = async (req, res, next) => {
     try {
         const { item, quantity, fromLocation, toLocation, notes } = req.body;
 
-        const itemDoc = await Item.findOne({ _id: item, tenantId: req.tenantId });
+        const itemDoc = await Item.findOne({ _id: item, ...tenantQuery(req) });
         if (!itemDoc) {
             return sendError(res, 404, 'Item not found');
         }
@@ -230,7 +231,7 @@ export const stockTransfer = async (req, res, next) => {
             tenantId: req.tenantId
         });
 
-        const populatedTransaction = await Transaction.findOne({ _id: transaction._id, tenantId: req.tenantId })
+        const populatedTransaction = await Transaction.findOne({ _id: transaction._id, ...tenantQuery(req) })
             .populate('item', 'name barcode')
             .populate({ path: 'user', model: User, select: 'name email' });
 
@@ -254,7 +255,7 @@ export const getTransactions = async (req, res, next) => {
             endDate = '',
         } = req.query;
 
-        const query = { tenantId: req.tenantId };
+        const query = { ...tenantQuery(req) };
 
         if (type) {
             query.type = type;
@@ -304,7 +305,7 @@ export const stockAdjustment = async (req, res, next) => {
     try {
         const { item, quantity, adjustmentType, reason, notes } = req.body;
 
-        const itemDoc = await Item.findOne({ _id: item, tenantId: req.tenantId });
+        const itemDoc = await Item.findOne({ _id: item, ...tenantQuery(req) });
         if (!itemDoc) {
             return sendError(res, 404, 'Item not found');
         }
@@ -354,7 +355,7 @@ export const stockAdjustment = async (req, res, next) => {
 // @access  Private
 export const getItemHistory = async (req, res, next) => {
     try {
-        const transactions = await Transaction.find({ item: req.params.itemId, tenantId: req.tenantId })
+        const transactions = await Transaction.find({ item: req.params.itemId, ...tenantQuery(req) })
             .populate({ path: 'user', model: User, select: 'name email' })
             .sort({ createdAt: -1 });
 
@@ -370,7 +371,7 @@ export const stockReturn = async (req, res, next) => {
     try {
         const { item: itemId, quantity, returnType, referenceOrder, reason, notes, customer, vendor } = req.body;
 
-        const itemDoc = await Item.findOne({ _id: itemId, tenantId: req.tenantId });
+        const itemDoc = await Item.findOne({ _id: itemId, ...tenantQuery(req) });
         if (!itemDoc) {
             return sendError(res, 404, 'Item not found');
         }
@@ -410,7 +411,7 @@ export const stockReturn = async (req, res, next) => {
             tenantId: req.tenantId
         });
 
-        const populatedTransaction = await Transaction.findOne({ _id: transaction._id, tenantId: req.tenantId })
+        const populatedTransaction = await Transaction.findOne({ _id: transaction._id, ...tenantQuery(req) })
             .populate('item', 'name barcode')
             .populate({ path: 'user', model: User, select: 'name email' });
 

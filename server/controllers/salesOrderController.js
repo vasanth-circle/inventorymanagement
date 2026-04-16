@@ -6,6 +6,7 @@ import CustomerLedger from '../models/CustomerLedger.js';
 import Customer from '../models/Customer.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { getNextSequenceValue } from '../utils/sequence.js';
+import { tenantQuery } from '../utils/tenantQuery.js';
 
 // ─── Ledger helper (called after bill creation, does not change existing flow) ─
 export const createBillLedgerEntry = async ({ orderId, orderNumber, customerId, amount, tenantId, userId, orderDate }) => {
@@ -45,7 +46,7 @@ export const createBillLedgerEntry = async ({ orderId, orderNumber, customerId, 
 export const getSalesOrders = async (req, res, next) => {
     try {
         const { status = '', page = 1, limit = 10 } = req.query;
-        const query = { tenantId: req.tenantId };
+        const query = { ...tenantQuery(req) };
 
         if (status) {
             query.status = status;
@@ -76,7 +77,7 @@ export const getSalesOrders = async (req, res, next) => {
 // @access  Private
 export const getSalesOrder = async (req, res, next) => {
     try {
-        const order = await SalesOrder.findOne({ _id: req.params.id, tenantId: req.tenantId })
+        const order = await SalesOrder.findOne({ _id: req.params.id, ...tenantQuery(req) })
             .populate('customer')
             .populate({ path: 'user', model: User, select: 'name' })
             .populate('items.item', 'name sku barcode');
@@ -104,14 +105,9 @@ export const createSalesOrder = async (req, res, next) => {
         // If it's a final order (not estimation/quotation), check stock
         if (!isEstimation && status !== 'quotation') {
             for (const lineItem of items) {
-                const itemDoc = await Item.findOne({ _id: lineItem.item, tenantId: req.tenantId });
+                const itemDoc = await Item.findOne({ _id: lineItem.item, ...tenantQuery(req) });
                 if (!itemDoc) {
                     return sendError(res, 400, `Item not found`);
-                }
-                // Optional: Just a warning or soft check for estimations
-                if (itemDoc.quantity < lineItem.quantity) {
-                    // We allow creating orders even with low stock sometimes, but here we'll keep the check if it's a confirmed order.
-                    // return sendError(res, 400, `Insufficient stock for ${itemDoc.name} (Available: ${itemDoc.quantity})`);
                 }
             }
         }
@@ -135,7 +131,7 @@ export const createSalesOrder = async (req, res, next) => {
                     notes,
                     terms,
                     isEstimation: isEstimation || false,
-                    status: status || (isEstimation ? 'quotation' : 'draft'),
+                    status: status || (isEstimation ? 'quotation' : 'confirmed'),
                     loadingCharges: loadingCharges || 0,
                     transportCharges: transportCharges || 0,
                     oldBalance: oldBalance || 0,
@@ -157,7 +153,7 @@ export const createSalesOrder = async (req, res, next) => {
             return sendError(res, 500, 'Failed to generate a unique order number');
         }
 
-        // ── Auto-create ledger debit entry (non-blocking, existing flow unchanged) ──
+        // ── Auto-create ledger debit entry ──
         if (!isEstimation && order.customer) {
             createBillLedgerEntry({
                 orderId: order._id,
@@ -183,7 +179,7 @@ export const createSalesOrder = async (req, res, next) => {
 export const updateSOStatus = async (req, res, next) => {
     try {
         const { status } = req.body;
-        const order = await SalesOrder.findOne({ _id: req.params.id, tenantId: req.tenantId });
+        const order = await SalesOrder.findOne({ _id: req.params.id, ...tenantQuery(req) });
 
         if (!order) {
             return sendError(res, 404, 'Sales order not found');
@@ -202,6 +198,7 @@ export const updateSOStatus = async (req, res, next) => {
         next(error);
     }
 };
+
 // @desc    Update sales order
 // @route   PUT /api/sales-orders/:id
 // @access  Private (Admin only)
@@ -213,7 +210,7 @@ export const updateSalesOrder = async (req, res, next) => {
             loadingCharges, transportCharges, oldBalance, advanceAmount, taxAmount
         } = req.body;
 
-        const order = await SalesOrder.findOne({ _id: req.params.id, tenantId: req.tenantId });
+        const order = await SalesOrder.findOne({ _id: req.params.id, ...tenantQuery(req) });
 
         if (!order) {
             return sendError(res, 404, 'Sales order not found');
@@ -241,10 +238,8 @@ export const updateSalesOrder = async (req, res, next) => {
         if (advanceAmount !== undefined) order.advanceAmount = advanceAmount;
         if (taxAmount !== undefined) order.taxAmount = taxAmount;
 
-        // totalAmount will be auto-calculated by the pre('save') hook in the model (if it exists)
-        // Let's manually ensure totalAmount is correct if the hook isn't there
+        // totalAmount calculation
         const itemsTotal = order.items.reduce((sum, item) => sum + (item.total || 0), 0);
-        order.itemsTotal = itemsTotal; // Ensure this matches model schema (might need to check)
         order.totalAmount = (
             itemsTotal + 
             Number(order.loadingCharges) + 

@@ -1,5 +1,6 @@
 import Vendor from '../models/Vendor.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
+import { tenantQuery } from '../utils/tenantQuery.js';
 
 // @desc    Get all vendors
 // @route   GET /api/vendors
@@ -7,7 +8,7 @@ import { sendResponse, sendError } from '../utils/standardResponse.js';
 export const getVendors = async (req, res, next) => {
     try {
         const { search = '', page = 1, limit = 10 } = req.query;
-        const query = { tenantId: req.tenantId, isActive: true };
+        const query = { ...tenantQuery(req), isActive: true };
 
         if (search) {
             query.$or = [
@@ -39,7 +40,7 @@ export const getVendors = async (req, res, next) => {
 // @access  Private
 export const getVendor = async (req, res, next) => {
     try {
-        const vendor = await Vendor.findOne({ _id: req.params.id, tenantId: req.tenantId });
+        const vendor = await Vendor.findOne({ _id: req.params.id, ...tenantQuery(req) });
         if (!vendor) {
             return sendError(res, 404, 'Vendor not found');
         }
@@ -67,7 +68,7 @@ export const createVendor = async (req, res, next) => {
 export const updateVendor = async (req, res, next) => {
     try {
         const vendor = await Vendor.findOneAndUpdate(
-            { _id: req.params.id, tenantId: req.tenantId },
+            { _id: req.params.id, ...tenantQuery(req) },
             req.body,
             {
                 new: true,
@@ -89,7 +90,7 @@ export const updateVendor = async (req, res, next) => {
 export const deleteVendor = async (req, res, next) => {
     try {
         const vendor = await Vendor.findOneAndUpdate(
-            { _id: req.params.id, tenantId: req.tenantId },
+            { _id: req.params.id, ...tenantQuery(req) },
             { isActive: false },
             { new: true }
         );

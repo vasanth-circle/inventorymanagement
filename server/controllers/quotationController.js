@@ -3,6 +3,7 @@ import SalesOrder from '../models/SalesOrder.js';
 import Setting from '../models/Setting.js';
 import User from '../models/User.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
+import { tenantQuery } from '../utils/tenantQuery.js';
 
 // ── Helper: generate next quotation number ─────────────────────────────────
 const generateQuotationNumber = async (tenantId) => {
@@ -22,7 +23,7 @@ const generateQuotationNumber = async (tenantId) => {
 export const getQuotations = async (req, res, next) => {
     try {
         const { page = 1, limit = 20, status, search } = req.query;
-        const query = { tenantId: req.tenantId };
+        const query = { ...tenantQuery(req) };
 
         if (status) query.status = status;
         if (search) {
@@ -56,7 +57,7 @@ export const getQuotations = async (req, res, next) => {
 // @access  Private
 export const getQuotation = async (req, res, next) => {
     try {
-        const quotation = await Quotation.findOne({ _id: req.params.id, tenantId: req.tenantId })
+        const quotation = await Quotation.findOne({ _id: req.params.id, ...tenantQuery(req) })
             .populate('customer', 'name companyName phone address')
             .populate({ path: 'user', model: User, select: 'name' })
             .populate('items.item', 'name brand size hsn');
@@ -97,7 +98,7 @@ export const createQuotation = async (req, res, next) => {
 // @access  Private
 export const updateQuotation = async (req, res, next) => {
     try {
-        const quotation = await Quotation.findOne({ _id: req.params.id, tenantId: req.tenantId });
+        const quotation = await Quotation.findOne({ _id: req.params.id, ...tenantQuery(req) });
         if (!quotation) return sendError(res, 404, 'Quotation not found');
         if (quotation.status === 'converted') return sendError(res, 400, 'Cannot edit a converted quotation');
 
@@ -118,7 +119,7 @@ export const updateQuotation = async (req, res, next) => {
 // @access  Private
 export const convertToInvoice = async (req, res, next) => {
     try {
-        const quotation = await Quotation.findOne({ _id: req.params.id, tenantId: req.tenantId })
+        const quotation = await Quotation.findOne({ _id: req.params.id, ...tenantQuery(req) })
             .populate('customer')
             .populate('items.item');
 
@@ -127,20 +128,20 @@ export const convertToInvoice = async (req, res, next) => {
 
         // Get next invoice number from settings
         const settings = await Setting.findOneAndUpdate(
-            { tenantId: req.tenantId },
+            { ...tenantQuery(req) },
             { $inc: {} }, // no increment here — handled by salesOrderController auto-count
             { new: true, upsert: true }
         );
         const invoicePrefix = settings?.invoicePrefix || 'INV';
 
         // Count existing sales orders to get next number
-        const count = await SalesOrder.countDocuments({ tenantId: req.tenantId });
+        const count = await SalesOrder.countDocuments({ ...tenantQuery(req) });
         const orderNumber = `${invoicePrefix}-${String(count + 1).padStart(4, '0')}`;
 
         // Build the sales order from quotation data
         const salesOrderData = {
             orderNumber,
-            tenantId: req.tenantId,
+            ...tenantQuery(req),
             customer: quotation.customer._id,
             items: quotation.items.map(qi => ({
                 item: qi.item._id || qi.item,
@@ -189,7 +190,7 @@ export const convertToInvoice = async (req, res, next) => {
 // @access  Private
 export const deleteQuotation = async (req, res, next) => {
     try {
-        const quotation = await Quotation.findOne({ _id: req.params.id, tenantId: req.tenantId });
+        const quotation = await Quotation.findOne({ _id: req.params.id, ...tenantQuery(req) });
         if (!quotation) return sendError(res, 404, 'Quotation not found');
         if (quotation.status === 'converted') return sendError(res, 400, 'Cannot delete a converted quotation');
 

@@ -4,6 +4,7 @@ import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { getNextSequenceValue } from '../utils/sequence.js';
+import { tenantQuery } from '../utils/tenantQuery.js';
 
 // @desc    Get all purchase orders
 // @route   GET /api/purchase-orders
@@ -11,7 +12,7 @@ import { getNextSequenceValue } from '../utils/sequence.js';
 export const getPurchaseOrders = async (req, res, next) => {
     try {
         const { status = '', page = 1, limit = 10 } = req.query;
-        const query = { tenantId: req.tenantId };
+        const query = { ...tenantQuery(req) };
 
         if (status) {
             query.status = status;
@@ -43,7 +44,7 @@ export const getPurchaseOrders = async (req, res, next) => {
 // @access  Private
 export const getPurchaseOrder = async (req, res, next) => {
     try {
-        const order = await PurchaseOrder.findOne({ _id: req.params.id, tenantId: req.tenantId })
+        const order = await PurchaseOrder.findOne({ _id: req.params.id, ...tenantQuery(req) })
             .populate('vendor')
             .populate('items.item', 'name sku barcode')
             .populate({ path: 'user', model: User, select: 'name' });
@@ -80,7 +81,7 @@ export const createPurchaseOrder = async (req, res, next) => {
                     expectedDeliveryDate,
                     notes,
                     user: req.user._id,
-                    tenantId: req.tenantId,
+                    ...tenantQuery(req),
                 });
             } catch (error) {
                 // If it's a duplicate key error on orderNumber, retry with next sequence
@@ -108,7 +109,7 @@ export const createPurchaseOrder = async (req, res, next) => {
 export const updatePOStatus = async (req, res, next) => {
     try {
         const { status } = req.body;
-        const order = await PurchaseOrder.findOne({ _id: req.params.id, tenantId: req.tenantId });
+        const order = await PurchaseOrder.findOne({ _id: req.params.id, ...tenantQuery(req) });
 
         if (!order) {
             return sendError(res, 404, 'Purchase order not found');
@@ -135,7 +136,7 @@ export const updatePOStatus = async (req, res, next) => {
 export const receivePurchaseOrder = async (req, res, next) => {
     try {
         const { receivedItems } = req.body; 
-        const order = await PurchaseOrder.findOne({ _id: req.params.id, tenantId: req.tenantId });
+        const order = await PurchaseOrder.findOne({ _id: req.params.id, ...tenantQuery(req) });
 
         if (!order) {
             return sendError(res, 404, 'Purchase order not found');
@@ -150,7 +151,7 @@ export const receivePurchaseOrder = async (req, res, next) => {
         }
 
         for (const rItem of receivedItems) {
-            const itemDoc = await Item.findOne({ _id: rItem.item, tenantId: req.tenantId });
+            const itemDoc = await Item.findOne({ _id: rItem.item, ...tenantQuery(req) });
             if (itemDoc) {
                 const previousQuantity = itemDoc.quantity || 0;
                 const recQty = parseFloat(rItem.receivedQuantity) || 0;
@@ -195,7 +196,7 @@ export const receivePurchaseOrder = async (req, res, next) => {
                         newQuantity: itemDoc.quantity,
                         batchId: batch._id,
                         batchNumber: batch.batchNumber,
-                        tenantId: req.tenantId,
+                        ...tenantQuery(req),
                     });
                 }
             }

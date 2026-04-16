@@ -4,6 +4,7 @@ import Item from '../models/Item.js';
 import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
+import { tenantQuery } from '../utils/tenantQuery.js';
 
 // @desc    Create a new dispatch record
 // @route   POST /api/dispatches
@@ -12,7 +13,7 @@ export const createDispatch = async (req, res, next) => {
     try {
         const { order: orderId, vehicleNumber, driverPhone, items, notes } = req.body;
 
-        const order = await SalesOrder.findOne({ _id: orderId, tenantId: req.tenantId });
+        const order = await SalesOrder.findOne({ _id: orderId, ...tenantQuery(req) });
         if (!order) {
             return sendError(res, 404, 'Sales order not found');
         }
@@ -37,7 +38,7 @@ export const createDispatch = async (req, res, next) => {
 
         // Update inventory and create transactions
         for (const dispatchItem of items) {
-            const itemDoc = await Item.findOne({ _id: dispatchItem.item, tenantId: req.tenantId });
+            const itemDoc = await Item.findOne({ _id: dispatchItem.item, ...tenantQuery(req) });
             if (itemDoc) {
                 const previousQuantity = itemDoc.quantity;
                 const dispatchQty = Number(dispatchItem.quantity);
@@ -71,7 +72,7 @@ export const createDispatch = async (req, res, next) => {
                     fromLocation: itemDoc.location,
                     batchId: batchId || null,
                     batchNumber: usedBatchNumber || null,
-                    tenantId: req.tenantId
+                    ...tenantQuery(req)
                 });
             }
         }
@@ -93,7 +94,7 @@ export const createDispatch = async (req, res, next) => {
 // @access  Private
 export const getDispatches = async (req, res, next) => {
     try {
-        const dispatches = await Dispatch.find({ tenantId: req.tenantId })
+        const dispatches = await Dispatch.find({ ...tenantQuery(req) })
             .populate('order', 'orderNumber status')
             .populate('items.item', 'name brand size')
             .populate({ path: 'createdBy', model: User, select: 'name' })
@@ -112,7 +113,7 @@ export const getOrderDispatches = async (req, res, next) => {
     try {
         const dispatches = await Dispatch.find({ 
             order: req.params.orderId, 
-            tenantId: req.tenantId 
+            ...tenantQuery(req) 
         })
         .populate('items.item', 'name brand size')
         .populate({ path: 'createdBy', model: User, select: 'name' })
