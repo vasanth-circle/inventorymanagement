@@ -2,8 +2,42 @@ import SalesOrder from '../models/SalesOrder.js';
 import Item from '../models/Item.js';
 import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
+import CustomerLedger from '../models/CustomerLedger.js';
+import Customer from '../models/Customer.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { getNextSequenceValue } from '../utils/sequence.js';
+
+// ─── Ledger helper (called after bill creation, does not change existing flow) ─
+export const createBillLedgerEntry = async ({ orderId, orderNumber, customerId, amount, tenantId, userId, orderDate }) => {
+    try {
+        const customer = await Customer.findById(customerId);
+        if (!customer) return;
+
+        const lastEntry = await CustomerLedger.findOne({ customer: customerId, tenantId }).sort({ date: -1, createdAt: -1 });
+        const previousBalance = lastEntry ? lastEntry.balance : (customer.openingBalance || 0);
+        const newBalance = previousBalance + amount;
+
+        await CustomerLedger.create({
+            tenantId,
+            customer: customerId,
+            date: orderDate || new Date(),
+            type: 'bill',
+            refType: 'SalesOrder',
+            refId: orderId,
+            refNumber: orderNumber,
+            description: `Bill #${orderNumber}`,
+            debit: amount,
+            credit: 0,
+            balance: newBalance,
+            createdBy: userId,
+        });
+
+        await Customer.findByIdAndUpdate(customerId, { currentBalance: newBalance });
+    } catch (err) {
+        console.error('createBillLedgerEntry error:', err.message);
+    }
+};
+
 
 // @desc    Get all sales orders
 // @route   GET /api/sales-orders
@@ -123,11 +157,25 @@ export const createSalesOrder = async (req, res, next) => {
             return sendError(res, 500, 'Failed to generate a unique order number');
         }
 
+        // ── Auto-create ledger debit entry (non-blocking, existing flow unchanged) ──
+        if (!isEstimation && order.customer) {
+            createBillLedgerEntry({
+                orderId: order._id,
+                orderNumber: order.orderNumber,
+                customerId: order.customer,
+                amount: order.totalAmount,
+                tenantId: req.tenantId,
+                userId: req.user._id,
+                orderDate: order.orderDate,
+            });
+        }
+
         sendResponse(res, 201, order, isEstimation ? 'Estimation created successfully' : 'Sales order created successfully');
     } catch (error) {
         next(error);
     }
 };
+
 
 // @desc    Update sales order status
 // @route   PATCH /api/sales-orders/:id/status

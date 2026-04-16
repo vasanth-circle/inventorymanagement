@@ -5,6 +5,10 @@ import {
     createCustomer,
     updateCustomer,
     deleteCustomer,
+    getCustomerBalance,
+    getCustomerLedger,
+    recordPayment,
+    getCustomerStatement,
 } from '../controllers/customerController.js';
 import { authorize } from '../middleware/authMiddleware.js';
 import { checkMenuAccess } from '../middleware/accessMiddleware.js';
@@ -22,5 +26,11 @@ router.route('/:id')
     .get(getCustomer)
     .put(updateCustomer)
     .delete(authorize('admin', 'tenant_owner', 'tenant_admin'), deleteCustomer);
+
+// ── Ledger routes (new, does not touch existing routes) ───────────────────────
+router.get('/:id/balance', getCustomerBalance);
+router.get('/:id/ledger', getCustomerLedger);
+router.get('/:id/statement', getCustomerStatement);
+router.post('/:id/payment', recordPayment);
 
 export default router;

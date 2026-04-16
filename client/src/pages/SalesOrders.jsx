@@ -214,7 +214,27 @@ const SalesOrders = () => {
         });
     };
 
+    // ── Auto-fill old balance when customer is selected (ledger integration) ──
+    const [fetchingBalance, setFetchingBalance] = useState(false);
+    const handleCustomerChange = async (customerId) => {
+        setFormData(prev => ({ ...prev, customer: customerId, oldBalance: 0 }));
+        if (!customerId || editingOrder) return;
+        try {
+            setFetchingBalance(true);
+            const res = await axios.get(`/api/customers/${customerId}/balance`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            const bal = res.data.data.balance;
+            if (bal > 0) {
+                setFormData(prev => ({ ...prev, customer: customerId, oldBalance: bal }));
+            }
+        } catch { /* silent — field stays at 0 */ } finally {
+            setFetchingBalance(false);
+        }
+    };
+
     const handleSubmit = async (e) => {
+
         e.preventDefault();
         try {
             const token = localStorage.getItem('token');
@@ -357,7 +377,7 @@ const SalesOrders = () => {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                                 <div className="md:col-span-1">
                                     <label className="block text-sm font-bold text-gray-700 mb-2">Select Customer *</label>
-                                    <select required value={formData.customer} onChange={(e) => setFormData({ ...formData, customer: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none shadow-sm transition-all">
+                                    <select required value={formData.customer} onChange={(e) => handleCustomerChange(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none shadow-sm transition-all">
                                         <option value="">Select Customer</option>
                                         {customers.map(c => <option key={c._id} value={c._id}>{c.companyName || c.name}</option>)}
                                     </select>
@@ -482,7 +502,9 @@ const SalesOrders = () => {
                                             <input type="number" value={formData.taxAmount} onChange={(e) => setFormData({ ...formData, taxAmount: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none" />
                                         </div>
                                         <div>
-                                            <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Old Balance (Add)</label>
+                                            <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
+                                                Old Balance (Add) {fetchingBalance && <span className="text-blue-400 animate-pulse">⏳ loading...</span>}
+                                            </label>
                                             <input type="number" value={formData.oldBalance} onChange={(e) => setFormData({ ...formData, oldBalance: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none text-red-600 font-bold" />
                                         </div>
                                         <div className="col-span-2">

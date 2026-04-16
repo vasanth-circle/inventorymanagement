@@ -508,3 +508,120 @@ export const generatePreviewHtml = (templateNo, settings) => {
     
     return html;
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACCOUNT STATEMENT PRINT — Customer Ledger
+// ─────────────────────────────────────────────────────────────────────────────
+export const printAccountStatement = (customer, entries, summary, period, settings) => {
+    const s = settings || {};
+    const sym = s.documentConfig?.currencySymbol || '₹';
+    const companyName = s.companyName || 'Your Company';
+    const fromStr = period?.from ? new Date(period.from).toLocaleDateString('en-IN') : 'Beginning';
+    const toStr = period?.to ? new Date(period.to).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN');
+
+    const rowColor = (type) => {
+        if (type === 'payment') return '#f0fff4';
+        if (type === 'bill') return '#fff8f0';
+        if (type === 'opening') return '#f0f4ff';
+        return '#fff';
+    };
+
+    const typeLabel = (type) => {
+        if (type === 'bill') return '🧾 Bill';
+        if (type === 'payment') return '✅ Payment';
+        if (type === 'opening') return '📂 Opening';
+        return '⚙️ Adj';
+    };
+
+    const rows = entries.map((e, i) => `
+        <tr style="background:${rowColor(e.type)}">
+            <td style="text-align:center">${i + 1}</td>
+            <td>${new Date(e.date).toLocaleDateString('en-IN')}</td>
+            <td><strong>${e.refNumber || ''}</strong></td>
+            <td>${typeLabel(e.type)}<br/><span style="font-size:8px;color:#666">${e.description || ''}</span></td>
+            <td style="text-align:right;color:#c0392b;font-weight:bold">${e.debit > 0 ? sym + e.debit.toLocaleString('en-IN') : '-'}</td>
+            <td style="text-align:right;color:#27ae60;font-weight:bold">${e.credit > 0 ? sym + e.credit.toLocaleString('en-IN') : '-'}</td>
+            <td style="text-align:right;font-weight:bold;color:${e.balance >= 0 ? '#c0392b' : '#27ae60'}">${sym}${Math.abs(e.balance).toLocaleString('en-IN')} ${e.balance >= 0 ? 'Dr' : 'Cr'}</td>
+        </tr>`).join('');
+
+    const html = `<html><head><title>Account Statement - ${customer.name}</title>
+<style>
+  @page { size: A4; margin: 8mm; }
+  body { font-family: Arial, sans-serif; font-size: 10px; color: #222; margin: 0; }
+  .header { text-align: center; border-bottom: 2px solid #222; padding-bottom: 8px; margin-bottom: 8px; }
+  .header h1 { margin: 0; font-size: 20px; font-weight: 900; }
+  .header p { margin: 2px 0; font-size: 9px; color: #555; }
+  .statement-title { text-align: center; font-size: 14px; font-weight: 900; letter-spacing: 4px; background: #1a1a2e; color: #fff; padding: 6px 0; margin-bottom: 10px; }
+  .meta { display: flex; justify-content: space-between; margin-bottom: 10px; }
+  .meta-box { background: #f5f7fb; border-radius: 6px; padding: 8px 12px; flex: 1; margin: 0 4px; }
+  .meta-box:first-child { margin-left: 0; }
+  .meta-box:last-child { margin-right: 0; }
+  .meta-label { font-size: 8px; font-weight: 900; text-transform: uppercase; color: #999; }
+  .meta-value { font-size: 12px; font-weight: 700; color: #222; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  th { background: #1a1a2e; color: #fff; padding: 6px 6px; font-size: 8px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; }
+  td { padding: 5px 6px; font-size: 9px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+  .summary { display: flex; justify-content: flex-end; margin-top: 12px; gap: 12px; }
+  .sum-box { border: 1px solid #ddd; border-radius: 6px; padding: 8px 16px; text-align: right; min-width: 150px; }
+  .sum-label { font-size: 8px; color: #999; font-weight: 700; text-transform: uppercase; }
+  .sum-value { font-size: 14px; font-weight: 900; margin-top: 2px; }
+  .footer { margin-top: 20px; display: flex; justify-content: space-between; font-size: 8px; color: #aaa; border-top: 1px solid #eee; padding-top: 8px; }
+</style></head><body>
+<div class="header">
+  <h1>${companyName}</h1>
+  <p>${s.address || ''} ${s.phone1 ? '| Tel: ' + s.phone1 : ''} ${s.gstNumber ? '| GSTIN: ' + s.gstNumber : ''}</p>
+</div>
+<div class="statement-title">ACCOUNT STATEMENT</div>
+<div class="meta">
+  <div class="meta-box">
+    <div class="meta-label">Customer</div>
+    <div class="meta-value">${customer.companyName || customer.name}</div>
+    <div style="font-size:8px;color:#666">${customer.name}${customer.phone ? ' | ' + customer.phone : ''}${customer.gstin ? ' | GSTIN: ' + customer.gstin : ''}</div>
+  </div>
+  <div class="meta-box">
+    <div class="meta-label">Period</div>
+    <div class="meta-value">${fromStr} → ${toStr}</div>
+  </div>
+  <div class="meta-box">
+    <div class="meta-label">Print Date</div>
+    <div class="meta-value">${new Date().toLocaleDateString('en-IN')}</div>
+  </div>
+</div>
+<table>
+  <thead><tr>
+    <th width="4%">#</th>
+    <th width="10%">Date</th>
+    <th width="12%">Ref No.</th>
+    <th width="30%">Particulars</th>
+    <th width="14%" style="text-align:right">Debit (Dr)</th>
+    <th width="14%" style="text-align:right">Credit (Cr)</th>
+    <th width="16%" style="text-align:right">Balance</th>
+  </tr></thead>
+  <tbody>${rows || '<tr><td colspan="7" style="text-align:center;padding:20px;color:#aaa">No entries found for this period</td></tr>'}</tbody>
+</table>
+<div class="summary">
+  <div class="sum-box">
+    <div class="sum-label">Total Debit</div>
+    <div class="sum-value" style="color:#c0392b">${sym}${(summary?.totalDebit || 0).toLocaleString('en-IN')}</div>
+  </div>
+  <div class="sum-box">
+    <div class="sum-label">Total Credit</div>
+    <div class="sum-value" style="color:#27ae60">${sym}${(summary?.totalCredit || 0).toLocaleString('en-IN')}</div>
+  </div>
+  <div class="sum-box" style="background:#1a1a2e;color:#fff;border-color:#1a1a2e">
+    <div class="sum-label" style="color:#aaa">Closing Balance</div>
+    <div class="sum-value" style="color:#fff">${sym}${Math.abs(summary?.closingBalance || 0).toLocaleString('en-IN')} ${(summary?.closingBalance || 0) >= 0 ? 'Dr' : 'Cr'}</div>
+  </div>
+</div>
+<div class="footer">
+  <span>Generated by ${companyName} | ${new Date().toLocaleString('en-IN')}</span>
+  <span style="font-weight:bold;font-size:9px">Authorised Signatory ________________</span>
+</div>
+</body></html>`;
+
+    const w = window.open('', '_blank', 'width=950,height=750');
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => { w.focus(); w.print(); }, 600);
+};
+

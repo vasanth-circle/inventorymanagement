@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
+
 const Customers = () => {
+    const navigate = useNavigate();
     const [customers, setCustomers] = useState([]);
+    const [balances, setBalances] = useState({}); // { customerId: balance }
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState(null);
@@ -28,13 +32,27 @@ const Customers = () => {
             const res = await axios.get(API_URL, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
-            setCustomers(res.data.data.customers);
+            const list = res.data.data.customers;
+            setCustomers(list);
+            // Fetch balances in parallel (non-blocking, silent on individual failures)
+            const token = localStorage.getItem('token');
+            const balanceMap = {};
+            await Promise.allSettled(
+                list.map(async (c) => {
+                    try {
+                        const r = await axios.get(`${API_URL}/${c._id}/balance`, { headers: { Authorization: `Bearer ${token}` } });
+                        balanceMap[c._id] = r.data.data.balance;
+                    } catch { balanceMap[c._id] = c.currentBalance || 0; }
+                })
+            );
+            setBalances(balanceMap);
         } catch (error) {
             toast.error('Failed to fetch customers');
         } finally {
             setLoading(false);
         }
     };
+
 
     const handleOpenModal = (customer = null) => {
         if (customer) {
@@ -112,11 +130,14 @@ const Customers = () => {
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">Email</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">Phone</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">GSTIN</th>
+                                <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-right">Balance</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {customers.map((customer) => (
+                            {customers.map((customer) => {
+                                const bal = balances[customer._id] ?? customer.currentBalance ?? 0;
+                                return (
                                 <tr key={customer._id} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4">
                                         <div className="font-medium text-gray-900">{customer.companyName || customer.name}</div>
@@ -126,19 +147,32 @@ const Customers = () => {
                                     <td className="px-6 py-4 text-gray-600">{customer.phone}</td>
                                     <td className="px-6 py-4 text-gray-600">{customer.gstin || '-'}</td>
                                     <td className="px-6 py-4 text-right">
+                                        <span className={`inline-block px-2.5 py-1 rounded-lg text-sm font-bold ${bal > 0 ? 'bg-orange-100 text-orange-700' : bal < 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                            {bal !== 0 ? `₹${Math.abs(bal).toLocaleString('en-IN')} ${bal > 0 ? 'Dr' : 'Cr'}` : '—'}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right space-x-2">
+                                        <button
+                                            onClick={() => navigate(`/customers/${customer._id}/ledger`)}
+                                            className="text-indigo-600 hover:text-indigo-900 font-semibold text-sm"
+                                        >
+                                            Ledger
+                                        </button>
                                         <button
                                             onClick={() => handleOpenModal(customer)}
-                                            className="text-primary-600 hover:text-primary-900 mr-3"
+                                            className="text-primary-600 hover:text-primary-900 font-semibold text-sm"
                                         >
                                             Edit
                                         </button>
                                     </td>
                                 </tr>
-                            ))}
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
             )}
+
 
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">

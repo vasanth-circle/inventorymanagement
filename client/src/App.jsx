@@ -28,6 +28,7 @@ import Locations from './pages/Locations';
 import DispatchManagement from './pages/DispatchManagement';
 import Settings from './pages/Settings';
 import Quotations from './pages/Quotations';
+import CustomerLedger from './pages/CustomerLedger';
 
 function AppLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -78,6 +79,7 @@ function App() {
                                             <Route path="/bulk-import" element={<BulkImport />} />
                                             <Route path="/users" element={<Users />} />
                                             <Route path="/customers" element={<Customers />} />
+                                            <Route path="/customers/:id/ledger" element={<CustomerLedger />} />
                                             <Route path="/sales-orders" element={<SalesOrders />} />
                                             <Route path="/vendors" element={<Vendors />} />
                                             <Route path="/purchase-orders" element={<PurchaseOrders />} />
