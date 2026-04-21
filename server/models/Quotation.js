@@ -48,6 +48,8 @@ const quotationSchema = new mongoose.Schema({
         quantity: { type: Number, required: true, min: 0 }, // used for total calc
         price: { type: Number, required: true },
         total: { type: Number, default: 0 },
+        boxCount: { type: Number, default: 0 },
+        totalSqFt: { type: Number, default: 0 },
     }],
 
     // Totals

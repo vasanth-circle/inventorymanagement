@@ -140,12 +140,19 @@ const Quotations = () => {
         // Clean numeric payloads to avoid Mongoose CastErrors with empty strings
         const payload = { 
             ...formData, 
-            items: formData.items.map(i => ({
-                ...i,
-                quantity: Number(i.quantity) || 0,
-                price: Number(i.price) || 0,
-                total: Number(i.total) || 0
-            })),
+            items: formData.items.map(i => {
+                const isTile = Number(i.sqFtPerPc) > 0;
+                const qVal = Number(i.quantity) || 0;
+                const sqft = isTile ? parseFloat((qVal * Number(i.pcsPerBox) * Number(i.sqFtPerPc)).toFixed(2)) : 0;
+                return {
+                    ...i,
+                    boxCount: isTile ? qVal : 0,
+                    totalSqFt: sqft,
+                    quantity: isTile ? sqft : qVal,
+                    price: Number(i.price) || 0,
+                    total: Number(i.total) || 0
+                };
+            }),
             taxRate: Number(formData.taxRate) || 0,
             taxAmount, 
             loadingCharges: Number(formData.loadingCharges) || 0,
@@ -199,12 +206,21 @@ const Quotations = () => {
         setEditingQuotation(q);
         setFormData({
             customer: q.customer?._id || q.customer,
-            items: q.items.map(i => ({
-                ...i,
-                item: i.item?._id || i.item,
-                total: i.total || i.quantity * i.price,
-                availableBatches: [],
-            })),
+            items: q.items.map(i => {
+                const itemId = i.item?._id || i.item;
+                const foundItem = allItems.find(x => x._id === itemId);
+                const sqFtPerPc = foundItem?.sqFtPerPc || 0;
+                const isTile = sqFtPerPc > 0;
+                return {
+                    ...i,
+                    item: itemId,
+                    quantity: isTile ? (i.boxCount || 0) : i.quantity,
+                    total: i.total || i.quantity * i.price,
+                    availableBatches: foundItem?.batches || [],
+                    pcsPerBox: foundItem?.pcsPerBox || 1,
+                    sqFtPerPc: sqFtPerPc,
+                };
+            }),
             notes: q.notes || '',
             terms: q.terms || '',
             taxRate: q.taxRate || 0,

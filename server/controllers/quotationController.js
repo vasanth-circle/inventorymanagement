@@ -156,6 +156,8 @@ export const convertToInvoice = async (req, res, next) => {
                 unitLabel: qi.unitLabel,
                 price: qi.price,
                 total: qi.total,
+                boxCount: qi.boxCount,
+                totalSqFt: qi.totalSqFt,
             })),
             itemsTotal: quotation.itemsTotal,
             taxAmount: quotation.taxAmount,
