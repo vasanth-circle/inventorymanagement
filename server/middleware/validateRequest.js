@@ -57,6 +57,7 @@ export const schemas = {
     createItem: Joi.object({
         name: Joi.string().required().trim(),
         barcode: Joi.string().optional().trim(),
+        hsn: Joi.string().optional().allow('').trim(),
         sku: Joi.string().optional().trim(),
         category: Joi.string().required(),
         quantity: Joi.number().min(0).default(0),
@@ -74,6 +75,7 @@ export const schemas = {
     updateItem: Joi.object({
         name: Joi.string().optional().trim(),
         barcode: Joi.string().optional().trim(),
+        hsn: Joi.string().optional().allow('').trim(),
         category: Joi.string().optional(),
         quantity: Joi.number().min(0).optional(),
         minStockThreshold: Joi.number().min(0).optional(),

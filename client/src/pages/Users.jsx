@@ -36,6 +36,7 @@ const Users = () => {
         { id: 'purchase-orders', name: 'Purchase Orders' },
         { id: 'locations', name: 'Locations' },
         { id: 'users', name: 'Users' },
+        { id: 'assets', name: 'Assets' },
     ];
 
     useEffect(() => {

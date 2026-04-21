@@ -29,6 +29,10 @@ import DispatchManagement from './pages/DispatchManagement';
 import Settings from './pages/Settings';
 import Quotations from './pages/Quotations';
 import CustomerLedger from './pages/CustomerLedger';
+import Assets from './pages/Assets';
+import AssetDashboard from './pages/AssetDashboard';
+import AssetReports from './pages/AssetReports';
+import Profile from './pages/Profile';
 
 function AppLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -49,6 +53,9 @@ function AppLayout({ children }) {
 }
 
 function App() {
+    const activeApp = localStorage.getItem('activeApp') || 'inventory';
+    const fallbackRoute = activeApp === 'assets' ? '/assets/dashboard' : '/dashboard';
+
     return (
         <AuthProvider>
             <ThemeProvider>
@@ -67,6 +74,7 @@ function App() {
                                 <ProtectedRoute>
                                     <AppLayout>
                                         <Routes>
+                                            <Route path="/profile" element={<Profile />} />
                                             <Route path="/dashboard" element={<Dashboard />} />
                                             <Route path="/inventory" element={<Inventory />} />
                                             <Route path="/stock-inward" element={<StockInward />} />
@@ -87,8 +95,11 @@ function App() {
                                             <Route path="/dispatch-management" element={<DispatchManagement />} />
                                             <Route path="/settings" element={<Settings />} />
                                             <Route path="/quotations" element={<Quotations />} />
-                                            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                                            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                                            <Route path="/assets" element={<Assets />} />
+                                            <Route path="/assets/dashboard" element={<AssetDashboard />} />
+                                            <Route path="/assets/reports" element={<AssetReports />} />
+                                            <Route path="/" element={<Navigate to={fallbackRoute} replace />} />
+                                            <Route path="*" element={<Navigate to={fallbackRoute} replace />} />
                                         </Routes>
                                     </AppLayout>
                                 </ProtectedRoute>

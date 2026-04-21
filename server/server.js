@@ -24,6 +24,7 @@ import locationRoutes from './routes/locationRoutes.js';
 import dispatchRoutes from './routes/dispatchRoutes.js';
 import settingRoutes from './routes/settingRoutes.js';
 import quotationRoutes from './routes/quotationRoutes.js';
+import assetRoutes from './routes/assetRoutes.js';
 import fixLegacyIndexes from './utils/fixIndexes.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -82,6 +83,7 @@ app.use('/api/locations', locationRoutes);
 app.use('/api/dispatches', dispatchRoutes);
 app.use('/api/settings', settingRoutes);
 app.use('/api/quotations', quotationRoutes);
+app.use('/api/assets', assetRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

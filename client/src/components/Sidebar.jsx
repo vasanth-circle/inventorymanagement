@@ -8,9 +8,15 @@ const Sidebar = ({ isOpen, onClose }) => {
     const { theme, toggleTheme } = useContext(ThemeContext);
     const location = useLocation();
     const navigate = useNavigate();
-    const [expandedGroup, setExpandedGroup] = useState('inventory');
+    const [expandedGroup, setExpandedGroup] = useState(null);
+    const [showAppSwitcher, setShowAppSwitcher] = useState(false);
 
-    const navGroups = [
+    const activeApp = localStorage.getItem('activeApp') || 'inventory';
+
+    let navGroups = [];
+
+    if (activeApp === 'inventory') {
+        navGroups = [
         {
             name: 'Inventory',
             id: 'inventory',
@@ -57,16 +63,49 @@ const Sidebar = ({ isOpen, onClose }) => {
         }
     ];
 
-    if (user?.role === 'super_admin' || user?.role === 'admin' || user?.role === 'tenant_owner' || user?.role === 'tenant_admin') {
-        navGroups.push({
-            name: 'Settings',
-            id: 'settings',
-            icon: '⚙️',
-            items: [
-                { name: 'Users', path: '/users', id: 'users' },
-                { name: 'Billing Settings', path: '/settings', id: 'settings' }
-            ]
-        });
+        if (user?.role === 'super_admin' || user?.role === 'admin' || user?.role === 'tenant_owner' || user?.role === 'tenant_admin') {
+            navGroups.push({
+                name: 'Settings',
+                id: 'settings',
+                icon: '⚙️',
+                items: [
+                    { name: 'Users', path: '/users', id: 'users' },
+                    { name: 'Billing Settings', path: '/settings', id: 'settings' }
+                ]
+            });
+        }
+    } else if (activeApp === 'assets') {
+        navGroups = [
+            {
+                name: 'Asset Dashboard',
+                id: 'asset-dashboard',
+                icon: '📊',
+                items: [
+                    { name: 'Overview', path: '/assets/dashboard', id: 'assets' }
+                ]
+            },
+            {
+                name: 'Assets',
+                id: 'assets-main',
+                icon: '🖥️',
+                items: [
+                    { name: 'Manage Assets', path: '/assets', id: 'assets' },
+                    { name: 'Asset Reports', path: '/assets/reports', id: 'assets' }
+                ]
+            }
+        ];
+        
+        if (user?.role === 'super_admin' || user?.role === 'admin' || user?.role === 'tenant_owner' || user?.role === 'tenant_admin') {
+            navGroups.push({
+                name: 'Settings',
+                id: 'settings',
+                icon: '⚙️',
+                items: [
+                    { name: 'Locations & Branches', path: '/locations', id: 'locations' },
+                    { name: 'Users', path: '/users', id: 'users' }
+                ]
+            });
+        }
     }
 
     const checkAccess = (itemId) => {
@@ -90,10 +129,61 @@ const Sidebar = ({ isOpen, onClose }) => {
                 lg:relative lg:translate-x-0
                 ${isOpen ? 'translate-x-0' : '-translate-x-full'}
             `}>
-                <div className="p-6 border-b border-slate-700/50 flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white text-xl">📦</div>
-                        <h1 className="text-xl font-bold text-white tracking-tight">InventoryPro</h1>
+                <div className="p-6 border-b border-slate-700/50 flex items-center justify-between overflow-visible relative">
+                    <div className="relative">
+                        <div 
+                            className="flex items-center space-x-3 cursor-pointer hover:bg-slate-800 p-2 -ml-2 rounded-lg transition-colors group"
+                            onClick={() => setShowAppSwitcher(!showAppSwitcher)}
+                        >
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white text-xl shadow-inner ${activeApp === 'assets' ? 'bg-blue-600' : 'bg-primary-600'}`}>
+                                {activeApp === 'assets' ? '🖥️' : '📦'}
+                            </div>
+                            <div className="flex flex-col">
+                                <h1 className="text-lg font-bold text-white tracking-tight leading-none group-hover:text-blue-400 transition-colors">
+                                    {activeApp === 'assets' ? 'Asset Management' : 'InventoryPro'}
+                                </h1>
+                                <span className="text-[10px] text-slate-400 font-semibold tracking-wide flex items-center mt-0.5">
+                                    CHANGE APP <span className="ml-1 opacity-50 text-[8px]">▼</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        {showAppSwitcher && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setShowAppSwitcher(false)}></div>
+                                <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden py-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50/50">Switch Application</div>
+                                    
+                                    <button 
+                                        onClick={() => {
+                                            localStorage.setItem('activeApp', 'inventory');
+                                            window.location.href = '/dashboard';
+                                        }}
+                                        className={`w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center space-x-3 transition-colors ${activeApp === 'inventory' ? 'bg-primary-50' : ''}`}
+                                    >
+                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${activeApp === 'inventory' ? 'bg-primary-100' : 'bg-gray-100'}`}>📦</div>
+                                        <div>
+                                            <div className={`text-sm font-bold ${activeApp === 'inventory' ? 'text-primary-700' : 'text-gray-900'}`}>InventoryPro</div>
+                                            <div className="text-xs text-gray-500">Manage Stocks & Sales</div>
+                                        </div>
+                                    </button>
+
+                                    <button 
+                                        onClick={() => {
+                                            localStorage.setItem('activeApp', 'assets');
+                                            window.location.href = '/assets/dashboard';
+                                        }}
+                                        className={`w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center space-x-3 border-t border-gray-100 transition-colors ${activeApp === 'assets' ? 'bg-blue-50' : ''}`}
+                                    >
+                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${activeApp === 'assets' ? 'bg-blue-100' : 'bg-gray-100'}`}>🖥️</div>
+                                        <div>
+                                            <div className={`text-sm font-bold ${activeApp === 'assets' ? 'text-blue-700' : 'text-gray-900'}`}>Asset Management</div>
+                                            <div className="text-xs text-gray-500">Manage Hardware & Vehicles</div>
+                                        </div>
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                     {/* Close button for mobile */}
                     <button 

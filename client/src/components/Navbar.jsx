@@ -5,6 +5,8 @@ import { ThemeContext } from '../context/ThemeContext';
 const Navbar = ({ toggleSidebar }) => {
     const { user } = useContext(AuthContext);
 
+    const activeApp = localStorage.getItem('activeApp') || 'inventory';
+
     return (
         <header className="lg:hidden bg-[#1a1f2e] text-white p-4 flex items-center justify-between sticky top-0 z-50 shadow-md">
             <div className="flex items-center space-x-3">
@@ -16,8 +18,12 @@ const Navbar = ({ toggleSidebar }) => {
                     <span className="text-2xl">☰</span>
                 </button>
                 <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white text-xl">📦</div>
-                    <span className="font-bold tracking-tight">InventoryPro</span>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-xl ${activeApp === 'assets' ? 'bg-blue-600' : 'bg-primary-600'}`}>
+                        {activeApp === 'assets' ? '🖥️' : '📦'}
+                    </div>
+                    <span className="font-bold tracking-tight">
+                        {activeApp === 'assets' ? 'AssetPro' : 'InventoryPro'}
+                    </span>
                 </div>
             </div>
             

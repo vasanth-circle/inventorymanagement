@@ -192,6 +192,42 @@ const Profile = () => {
                     </div>
                 </form>
             </div>
+
+            <div className="mt-8 bg-white shadow overflow-hidden sm:rounded-lg">
+                <div className="px-4 py-5 sm:px-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 flex items-center justify-between">
+                    <div className="flex items-center">
+                        <span className="text-2xl mr-3">🚀</span>
+                        <h3 className="text-lg leading-6 font-bold text-gray-900">App Switcher</h3>
+                    </div>
+                </div>
+                <div className="px-4 py-6 sm:px-6">
+                    <p className="text-sm text-gray-500 mb-6">Switch to other systems installed in your workspace.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <button 
+                            onClick={() => {
+                                localStorage.setItem('activeApp', 'inventory');
+                                window.location.href = '/dashboard';
+                            }}
+                            className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-xl hover:border-primary-500 hover:bg-primary-50 transition-all group cursor-pointer"
+                        >
+                            <span className="text-5xl mb-3 group-hover:scale-110 transition-transform">📦</span>
+                            <span className="font-bold text-xl text-gray-900 group-hover:text-primary-700">Inventory Management</span>
+                            <span className="text-sm text-gray-500 mt-2 text-center">Manage Stocks, Sales, and Orders</span>
+                        </button>
+                        <button 
+                            onClick={() => {
+                                localStorage.setItem('activeApp', 'assets');
+                                window.location.href = '/assets/dashboard';
+                            }}
+                            className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all group cursor-pointer"
+                        >
+                            <span className="text-5xl mb-3 group-hover:scale-110 transition-transform">🖥️</span>
+                            <span className="font-bold text-xl text-gray-900 group-hover:text-blue-700">Asset Management</span>
+                            <span className="text-sm text-gray-500 mt-2 text-center">Manage Systems, Vehicles & Insurances</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };
