@@ -18,6 +18,32 @@ export const createDispatch = async (req, res, next) => {
             return sendError(res, 404, 'Sales order not found');
         }
 
+        // Validate over-dispatch
+        const pastDispatches = await Dispatch.find({ order: orderId, ...tenantQuery(req) });
+        let fullyDispatchedItemsCount = 0;
+
+        for (const dispatchItem of items) {
+            const orderItem = order.items.find(oi => oi.item.toString() === dispatchItem.item.toString());
+            if (!orderItem) return sendError(res, 400, `Item ${dispatchItem.item} not found in order`);
+
+            const pastDispatchedQty = pastDispatches.reduce((sum, d) => {
+                const match = d.items.find(di => di.item.toString() === dispatchItem.item.toString());
+                return sum + (match ? match.quantity : 0);
+            }, 0);
+
+            // Use stockQty if available, fallback to quantity (for legacy orders)
+            const targetedStockLimit = orderItem.stockQty || orderItem.quantity;
+            const pendingQty = targetedStockLimit - pastDispatchedQty;
+            
+            if (dispatchItem.quantity > pendingQty) {
+                return sendError(res, 400, `Cannot dispatch ${dispatchItem.quantity} units. Only ${pendingQty} pending physically for this item.`);
+            }
+
+            if (dispatchItem.quantity + pastDispatchedQty >= targetedStockLimit) {
+                fullyDispatchedItemsCount++;
+            }
+        }
+
         // Generate a dispatch number
         const date = new Date();
         const dateStr = `${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
@@ -77,10 +103,9 @@ export const createDispatch = async (req, res, next) => {
             }
         }
 
-        // Update Order status based on dispatch
-        // For simplicity, we'll mark it as 'partially_dispatched' or 'dispatched'
-        // In a more robust system, we would compare sum of all dispatches against order quantities.
-        order.status = 'partially_dispatched'; 
+        // Update Order status based on dispatch completion
+        const isFullyDispatched = fullyDispatchedItemsCount === order.items.length;
+        order.status = isFullyDispatched ? 'dispatched' : 'partially_dispatched'; 
         await order.save();
 
         sendResponse(res, 201, dispatch, 'Dispatch recorded successfully');

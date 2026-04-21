@@ -153,7 +153,7 @@ const Customers = () => {
                                     </td>
                                     <td className="px-6 py-4 text-right space-x-2">
                                         <button
-                                            onClick={() => navigate(`/customers/${customer._id}/ledger`)}
+                                            onClick={() => navigate(`/customer-ledger/${customer._id}`)}
                                             className="text-indigo-600 hover:text-indigo-900 font-semibold text-sm"
                                         >
                                             Ledger

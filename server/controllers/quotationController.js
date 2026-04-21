@@ -4,6 +4,7 @@ import Setting from '../models/Setting.js';
 import User from '../models/User.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
+import { createBillLedgerEntry } from './salesOrderController.js';
 
 // ── Helper: generate next quotation number ─────────────────────────────────
 const generateQuotationNumber = async (tenantId) => {
@@ -174,6 +175,19 @@ export const convertToInvoice = async (req, res, next) => {
         };
 
         const salesOrder = await SalesOrder.create(salesOrderData);
+
+        // Auto-create ledger debit entry
+        if (salesOrder.customer) {
+            createBillLedgerEntry({
+                orderId: salesOrder._id,
+                orderNumber: salesOrder.orderNumber,
+                customerId: salesOrder.customer,
+                amount: salesOrder.totalAmount,
+                tenantId: req.tenantId,
+                userId: req.user._id,
+                orderDate: salesOrder.orderDate,
+            });
+        }
 
         // Mark quotation as converted
         quotation.status = 'converted';

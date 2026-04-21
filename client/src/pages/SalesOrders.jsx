@@ -1,20 +1,29 @@
-import { useState, useEffect, useContext } from 'react';
-import { InventoryContext } from '../context/InventoryContext';
-import { AuthContext } from '../context/AuthContext';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { AuthContext } from '../context/AuthContext';
+import { InventoryContext } from '../context/InventoryContext';
 import { printDocument } from '../utils/printTemplates';
 
+const API_URL = '/api/sales-orders';
+const CUSTOMERS_API = '/api/customers';
+const ITEMS_API = '/api/items';
+
 const SalesOrders = () => {
-    const { items, billingSettings } = useContext(InventoryContext);
     const { user } = useContext(AuthContext);
+    const { settings: billingSettings } = useContext(InventoryContext);
     const [orders, setOrders] = useState([]);
     const [customers, setCustomers] = useState([]);
+    const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingOrder, setEditingOrder] = useState(null);
+    const [fetchingBalance, setFetchingBalance] = useState(false);
+
     const [formData, setFormData] = useState({
         customer: '',
+        orderNumber: '',
+        orderDate: new Date().toISOString().split('T')[0],
         items: [{ 
             item: '', 
             quantity: 1, 
@@ -25,51 +34,60 @@ const SalesOrders = () => {
             brand: '',
             size: '',
             batchId: '',
-            availableBatches: []
+            availableBatches: [],
+            billingUnit: 'boxes',
+            stockQty: 0,
+            stockUnit: 'boxes'
         }],
-        notes: '',
+        totalAmount: 0,
+        status: 'confirmed',
         isEstimation: false,
-        status: 'quotation',
+        notes: '',
         loadingCharges: 0,
         transportCharges: 0,
+        taxAmount: 0,
         oldBalance: 0,
-        advanceAmount: 0,
-        taxAmount: 0
+        advanceAmount: 0
     });
-
-    const API_URL = '/api/sales-orders';
 
     useEffect(() => {
         fetchOrders();
-        fetchCustomersAndItems();
+        fetchCustomers();
+        fetchItems();
     }, []);
 
     const fetchOrders = async () => {
         try {
-            setLoading(true);
             const res = await axios.get(API_URL, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
-            setOrders(res.data.data.orders);
+            setOrders(res.data);
+            setLoading(false);
         } catch (error) {
-            console.error('Fetch Orders Error:', error.response || error);
-            toast.error(`Order list failed: ${error.response?.data?.message || 'Server Error'}`);
-        } finally {
+            toast.error('Failed to fetch orders');
             setLoading(false);
         }
     };
 
-    const fetchCustomersAndItems = async () => {
+    const fetchCustomers = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const [custRes, itemRes] = await Promise.all([
-                axios.get('/api/customers', { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get('/api/items', { headers: { Authorization: `Bearer ${token}` } })
-            ]);
-            setCustomers(custRes.data.data.customers);
-            setItems(itemRes.data.items);
+            const res = await axios.get(CUSTOMERS_API, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            setCustomers(res.data);
         } catch (error) {
-            console.error('Error fetching dependencies');
+            console.error('Failed to fetch customers');
+        }
+    };
+
+    const fetchItems = async () => {
+        try {
+            const res = await axios.get(ITEMS_API, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            setItems(res.data);
+        } catch (error) {
+            toast.error('Failed to fetch items');
         }
     };
 
@@ -86,79 +104,99 @@ const SalesOrders = () => {
                 brand: '',
                 size: '',
                 batchId: '',
-                availableBatches: []
+                availableBatches: [],
+                billingUnit: 'boxes',
+                stockQty: 0,
+                stockUnit: 'boxes'
             }]
         });
     };
 
+    const handleRemoveItem = (index) => {
+        const newItems = formData.items.filter((_, i) => i !== index);
+        setFormData({ ...formData, items: newItems });
+    };
+
+    const handleCustomerChange = async (customerId) => {
+        setFormData(prev => ({ ...prev, customer: customerId }));
+        if (customerId) {
+            setFetchingBalance(true);
+            try {
+                const res = await axios.get(`${CUSTOMERS_API}/${customerId}/balance`, {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                });
+                setFormData(prev => ({ ...prev, oldBalance: res.data.balance || 0 }));
+            } catch (error) {
+                console.error('Error fetching customer balance');
+            } finally {
+                setFetchingBalance(false);
+            }
+        }
+    };
+
     const handleItemChange = (index, field, value) => {
         const newItems = [...formData.items];
-        newItems[index][field] = value;
+        const row = { ...newItems[index] };
 
         if (field === 'item') {
             const selectedItem = items.find(i => i._id === value);
             if (selectedItem) {
-                newItems[index].name = selectedItem.name;
-                newItems[index].price = selectedItem.price;
-                newItems[index].brand = selectedItem.brand || '';
-                newItems[index].size = selectedItem.size || '';
-                newItems[index].hsn = selectedItem.hsn || '';
-                newItems[index].pcsPerBox = selectedItem.pcsPerBox || 1;
-                newItems[index].sqFtPerPc = selectedItem.sqFtPerPc || 0;
-                newItems[index].availableBatches = selectedItem.batches || [];
-                // Default to first batch if available
-                if (selectedItem.batches && selectedItem.batches.length > 0) {
-                    newItems[index].batchId = selectedItem.batches[0]._id;
-                    newItems[index].price = selectedItem.batches[0].price;
-                    newItems[index].batchNumber = selectedItem.batches[0].batchNumber;
-                } else {
-                    newItems[index].price = selectedItem.price;
+                row.item = value;
+                row.price = selectedItem.sellingPrice || 0;
+                row.brand = selectedItem.brand;
+                row.size = selectedItem.size;
+                row.sqFtPerPc = selectedItem.sqFtPerPc || 0;
+                row.pcsPerBox = selectedItem.pcsPerBox || 1;
+                row.billingUnit = row.sqFtPerPc > 0 ? 'boxes' : 'pieces';
+                row.availableBatches = selectedItem.batches || [];
+                if (row.availableBatches.length > 0) {
+                    row.batchId = row.availableBatches[0]._id;
+                    row.price = row.availableBatches[0].price || row.price;
                 }
             }
+        } else {
+            row[field] = value;
         }
 
-        if (field === 'batchId') {
-            const row = newItems[index];
-            const batch = row.availableBatches.find(b => b._id === value);
-            if (batch) {
-                row.batchId = batch._id;
-                row.price = batch.price;
-                row.batchNumber = batch.batchNumber;
-            }
-        }
+        const sqFtPerPc = row.sqFtPerPc || 0;
+        const pcsPerBox = row.pcsPerBox || 1;
+        const isTile = sqFtPerPc > 0;
 
-        // Auto-calculations for tiles
-        const item = newItems[index];
-        if (field === 'boxCount' || field === 'item' || field === 'quantity' || field === 'price') {
-            if (item.pcsPerBox) {
-                const boxes = Number(item.boxCount) || 0;
-                item.totalPcs = boxes * item.pcsPerBox;
-                if (item.sqFtPerPc) {
-                    item.totalSqFt = Number((item.totalPcs * item.sqFtPerPc).toFixed(2));
-                    // Bill by SqFt
-                    item.quantity = item.totalSqFt; 
-                    item.total = Number((item.totalSqFt * (Number(item.price) || 0)).toFixed(2));
+        if (isTile) {
+            if (field === 'boxCount') {
+                row.totalPcs = parseFloat(value || 0) * pcsPerBox;
+                row.totalSqFt = row.totalPcs * sqFtPerPc;
+                row.quantity = row.billingUnit === 'sqft' ? row.totalSqFt : parseFloat(value || 0);
+            } else if (field === 'billingUnit') {
+                row.quantity = value === 'sqft' ? row.totalSqFt : row.boxCount;
+            } else if (field === 'quantity') {
+                if (row.billingUnit === 'sqft') {
+                    row.totalSqFt = parseFloat(value || 0);
+                    row.totalPcs = row.totalSqFt / sqFtPerPc;
+                    row.boxCount = row.totalPcs / pcsPerBox;
                 } else {
-                    // Fallback to boxes if sqft is not set
-                    item.quantity = boxes;
-                    item.total = Number((boxes * (Number(item.price) || 0)).toFixed(2));
+                    row.boxCount = parseFloat(value || 0);
+                    row.totalPcs = row.boxCount * pcsPerBox;
+                    row.totalSqFt = row.totalPcs * sqFtPerPc;
                 }
             }
+        } else {
+            row.totalPcs = parseFloat(row.quantity || 0);
         }
 
+        row.total = (parseFloat(row.quantity || 0) * parseFloat(row.price || 0)) || 0;
+        newItems[index] = row;
         setFormData({ ...formData, items: newItems });
     };
 
     const calculateTotals = () => {
-        const itemsTotal = formData.items.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
-        const netTotal = (
-            itemsTotal + 
-            Number(formData.loadingCharges) + 
-            Number(formData.transportCharges) + 
-            Number(formData.taxAmount) + 
-            Number(formData.oldBalance) - 
-            Number(formData.advanceAmount)
-        );
+        const itemsTotal = formData.items.reduce((sum, item) => sum + (item.total || 0), 0);
+        const netTotal = itemsTotal + 
+            parseFloat(formData.loadingCharges || 0) + 
+            parseFloat(formData.transportCharges || 0) + 
+            parseFloat(formData.taxAmount || 0) + 
+            parseFloat(formData.oldBalance || 0) - 
+            parseFloat(formData.advanceAmount || 0);
         return { itemsTotal, netTotal };
     };
 
@@ -166,21 +204,24 @@ const SalesOrders = () => {
         setEditingOrder(order);
         setFormData({
             customer: order.customer?._id || order.customer,
+            orderNumber: order.orderNumber,
+            orderDate: order.orderDate.split('T')[0],
             items: order.items.map(item => ({
                 ...item,
                 item: item.item?._id || item.item,
-                // Ensure calculations are preserved or recalculated
-                total: item.total || (item.quantity * item.price)
+                sqFtPerPc: item.item?.sqFtPerPc || 0,
+                pcsPerBox: item.item?.pcsPerBox || 1,
+                availableBatches: item.item?.batches || []
             })),
-            notes: order.notes || '',
+            totalAmount: order.totalAmount,
+            status: order.status,
             isEstimation: order.isEstimation || false,
-            status: order.status || (order.isEstimation ? 'quotation' : 'confirmed'),
+            notes: order.notes || '',
             loadingCharges: order.loadingCharges || 0,
             transportCharges: order.transportCharges || 0,
-            oldBalance: order.oldBalance || 0,
-            advanceAmount: order.advanceAmount || 0,
             taxAmount: order.taxAmount || 0,
-            orderDate: order.orderDate
+            oldBalance: order.oldBalance || 0,
+            advanceAmount: order.advanceAmount || 0
         });
         setIsModalOpen(true);
     };
@@ -190,64 +231,40 @@ const SalesOrders = () => {
         setEditingOrder(null);
         setFormData({
             customer: '',
+            orderNumber: '',
+            orderDate: new Date().toISOString().split('T')[0],
             items: [{ 
-                item: '', 
-                quantity: 1, 
-                price: 0, 
-                boxCount: 0, 
-                totalPcs: 0, 
-                totalSqFt: 0,
-                brand: '',
-                size: '',
-                batchId: '',
-                availableBatches: []
+                item: '', quantity: 1, price: 0, boxCount: 0, totalPcs: 0, totalSqFt: 0,
+                brand: '', size: '', batchId: '', availableBatches: [], billingUnit: 'boxes'
             }],
-            notes: '',
+            totalAmount: 0,
+            status: 'confirmed',
             isEstimation: false,
-            status: 'quotation',
+            notes: '',
             loadingCharges: 0,
             transportCharges: 0,
-            oldBalance: 0,
-            advanceAmount: 0,
             taxAmount: 0,
-            orderDate: new Date().toISOString()
+            oldBalance: 0,
+            advanceAmount: 0
         });
     };
 
-    // ── Auto-fill old balance when customer is selected (ledger integration) ──
-    const [fetchingBalance, setFetchingBalance] = useState(false);
-    const handleCustomerChange = async (customerId) => {
-        setFormData(prev => ({ ...prev, customer: customerId, oldBalance: 0 }));
-        if (!customerId || editingOrder) return;
-        try {
-            setFetchingBalance(true);
-            const res = await axios.get(`/api/customers/${customerId}/balance`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
-            const bal = res.data.data.balance;
-            if (bal > 0) {
-                setFormData(prev => ({ ...prev, customer: customerId, oldBalance: bal }));
-            }
-        } catch { /* silent — field stays at 0 */ } finally {
-            setFetchingBalance(false);
-        }
-    };
-
     const handleSubmit = async (e) => {
-
         e.preventDefault();
         try {
-            const token = localStorage.getItem('token');
+            const { netTotal } = calculateTotals();
+            const submissionData = { ...formData, totalAmount: netTotal };
+            
             if (editingOrder) {
-                await axios.put(`${API_URL}/${editingOrder._id}`, formData, {
-                    headers: { Authorization: `Bearer ${token}` }
+                await axios.put(`${API_URL}/${editingOrder._id}`, submissionData, {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
                 });
                 toast.success('Order updated successfully');
             } else {
-                await axios.post(API_URL, formData, {
-                    headers: { Authorization: `Bearer ${token}` }
+                await axios.post(API_URL, submissionData, {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
                 });
-                toast.success(formData.isEstimation ? 'Estimation created' : 'Sales order created');
+                toast.success('Order created successfully');
             }
             handleCloseModal();
             fetchOrders();
@@ -327,7 +344,7 @@ const SalesOrders = () => {
                                     </td>
                                     <td className="px-6 py-4 text-gray-900 font-medium">{order.customer?.companyName || order.customer?.name}</td>
                                     <td className="px-6 py-4 text-gray-600 text-sm">{new Date(order.orderDate).toLocaleDateString()}</td>
-                                    <td className="px-6 py-4 font-bold text-gray-900">₹{order.totalAmount.toLocaleString()}</td>
+                                    <td className="px-6 py-4 font-bold text-gray-900">₹{order.totalAmount?.toLocaleString() || 0}</td>
                                     <td className="px-6 py-4">
                                         <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${getStatusColor(order.status)}`}>
                                             {order.status.replace('_', ' ')}
@@ -373,166 +390,201 @@ const SalesOrders = () => {
                             <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600 text-3xl transition-colors">&times;</button>
                         </div>
                         <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
-                            <form onSubmit={handleSubmit} className="space-y-8 pb-4">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-                                <div className="md:col-span-1">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Select Customer *</label>
-                                    <select required value={formData.customer} onChange={(e) => handleCustomerChange(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none shadow-sm transition-all">
-                                        <option value="">Select Customer</option>
-                                        {customers.map(c => <option key={c._id} value={c._id}>{c.companyName || c.name}</option>)}
-                                    </select>
+                            <form id="salesOrderForm" onSubmit={handleSubmit} className="space-y-8 pb-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                                    <div className="md:col-span-1">
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Select Customer *</label>
+                                        <select required value={formData.customer} onChange={(e) => handleCustomerChange(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none shadow-sm transition-all">
+                                            <option value="">Select Customer</option>
+                                            {customers.map(c => <option key={c._id} value={c._id}>{c.companyName || c.name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="flex items-center space-x-6 pb-3">
+                                        <label className="flex items-center cursor-pointer group">
+                                            <div className="relative">
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="sr-only" 
+                                                    checked={formData.isEstimation} 
+                                                    onChange={(e) => setFormData({ 
+                                                        ...formData, 
+                                                        isEstimation: e.target.checked, 
+                                                        status: e.target.checked ? 'quotation' : 'confirmed' 
+                                                    })} 
+                                                />
+                                                <div className={`block w-14 h-8 rounded-full transition-colors ${formData.isEstimation ? 'bg-purple-600' : 'bg-gray-300'}`}></div>
+                                                <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${formData.isEstimation ? 'transform translate-x-6' : ''}`}></div>
+                                            </div>
+                                            <div className="ml-3 text-gray-700 font-bold select-none">
+                                                {formData.isEstimation ? 'Estimation / Quote' : 'Final Bill'}
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Order Date</label>
+                                        <input type="date" value={formData.orderDate?.split('T')[0]} onChange={(e) => setFormData({ ...formData, orderDate: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-primary-500" />
+                                    </div>
                                 </div>
-                                <div className="flex items-center space-x-6 pb-3">
-                                    <label className="flex items-center cursor-pointer group">
-                                        <div className="relative">
-                                            <input 
-                                                type="checkbox" 
-                                                className="sr-only" 
-                                                checked={formData.isEstimation} 
-                                                onChange={(e) => setFormData({ 
-                                                    ...formData, 
-                                                    isEstimation: e.target.checked, 
-                                                    status: e.target.checked ? 'quotation' : 'confirmed' 
-                                                })} 
-                                            />
-                                            <div className={`block w-14 h-8 rounded-full transition-colors ${formData.isEstimation ? 'bg-purple-600' : 'bg-gray-300'}`}></div>
-                                            <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${formData.isEstimation ? 'transform translate-x-6' : ''}`}></div>
-                                        </div>
-                                        <div className="ml-3 text-gray-700 font-bold select-none">
-                                            {formData.isEstimation ? 'Estimation / Quote' : 'Final Bill'}
-                                        </div>
-                                    </label>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Order Date</label>
-                                    <input type="date" value={formData.orderDate?.split('T')[0]} onChange={(e) => setFormData({ ...formData, orderDate: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-primary-500" />
-                                </div>
-                            </div>
 
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center">
-                                    <h3 className="text-lg font-black text-gray-800 flex items-center">
-                                        <span className="bg-primary-100 text-primary-600 p-1 rounded mr-2 text-sm">📦</span>
-                                        Item Details
-                                    </h3>
-                                </div>
-                                <div className="overflow-x-auto border rounded-xl shadow-sm">
-                                    <table className="w-full text-left min-w-[800px]">
-                                        <thead className="bg-gray-100">
-                                            <tr>
-                                                <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider">Item Name / Brand</th>
-                                                <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-24">Boxes (Qty)</th>
-                                                <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-32">Total SqFt</th>
-                                                <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-32">Rate (₹/SqFt)</th>
-                                                <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider text-right w-32">Total</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-100">
-                                            {formData.items.map((row, index) => (
-                                                <tr key={index} className="hover:bg-gray-50">
-                                                    <td className="px-4 py-3">
-                                                        <select required value={row.item} onChange={(e) => handleItemChange(index, 'item', e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-400 outline-none border-gray-200 font-medium text-sm">
-                                                            <option value="">Select Item</option>
-                                                            {items.map(i => <option key={i._id} value={i._id}>{i.name} ({i.brand} - {i.size})</option>)}
-                                                        </select>
-                                                        {row.availableBatches && row.availableBatches.length > 0 && (
-                                                            <div className="mt-2 group relative">
-                                                                <label className="text-[9px] font-bold text-primary-600 block mb-1 px-1">SELECT RATE/BATCH:</label>
-                                                                <select
-                                                                    value={row.batchId}
-                                                                    onChange={(e) => handleItemChange(index, 'batchId', e.target.value)}
-                                                                    className="w-full text-[10px] px-2 py-1.5 border-2 border-primary-200 rounded-lg bg-primary-50 text-primary-800 font-bold outline-none focus:border-primary-400 shadow-sm"
-                                                                >
-                                                                    {row.availableBatches.map(b => (
-                                                                        <option key={b._id} value={b._id}>
-                                                                            {b.batchNumber || 'Batch'} - ₹{b.price} ({b.quantity} Left)
-                                                                        </option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
-                                                        )}
-                                                        {row.brand && !row.availableBatches?.length && <div className="text-[10px] text-gray-400 mt-1 pl-1">{row.brand} | {row.size}</div>}
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <input type="number" step="0.01" min="0" value={row.boxCount} onChange={(e) => handleItemChange(index, 'boxCount', e.target.value)} className="w-full px-3 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 text-center font-bold" />
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <input required type="number" step="0.01" value={row.quantity} onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value))} className="w-full px-3 py-2 border rounded-lg border-gray-200 outline-none bg-gray-50 font-medium" />
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <input required type="number" step="0.01" value={row.price} onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value))} className="w-full px-3 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 font-bold" />
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right font-black text-gray-800">
-                                                        ₹{(row.totalSqFt * row.price).toLocaleString()}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <button type="button" onClick={handleAddItem} className="text-primary-600 hover:text-primary-700 text-sm font-black flex items-center bg-primary-50 px-4 py-2 rounded-lg transition-colors">
-                                    <span className="text-xl mr-2">+</span> Add Line Item
-                                </button>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                                 <div className="space-y-4">
-                                    <label className="block text-sm font-bold text-gray-700">Notes & Terms</label>
-                                    <textarea 
-                                        rows="4" 
-                                        value={formData.notes} 
-                                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })} 
-                                        placeholder="Add any specific instructions or terms..."
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-primary-400"
-                                    ></textarea>
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="text-lg font-black text-gray-800 flex items-center">
+                                            <span className="bg-primary-100 text-primary-600 p-1 rounded mr-2 text-sm">📦</span>
+                                            Item Details
+                                        </h3>
+                                    </div>
+                                    <div className="overflow-x-auto border rounded-xl shadow-sm">
+                                        <table className="w-full text-left min-w-[800px]">
+                                            <thead className="bg-gray-100">
+                                                <tr>
+                                                    <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider">Item / Batch</th>
+                                                    <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-24">Input Qty</th>
+                                                    <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-32">Billed Qty</th>
+                                                    <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-32">Rate (₹)</th>
+                                                    <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-32">Unit</th>
+                                                    <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider text-right w-32">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {formData.items.map((row, index) => {
+                                                    const isTile = row.sqFtPerPc > 0;
+                                                    return (
+                                                        <tr key={index} className="hover:bg-gray-50">
+                                                            <td className="px-4 py-3">
+                                                                <div className="flex items-center gap-2">
+                                                                    <button type="button" onClick={() => handleRemoveItem(index)} className="text-red-400 hover:text-red-600 font-bold text-lg">&times;</button>
+                                                                    <div className="flex-1">
+                                                                        <select required value={row.item} onChange={(e) => handleItemChange(index, 'item', e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-400 outline-none border-gray-200 font-medium text-sm">
+                                                                            <option value="">Select Item</option>
+                                                                            {items.map(i => <option key={i._id} value={i._id}>{i.name} ({i.brand} - {i.size})</option>)}
+                                                                        </select>
+                                                                        {row.availableBatches && row.availableBatches.length > 0 && (
+                                                                            <div className="mt-2 group relative">
+                                                                                <select
+                                                                                    value={row.batchId}
+                                                                                    onChange={(e) => handleItemChange(index, 'batchId', e.target.value)}
+                                                                                    className="w-full text-[10px] px-2 py-1.5 border-2 border-primary-200 rounded-lg bg-primary-50 text-primary-800 font-bold outline-none focus:border-primary-400 shadow-sm"
+                                                                                >
+                                                                                    {row.availableBatches.map(b => (
+                                                                                        <option key={b._id} value={b._id}>
+                                                                                            {b.batchNumber || 'Batch'} - ₹{b.price} ({b.quantity} Left)
+                                                                                        </option>
+                                                                                    ))}
+                                                                                </select>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <input 
+                                                                    type="number" 
+                                                                    step="0.01" 
+                                                                    min="0" 
+                                                                    value={isTile ? row.boxCount : row.quantity} 
+                                                                    onChange={(e) => handleItemChange(index, isTile ? 'boxCount' : 'quantity', e.target.value)} 
+                                                                    placeholder={isTile ? "Boxes" : "Qty"}
+                                                                    className="w-full px-3 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 text-center font-bold" 
+                                                                />
+                                                                {isTile && <div className="text-[9px] text-gray-400 text-center mt-1 uppercase font-bold">Boxes</div>}
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <input 
+                                                                    required 
+                                                                    type="number" 
+                                                                    step="0.01" 
+                                                                    readOnly={isTile}
+                                                                    value={row.quantity} 
+                                                                    onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value))} 
+                                                                    className={`w-full px-3 py-2 border rounded-lg border-gray-200 outline-none font-medium text-center ${isTile ? 'bg-gray-50' : ''}`} 
+                                                                />
+                                                                {isTile && <div className="text-[9px] text-gray-400 text-center mt-1 uppercase font-bold">{row.billingUnit}</div>}
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <input required type="number" step="0.01" value={row.price} onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value))} className="w-full px-3 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 font-bold text-right" />
+                                                                <div className="text-[9px] text-gray-400 text-right mt-1 uppercase font-bold">Per {isTile ? row.billingUnit : 'Piece'}</div>
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                {isTile ? (
+                                                                    <select value={row.billingUnit} onChange={(e) => handleItemChange(index, 'billingUnit', e.target.value)} className="w-full px-2 py-2 border rounded-lg border-gray-200 text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none">
+                                                                        <option value="sqft">SqFt</option>
+                                                                        <option value="boxes">Box</option>
+                                                                    </select>
+                                                                ) : (
+                                                                    <div className="text-xs font-bold text-gray-400 text-center uppercase py-2">Pieces</div>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right font-black text-gray-800 pt-5">
+                                                                ₹{(row.total || 0).toLocaleString()}
+                                                                {isTile && <div className="text-[10px] text-gray-400 font-normal">({row.billingUnit === 'sqft' ? `${row.totalSqFt?.toFixed(2) || 0} SqFt` : `${row.boxCount || 0} Boxes`})</div>}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <button type="button" onClick={handleAddItem} className="text-primary-600 hover:text-primary-700 text-sm font-black flex items-center bg-primary-50 px-4 py-2 rounded-lg transition-colors">
+                                        <span className="text-xl mr-2">+</span> Add Line Item
+                                    </button>
                                 </div>
-                                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 space-y-4">
-                                    <h4 className="font-bold text-gray-800 border-b pb-2 mb-4">Billing Extra & Offsets</h4>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Loading Charges</label>
-                                            <input type="number" value={formData.loadingCharges} onChange={(e) => setFormData({ ...formData, loadingCharges: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none" />
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                                    <div className="space-y-4">
+                                        <label className="block text-sm font-bold text-gray-700">Notes & Terms</label>
+                                        <textarea 
+                                            rows="4" 
+                                            value={formData.notes} 
+                                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })} 
+                                            placeholder="Add any specific instructions or terms..."
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-primary-400"
+                                        ></textarea>
+                                    </div>
+                                    <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 space-y-4">
+                                        <h4 className="font-bold text-gray-800 border-b pb-2 mb-4">Billing Extra & Offsets</h4>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Loading Charges</label>
+                                                <input type="number" value={formData.loadingCharges} onChange={(e) => setFormData({ ...formData, loadingCharges: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Transport / Auto</label>
+                                                <input type="number" value={formData.transportCharges} onChange={(e) => setFormData({ ...formData, transportCharges: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Tax Amount</label>
+                                                <input type="number" value={formData.taxAmount} onChange={(e) => setFormData({ ...formData, taxAmount: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
+                                                    Old Balance (Add) {fetchingBalance && <span className="text-blue-400 animate-pulse">⏳ loading...</span>}
+                                                </label>
+                                                <input type="number" value={formData.oldBalance} onChange={(e) => setFormData({ ...formData, oldBalance: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none text-red-600 font-bold" />
+                                            </div>
+                                            <div className="col-span-2">
+                                                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Advance Amount (Subtract)</label>
+                                                <input type="number" value={formData.advanceAmount} onChange={(e) => setFormData({ ...formData, advanceAmount: e.target.value })} className="w-full px-3 py-2 border rounded-lg border-primary-300 outline-none text-green-600 font-bold" />
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Transport / Auto</label>
-                                            <input type="number" value={formData.transportCharges} onChange={(e) => setFormData({ ...formData, transportCharges: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Tax Amount</label>
-                                            <input type="number" value={formData.taxAmount} onChange={(e) => setFormData({ ...formData, taxAmount: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
-                                                Old Balance (Add) {fetchingBalance && <span className="text-blue-400 animate-pulse">⏳ loading...</span>}
-                                            </label>
-                                            <input type="number" value={formData.oldBalance} onChange={(e) => setFormData({ ...formData, oldBalance: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none text-red-600 font-bold" />
-                                        </div>
-                                        <div className="col-span-2">
-                                            <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Advance Amount (Subtract)</label>
-                                            <input type="number" value={formData.advanceAmount} onChange={(e) => setFormData({ ...formData, advanceAmount: e.target.value })} className="w-full px-3 py-2 border rounded-lg border-primary-300 outline-none text-green-600 font-bold" />
+                                        <div className="pt-6 border-t mt-6 space-y-3">
+                                            <div className="flex justify-between text-gray-600 font-medium">
+                                                <span>Subtotal Items:</span>
+                                                <span>₹{itemsTotal.toLocaleString()}</span>
+                                            </div>
+                                            <div className="flex justify-between text-2xl font-black text-gray-900 pt-2 border-t border-dashed">
+                                                <span>NET TOTAL:</span>
+                                                <span className="text-primary-700">₹{netTotal.toLocaleString()}</span>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="pt-6 border-t mt-6 space-y-3">
-                                        <div className="flex justify-between text-gray-600 font-medium">
-                                            <span>Subtotal Items:</span>
-                                            <span>₹{itemsTotal.toLocaleString()}</span>
-                                        </div>
-                                        <div className="flex justify-between text-2xl font-black text-gray-900 pt-2 border-t border-dashed">
-                                            <span>NET TOTAL:</span>
-                                            <span className="text-primary-700">₹{netTotal.toLocaleString()}</span>
-                                        </div>
-                                    </div>
-                            </div>
-                        </div>
-                        </form>
+                                </div>
+                            </form>
                         </div>
                         <div className="flex justify-end gap-4 p-6 border-t bg-gray-50 rounded-b-2xl">
                             <button type="button" onClick={handleCloseModal} className="px-8 py-3 text-gray-600 font-bold border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">Cancel</button>
                             <button 
-                                onClick={() => {
-                                    const form = document.querySelector('form');
-                                    if(form) form.requestSubmit();
-                                }}
+                                form="salesOrderForm"
+                                type="submit"
                                 className="px-10 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 font-black shadow-lg shadow-primary-200 transition-all active:scale-95"
                             >
                                 {editingOrder ? '💾 Update Changes' : (formData.isEstimation ? '💾 Save Quotation' : '✅ Generate Final Bill')}

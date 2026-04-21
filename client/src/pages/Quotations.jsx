@@ -18,6 +18,9 @@ const emptyItem = () => ({
     item: '', name: '', brand: '', size: '', hsn: '',
     quantity: 1, price: 0, total: 0,
     pcsPerBox: 1, sqFtPerPc: 0,
+    billingUnit: 'boxes', // boxes, sqft, pieces
+    stockQty: 0,         // what to deduct
+    stockUnit: 'boxes',
     primaryQty: 0, secondaryQty: 0, unitLabel: 'units', rateLabel: 'per unit',
     availableBatches: [], batchId: '',
 });
@@ -93,6 +96,15 @@ const Quotations = () => {
                 newItems[index].availableBatches = found.batches || [];
                 newItems[index].price = found.batches?.length ? found.batches[0].price : (found.price || 0);
                 if (found.batches?.length) newItems[index].batchId = found.batches[0]._id;
+                
+                // Set default billing unit based on if it's a tile
+                if (found.sqFtPerPc > 0) {
+                    newItems[index].billingUnit = 'sqft'; 
+                    newItems[index].stockUnit = 'boxes';
+                } else {
+                    newItems[index].billingUnit = 'pieces';
+                    newItems[index].stockUnit = 'pieces';
+                }
             }
         }
 
@@ -102,15 +114,29 @@ const Quotations = () => {
         }
 
         // Recalc total
-        const q = Number(newItems[index].quantity) || 0;
+        const q = Number(newItems[index].quantity) || 0; // This is the input qty (e.g. Boxes or Pieces)
         const p = Number(newItems[index].price) || 0;
+        const bUnit = newItems[index].billingUnit;
         const pcsPerBox = Number(newItems[index].pcsPerBox) || 1;
         const sqFtPerPc = Number(newItems[index].sqFtPerPc) || 0;
 
         if (sqFtPerPc > 0) {
-            const totalSqFt = q * pcsPerBox * sqFtPerPc;
-            newItems[index].total = parseFloat((totalSqFt * p).toFixed(2));
+            // It's a tile/box item
+            newItems[index].boxCount = q;
+            newItems[index].totalPcs = q * pcsPerBox;
+            newItems[index].totalSqFt = parseFloat((q * pcsPerBox * sqFtPerPc).toFixed(2));
+            newItems[index].stockQty = q; // Deduct physical boxes
+            newItems[index].stockUnit = 'boxes';
+
+            if (bUnit === 'sqft') {
+                newItems[index].total = parseFloat((newItems[index].totalSqFt * p).toFixed(2));
+            } else {
+                newItems[index].total = parseFloat((q * p).toFixed(2));
+            }
         } else {
+            // Generic item
+            newItems[index].stockQty = q;
+            newItems[index].stockUnit = 'pieces';
             newItems[index].total = parseFloat((q * p).toFixed(2));
         }
 
@@ -141,16 +167,13 @@ const Quotations = () => {
         const payload = { 
             ...formData, 
             items: formData.items.map(i => {
-                const isTile = Number(i.sqFtPerPc) > 0;
                 const qVal = Number(i.quantity) || 0;
-                const sqft = isTile ? parseFloat((qVal * Number(i.pcsPerBox) * Number(i.sqFtPerPc)).toFixed(2)) : 0;
                 return {
                     ...i,
-                    boxCount: isTile ? qVal : 0,
-                    totalSqFt: sqft,
-                    quantity: isTile ? sqft : qVal,
+                    quantity: i.billingUnit === 'sqft' ? i.totalSqFt : qVal, // formal billed qty
                     price: Number(i.price) || 0,
-                    total: Number(i.total) || 0
+                    total: Number(i.total) || 0,
+                    stockQty: Number(i.stockQty) || 0,
                 };
             }),
             taxRate: Number(formData.taxRate) || 0,
@@ -434,8 +457,19 @@ const Quotations = () => {
                                                     onChange={e => handleItemChange(idx, 'price', e.target.value)}
                                                     className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold text-right focus:ring-2 focus:ring-rose-500" />
                                             </div>
+                                            {/* Billing Unit Select */}
+                                            {row.sqFtPerPc > 0 && (
+                                                <div className="col-span-1">
+                                                    <label className="text-[9px] text-gray-400 font-bold uppercase">Unit</label>
+                                                    <select value={row.billingUnit} onChange={e => handleItemChange(idx, 'billingUnit', e.target.value)}
+                                                        className="w-full h-9 px-1 bg-white border border-gray-100 rounded-lg text-[10px] font-bold focus:ring-2 focus:ring-rose-500">
+                                                        <option value="sqft">SqFt</option>
+                                                        <option value="boxes">Box</option>
+                                                    </select>
+                                                </div>
+                                            )}
                                             {/* Total */}
-                                            <div className="col-span-2">
+                                            <div className={row.sqFtPerPc > 0 ? "col-span-1" : "col-span-2"}>
                                                 <label className="text-[9px] text-gray-400 font-bold uppercase">Total</label>
                                                 <div className="h-9 px-2 bg-gray-100 border border-gray-200 rounded-lg text-xs font-black text-right flex items-center justify-end text-gray-700">
                                                     ₹{(row.total || 0).toLocaleString()}

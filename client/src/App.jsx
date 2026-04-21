@@ -88,6 +88,8 @@ function App() {
                                             <Route path="/users" element={<Users />} />
                                             <Route path="/customers" element={<Customers />} />
                                             <Route path="/customers/:id/ledger" element={<CustomerLedger />} />
+                                            <Route path="/customer-ledger" element={<CustomerLedger />} />
+                                            <Route path="/customer-ledger/:id" element={<CustomerLedger />} />
                                             <Route path="/sales-orders" element={<SalesOrders />} />
                                             <Route path="/vendors" element={<Vendors />} />
                                             <Route path="/purchase-orders" element={<PurchaseOrders />} />

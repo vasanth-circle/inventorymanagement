@@ -40,38 +40,66 @@ const DispatchManagement = () => {
         }
     };
 
-    const handleOpenDispatch = (order) => {
+    const handleOpenDispatch = async (order) => {
         setSelectedOrder(order);
-        // Initialize dispatch items with 0 quantity
-        setDispatchData({
-            vehicleNumber: '',
-            driverPhone: '',
-            notes: '',
-            items: order.items.map(item => ({
-                item: item.item._id || item.item,
-                name: item.name,
-                brand: item.brand,
-                size: item.size,
-                orderedQuantity: item.quantity,
-                quantity: 0,
-                selected: false
-            }))
-        });
-        setIsDispatchModalOpen(true);
+        setDispatchData({ vehicleNumber: '', driverPhone: '', notes: '', items: [] }); // Reset first
+
+        try {
+            // Fetch past dispatches to prevent over-dispatching
+            const res = await axios.get(`/api/dispatches/order/${order._id}`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            const pastDispatches = res.data.data;
+
+            setDispatchData({
+                vehicleNumber: '',
+                driverPhone: '',
+                notes: '',
+                items: order.items.map(item => {
+                    const itemId = item.item._id || item.item;
+                    // Calculate pending limit using stockQty (physical boxes) for tiles, fallback to quantity for generic items
+                    const targetedStockLimit = item.stockQty || item.quantity;
+                    const dispatchedSum = pastDispatches.reduce((sum, d) => {
+                        const dMatch = d.items.find(di => String(di.item._id || di.item) === String(itemId));
+                        return sum + (dMatch ? dMatch.quantity : 0);
+                    }, 0);
+
+                    return {
+                        item: itemId,
+                        name: item.name,
+                        brand: item.brand,
+                        size: item.size,
+                        orderedQuantity: targetedStockLimit,
+                        previouslyDispatched: dispatchedSum,
+                        pendingQuantity: targetedStockLimit - dispatchedSum,
+                        quantity: 0,
+                        selected: false,
+                        stockUnit: item.stockUnit || (item.sqFtPerPc > 0 ? 'Boxes' : 'Units')
+                    };
+                }).filter(i => i.pendingQuantity > 0) // Only allow dispatching items with pending qty
+            });
+            setIsDispatchModalOpen(true);
+        } catch (err) {
+            toast.error('Failed to load dispatch limits');
+        }
     };
 
     const handleItemToggle = (index) => {
         const newItems = [...dispatchData.items];
         newItems[index].selected = !newItems[index].selected;
         if (newItems[index].selected && newItems[index].quantity === 0) {
-            newItems[index].quantity = newItems[index].orderedQuantity;
+            newItems[index].quantity = newItems[index].pendingQuantity;
         }
         setDispatchData({ ...dispatchData, items: newItems });
     };
 
     const handleQtyChange = (index, value) => {
         const newItems = [...dispatchData.items];
-        newItems[index].quantity = parseFloat(value) || 0;
+        let parsed = parseFloat(value) || 0;
+        if (parsed > newItems[index].pendingQuantity) {
+            parsed = newItems[index].pendingQuantity;
+        }
+        newItems[index].quantity = parsed;
         setDispatchData({ ...dispatchData, items: newItems });
     };
 
@@ -145,28 +173,30 @@ const DispatchManagement = () => {
                         </tbody>
                     </table>
 
-                    <h3>2. PENDING STATUS SUMMARY</h3>
+                    <h3>2. PENDING PHYSICAL STOCK SUMMARY</h3>
                     <table>
                         <thead>
                             <tr>
                                 <th>Item Name</th>
-                                <th>Total Ordered</th>
+                                <th>Total Ordered (Stock)</th>
                                 <th>Total Dispatched</th>
                                 <th>Balance Pending</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${order.items.map(oi => {
+                                const oiId = oi.item._id || oi.item;
+                                const targetedStockLimit = oi.stockQty || oi.quantity;
                                 const totalDisp = dispatches.reduce((sum, d) => {
-                                    const match = d.items.find(di => di.item._id === oi.item._id || di.item === oi.item._id);
+                                    const match = d.items.find(di => String(di.item._id || di.item) === String(oiId));
                                     return sum + (match ? match.quantity : 0);
                                 }, 0);
                                 return `
                                     <tr>
                                         <td>${oi.name}</td>
-                                        <td>${oi.quantity}</td>
+                                        <td>${targetedStockLimit} ${oi.stockUnit || (oi.sqFtPerPc > 0 ? 'Boxes' : 'Units')}</td>
                                         <td>${totalDisp}</td>
-                                        <td style="font-weight:bold; color:${oi.quantity - totalDisp > 0 ? 'red' : 'green'}">${(oi.quantity - totalDisp).toFixed(2)}</td>
+                                        <td style="font-weight:bold; color:${targetedStockLimit - totalDisp > 0 ? 'red' : 'green'}">${(targetedStockLimit - totalDisp).toFixed(2)}</td>
                                     </tr>
                                 `;
                             }).join('')}
@@ -355,17 +385,21 @@ const DispatchManagement = () => {
                                                 <p className="font-black text-gray-800">{item.name}</p>
                                                 <p className="text-[10px] text-gray-400 font-bold uppercase">{item.brand} | {item.size}</p>
                                             </div>
-                                            <div className="text-right mr-6">
-                                                <p className="text-[10px] text-gray-400 font-bold uppercase">Ordered</p>
-                                                <p className="font-bold text-gray-600">{item.orderedQuantity}</p>
+                                            <div className="text-right mr-3">
+                                                <p className="text-[9px] text-gray-400 font-bold uppercase">Ordered / Disp.</p>
+                                                <p className="font-bold text-gray-600">{item.orderedQuantity} / <span className="text-green-500">{item.previouslyDispatched}</span></p>
                                             </div>
                                             <div className="w-32">
-                                                <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Dispatching Now</label>
+                                                <label className="block text-[10px] font-black text-gray-400 uppercase mb-1 flex justify-between">
+                                                    <span>Dispatching Now</span>
+                                                    <span className="text-orange-500 mr-2">Max: {item.pendingQuantity}</span>
+                                                </label>
                                                 <input 
                                                     type="number" 
                                                     step="0.01"
                                                     disabled={!item.selected}
                                                     value={item.quantity} 
+                                                    max={item.pendingQuantity}
                                                     onChange={(e) => handleQtyChange(index, e.target.value)}
                                                     className={`w-full px-3 py-2 border rounded-xl outline-none text-center font-black ${item.selected ? 'border-primary-400 text-primary-700' : 'bg-gray-50 border-gray-100'}`}
                                                 />
@@ -415,7 +449,7 @@ const DispatchManagement = () => {
                                     <div className="space-y-3">
                                         {orderDetails.items.map((item, idx) => {
                                             const totalDispatched = orderDetails.dispatches.reduce((sum, d) => {
-                                                const dItem = d.items.find(di => (di.item._id || di.item) === (item.item._id || item.item));
+                                                const dItem = d.items.find(di => String(di.item._id || di.item) === String(item.item._id || item.item));
                                                 return sum + (dItem ? dItem.quantity : 0);
                                             }, 0);
                                             const pending = item.quantity - totalDispatched;
@@ -428,8 +462,8 @@ const DispatchManagement = () => {
                                                             <p className="text-[10px] text-gray-400 font-black uppercase">{item.brand} | {item.size}</p>
                                                         </div>
                                                         <div className="text-right">
-                                                            <p className="text-[10px] text-gray-400 font-black uppercase">Order Total</p>
-                                                            <p className="font-black text-primary-600">{item.quantity} Boxes</p>
+                                                            <p className="text-[10px] text-gray-400 font-black uppercase">Order Total (Stock)</p>
+                                                            <p className="font-black text-primary-600">{item.stockQty || item.quantity} {item.stockUnit || (item.sqFtPerPc > 0 ? 'Boxes' : 'Units')}</p>
                                                         </div>
                                                     </div>
                                                     <div className="mt-2 flex gap-4 text-xs font-bold">

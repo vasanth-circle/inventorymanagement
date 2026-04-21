@@ -21,8 +21,10 @@ const CustomerLedger = () => {
     const { id } = useParams();
     const navigate = useNavigate();
 
+    const [selectedCustomerId, setSelectedCustomerId] = useState(id || '');
+    const [customers, setCustomers] = useState([]);
     const [data, setData] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [from, setFrom] = useState('');
     const [to, setTo] = useState('');
     const [settings, setSettings] = useState(null);
@@ -33,21 +35,47 @@ const CustomerLedger = () => {
     const [payForm, setPayForm] = useState({ amount: '', paymentMode: 'cash', date: new Date().toISOString().split('T')[0], notes: '', refNumber: '' });
 
     const fetchLedger = useCallback(async () => {
+        if (!selectedCustomerId) {
+            setData(null);
+            return;
+        }
         try {
             setLoading(true);
             const params = {};
             if (from) params.from = from;
             if (to) params.to = to;
-            const res = await api(`/customers/${id}/ledger`, { params });
+            const res = await api(`/customers/${selectedCustomerId}/ledger`, { params });
             setData(res.data.data);
         } catch {
             toast.error('Failed to fetch ledger');
         } finally {
             setLoading(false);
         }
-    }, [id, from, to]);
+    }, [selectedCustomerId, from, to]);
 
-    useEffect(() => { fetchLedger(); }, [fetchLedger]);
+    useEffect(() => {
+        // Fetch customers list for dropdown
+        api('/customers').then(res => {
+            setCustomers(res.data.data.customers);
+        }).catch(() => {});
+        fetchLedger(); 
+    }, [fetchLedger]);
+
+    useEffect(() => {
+        if (id && id !== selectedCustomerId) {
+             setSelectedCustomerId(id);
+        }
+    }, [id]);
+
+    const handleCustomerChange = (e) => {
+        const newId = e.target.value;
+        setSelectedCustomerId(newId);
+        if (newId) {
+            navigate(`/customer-ledger/${newId}`);
+        } else {
+            navigate(`/customer-ledger`);
+        }
+    };
 
     useEffect(() => {
         api('/settings').then(r => setSettings(r.data.data)).catch(() => {});
@@ -58,7 +86,7 @@ const CustomerLedger = () => {
             const params = {};
             if (from) params.from = from;
             if (to) params.to = to;
-            const res = await api(`/customers/${id}/statement`, { params });
+            const res = await api(`/customers/${selectedCustomerId}/statement`, { params });
             const { customer, entries, summary, period } = res.data.data;
             printAccountStatement(customer, entries, summary, period, settings);
         } catch {
@@ -71,7 +99,7 @@ const CustomerLedger = () => {
         if (!payForm.amount || Number(payForm.amount) <= 0) return toast.error('Enter a valid amount');
         setPaying(true);
         try {
-            await api(`/customers/${id}/payment`, {
+            await api(`/customers/${selectedCustomerId}/payment`, {
                 method: 'POST',
                 data: { ...payForm, amount: Number(payForm.amount) }
             });
@@ -101,14 +129,18 @@ const CustomerLedger = () => {
         <div className="space-y-6">
             {/* Header */}
             <div className="flex flex-wrap gap-3 items-start justify-between">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 w-full md:w-auto flex-1 max-w-md">
                     <button onClick={() => navigate('/customers')} className="text-gray-500 hover:text-gray-800 text-xl font-bold">←</button>
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-800">
-                            {customer ? (customer.companyName || customer.name) : 'Loading...'}
-                        </h1>
-                        {customer && <p className="text-sm text-gray-500">{customer.name} {customer.phone ? `| ${customer.phone}` : ''}</p>}
-                    </div>
+                    <select 
+                        value={selectedCustomerId}
+                        onChange={handleCustomerChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none font-bold text-gray-800 shadow-sm"
+                    >
+                        <option value="">-- Select Customer Account --</option>
+                        {customers.map(c => (
+                            <option key={c._id} value={c._id}>{c.companyName || c.name}</option>
+                        ))}
+                    </select>
                 </div>
                 <div className="flex gap-2">
                     <button
@@ -119,7 +151,8 @@ const CustomerLedger = () => {
                     </button>
                     <button
                         onClick={handlePrint}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold text-sm shadow"
+                        disabled={!selectedCustomerId || !data}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold text-sm shadow disabled:opacity-50"
                     >
                         🖨️ Print Statement
                     </button>
@@ -159,7 +192,7 @@ const CustomerLedger = () => {
                     <input type="date" value={to} onChange={e => setTo(e.target.value)}
                         className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" />
                 </div>
-                <button onClick={fetchLedger} className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-semibold hover:bg-primary-700">Apply</button>
+                <button onClick={fetchLedger} disabled={!selectedCustomerId} className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-semibold hover:bg-primary-700 disabled:opacity-50">Apply</button>
                 {(from || to) && (
                     <button onClick={() => { setFrom(''); setTo(''); }} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50">Clear</button>
                 )}
@@ -174,6 +207,12 @@ const CustomerLedger = () => {
                 {loading ? (
                     <div className="flex justify-center items-center h-48">
                         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
+                    </div>
+                ) : !selectedCustomerId ? (
+                    <div className="text-center py-16 text-gray-400 border-t border-gray-100">
+                        <p className="text-4xl mb-3 mt-4">🔍</p>
+                        <p className="text-lg font-medium">Select an account</p>
+                        <p className="text-sm">Choose a customer document from the dropdown above to view their Tally ledger statement.</p>
                     </div>
                 ) : entries.length === 0 ? (
                     <div className="text-center py-16 text-gray-400">

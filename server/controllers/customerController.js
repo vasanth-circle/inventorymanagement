@@ -1,10 +1,8 @@
 import Customer from '../models/Customer.js';
 import CustomerLedger from '../models/CustomerLedger.js';
+import User from '../models/User.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
-
-// @desc    Get all customers
-// @route   GET /api/customers
 // @access  Private
 export const getCustomers = async (req, res, next) => {
     try {

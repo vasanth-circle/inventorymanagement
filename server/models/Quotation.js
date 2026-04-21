@@ -50,6 +50,9 @@ const quotationSchema = new mongoose.Schema({
         total: { type: Number, default: 0 },
         boxCount: { type: Number, default: 0 },
         totalSqFt: { type: Number, default: 0 },
+        billingUnit: { type: String, default: 'pieces' }, // pieces, boxes, sqft
+        stockQty: { type: Number, default: 0 },         // Physical qty to deduct (usually boxes or pcs)
+        stockUnit: { type: String, default: 'pieces' }, // boxes, pieces
     }],
 
     // Totals

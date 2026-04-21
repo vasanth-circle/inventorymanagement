@@ -41,6 +41,9 @@ const salesOrderSchema = new mongoose.Schema({
             type: Number,
             default: 0,
         },
+        billingUnit: { type: String, default: 'pieces' }, // pieces, boxes, sqft
+        stockQty: { type: Number, default: 0 },         // Physical qty to deduct (usually boxes or pcs)
+        stockUnit: { type: String, default: 'pieces' }, // boxes, pieces
         quantity: { // For tiles, this might be total SqFt or total Pcs depending on pricing.
             type: Number,
             required: true,

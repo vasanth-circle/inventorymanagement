@@ -38,6 +38,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             icon: '🛒',
             items: [
                 { name: 'Customers', path: '/customers', id: 'sales' },
+                { name: 'Customer Ledgers', path: '/customer-ledger', id: 'sales' },
                 { name: 'Quotations', path: '/quotations', id: 'sales' },
                 { name: 'Sales Orders', path: '/sales-orders', id: 'sales' },
                 { name: 'Dispatch Management', path: '/dispatch-management', id: 'sales' },
