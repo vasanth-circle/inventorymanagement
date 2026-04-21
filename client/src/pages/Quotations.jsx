@@ -17,6 +17,7 @@ const STATUS_COLORS = {
 const emptyItem = () => ({
     item: '', name: '', brand: '', size: '', hsn: '',
     quantity: 1, price: 0, total: 0,
+    pcsPerBox: 1, sqFtPerPc: 0,
     primaryQty: 0, secondaryQty: 0, unitLabel: 'units', rateLabel: 'per unit',
     availableBatches: [], batchId: '',
 });
@@ -87,6 +88,8 @@ const Quotations = () => {
                 newItems[index].brand = found.brand || '';
                 newItems[index].size = found.size || '';
                 newItems[index].hsn = found.hsn || '';
+                newItems[index].pcsPerBox = found.pcsPerBox || 1;
+                newItems[index].sqFtPerPc = found.sqFtPerPc || 0;
                 newItems[index].availableBatches = found.batches || [];
                 newItems[index].price = found.batches?.length ? found.batches[0].price : (found.price || 0);
                 if (found.batches?.length) newItems[index].batchId = found.batches[0]._id;
@@ -101,7 +104,15 @@ const Quotations = () => {
         // Recalc total
         const q = Number(newItems[index].quantity) || 0;
         const p = Number(newItems[index].price) || 0;
-        newItems[index].total = parseFloat((q * p).toFixed(2));
+        const pcsPerBox = Number(newItems[index].pcsPerBox) || 1;
+        const sqFtPerPc = Number(newItems[index].sqFtPerPc) || 0;
+
+        if (sqFtPerPc > 0) {
+            const totalSqFt = q * pcsPerBox * sqFtPerPc;
+            newItems[index].total = parseFloat((totalSqFt * p).toFixed(2));
+        } else {
+            newItems[index].total = parseFloat((q * p).toFixed(2));
+        }
 
         setFormData(prev => ({ ...prev, items: newItems }));
     };
@@ -394,10 +405,11 @@ const Quotations = () => {
                                             </div>
                                             {/* Qty */}
                                             <div className="col-span-2">
-                                                <label className="text-[9px] text-gray-400 font-bold uppercase">Qty</label>
+                                                <label className="text-[9px] text-gray-400 font-bold uppercase">Qty {row.sqFtPerPc > 0 ? '(Boxes)' : ''}</label>
                                                 <input type="number" min="0" step="any" value={row.quantity}
                                                     onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
                                                     className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold text-center focus:ring-2 focus:ring-rose-500" />
+                                                {row.sqFtPerPc > 0 && <div className="text-[10px] text-gray-400 text-center mt-0.5">{((row.quantity || 0) * (row.pcsPerBox || 1) * row.sqFtPerPc).toFixed(2)} SqFt</div>}
                                             </div>
                                             {/* Rate */}
                                             <div className="col-span-2">
