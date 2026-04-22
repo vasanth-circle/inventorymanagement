@@ -74,7 +74,7 @@ const SalesOrders = () => {
             const res = await axios.get(CUSTOMERS_API, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
-            setCustomers(res.data);
+            setCustomers(res.data.data?.customers || res.data.customers || []);
         } catch (error) {
             console.error('Failed to fetch customers');
         }
@@ -85,7 +85,7 @@ const SalesOrders = () => {
             const res = await axios.get(ITEMS_API, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
-            setItems(res.data);
+            setItems(res.data.items || []);
         } catch (error) {
             toast.error('Failed to fetch items');
         }
