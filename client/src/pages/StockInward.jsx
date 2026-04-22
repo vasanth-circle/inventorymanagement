@@ -4,7 +4,7 @@ import { InventoryContext } from '../context/InventoryContext';
 import toast from 'react-hot-toast';
 
 const StockInward = () => {
-    const { items, fetchItems, categories, locations, createItem, createTransaction } = useContext(InventoryContext);
+    const { items, fetchItems, categories, locations, createItem, createTransaction, billingSettings } = useContext(InventoryContext);
     const navigate = useNavigate();
     const [isNewItem, setIsNewItem] = useState(true);
     const [loading, setLoading] = useState(false);
@@ -13,7 +13,7 @@ const StockInward = () => {
         barcode: '',
         category: '',
         quantity: '',
-        damagedQuantity: 0,
+        damagedQuantity: '',
         price: '',
         minStockThreshold: '10',
         location: '',
@@ -401,7 +401,7 @@ const StockInward = () => {
                                 value={formData.quantity}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                placeholder="Usable stock quantity"
+                                placeholder={`Usable ${billingSettings?.unitConfig?.quantityLabel || 'stock'} quantity`}
                             />
                         </div>
 
@@ -417,7 +417,7 @@ const StockInward = () => {
                                 value={formData.damagedQuantity}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-red-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-red-600"
-                                placeholder="Damaged stock (optional)"
+                                placeholder={`Damaged ${billingSettings?.unitConfig?.quantityLabel || 'stock'} (optional)`}
                             />
                         </div>
 
@@ -438,7 +438,7 @@ const StockInward = () => {
                         {!isNewItem && (
                             <div className="md:col-span-1">
                                 <label className="block text-sm font-medium text-gray-700 mb-2 font-bold text-primary-700">
-                                    Inward Rate (SqFt)
+                                    Inward Rate ({billingSettings?.unitConfig?.quantityLabel || 'Unit'})
                                 </label>
                                 <input
                                     type="number"

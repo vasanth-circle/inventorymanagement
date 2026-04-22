@@ -119,3 +119,25 @@ html.dark .zoho-card {
 html.dark [class*="hover:bg-gray-50"]:hover, html.dark [class*="hover:bg-slate-50"]:hover {
   background-color: #334155 !important;
 }
+
+/* Global Form Elements Enhancement */
+input, select, textarea {
+  @apply focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all;
+}
+
+/* Hide spin buttons for Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Hide spin buttons for Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* Prevent default 0 values from feeling "sticky" */
+input[type=number]::placeholder {
+  @apply text-slate-400 font-normal;
+}

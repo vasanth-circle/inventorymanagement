@@ -6,7 +6,8 @@ import toast from 'react-hot-toast';
 const Inventory = () => {
     const { 
         items, fetchItems, deleteItem, createItem, updateItem, 
-        categories, locations, fetchLocations, loading, confirmDelete
+        categories, locations, fetchLocations, loading, confirmDelete,
+        billingSettings
     } = useContext(InventoryContext);
     const [filters, setFilters] = useState({
         search: '',
@@ -22,14 +23,15 @@ const Inventory = () => {
         barcode: '',
         category: '',
         price: '',
+        purchasePrice: '',
         minStockThreshold: '',
         location: '',
         description: '',
         brand: '',
         size: '',
         hsn: '',
-        pcsPerBox: 1,
-        sqFtPerPc: 0
+        pcsPerBox: '',
+        sqFtPerPc: ''
     });
     const [editCustomFields, setEditCustomFields] = useState([]);
     const [editLoading, setEditLoading] = useState(false);
@@ -40,14 +42,15 @@ const Inventory = () => {
         barcode: '',
         category: '',
         price: '',
+        purchasePrice: '',
         minStockThreshold: '',
         location: '',
         description: '',
         brand: '',
         size: '',
         hsn: '',
-        pcsPerBox: 1,
-        sqFtPerPc: 0
+        pcsPerBox: '',
+        sqFtPerPc: ''
     });
     const [createCustomFields, setCreateCustomFields] = useState([]);
     const [createLoading, setCreateLoading] = useState(false);
@@ -85,15 +88,16 @@ const Inventory = () => {
             name: item.name,
             barcode: item.barcode || '',
             category: item.category?._id || item.category || '',
-            price: item.price,
-            minStockThreshold: item.minStockThreshold,
+            price: item.price || '',
+            purchasePrice: item.purchasePrice || '',
+            minStockThreshold: item.minStockThreshold || '',
             location: item.location || '',
             description: item.description || '',
             brand: item.brand || '',
             size: item.size || '',
             hsn: item.hsn || '',
-            pcsPerBox: item.pcsPerBox || 1,
-            sqFtPerPc: item.sqFtPerPc || 0
+            pcsPerBox: item.pcsPerBox || '',
+            sqFtPerPc: item.sqFtPerPc || ''
         });
 
         // Convert customFields Map to array
@@ -489,13 +493,24 @@ const Inventory = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Price per SqFt (₹)</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Selling Price (₹) per {billingSettings?.unitConfig?.rateBasis?.replace('per_', '') || 'Unit'}</label>
                                     <input
                                         type="number"
                                         step="0.01"
                                         name="price"
                                         required
                                         value={editFormData.price}
+                                        onChange={handleEditChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Purchase Price (₹)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        name="purchasePrice"
+                                        value={editFormData.purchasePrice}
                                         onChange={handleEditChange}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                                     />
@@ -558,7 +573,7 @@ const Inventory = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Sq.Ft per Piece</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">{billingSettings?.unitConfig?.quantityLabel || 'Sq.Ft'} per Piece</label>
                                     <input
                                         type="number"
                                         step="0.01"
@@ -677,13 +692,24 @@ const Inventory = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Price per SqFt (₹) *</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Selling Price (₹) per {billingSettings?.unitConfig?.rateBasis?.replace('per_', '') || 'Unit'} *</label>
                                     <input
                                         type="number"
                                         step="0.01"
                                         name="price"
                                         required
                                         value={createFormData.price}
+                                        onChange={handleCreateChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Purchase Price (₹)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        name="purchasePrice"
+                                        value={createFormData.purchasePrice}
                                         onChange={handleCreateChange}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                                     />
@@ -756,11 +782,10 @@ const Inventory = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1 font-bold text-primary-700">Sq.Ft per Piece (Mandatory for Math)</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1 font-bold text-primary-700">{billingSettings?.unitConfig?.quantityLabel || 'Sq.Ft'} per Piece</label>
                                     <input
                                         type="number"
                                         step="0.0001"
-                                        required
                                         name="sqFtPerPc"
                                         value={createFormData.sqFtPerPc}
                                         onChange={handleCreateChange}

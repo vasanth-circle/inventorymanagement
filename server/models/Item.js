@@ -46,6 +46,11 @@ const itemSchema = new mongoose.Schema({
         required: [true, 'Price is required'],
         min: 0,
     },
+    purchasePrice: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
     location: {
         type: String,
         trim: true,

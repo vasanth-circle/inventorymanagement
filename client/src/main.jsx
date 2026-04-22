@@ -8,3 +8,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <App />
     </React.StrictMode>,
 )
+
+// Prevent numeric values from changing on mouse wheel scroll
+document.addEventListener('wheel', function(event) {
+    if (document.activeElement.type === 'number') {
+        document.activeElement.blur();
+    }
+});

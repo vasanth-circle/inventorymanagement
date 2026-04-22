@@ -11,7 +11,7 @@ const ITEMS_API = '/api/items';
 
 const SalesOrders = () => {
     const { user } = useContext(AuthContext);
-    const { settings: billingSettings } = useContext(InventoryContext);
+    const { billingSettings } = useContext(InventoryContext);
     const [orders, setOrders] = useState([]);
     const [customers, setCustomers] = useState([]);
     const [items, setItems] = useState([]);
@@ -26,28 +26,28 @@ const SalesOrders = () => {
         orderDate: new Date().toISOString().split('T')[0],
         items: [{ 
             item: '', 
-            quantity: 1, 
-            price: 0, 
-            boxCount: 0, 
-            totalPcs: 0, 
-            totalSqFt: 0,
+            quantity: '', 
+            price: '', 
+            boxCount: '', 
+            totalPcs: '', 
+            totalSqFt: '',
             brand: '',
             size: '',
             batchId: '',
             availableBatches: [],
-            billingUnit: 'boxes',
+            billingUnit: billingSettings?.unitConfig?.quantityBasis === 'sqft' ? 'sqft' : 'pieces',
             stockQty: 0,
-            stockUnit: 'boxes'
+            stockUnit: 'pieces'
         }],
         totalAmount: 0,
         status: 'confirmed',
         isEstimation: false,
         notes: '',
-        loadingCharges: 0,
-        transportCharges: 0,
-        taxAmount: 0,
-        oldBalance: 0,
-        advanceAmount: 0
+        loadingCharges: '',
+        transportCharges: '',
+        taxAmount: '',
+        oldBalance: '',
+        advanceAmount: ''
     });
 
     useEffect(() => {
@@ -61,7 +61,7 @@ const SalesOrders = () => {
             const res = await axios.get(API_URL, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
-            setOrders(res.data);
+            setOrders(res.data.orders || []);
             setLoading(false);
         } catch (error) {
             toast.error('Failed to fetch orders');
@@ -96,18 +96,18 @@ const SalesOrders = () => {
             ...formData,
             items: [...formData.items, { 
                 item: '', 
-                quantity: 1, 
-                price: 0, 
-                boxCount: 0, 
-                totalPcs: 0, 
-                totalSqFt: 0,
+                quantity: '', 
+                price: '', 
+                boxCount: '', 
+                totalPcs: '', 
+                totalSqFt: '',
                 brand: '',
                 size: '',
                 batchId: '',
                 availableBatches: [],
-                billingUnit: 'boxes',
+                billingUnit: billingSettings?.unitConfig?.quantityBasis === 'sqft' ? 'sqft' : 'pieces',
                 stockQty: 0,
-                stockUnit: 'boxes'
+                stockUnit: 'pieces'
             }]
         });
     };
@@ -147,7 +147,8 @@ const SalesOrders = () => {
                 row.size = selectedItem.size;
                 row.sqFtPerPc = selectedItem.sqFtPerPc || 0;
                 row.pcsPerBox = selectedItem.pcsPerBox || 1;
-                row.billingUnit = row.sqFtPerPc > 0 ? 'boxes' : 'pieces';
+                row.purchasePrice = selectedItem.purchasePrice || 0;
+                row.billingUnit = row.sqFtPerPc > 0 ? (billingSettings?.unitConfig?.quantityBasis || 'sqft') : 'pieces';
                 row.availableBatches = selectedItem.batches || [];
                 if (row.availableBatches.length > 0) {
                     row.batchId = row.availableBatches[0]._id;
@@ -234,18 +235,18 @@ const SalesOrders = () => {
             orderNumber: '',
             orderDate: new Date().toISOString().split('T')[0],
             items: [{ 
-                item: '', quantity: 1, price: 0, boxCount: 0, totalPcs: 0, totalSqFt: 0,
-                brand: '', size: '', batchId: '', availableBatches: [], billingUnit: 'boxes'
+                item: '', quantity: '', price: '', boxCount: '', totalPcs: '', totalSqFt: '',
+                brand: '', size: '', batchId: '', availableBatches: [], billingUnit: billingSettings?.unitConfig?.quantityBasis === 'sqft' ? 'sqft' : 'pieces'
             }],
             totalAmount: 0,
             status: 'confirmed',
             isEstimation: false,
             notes: '',
-            loadingCharges: 0,
-            transportCharges: 0,
-            taxAmount: 0,
-            oldBalance: 0,
-            advanceAmount: 0
+            loadingCharges: '',
+            transportCharges: '',
+            taxAmount: '',
+            oldBalance: '',
+            advanceAmount: ''
         });
     };
 
@@ -254,6 +255,16 @@ const SalesOrders = () => {
         try {
             const { netTotal } = calculateTotals();
             const submissionData = { ...formData, totalAmount: netTotal };
+
+            // Frontend Pricing Validation
+            if (billingSettings?.pricingConfig?.preventSellingBelowPurchase && !formData.isEstimation) {
+                for (const row of formData.items) {
+                    if (row.price < (row.purchasePrice || 0)) {
+                        toast.error(`Price for an item is below its purchase price (₹${row.purchasePrice})`);
+                        return;
+                    }
+                }
+            }
             
             if (editingOrder) {
                 await axios.put(`${API_URL}/${editingOrder._id}`, submissionData, {
@@ -385,7 +396,7 @@ const SalesOrders = () => {
                                 <h2 className="text-2xl font-black text-gray-800">
                                     {editingOrder ? 'Edit' : 'Create'} {formData.isEstimation ? 'Quotation' : 'Sales Order'}
                                 </h2>
-                                <p className="text-xs text-gray-500 font-medium">Specialized Tiles & Granites Billing</p>
+                                <p className="text-xs text-gray-500 font-medium">{billingSettings?.branding?.tagline || 'Business Inventory & Billing System'}</p>
                             </div>
                             <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600 text-3xl transition-colors">&times;</button>
                         </div>
@@ -483,10 +494,10 @@ const SalesOrders = () => {
                                                                     min="0" 
                                                                     value={isTile ? row.boxCount : row.quantity} 
                                                                     onChange={(e) => handleItemChange(index, isTile ? 'boxCount' : 'quantity', e.target.value)} 
-                                                                    placeholder={isTile ? "Boxes" : "Qty"}
+                                                                    placeholder={isTile ? (billingSettings?.unitConfig?.piecesPerBoxLabel?.replace('Pcs per ', '') || 'Box') : "Qty"}
                                                                     className="w-full px-3 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 text-center font-bold" 
                                                                 />
-                                                                {isTile && <div className="text-[9px] text-gray-400 text-center mt-1 uppercase font-bold">Boxes</div>}
+                                                                {isTile && <div className="text-[9px] text-gray-400 text-center mt-1 uppercase font-bold">{billingSettings?.unitConfig?.piecesPerBoxLabel?.replace('Pcs per ', '') || 'Boxes'}</div>}
                                                             </td>
                                                             <td className="px-4 py-3">
                                                                 <input 
@@ -498,7 +509,7 @@ const SalesOrders = () => {
                                                                     onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value))} 
                                                                     className={`w-full px-3 py-2 border rounded-lg border-gray-200 outline-none font-medium text-center ${isTile ? 'bg-gray-50' : ''}`} 
                                                                 />
-                                                                {isTile && <div className="text-[9px] text-gray-400 text-center mt-1 uppercase font-bold">{row.billingUnit}</div>}
+                                                                {isTile && <div className="text-[9px] text-gray-400 text-center mt-1 uppercase font-bold">{row.billingUnit === 'sqft' ? (billingSettings?.unitConfig?.quantityLabel || 'SqFt') : (billingSettings?.unitConfig?.piecesPerBoxLabel?.replace('Pcs per ', '') || 'Box')}</div>}
                                                             </td>
                                                             <td className="px-4 py-3">
                                                                 <input required type="number" step="0.01" value={row.price} onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value))} className="w-full px-3 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 font-bold text-right" />
@@ -516,7 +527,7 @@ const SalesOrders = () => {
                                                             </td>
                                                             <td className="px-4 py-3 text-right font-black text-gray-800 pt-5">
                                                                 ₹{(row.total || 0).toLocaleString()}
-                                                                {isTile && <div className="text-[10px] text-gray-400 font-normal">({row.billingUnit === 'sqft' ? `${row.totalSqFt?.toFixed(2) || 0} SqFt` : `${row.boxCount || 0} Boxes`})</div>}
+                                                                {isTile && <div className="text-[10px] text-gray-400 font-normal">({row.billingUnit === 'sqft' ? `${row.totalSqFt?.toFixed(2) || 0} ${billingSettings?.unitConfig?.quantityLabel || 'SqFt'}` : `${row.boxCount || 0} ${billingSettings?.unitConfig?.piecesPerBoxLabel?.replace('Pcs per ', '') || 'Boxes'}`})</div>}
                                                             </td>
                                                         </tr>
                                                     );

@@ -57,6 +57,12 @@ const settingSchema = new mongoose.Schema({
         showSecondaryQty: { type: Boolean, default: false },
     },
 
+    // ── Pricing Configuration ────────────────────────────────────────────
+    pricingConfig: {
+        preventSellingBelowPurchase: { type: Boolean, default: false },
+        validatePurchasePrice: { type: Boolean, default: false },
+    },
+
     // ── Branding & Bank Details ──────────────────────────────────────────
     branding: {
         tagline: { type: String, default: '' },

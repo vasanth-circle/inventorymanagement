@@ -1,5 +1,6 @@
 import SalesOrder from '../models/SalesOrder.js';
 import Item from '../models/Item.js';
+import Setting from '../models/Setting.js';
 import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import CustomerLedger from '../models/CustomerLedger.js';
@@ -102,12 +103,21 @@ export const createSalesOrder = async (req, res, next) => {
             loadingCharges, transportCharges, oldBalance, advanceAmount, taxAmount
         } = req.body;
 
-        // If it's a final order (not estimation/quotation), check stock
-        if (!isEstimation && status !== 'quotation') {
-            for (const lineItem of items) {
-                const itemDoc = await Item.findOne({ _id: lineItem.item, ...tenantQuery(req) });
-                if (!itemDoc) {
-                    return sendError(res, 400, `Item not found`);
+        // ── Pricing & Stock Validation ──
+        const settings = await Setting.findOne({ tenantId: req.tenantId });
+        const preventBelowPurchase = settings?.pricingConfig?.preventSellingBelowPurchase;
+
+        for (const lineItem of items) {
+            const itemDoc = await Item.findOne({ _id: lineItem.item, ...tenantQuery(req) });
+            if (!itemDoc) {
+                return sendError(res, 400, `Item not found`);
+            }
+
+            // Check if selling price is below purchase price
+            if (preventBelowPurchase && !isEstimation) {
+                const effectivePurchasePrice = itemDoc.purchasePrice || 0;
+                if (lineItem.price < effectivePurchasePrice) {
+                    return sendError(res, 400, `Price for ${itemDoc.name} cannot be lower than purchase price (₹${effectivePurchasePrice})`);
                 }
             }
         }
@@ -209,6 +219,18 @@ export const updateSalesOrder = async (req, res, next) => {
             notes, terms, isEstimation, status,
             loadingCharges, transportCharges, oldBalance, advanceAmount, taxAmount
         } = req.body;
+
+        const settings = await Setting.findOne({ tenantId: req.tenantId });
+        const preventBelowPurchase = settings?.pricingConfig?.preventSellingBelowPurchase;
+
+        if (items) {
+            for (const lineItem of items) {
+                const itemDoc = await Item.findOne({ _id: lineItem.item, ...tenantQuery(req) });
+                if (itemDoc && preventBelowPurchase && !isEstimation && lineItem.price < (itemDoc.purchasePrice || 0)) {
+                    return sendError(res, 400, `Price for ${itemDoc.name} cannot be lower than purchase price (₹${itemDoc.purchasePrice || 0})`);
+                }
+            }
+        }
 
         const order = await SalesOrder.findOne({ _id: req.params.id, ...tenantQuery(req) });
 
