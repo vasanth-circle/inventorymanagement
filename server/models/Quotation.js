@@ -62,6 +62,7 @@ const quotationSchema = new mongoose.Schema({
     loadingCharges: { type: Number, default: 0 },
     transportCharges: { type: Number, default: 0 },
     discountAmount: { type: Number, default: 0 },
+    oldBalance: { type: Number, default: 0 },
     totalAmount: { type: Number, required: true },
 
     // Conversion tracking
@@ -93,7 +94,8 @@ quotationSchema.pre('validate', function (next) {
         this.itemsTotal +
         (Number(this.loadingCharges) || 0) +
         (Number(this.transportCharges) || 0) +
-        (Number(this.taxAmount) || 0) -
+        (Number(this.taxAmount) || 0) +
+        (Number(this.oldBalance) || 0) -
         (Number(this.discountAmount) || 0)
     );
     next();

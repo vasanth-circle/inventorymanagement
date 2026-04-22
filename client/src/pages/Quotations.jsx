@@ -23,6 +23,7 @@ const emptyItem = () => ({
     stockUnit: 'boxes',
     primaryQty: 0, secondaryQty: 0, unitLabel: 'units', rateLabel: 'per unit',
     availableBatches: [], batchId: '',
+    physicalStock: 0
 });
 
 const emptyForm = () => ({
@@ -34,6 +35,7 @@ const emptyForm = () => ({
     taxAmount: 0,
     loadingCharges: 0,
     transportCharges: 0,
+    oldBalance: 0,
     discountAmount: 0,
     validUntil: new Date(Date.now() + 30 * 86400000).toISOString().substring(0, 10),
 });
@@ -53,6 +55,7 @@ const Quotations = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [convertingId, setConvertingId] = useState(null);
+    const [fetchingBalance, setFetchingBalance] = useState(false);
 
     const token = () => localStorage.getItem('token');
     const headers = () => ({ headers: { Authorization: `Bearer ${token()}` } });
@@ -80,6 +83,22 @@ const Quotations = () => {
     };
 
     /* ── Form helpers ──────────────────────────────────────────────── */
+    const handleCustomerChange = async (customerId) => {
+        setFormData(p => ({ ...p, customer: customerId }));
+        if (customerId) {
+            setFetchingBalance(true);
+            try {
+                const res = await axios.get(`/api/customers/${customerId}/balance`, headers());
+                const bal = res.data.data?.balance ?? 0;
+                setFormData(p => ({ ...p, oldBalance: bal }));
+            } catch (err) {
+                console.error('Error fetching balance');
+            } finally {
+                setFetchingBalance(false);
+            }
+        }
+    };
+
     const handleItemChange = (index, field, value) => {
         const newItems = [...formData.items];
         newItems[index] = { ...newItems[index], [field]: value };
@@ -93,6 +112,7 @@ const Quotations = () => {
                 newItems[index].hsn = found.hsn || '';
                 newItems[index].pcsPerBox = found.pcsPerBox || 1;
                 newItems[index].sqFtPerPc = found.sqFtPerPc || 0;
+                newItems[index].physicalStock = found.quantity || 0;
                 newItems[index].availableBatches = found.batches || [];
                 newItems[index].price = found.batches?.length ? found.batches[0].price : (found.price || 0);
                 if (found.batches?.length) newItems[index].batchId = found.batches[0]._id;
@@ -154,7 +174,7 @@ const Quotations = () => {
             taxAmt = parseFloat((itemsTotal * taxRate / 100).toFixed(2));
         }
 
-        const net = itemsTotal + (Number(formData.loadingCharges) || 0) + (Number(formData.transportCharges) || 0) + taxAmt - (Number(formData.discountAmount) || 0);
+        const net = itemsTotal + (Number(formData.loadingCharges) || 0) + (Number(formData.transportCharges) || 0) + taxAmt + (Number(formData.oldBalance) || 0) - (Number(formData.discountAmount) || 0);
         return { itemsTotal, taxAmount: taxAmt, net };
     };
 
@@ -180,6 +200,7 @@ const Quotations = () => {
             taxAmount, 
             loadingCharges: Number(formData.loadingCharges) || 0,
             transportCharges: Number(formData.transportCharges) || 0,
+            oldBalance: Number(formData.oldBalance) || 0,
             discountAmount: Number(formData.discountAmount) || 0,
             itemsTotal, 
             totalAmount: net 
@@ -242,6 +263,7 @@ const Quotations = () => {
                     availableBatches: foundItem?.batches || [],
                     pcsPerBox: foundItem?.pcsPerBox || 1,
                     sqFtPerPc: sqFtPerPc,
+                    physicalStock: foundItem?.quantity || 0
                 };
             }),
             notes: q.notes || '',
@@ -250,6 +272,7 @@ const Quotations = () => {
             taxAmount: q.taxAmount || 0,
             loadingCharges: q.loadingCharges || 0,
             transportCharges: q.transportCharges || 0,
+            oldBalance: q.oldBalance || 0,
             discountAmount: q.discountAmount || 0,
             validUntil: q.validUntil ? q.validUntil.substring(0, 10) : '',
         });
@@ -276,7 +299,7 @@ const Quotations = () => {
         return matchSearch && matchStatus;
     });
 
-    const { itemsTotal, net } = calcTotals();
+    const { itemsTotal, taxAmount, net } = calcTotals();
 
     /* ── Render ────────────────────────────────────────────────────── */
     return (
@@ -403,7 +426,7 @@ const Quotations = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer *</label>
-                                    <select required value={formData.customer} onChange={e => setFormData(p => ({ ...p, customer: e.target.value }))}
+                                    <select required value={formData.customer} onChange={e => handleCustomerChange(e.target.value)}
                                         className="w-full h-11 px-4 bg-gray-50 rounded-lg text-sm font-bold focus:ring-2 focus:ring-rose-500">
                                         <option value="">-- Select Customer --</option>
                                         {customers.map(c => <option key={c._id} value={c._id}>{c.companyName || c.name}</option>)}
@@ -435,10 +458,15 @@ const Quotations = () => {
                                                     <option value="">-- Item --</option>
                                                     {allItems.map(i => <option key={i._id} value={i._id}>{i.name} ({i.brand} - {i.size})</option>)}
                                                 </select>
+                                                <div className="flex justify-between items-center mt-1 px-1">
+                                                    <span className={`text-[9px] font-black uppercase ${row.physicalStock > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                        Stock: {row.physicalStock || 0}
+                                                    </span>
+                                                </div>
                                                 {row.availableBatches?.length > 0 && (
                                                     <select value={row.batchId} onChange={e => handleItemChange(idx, 'batchId', e.target.value)}
                                                         className="w-full mt-1.5 h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs focus:ring-2 focus:ring-rose-500">
-                                                        {row.availableBatches.map(b => <option key={b._id} value={b._id}>Batch: {b.batchNumber} — ₹{b.price}</option>)}
+                                                        {row.availableBatches.map(b => <option key={b._id} value={b._id}>Batch: {b.batchNumber} — ₹{b.price} ({b.quantity})</option>)}
                                                     </select>
                                                 )}
                                             </div>
@@ -488,7 +516,7 @@ const Quotations = () => {
                             </div>
 
                             {/* Charges */}
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 bg-gray-50 p-4 rounded-xl">
+                            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 bg-gray-50 p-4 rounded-xl">
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Tax Rate (%)</label>
                                     <input type="number" min="0" step="0.1" value={formData.taxRate}
@@ -515,6 +543,14 @@ const Quotations = () => {
                                         className="w-full h-10 px-3 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-rose-500" />
                                 </div>
                                 <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                        Old Bal {fetchingBalance && <span className="animate-pulse">⏳</span>}
+                                    </label>
+                                    <input type="number" value={formData.oldBalance}
+                                        onChange={e => setFormData(p => ({ ...p, oldBalance: e.target.value }))}
+                                        className="w-full h-10 px-3 bg-white border border-gray-200 rounded-lg text-sm font-bold text-red-600 focus:ring-2 focus:ring-rose-500" />
+                                </div>
+                                <div className="space-y-1">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Discount</label>
                                     <input type="number" min="0" step="0.01" value={formData.discountAmount}
                                         onChange={e => setFormData(p => ({ ...p, discountAmount: e.target.value }))}
@@ -526,10 +562,11 @@ const Quotations = () => {
                             <div className="bg-gray-900 text-white rounded-xl p-4 flex justify-between items-center">
                                 <div className="text-xs text-gray-400 space-y-1">
                                     <div>Items Total: ₹{itemsTotal.toLocaleString()}</div>
+                                    <div>Old Balance Reflected: ₹{(Number(formData.oldBalance) || 0).toLocaleString()}</div>
                                 </div>
                                 <div className="text-right">
                                     <div className="text-xs text-gray-400 uppercase tracking-widest">Net Amount</div>
-                                    <div className="text-2xl font-black">₹{net.toLocaleString()}</div>
+                                    <div className="text-2xl font-black text-rose-500">₹{net.toLocaleString()}</div>
                                 </div>
                             </div>
 

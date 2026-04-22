@@ -68,6 +68,11 @@ export const createDispatch = async (req, res, next) => {
             if (itemDoc) {
                 const previousQuantity = itemDoc.quantity;
                 const dispatchQty = Number(dispatchItem.quantity);
+
+                // PHYSICAL STOCK CHECK
+                if (previousQuantity < dispatchQty) {
+                    return sendError(res, 400, `Insufficient physical stock for ${itemDoc.name}. Available: ${previousQuantity}, Trying to dispatch: ${dispatchQty}`);
+                }
                 
                 // Find corresponding Sales Order item to get batchId
                 const orderItem = order.items.find(oi => oi.item.toString() === dispatchItem.item.toString());
@@ -77,6 +82,9 @@ export const createDispatch = async (req, res, next) => {
                 if (batchId && itemDoc.batches) {
                     const batch = itemDoc.batches.id(batchId);
                     if (batch) {
+                        if (batch.quantity < dispatchQty) {
+                            return sendError(res, 400, `Insufficient physical stock in batch ${batch.batchNumber} for ${itemDoc.name}.`);
+                        }
                         batch.quantity -= dispatchQty;
                         usedBatchNumber = batch.batchNumber;
                     }

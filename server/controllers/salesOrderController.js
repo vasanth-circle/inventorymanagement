@@ -120,6 +120,14 @@ export const createSalesOrder = async (req, res, next) => {
                     return sendError(res, 400, `Price for ${itemDoc.name} cannot be lower than purchase price (₹${effectivePurchasePrice})`);
                 }
             }
+
+            // Stock Validation
+            if (!isEstimation) {
+                const stockQtyRequired = lineItem.stockQty || lineItem.quantity;
+                if (itemDoc.quantity < stockQtyRequired) {
+                    return sendError(res, 400, `Insufficient stock for ${itemDoc.name}. Available: ${itemDoc.quantity}, Required: ${stockQtyRequired}`);
+                }
+            }
         }
 
         // Generate Order Number
@@ -195,8 +203,17 @@ export const updateSOStatus = async (req, res, next) => {
             return sendError(res, 404, 'Sales order not found');
         }
 
-        // Handle transition from Quotation (Estimation) to Confirmed Order
+        // Check stock availability before confirming if transition is from quotation to confirmed
         if (order.status === 'quotation' && status === 'confirmed') {
+            for (const lineItem of order.items) {
+                const itemDoc = await Item.findById(lineItem.item);
+                if (itemDoc) {
+                    const stockQtyRequired = lineItem.stockQty || lineItem.quantity;
+                    if (itemDoc.quantity < stockQtyRequired) {
+                        return sendError(res, 400, `Insufficient stock for ${itemDoc.name} to confirm invoice. Available: ${itemDoc.quantity}`);
+                    }
+                }
+            }
             order.isEstimation = false;
         }
 

@@ -37,7 +37,8 @@ const SalesOrders = () => {
             availableBatches: [],
             billingUnit: billingSettings?.unitConfig?.quantityBasis === 'sqft' ? 'sqft' : 'pieces',
             stockQty: 0,
-            stockUnit: 'pieces'
+            stockUnit: 'pieces',
+            physicalStock: 0
         }],
         totalAmount: 0,
         status: 'confirmed',
@@ -107,7 +108,8 @@ const SalesOrders = () => {
                 availableBatches: [],
                 billingUnit: billingSettings?.unitConfig?.quantityBasis === 'sqft' ? 'sqft' : 'pieces',
                 stockQty: 0,
-                stockUnit: 'pieces'
+                stockUnit: 'pieces',
+                physicalStock: 0
             }]
         });
     };
@@ -125,7 +127,9 @@ const SalesOrders = () => {
                 const res = await axios.get(`${CUSTOMERS_API}/${customerId}/balance`, {
                     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
                 });
-                setFormData(prev => ({ ...prev, oldBalance: res.data.balance || 0 }));
+                // balance API returns { success, data: { balance, customer } } based on standardResponse
+                const bal = res.data.data?.balance ?? 0;
+                setFormData(prev => ({ ...prev, oldBalance: bal }));
             } catch (error) {
                 console.error('Error fetching customer balance');
             } finally {
@@ -148,6 +152,7 @@ const SalesOrders = () => {
                 row.sqFtPerPc = selectedItem.sqFtPerPc || 0;
                 row.pcsPerBox = selectedItem.pcsPerBox || 1;
                 row.purchasePrice = selectedItem.purchasePrice || 0;
+                row.physicalStock = selectedItem.quantity || 0;
                 row.billingUnit = row.sqFtPerPc > 0 ? (billingSettings?.unitConfig?.quantityBasis || 'sqft') : 'pieces';
                 row.availableBatches = selectedItem.batches || [];
                 if (row.availableBatches.length > 0) {
@@ -212,7 +217,8 @@ const SalesOrders = () => {
                 item: item.item?._id || item.item,
                 sqFtPerPc: item.item?.sqFtPerPc || 0,
                 pcsPerBox: item.item?.pcsPerBox || 1,
-                availableBatches: item.item?.batches || []
+                availableBatches: item.item?.batches || [],
+                physicalStock: item.item?.quantity || 0
             })),
             totalAmount: order.totalAmount,
             status: order.status,
@@ -236,7 +242,8 @@ const SalesOrders = () => {
             orderDate: new Date().toISOString().split('T')[0],
             items: [{ 
                 item: '', quantity: '', price: '', boxCount: '', totalPcs: '', totalSqFt: '',
-                brand: '', size: '', batchId: '', availableBatches: [], billingUnit: billingSettings?.unitConfig?.quantityBasis === 'sqft' ? 'sqft' : 'pieces'
+                brand: '', size: '', batchId: '', availableBatches: [], billingUnit: billingSettings?.unitConfig?.quantityBasis === 'sqft' ? 'sqft' : 'pieces',
+                physicalStock: 0
             }],
             totalAmount: 0,
             status: 'confirmed',
@@ -256,11 +263,19 @@ const SalesOrders = () => {
             const { netTotal } = calculateTotals();
             const submissionData = { ...formData, totalAmount: netTotal };
 
-            // Frontend Pricing Validation
-            if (billingSettings?.pricingConfig?.preventSellingBelowPurchase && !formData.isEstimation) {
-                for (const row of formData.items) {
+            // Frontend Pricing & Stock Validation
+            for (const row of formData.items) {
+                if (billingSettings?.pricingConfig?.preventSellingBelowPurchase && !formData.isEstimation) {
                     if (row.price < (row.purchasePrice || 0)) {
-                        toast.error(`Price for an item is below its purchase price (₹${row.purchasePrice})`);
+                        toast.error(`Price for ${row.name || 'item'} is below purchase price (₹${row.purchasePrice})`);
+                        return;
+                    }
+                }
+                // Stock Validation
+                if (!formData.isEstimation) {
+                    const required = row.stockQty || row.quantity;
+                    if (required > row.physicalStock) {
+                        toast.error(`Insufficient stock for ${row.name || 'item'}. Available: ${row.physicalStock}`);
                         return;
                     }
                 }
@@ -292,7 +307,7 @@ const SalesOrders = () => {
             toast.success(`Order marked as ${status}`);
             fetchOrders();
         } catch (error) {
-            toast.error('Failed to update status');
+            toast.error(error.response?.data?.message || 'Failed to update status');
         }
     };
 
@@ -469,6 +484,11 @@ const SalesOrders = () => {
                                                                             <option value="">Select Item</option>
                                                                             {items.map(i => <option key={i._id} value={i._id}>{i.name} ({i.brand} - {i.size})</option>)}
                                                                         </select>
+                                                                        <div className="flex justify-between items-center mt-1 px-1">
+                                                                            <span className={`text-[10px] font-black uppercase ${row.physicalStock > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                                                Stock: {row.physicalStock || 0}
+                                                                            </span>
+                                                                        </div>
                                                                         {row.availableBatches && row.availableBatches.length > 0 && (
                                                                             <div className="mt-2 group relative">
                                                                                 <select
