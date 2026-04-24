@@ -4,6 +4,8 @@ import Item from '../models/Item.js';
 import User from '../models/User.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
+import { getNextSequenceValue } from '../utils/sequence.js';
+import Setting from '../models/Setting.js';
 
 // @desc    Get all quotations for the tenant
 // @route   GET /api/quotations
@@ -43,16 +45,32 @@ export const getQuotation = async (req, res, next) => {
 // @access  Private
 export const createQuotation = async (req, res, next) => {
     try {
-        const { quotationNumber } = req.body;
+        let { quotationNumber } = req.body;
+        
+        // Auto-generate quotation number if not provided
+        if (!quotationNumber) {
+            const settings = await Setting.findOne({ tenantId: req.tenantId });
+            const prefix = settings?.documentConfig?.quotationPrefix || 'QUO';
+            const sequence = await getNextSequenceValue('quotation', req.tenantId);
+            quotationNumber = `${prefix}-${sequence.toString().padStart(4, '0')}`;
+        }
         
         // Ensure uniqueness for tenant
         const existing = await Quotation.findOne({ quotationNumber, ...tenantQuery(req) });
         if (existing) {
-            return sendError(res, 400, 'Quotation number already exists');
+            // If it's a conflict and was auto-generated, try one more time with a random suffix as fallback
+            // but ideally sequence should handle it.
+            if (!req.body.quotationNumber) {
+                 const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
+                 quotationNumber = `${quotationNumber}-${randomStr}`;
+            } else {
+                return sendError(res, 400, 'Quotation number already exists');
+            }
         }
 
         const quotation = await Quotation.create({
             ...req.body,
+            quotationNumber,
             tenantId: req.tenantId,
             user: req.user._id,
         });
