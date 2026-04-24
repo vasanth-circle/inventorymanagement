@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-import { coreConn } from '../config/db.js';
+import { coreConn, appConn } from '../config/db.js';
 
 const userSchema = new mongoose.Schema({
     name: {
@@ -85,5 +85,9 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 
 // Check if model already exists on this connection
 const User = coreConn.models.User || coreConn.model('User', userSchema);
+
+// Register the same schema on appConn so that .populate('user') works
+// from appConn models (Quotation, SalesOrder, PurchaseOrder, etc.)
+export const AppUser = appConn.models.User || appConn.model('User', userSchema);
 
 export default User;

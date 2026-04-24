@@ -26,6 +26,8 @@ import settingRoutes from './routes/settingRoutes.js';
 import quotationRoutes from './routes/quotationRoutes.js';
 import assetRoutes from './routes/assetRoutes.js';
 import fixLegacyIndexes from './utils/fixIndexes.js';
+// Ensure User model is registered on appConn for cross-connection populate
+import { AppUser } from './models/User.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
