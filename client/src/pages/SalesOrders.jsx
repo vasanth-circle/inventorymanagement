@@ -62,7 +62,7 @@ const SalesOrders = () => {
             const res = await axios.get(API_URL, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
-            setOrders(res.data.orders || []);
+            setOrders(res.data.data?.orders || res.data.orders || []);
             setLoading(false);
         } catch (error) {
             toast.error('Failed to fetch orders');
