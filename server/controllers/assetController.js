@@ -1,4 +1,6 @@
 import Asset from '../models/Asset.js';
+import Location from '../models/Location.js';
+import { AppUser } from '../models/User.js';
 
 // @desc    Get all assets
 // @route   GET /api/assets
@@ -6,9 +8,9 @@ import Asset from '../models/Asset.js';
 export const getAssets = async (req, res) => {
     try {
         const assets = await Asset.find({ tenantId: req.user.tenantId })
-            .populate('branch', 'name mapLink')
-            .populate('assignee', 'name email role')
-            .populate('createdBy', 'name')
+            .populate({ path: 'branch', model: Location, select: 'name mapLink' })
+            .populate({ path: 'assignee', model: AppUser, select: 'name email role' })
+            .populate({ path: 'createdBy', model: AppUser, select: 'name' })
             .sort({ createdAt: -1 });
 
         res.json({
@@ -37,8 +39,8 @@ export const getAssetStats = async (req, res) => {
 
         // Get recent assets
         const recentAssets = await Asset.find({ tenantId: req.user.tenantId })
-            .populate('branch', 'name')
-            .populate('assignee', 'name')
+            .populate({ path: 'branch', model: Location, select: 'name' })
+            .populate({ path: 'assignee', model: AppUser, select: 'name' })
             .sort({ createdAt: -1 })
             .limit(5);
 
@@ -68,9 +70,9 @@ export const getAssetById = async (req, res) => {
             _id: req.params.id, 
             tenantId: req.user.tenantId 
         })
-        .populate('branch', 'name mapLink')
-        .populate('assignee', 'name email role')
-        .populate('createdBy', 'name');
+        .populate({ path: 'branch', model: Location, select: 'name mapLink' })
+        .populate({ path: 'assignee', model: AppUser, select: 'name email role' })
+        .populate({ path: 'createdBy', model: AppUser, select: 'name' });
 
         if (!asset) {
             return res.status(404).json({ success: false, message: 'Asset not found' });
@@ -106,9 +108,9 @@ export const createAsset = async (req, res) => {
         const savedAsset = await asset.save();
         
         const populatedAsset = await Asset.findById(savedAsset._id)
-            .populate('branch', 'name mapLink')
-            .populate('assignee', 'name email role')
-            .populate('createdBy', 'name');
+            .populate({ path: 'branch', model: Location, select: 'name mapLink' })
+            .populate({ path: 'assignee', model: AppUser, select: 'name email role' })
+            .populate({ path: 'createdBy', model: AppUser, select: 'name' });
 
         res.status(201).json({
             success: true,
@@ -163,9 +165,9 @@ export const updateAsset = async (req, res) => {
         await asset.save();
 
         const updatedAsset = await Asset.findById(asset._id)
-            .populate('branch', 'name mapLink')
-            .populate('assignee', 'name email role')
-            .populate('createdBy', 'name');
+            .populate({ path: 'branch', model: Location, select: 'name mapLink' })
+            .populate({ path: 'assignee', model: AppUser, select: 'name email role' })
+            .populate({ path: 'createdBy', model: AppUser, select: 'name' });
 
         res.json({
             success: true,

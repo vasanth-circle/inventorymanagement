@@ -25,6 +25,8 @@ import dispatchRoutes from './routes/dispatchRoutes.js';
 import settingRoutes from './routes/settingRoutes.js';
 import quotationRoutes from './routes/quotationRoutes.js';
 import assetRoutes from './routes/assetRoutes.js';
+import productShowcaseRoutes from './routes/productShowcaseRoutes.js';
+import publicProductRoutes from './routes/publicProductRoutes.js';
 import fixLegacyIndexes from './utils/fixIndexes.js';
 // Ensure User model is registered on appConn for cross-connection populate
 import { AppUser } from './models/User.js';
@@ -60,7 +62,7 @@ import { protect } from './middleware/authMiddleware.js';
 
 // Apply tenant check middleware to all /api routes (except health and auth)
 app.use('/api', (req, res, next) => {
-    if (req.path.startsWith('/auth') || req.path === '/health') {
+    if (req.path.startsWith('/auth') || req.path === '/health' || req.path.startsWith('/public')) {
         return next();
     }
     // Run protect first to get req.user, then checkTenantStatus to get req.tenantId
@@ -86,6 +88,8 @@ app.use('/api/dispatches', dispatchRoutes);
 app.use('/api/settings', settingRoutes);
 app.use('/api/quotations', quotationRoutes);
 app.use('/api/assets', assetRoutes);
+app.use('/api/product-showcase', productShowcaseRoutes);
+app.use('/api/public', publicProductRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

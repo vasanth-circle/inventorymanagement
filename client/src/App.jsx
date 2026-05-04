@@ -33,6 +33,9 @@ import Assets from './pages/Assets';
 import AssetDashboard from './pages/AssetDashboard';
 import AssetReports from './pages/AssetReports';
 import Profile from './pages/Profile';
+import ProductShowcase from './pages/ProductShowcase';
+import ProductShowcaseEdit from './pages/ProductShowcaseEdit';
+import PublicProductPage from './pages/PublicProductPage';
 
 function AppLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -66,6 +69,8 @@ function App() {
                         {/* Public Routes */}
                         <Route path="/login" element={<Login />} />
                         <Route path="/register" element={<Register />} />
+                        {/* Public product showcase page — no login required */}
+                        <Route path="/p/:slug" element={<PublicProductPage />} />
 
                         {/* Protected Routes */}
                         <Route
@@ -100,6 +105,8 @@ function App() {
                                             <Route path="/assets" element={<Assets />} />
                                             <Route path="/assets/dashboard" element={<AssetDashboard />} />
                                             <Route path="/assets/reports" element={<AssetReports />} />
+                                            <Route path="/product-showcase" element={<ProductShowcase />} />
+                                            <Route path="/product-showcase/:id/images" element={<ProductShowcaseEdit />} />
                                             <Route path="/" element={<Navigate to={fallbackRoute} replace />} />
                                             <Route path="*" element={<Navigate to={fallbackRoute} replace />} />
                                         </Routes>

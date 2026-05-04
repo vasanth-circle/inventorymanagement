@@ -8,7 +8,7 @@ export default defineConfig({
         port: 80,
         proxy: {
             '/api': {
-                target: 'https://inventory-api.prod.techath.com',
+                target: 'http://localhost:5000',
                 changeOrigin: true,
             },
         },

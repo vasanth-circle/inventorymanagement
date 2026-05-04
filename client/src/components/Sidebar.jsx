@@ -61,6 +61,14 @@ const Sidebar = ({ isOpen, onClose }) => {
             items: [
                 { name: 'All Reports', path: '/reports', id: 'reports' }
             ]
+        },
+        {
+            name: 'QR Showcase',
+            id: 'qr-showcase',
+            icon: '📱',
+            items: [
+                { name: 'Manage Showcases', path: '/product-showcase', id: 'qr-showcase' }
+            ]
         }
     ];
 
