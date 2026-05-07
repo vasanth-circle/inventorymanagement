@@ -6,7 +6,11 @@ const Locations = () => {
     const { locations, assetLocations, addLocation, editLocation, removeLocation, loading, confirmDelete, fetchLocations, fetchAssetLocations } = useContext(InventoryContext);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingLocation, setEditingLocation] = useState(null);
-    const [locationType, setLocationType] = useState('inventory'); // 'inventory' or 'asset'
+    
+    // Determine the type based on the active application
+    const activeApp = localStorage.getItem('activeApp') || 'inventory';
+    const [locationType] = useState(activeApp === 'assets' ? 'asset' : 'inventory');
+    
     const [formData, setFormData] = useState({ name: '', description: '' });
 
     const handleOpenModal = (location = null) => {
@@ -65,21 +69,12 @@ const Locations = () => {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Location Management</h1>
-                    <div className="flex mt-2 space-x-4">
-                        <button 
-                            onClick={() => setLocationType('inventory')}
-                            className={`text-sm font-medium pb-1 border-b-2 transition-colors ${locationType === 'inventory' ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                        >
-                            Inventory Locations
-                        </button>
-                        <button 
-                            onClick={() => setLocationType('asset')}
-                            className={`text-sm font-medium pb-1 border-b-2 transition-colors ${locationType === 'asset' ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                        >
-                            Asset Locations
-                        </button>
-                    </div>
+                    <h1 className="text-3xl font-bold text-gray-900">
+                        {locationType === 'asset' ? 'Branch & Asset Locations' : 'Inventory Locations'}
+                    </h1>
+                    <p className="text-gray-500 text-sm mt-1">
+                        Manage your {locationType === 'asset' ? 'office branches and asset storage points' : 'warehouses and stock storage points'}.
+                    </p>
                 </div>
                 <button
                     onClick={() => handleOpenModal()}
