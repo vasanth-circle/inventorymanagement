@@ -74,7 +74,7 @@ const Inventory = () => {
     }, 500);
 
     const handleDelete = async (id) => {
-        confirmDelete('Are you sure you want to delete this item?', async () => {
+        await confirmDelete('Are you sure you want to delete this item?', async () => {
             await deleteItem(id);
             loadItems();
         });

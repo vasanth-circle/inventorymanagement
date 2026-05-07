@@ -37,7 +37,7 @@ const Categories = () => {
     };
 
     const handleDelete = async (id) => {
-        confirmDelete('Are you sure you want to delete this category? Items in this category will remain but their category reference may be lost.', async () => {
+        await confirmDelete('Are you sure you want to delete this category? Items in this category will remain but their category reference may be lost.', async () => {
             await removeCategory(id);
         });
     };

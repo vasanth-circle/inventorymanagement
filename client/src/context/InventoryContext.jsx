@@ -304,6 +304,16 @@ export const InventoryProvider = ({ children }) => {
         }
     };
 
+    const confirmDelete = async (message, callback) => {
+        if (window.confirm(message)) {
+            if (callback && typeof callback === 'function') {
+                await callback();
+            }
+            return true;
+        }
+        return false;
+    };
+
     useEffect(() => {
         if (user) {
             fetchCategories();
@@ -343,6 +353,7 @@ export const InventoryProvider = ({ children }) => {
                 fetchBillingSettings,
                 updateBillingSettings,
                 fetchSalesOrders,
+                confirmDelete,
             }}
         >
             {children}

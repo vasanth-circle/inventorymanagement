@@ -115,6 +115,16 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const confirmDelete = async (message, callback) => {
+        if (window.confirm(message)) {
+            if (callback && typeof callback === 'function') {
+                await callback();
+            }
+            return true;
+        }
+        return false;
+    };
+
     return (
         <AuthContext.Provider value={{
             user,
@@ -126,7 +136,8 @@ export const AuthProvider = ({ children }) => {
             fetchUsers,
             updateUserDetails,
             changeUserStatus,
-            removeUser
+            removeUser,
+            confirmDelete
         }}>
             {children}
         </AuthContext.Provider>

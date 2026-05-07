@@ -97,13 +97,31 @@ export const createShowcase = async (req, res, next) => {
         const slug = await ensureUniqueSlug(baseSlug, req.tenantId);
         const qrCodeUrl = buildPublicUrl(slug);
 
+        let parsedIsActive = true;
+        if (isActive !== undefined) {
+            parsedIsActive = isActive === 'false' || isActive === false ? false : true;
+        }
+
+        const images = [];
+        if (req.files && req.files.length > 0) {
+            req.files.forEach((file, idx) => {
+                images.push({
+                    url: `/uploads/showcase/${file.filename}`,
+                    title: '',
+                    description: '',
+                    order: idx + 1,
+                });
+            });
+        }
+
         const showcase = await ProductShowcase.create({
             name,
             slug,
             description: description || '',
             productId: productId || null,
             tenantId: req.tenantId,
-            isActive: isActive !== undefined ? isActive : true,
+            isActive: parsedIsActive,
+            images,
             qrCodeUrl,
             createdBy: req.user._id,
         });
@@ -141,12 +159,31 @@ export const updateShowcase = async (req, res, next) => {
         }
 
         if (description !== undefined) showcase.description = description;
-        if (isActive !== undefined) showcase.isActive = isActive;
+        if (isActive !== undefined) {
+            showcase.isActive = isActive === 'false' || isActive === false ? false : true;
+        }
         if (productId !== undefined) showcase.productId = productId || null;
 
         // Allow direct image array update (for reorder/edit from frontend)
-        if (images !== undefined && Array.isArray(images)) {
-            showcase.images = images;
+        if (images !== undefined) {
+             let parsedImages = images;
+             if (typeof images === 'string') {
+                 try { parsedImages = JSON.parse(images); } catch (e) {}
+             }
+             if (Array.isArray(parsedImages)) {
+                 showcase.images = parsedImages;
+             }
+        }
+
+        if (req.files && req.files.length > 0) {
+            const currentMaxOrder = showcase.images.reduce((max, img) => Math.max(max, img.order || 0), 0);
+            const newImages = req.files.map((file, idx) => ({
+                url: `/uploads/showcase/${file.filename}`,
+                title: '',
+                description: '',
+                order: currentMaxOrder + idx + 1,
+            }));
+            showcase.images.push(...newImages);
         }
 
         await showcase.save();

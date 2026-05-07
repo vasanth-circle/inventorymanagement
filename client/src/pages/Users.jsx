@@ -122,7 +122,7 @@ const Users = () => {
             toast.error('You cannot delete your own account');
             return;
         }
-        confirmDelete('Are you sure you want to delete this user?', async () => {
+        await confirmDelete('Are you sure you want to delete this user?', async () => {
             const result = await removeUser(id);
             if (result.success) {
                 toast.success('User deleted successfully');

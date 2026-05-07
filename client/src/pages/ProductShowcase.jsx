@@ -15,7 +15,9 @@ export default function ProductShowcase() {
     const [showModal, setShowModal] = useState(false);
     const [editingShowcase, setEditingShowcase] = useState(null);
     const [formData, setFormData] = useState({ name: '', description: '', isActive: true });
+    const [images, setImages] = useState([]);
     const [saving, setSaving] = useState(false);
+    const fileInputRef = useRef(null);
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [qrModal, setQrModal] = useState(null); // { showcase, qrCode, url }
     const [qrLoading, setQrLoading] = useState(false);
@@ -48,12 +50,14 @@ export default function ProductShowcase() {
     const openCreateModal = () => {
         setEditingShowcase(null);
         setFormData({ name: '', description: '', isActive: true });
+        setImages([]);
         setShowModal(true);
     };
 
     const openEditModal = (showcase) => {
         setEditingShowcase(showcase);
         setFormData({ name: showcase.name, description: showcase.description || '', isActive: showcase.isActive });
+        setImages([]);
         setShowModal(true);
     };
 
@@ -64,11 +68,20 @@ export default function ProductShowcase() {
         if (!formData.name.trim()) { toast.error('Name is required'); return; }
         try {
             setSaving(true);
+            
+            const payload = new FormData();
+            payload.append('name', formData.name);
+            payload.append('description', formData.description);
+            payload.append('isActive', formData.isActive);
+            if (images && images.length > 0) {
+                images.forEach(img => payload.append('images', img));
+            }
+
             if (editingShowcase) {
-                await axios.put(`${API_BASE}/product-showcase/${editingShowcase._id}`, formData, { headers: getHeaders() });
+                await axios.put(`${API_BASE}/product-showcase/${editingShowcase._id}`, payload, { headers: getHeaders() });
                 toast.success('Showcase updated!');
             } else {
-                await axios.post(`${API_BASE}/product-showcase`, formData, { headers: getHeaders() });
+                await axios.post(`${API_BASE}/product-showcase`, payload, { headers: getHeaders() });
                 toast.success('Showcase created!');
             }
             closeModal();
@@ -327,6 +340,36 @@ export default function ProductShowcase() {
                                     <div className="w-10 h-5 bg-gray-200 peer-focus:ring-2 peer-focus:ring-rose-400 rounded-full peer peer-checked:bg-rose-500 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-5"></div>
                                 </label>
                                 <span className="text-sm text-gray-600 dark:text-gray-300">Active (visible to public)</span>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    {editingShowcase ? 'Add Images (Optional)' : 'Images'}
+                                </label>
+                                <div 
+                                    className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 text-center cursor-pointer hover:border-rose-400 dark:hover:border-rose-500 transition-colors"
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
+                                    <input 
+                                        type="file" 
+                                        multiple 
+                                        accept="image/*" 
+                                        className="hidden" 
+                                        ref={fileInputRef} 
+                                        onChange={(e) => {
+                                            if (e.target.files.length) {
+                                                setImages(Array.from(e.target.files));
+                                            }
+                                        }}
+                                    />
+                                    {images.length > 0 ? (
+                                        <p className="text-sm text-rose-600 font-medium">{images.length} file(s) selected</p>
+                                    ) : (
+                                        <div className="text-sm text-gray-500">
+                                            <span className="text-2xl block mb-1">📸</span>
+                                            Click to select images
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                         <div className="p-6 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">

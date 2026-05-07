@@ -18,6 +18,6 @@ router
 router
     .route('/:id')
     .put(authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), updateCategory)
-    .delete(authorize('admin', 'tenant_owner', 'tenant_admin'), deleteCategory);
+    .delete(authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), deleteCategory);
 
 export default router;

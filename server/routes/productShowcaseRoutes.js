@@ -52,11 +52,11 @@ const managerRoles = ['admin', 'manager', 'tenant_admin', 'tenant_owner', 'super
 
 router.route('/')
     .get(getShowcases)
-    .post(authorize(...managerRoles), createShowcase);
+    .post(authorize(...managerRoles), upload.array('images', 20), createShowcase);
 
 router.route('/:id')
     .get(getShowcaseById)
-    .put(authorize(...managerRoles), updateShowcase)
+    .put(authorize(...managerRoles), upload.array('images', 20), updateShowcase)
     .delete(authorize('admin', 'tenant_admin', 'tenant_owner', 'super_admin'), deleteShowcase);
 
 // Image upload (multi-file)
