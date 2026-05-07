@@ -10,6 +10,7 @@ export const InventoryProvider = ({ children }) => {
     const [items, setItems] = useState([]);
     const [categories, setCategories] = useState([]);
     const [locations, setLocations] = useState([]);
+    const [assetLocations, setAssetLocations] = useState([]);
     const [transactions, setTransactions] = useState([]);
     const [billingSettings, setBillingSettings] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -178,14 +179,20 @@ export const InventoryProvider = ({ children }) => {
     };
 
     // Fetch locations
-    const fetchLocations = async () => {
+    const fetchLocations = async (type = 'inventory') => {
         try {
-            const { data } = await api.get('/locations');
-            setLocations(data);
+            const { data } = await api.get(`/locations?type=${type}`);
+            if (type === 'asset') {
+                setAssetLocations(data);
+            } else {
+                setLocations(data);
+            }
         } catch (error) {
-            toast.error('Failed to fetch locations');
+            toast.error(`Failed to fetch ${type} locations`);
         }
     };
+
+    const fetchAssetLocations = () => fetchLocations('asset');
 
     // Add location
     const addLocation = async (locationData) => {
@@ -318,6 +325,7 @@ export const InventoryProvider = ({ children }) => {
         if (user) {
             fetchCategories();
             fetchLocations();
+            fetchAssetLocations();
             fetchBillingSettings();
         }
     }, [user]);
@@ -344,6 +352,8 @@ export const InventoryProvider = ({ children }) => {
                 addLocation,
                 editLocation,
                 removeLocation,
+                assetLocations,
+                fetchAssetLocations,
                 parseExcelFile,
                 importExcelData,
                 downloadTemplate,

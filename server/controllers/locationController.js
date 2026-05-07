@@ -6,7 +6,11 @@ import { tenantQuery } from '../utils/tenantQuery.js';
 // @access  Private
 export const getLocations = async (req, res, next) => {
     try {
-        const locations = await Location.find({ ...tenantQuery(req), isActive: true }).sort({ name: 1 });
+        const query = { ...tenantQuery(req), isActive: true };
+        if (req.query.type) {
+            query.type = req.query.type;
+        }
+        const locations = await Location.find(query).sort({ name: 1 });
         res.json(locations);
     } catch (error) {
         next(error);
@@ -18,10 +22,11 @@ export const getLocations = async (req, res, next) => {
 // @access  Private/Admin
 export const createLocation = async (req, res, next) => {
     try {
-        const { name, description } = req.body;
+        const { name, description, type } = req.body;
 
         const locationExists = await Location.findOne({ 
             name: { $regex: new RegExp(`^${name}$`, 'i') },
+            type: type || 'inventory',
             ...tenantQuery(req) 
         });
 
@@ -32,6 +37,7 @@ export const createLocation = async (req, res, next) => {
         const location = await Location.create({
             name,
             description,
+            type: type || 'inventory',
             tenantId: req.tenantId
         });
 
@@ -46,7 +52,7 @@ export const createLocation = async (req, res, next) => {
 // @access  Private/Admin
 export const updateLocation = async (req, res, next) => {
     try {
-        const { name, description, isActive } = req.body;
+        const { name, description, isActive, type } = req.body;
 
         let location = await Location.findOne({ _id: req.params.id, ...tenantQuery(req) });
 
@@ -57,6 +63,7 @@ export const updateLocation = async (req, res, next) => {
         location.name = name || location.name;
         location.description = description !== undefined ? description : location.description;
         location.isActive = isActive !== undefined ? isActive : location.isActive;
+        location.type = type || location.type;
 
         await location.save();
 

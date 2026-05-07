@@ -6,7 +6,7 @@ import { InventoryContext } from '../context/InventoryContext';
 
 const Assets = () => {
     const { user } = useContext(AuthContext);
-    const { locations } = useContext(InventoryContext);
+    const { assetLocations, fetchAssetLocations } = useContext(InventoryContext);
     
     const [assets, setAssets] = useState([]);
     const [users, setUsers] = useState([]);
@@ -32,6 +32,7 @@ const Assets = () => {
     useEffect(() => {
         fetchAssets();
         fetchUsers();
+        fetchAssetLocations();
     }, []);
 
     const fetchAssets = async () => {
@@ -85,7 +86,7 @@ const Assets = () => {
                 name: '',
                 assetType: 'System',
                 serialNumber: '',
-                branch: locations.length > 0 ? locations[0]._id : '',
+                branch: assetLocations.length > 0 ? assetLocations[0]._id : '',
                 assignee: '',
                 status: 'Available',
                 notes: '',
@@ -351,7 +352,7 @@ const Assets = () => {
                                             className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                                         >
                                             <option value="" disabled>Select Branch</option>
-                                            {locations.map(loc => (
+                                            {assetLocations.map(loc => (
                                                 <option key={loc._id} value={loc._id}>{loc.name}</option>
                                             ))}
                                         </select>

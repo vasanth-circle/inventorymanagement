@@ -15,6 +15,11 @@ const locationSchema = new mongoose.Schema({
         type: Boolean,
         default: true,
     },
+    type: {
+        type: String,
+        enum: ['inventory', 'asset'],
+        default: 'inventory',
+    },
     tenantId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Tenant',
@@ -25,8 +30,8 @@ const locationSchema = new mongoose.Schema({
     timestamps: true,
 });
 
-// Location name must be unique within a tenant
-locationSchema.index({ name: 1, tenantId: 1 }, { unique: true });
+// Location name must be unique within a tenant and type
+locationSchema.index({ name: 1, tenantId: 1, type: 1 }, { unique: true });
 
 const Location = appConn.model('Location', locationSchema);
 

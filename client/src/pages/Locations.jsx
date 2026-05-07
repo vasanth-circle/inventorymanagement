@@ -3,9 +3,10 @@ import { InventoryContext } from '../context/InventoryContext';
 import toast from 'react-hot-toast';
 
 const Locations = () => {
-    const { locations, addLocation, editLocation, removeLocation, loading, confirmDelete } = useContext(InventoryContext);
+    const { locations, assetLocations, addLocation, editLocation, removeLocation, loading, confirmDelete, fetchLocations, fetchAssetLocations } = useContext(InventoryContext);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingLocation, setEditingLocation] = useState(null);
+    const [locationType, setLocationType] = useState('inventory'); // 'inventory' or 'asset'
     const [formData, setFormData] = useState({ name: '', description: '' });
 
     const handleOpenModal = (location = null) => {
@@ -27,10 +28,21 @@ const Locations = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        const locationData = {
+            ...formData,
+            type: locationType
+        };
+
         if (editingLocation) {
-            await editLocation(editingLocation._id, formData);
+            await editLocation(editingLocation._id, locationData);
         } else {
-            await addLocation(formData);
+            await addLocation(locationData);
+        }
+        
+        if (locationType === 'asset') {
+            await fetchAssetLocations();
+        } else {
+            await fetchLocations();
         }
         handleCloseModal();
     };
@@ -39,18 +51,41 @@ const Locations = () => {
         const confirmed = await confirmDelete('Are you sure you want to remove this location?');
         if (confirmed) {
             await removeLocation(id);
+            if (locationType === 'asset') {
+                await fetchAssetLocations();
+            } else {
+                await fetchLocations();
+            }
         }
     };
+
+    const currentLocations = locationType === 'asset' ? assetLocations : locations;
 
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-gray-900">Locations</h1>
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">Location Management</h1>
+                    <div className="flex mt-2 space-x-4">
+                        <button 
+                            onClick={() => setLocationType('inventory')}
+                            className={`text-sm font-medium pb-1 border-b-2 transition-colors ${locationType === 'inventory' ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Inventory Locations
+                        </button>
+                        <button 
+                            onClick={() => setLocationType('asset')}
+                            className={`text-sm font-medium pb-1 border-b-2 transition-colors ${locationType === 'asset' ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Asset Locations
+                        </button>
+                    </div>
+                </div>
                 <button
                     onClick={() => handleOpenModal()}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm font-semibold"
+                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-md font-semibold"
                 >
-                    ➕ Add New Location
+                    Add {locationType === 'asset' ? 'Asset' : 'Inventory'} Location
                 </button>
             </div>
 
@@ -64,9 +99,9 @@ const Locations = () => {
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {locations.length > 0 ? (
-                            locations.map((loc) => (
-                                <tr key={loc._id} className="hover:bg-gray-50">
+                        {currentLocations.length > 0 ? (
+                            currentLocations.map((loc) => (
+                                <tr key={loc._id} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{loc.name}</td>
                                     <td className="px-6 py-4 text-sm text-gray-600">{loc.description || 'N/A'}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
