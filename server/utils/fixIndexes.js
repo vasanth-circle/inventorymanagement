@@ -37,6 +37,16 @@ const fixLegacyIndexes = async () => {
                     console.log(`✅ Outdated item index dropped.`);
                 }
             }
+            // Update existing locations to have type: 'inventory' if missing
+            if (col.name === 'locations') {
+                const result = await collection.updateMany(
+                    { type: { $exists: false } },
+                    { $set: { type: 'inventory' } }
+                );
+                if (result.modifiedCount > 0) {
+                    console.log(`✅ Updated ${result.modifiedCount} existing locations to type: "inventory".`);
+                }
+            }
         } catch (error) {
             // Collection might not exist yet, which is fine
             if (error.codeName !== 'NamespaceNotFound') {

@@ -8,7 +8,16 @@ export const getLocations = async (req, res, next) => {
     try {
         const query = { ...tenantQuery(req), isActive: true };
         if (req.query.type) {
-            query.type = req.query.type;
+            if (req.query.type === 'inventory') {
+                // Support legacy records where type field might be missing
+                query.$or = [
+                    { type: 'inventory' },
+                    { type: { $exists: false } },
+                    { type: null }
+                ];
+            } else {
+                query.type = req.query.type;
+            }
         }
         const locations = await Location.find(query).sort({ name: 1 });
         res.json(locations);

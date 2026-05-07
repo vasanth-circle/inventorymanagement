@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { InventoryContext } from '../context/InventoryContext';
 import toast from 'react-hot-toast';
 
@@ -9,9 +9,16 @@ const Locations = () => {
     
     // Determine the type based on the active application
     const activeApp = localStorage.getItem('activeApp') || 'inventory';
-    const [locationType] = useState(activeApp === 'assets' ? 'asset' : 'inventory');
-    
     const [formData, setFormData] = useState({ name: '', description: '' });
+    const [locationType] = useState(activeApp === 'assets' ? 'asset' : 'inventory');
+
+    useEffect(() => {
+        if (locationType === 'asset') {
+            fetchAssetLocations();
+        } else {
+            fetchLocations();
+        }
+    }, []);
 
     const handleOpenModal = (location = null) => {
         if (location) {
