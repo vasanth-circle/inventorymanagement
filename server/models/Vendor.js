@@ -36,6 +36,10 @@ const vendorSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
+    currentBalance: {
+        type: Number,
+        default: 0,
+    },
     isActive: {
         type: Boolean,
         default: true,

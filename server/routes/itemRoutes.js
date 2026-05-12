@@ -15,13 +15,13 @@ const router = express.Router();
 
 router
     .route('/')
-    .get(checkMenuAccess('inventory'), getItems)
-    .post(checkMenuAccess('inventory'), upload.single('image'), validateRequest(schemas.createItem), createItem);
+    .get(checkMenuAccess('items'), getItems)
+    .post(checkMenuAccess('items'), upload.single('image'), validateRequest(schemas.createItem), createItem);
 
 router
     .route('/:id')
-    .get(checkMenuAccess('inventory'), getItem)
-    .put(checkMenuAccess('inventory'), upload.single('image'), updateItem)
-    .delete(authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), checkMenuAccess('inventory'), deleteItem);
+    .get(checkMenuAccess('items'), getItem)
+    .put(checkMenuAccess('items'), upload.single('image'), updateItem)
+    .delete(authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), checkMenuAccess('items'), deleteItem);
 
 export default router;

@@ -27,6 +27,8 @@ import quotationRoutes from './routes/quotationRoutes.js';
 import assetRoutes from './routes/assetRoutes.js';
 import productShowcaseRoutes from './routes/productShowcaseRoutes.js';
 import publicProductRoutes from './routes/publicProductRoutes.js';
+import vendorLedgerRoutes from './routes/vendorLedgerRoutes.js';
+import hsnRoutes from './routes/hsnRoutes.js';
 import fixLegacyIndexes from './utils/fixIndexes.js';
 // Ensure User model is registered on appConn for cross-connection populate
 import { AppUser } from './models/User.js';
@@ -90,6 +92,8 @@ app.use('/api/quotations', quotationRoutes);
 app.use('/api/assets', assetRoutes);
 app.use('/api/product-showcase', productShowcaseRoutes);
 app.use('/api/public', publicProductRoutes);
+app.use('/api/vendor-ledger', vendorLedgerRoutes);
+app.use('/api/hsn', hsnRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -158,3 +162,4 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 export default app;
+// Server restart triggered by role update

@@ -2,9 +2,13 @@ import Joi from 'joi';
 
 export const validateRequest = (schema) => {
     return (req, res, next) => {
+        if (req.body.role) {
+            console.log(`Validating role: "${req.body.role}"`);
+        }
         const { error } = schema.validate(req.body, { abortEarly: false });
 
         if (error) {
+            console.log('Validation Error details:', error.details.map(d => d.message));
             const errors = error.details.map(detail => detail.message);
             return res.status(400).json({ message: 'Validation Error', errors });
         }
@@ -14,6 +18,12 @@ export const validateRequest = (schema) => {
 };
 
 // Validation schemas
+const ALLOWED_ROLES = [
+    'admin', 'manager', 'sales_person', 'sales person', 'sales user', 
+    'accounts', 'godown_staff', 'godown staff', 'staff', 
+    'tenant_owner', 'tenant_admin', 'super_admin', 'tenant user', 'tenant_user'
+];
+
 export const schemas = {
     register: Joi.object({
         name: Joi.string().required().trim(),
@@ -22,7 +32,7 @@ export const schemas = {
         companyName: Joi.string().required().trim(),
         phone: Joi.string().required().trim(),
         termsAccepted: Joi.boolean().optional(),
-        role: Joi.string().valid('admin', 'manager', 'staff', 'tenant_owner', 'tenant_admin').default('staff'),
+        role: Joi.string().optional().allow('').default('staff'),
         menuAccess: Joi.string().valid('all', 'specific', null).optional(),
         allowedMenus: Joi.array().items(Joi.string().allow('')).optional(),
         tenantId: Joi.string().optional(),
@@ -36,7 +46,7 @@ export const schemas = {
     updateUser: Joi.object({
         name: Joi.string().optional().trim(),
         email: Joi.string().email().optional().trim().lowercase(),
-        role: Joi.string().valid('admin', 'manager', 'staff', 'tenant_owner', 'tenant_admin').optional(),
+        role: Joi.string().optional().allow(''),
         inventoryRole: Joi.string().optional().allow('', null),
         menuAccess: Joi.string().valid('all', 'specific', null).optional(),
         allowedMenus: Joi.array().items(Joi.string().allow('')).optional(),
@@ -47,7 +57,7 @@ export const schemas = {
         name: Joi.string().required().trim(),
         email: Joi.string().email().required().trim().lowercase(),
         password: Joi.string().min(6).required(),
-        role: Joi.string().valid('admin', 'manager', 'staff', 'tenant_owner', 'tenant_admin').optional().default('staff'),
+        role: Joi.string().optional().allow('').default('staff'),
         inventoryRole: Joi.string().optional().allow('', null),
         isActive: Joi.boolean().optional().default(true),
         menuAccess: Joi.string().valid('all', 'specific', null).optional().default('all'),

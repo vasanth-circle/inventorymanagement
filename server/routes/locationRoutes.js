@@ -9,16 +9,18 @@ import { authorize } from '../middleware/authMiddleware.js';
 
 import { validateRequest, schemas } from '../middleware/validateRequest.js';
 
+import { checkMenuAccess } from '../middleware/accessMiddleware.js';
+
 const router = express.Router();
 
 router
     .route('/')
     .get(getLocations)
-    .post(authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), validateRequest(schemas.createLocation), createLocation);
+    .post(authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), checkMenuAccess('locations'), validateRequest(schemas.createLocation), createLocation);
 
 router
     .route('/:id')
-    .put(authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), validateRequest(schemas.updateLocation), updateLocation)
-    .delete(authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), deleteLocation);
+    .put(authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), checkMenuAccess('locations'), validateRequest(schemas.updateLocation), updateLocation)
+    .delete(authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), checkMenuAccess('locations'), deleteLocation);
 
 export default router;

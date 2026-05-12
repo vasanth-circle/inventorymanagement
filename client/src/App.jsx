@@ -36,6 +36,8 @@ import Profile from './pages/Profile';
 import ProductShowcase from './pages/ProductShowcase';
 import ProductShowcaseEdit from './pages/ProductShowcaseEdit';
 import PublicProductPage from './pages/PublicProductPage';
+import VendorLedger from './pages/VendorLedger';
+import HSNManagement from './pages/HSNManagement';
 
 function AppLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -98,6 +100,9 @@ function App() {
                                             <Route path="/sales-orders" element={<SalesOrders />} />
                                             <Route path="/vendors" element={<Vendors />} />
                                             <Route path="/purchase-orders" element={<PurchaseOrders />} />
+                                            <Route path="/vendor-ledger" element={<VendorLedger />} />
+                                            <Route path="/hsn-management" element={<HSNManagement />} />
+                                            <Route path="/vendor-ledger/:id" element={<VendorLedger />} />
                                             <Route path="/locations" element={<Locations />} />
                                             <Route path="/dispatch-management" element={<DispatchManagement />} />
                                             <Route path="/settings" element={<Settings />} />

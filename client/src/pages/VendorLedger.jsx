@@ -1,9 +1,7 @@
-import { useState, useEffect, useCallback, useContext } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { printAccountStatement } from '../utils/printTemplates';
-import { AuthContext } from '../context/AuthContext';
 
 const api = (path, opts = {}) =>
     axios({ url: `/api${path}`, ...opts, headers: { Authorization: `Bearer ${localStorage.getItem('token')}`, ...opts.headers } });
@@ -18,84 +16,59 @@ const PAYMENT_MODES = [
     { value: 'other', label: '⚙️ Other' },
 ];
 
-const CustomerLedger = () => {
+const VendorLedger = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { user } = useContext(AuthContext);
 
-    const [selectedCustomerId, setSelectedCustomerId] = useState(id || '');
-    const [customers, setCustomers] = useState([]);
+    const [selectedVendorId, setSelectedVendorId] = useState(id || '');
+    const [vendors, setVendors] = useState([]);
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [from, setFrom] = useState('');
     const [to, setTo] = useState('');
-    const [settings, setSettings] = useState(null);
-
-    const effectiveRole = user?.appRoles?.inventory || user?.role;
-    const canRecordPayment = ['admin', 'manager', 'tenant_owner', 'tenant_admin', 'accounts'].includes(effectiveRole) || ['admin', 'manager', 'tenant_owner', 'tenant_admin', 'super_admin'].includes(user?.role);
 
     // Payment modal state
     const [payModal, setPayModal] = useState(false);
     const [paying, setPaying] = useState(false);
-    const [payForm, setPayForm] = useState({ amount: '', paymentMode: 'cash', date: new Date().toISOString().split('T')[0], notes: '', refNumber: '' });
+    const [payForm, setPayForm] = useState({ amount: '', paymentMode: 'cash', date: new Date().toISOString().split('T')[0], notes: '', description: '' });
 
     const fetchLedger = useCallback(async () => {
-        if (!selectedCustomerId) {
+        if (!selectedVendorId) {
             setData(null);
             return;
         }
         try {
             setLoading(true);
-            const params = {};
-            if (from) params.from = from;
-            if (to) params.to = to;
-            const res = await api(`/customers/${selectedCustomerId}/ledger`, { params });
+            const res = await api(`/vendor-ledger/${selectedVendorId}`);
             setData(res.data.data);
         } catch {
             toast.error('Failed to fetch ledger');
         } finally {
             setLoading(false);
         }
-    }, [selectedCustomerId, from, to]);
+    }, [selectedVendorId]);
 
     useEffect(() => {
-        // Fetch customers list for dropdown
-        api('/customers').then(res => {
-            setCustomers(res.data.data.customers);
+        // Fetch vendors list for dropdown
+        api('/vendors').then(res => {
+            setVendors(res.data.data);
         }).catch(() => {});
         fetchLedger(); 
     }, [fetchLedger]);
 
     useEffect(() => {
-        if (id && id !== selectedCustomerId) {
-             setSelectedCustomerId(id);
+        if (id && id !== selectedVendorId) {
+             setSelectedVendorId(id);
         }
     }, [id]);
 
-    const handleCustomerChange = (e) => {
+    const handleVendorChange = (e) => {
         const newId = e.target.value;
-        setSelectedCustomerId(newId);
+        setSelectedVendorId(newId);
         if (newId) {
-            navigate(`/customer-ledger/${newId}`);
+            navigate(`/vendor-ledger/${newId}`);
         } else {
-            navigate(`/customer-ledger`);
-        }
-    };
-
-    useEffect(() => {
-        api('/settings').then(r => setSettings(r.data.data)).catch(() => {});
-    }, []);
-
-    const handlePrint = async () => {
-        try {
-            const params = {};
-            if (from) params.from = from;
-            if (to) params.to = to;
-            const res = await api(`/customers/${selectedCustomerId}/statement`, { params });
-            const { customer, entries, summary, period } = res.data.data;
-            printAccountStatement(customer, entries, summary, period, settings);
-        } catch {
-            toast.error('Failed to generate statement');
+            navigate(`/vendor-ledger`);
         }
     };
 
@@ -104,13 +77,13 @@ const CustomerLedger = () => {
         if (!payForm.amount || Number(payForm.amount) <= 0) return toast.error('Enter a valid amount');
         setPaying(true);
         try {
-            await api(`/customers/${selectedCustomerId}/payment`, {
+            await api(`/vendor-ledger/payment`, {
                 method: 'POST',
-                data: { ...payForm, amount: Number(payForm.amount) }
+                data: { ...payForm, vendorId: selectedVendorId, amount: Number(payForm.amount) }
             });
             toast.success('Payment recorded successfully');
             setPayModal(false);
-            setPayForm({ amount: '', paymentMode: 'cash', date: new Date().toISOString().split('T')[0], notes: '', refNumber: '' });
+            setPayForm({ amount: '', paymentMode: 'cash', date: new Date().toISOString().split('T')[0], notes: '', description: '' });
             fetchLedger();
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to record payment');
@@ -119,13 +92,13 @@ const CustomerLedger = () => {
         }
     };
 
-    const customer = data?.customer;
-    const entries = data?.entries || [];
-    const balance = data?.currentBalance ?? 0;
+    const vendor = data?.vendor;
+    const entries = data?.ledger || [];
+    const balance = vendor?.currentBalance ?? 0;
 
     const typeStyle = (type) => {
-        if (type === 'bill') return { bg: 'bg-orange-50', badge: 'bg-orange-100 text-orange-700', label: '🧾 Bill' };
-        if (type === 'payment') return { bg: 'bg-green-50', badge: 'bg-green-100 text-green-700', label: '✅ Payment' };
+        if (type === 'bill') return { bg: 'bg-red-50', badge: 'bg-red-100 text-red-700', label: '📦 Purchase' };
+        if (type === 'payment') return { bg: 'bg-green-50', badge: 'bg-green-100 text-green-700', label: '💸 Paid' };
         if (type === 'opening') return { bg: 'bg-blue-50', badge: 'bg-blue-100 text-blue-700', label: '📂 Opening' };
         return { bg: '', badge: 'bg-gray-100 text-gray-600', label: '⚙️ Adj' };
     };
@@ -135,91 +108,65 @@ const CustomerLedger = () => {
             {/* Header */}
             <div className="flex flex-wrap gap-3 items-start justify-between">
                 <div className="flex items-center gap-3 w-full md:w-auto flex-1 max-w-md">
-                    <button onClick={() => navigate('/customers')} className="text-gray-500 hover:text-gray-800 text-xl font-bold">←</button>
+                    <button onClick={() => navigate('/vendors')} className="text-gray-500 hover:text-gray-800 text-xl font-bold">←</button>
                     <select 
-                        value={selectedCustomerId}
-                        onChange={handleCustomerChange}
+                        value={selectedVendorId}
+                        onChange={handleVendorChange}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none font-bold text-gray-800 shadow-sm"
                     >
-                        <option value="">-- Select Customer Account --</option>
-                        {customers.map(c => (
-                            <option key={c._id} value={c._id}>{c.companyName || c.name}</option>
+                        <option value="">-- Select Vendor Account --</option>
+                        {vendors.map(v => (
+                            <option key={v._id} value={v._id}>{v.companyName || v.name}</option>
                         ))}
                     </select>
                 </div>
                 <div className="flex gap-2">
-                    {canRecordPayment && (
-                        <button
-                            onClick={() => setPayModal(true)}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-sm shadow"
-                        >
-                            + Receive Payment
-                        </button>
-                    )}
                     <button
-                        onClick={handlePrint}
-                        disabled={!selectedCustomerId || !data}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold text-sm shadow disabled:opacity-50"
+                        onClick={() => setPayModal(true)}
+                        disabled={!selectedVendorId}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold text-sm shadow disabled:opacity-50"
                     >
-                        🖨️ Print Statement
+                        + Record Payment
                     </button>
                 </div>
             </div>
 
             {/* Balance Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className={`rounded-xl p-5 shadow-sm border ${balance > 0 ? 'bg-orange-50 border-orange-200' : 'bg-green-50 border-green-200'}`}>
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Outstanding Balance</p>
-                    <p className={`text-3xl font-black mt-1 ${balance > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                <div className={`rounded-xl p-5 shadow-sm border ${balance > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Outstanding Dues</p>
+                    <p className={`text-3xl font-black mt-1 ${balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
                         ₹{fmt(Math.abs(balance))}
                     </p>
-                    <p className="text-xs mt-1 font-medium text-gray-500">{balance > 0 ? 'Amount Pending (Dr)' : balance < 0 ? 'Advance / Surplus (Cr)' : 'Settled'}</p>
+                    <p className="text-xs mt-1 font-medium text-gray-500">{balance > 0 ? 'Amount to be Paid (Cr)' : balance < 0 ? 'Advance Paid (Dr)' : 'Settled'}</p>
                 </div>
-                <div className="bg-red-50 border border-red-200 rounded-xl p-5 shadow-sm">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Billed</p>
-                    <p className="text-3xl font-black mt-1 text-red-600">₹{fmt(entries.reduce((s, e) => s + e.debit, 0))}</p>
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-5 shadow-sm">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Purchases</p>
+                    <p className="text-3xl font-black mt-1 text-orange-600">₹{fmt(entries.reduce((s, e) => s + (e.credit || 0), 0))}</p>
                     <p className="text-xs mt-1 text-gray-500">{entries.filter(e => e.type === 'bill').length} bills</p>
                 </div>
                 <div className="bg-green-50 border border-green-200 rounded-xl p-5 shadow-sm">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Received</p>
-                    <p className="text-3xl font-black mt-1 text-green-600">₹{fmt(entries.reduce((s, e) => s + e.credit, 0))}</p>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Paid</p>
+                    <p className="text-3xl font-black mt-1 text-green-600">₹{fmt(entries.reduce((s, e) => s + (e.debit || 0), 0))}</p>
                     <p className="text-xs mt-1 text-gray-500">{entries.filter(e => e.type === 'payment').length} payments</p>
                 </div>
-            </div>
-
-            {/* Date Filter */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-wrap gap-3 items-end">
-                <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">From Date</label>
-                    <input type="date" value={from} onChange={e => setFrom(e.target.value)}
-                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" />
-                </div>
-                <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">To Date</label>
-                    <input type="date" value={to} onChange={e => setTo(e.target.value)}
-                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" />
-                </div>
-                <button onClick={fetchLedger} disabled={!selectedCustomerId} className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-semibold hover:bg-primary-700 disabled:opacity-50">Apply</button>
-                {(from || to) && (
-                    <button onClick={() => { setFrom(''); setTo(''); }} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50">Clear</button>
-                )}
             </div>
 
             {/* Ledger Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-                    <h2 className="font-bold text-gray-800">Ledger Entries</h2>
+                    <h2 className="font-bold text-gray-800">Vendor Ledger Entries</h2>
                     <span className="text-sm text-gray-500">{entries.length} entries</span>
                 </div>
                 {loading ? (
                     <div className="flex justify-center items-center h-48">
                         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
                     </div>
-                ) : !selectedCustomerId ? (
+                ) : !selectedVendorId ? (
                     <div className="text-center py-16 text-gray-400 border-t border-gray-100">
                         <p className="text-4xl mb-3 mt-4">🔍</p>
-                        <p className="text-lg font-medium">Select an account</p>
-                        <p className="text-sm">Choose a customer document from the dropdown above to view their Tally ledger statement.</p>
+                        <p className="text-lg font-medium">Select a Vendor</p>
+                        <p className="text-sm">Choose a vendor from the dropdown to view your payment history and dues.</p>
                     </div>
                 ) : entries.length === 0 ? (
                     <div className="text-center py-16 text-gray-400">
@@ -260,34 +207,20 @@ const CustomerLedger = () => {
                                                 <p className="text-sm text-gray-700">{entry.description}</p>
                                                 {entry.notes && <p className="text-xs text-gray-400 mt-0.5">{entry.notes}</p>}
                                             </td>
-                                            <td className="px-4 py-3 text-right font-semibold text-red-600 whitespace-nowrap">
+                                            <td className="px-4 py-3 text-right font-semibold text-green-600 whitespace-nowrap">
                                                 {entry.debit > 0 ? `₹${fmt(entry.debit)}` : <span className="text-gray-300">—</span>}
                                             </td>
-                                            <td className="px-4 py-3 text-right font-semibold text-green-600 whitespace-nowrap">
+                                            <td className="px-4 py-3 text-right font-semibold text-red-600 whitespace-nowrap">
                                                 {entry.credit > 0 ? `₹${fmt(entry.credit)}` : <span className="text-gray-300">—</span>}
                                             </td>
-                                            <td className={`px-4 py-3 text-right font-bold whitespace-nowrap ${entry.balance >= 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                                            <td className={`px-4 py-3 text-right font-bold whitespace-nowrap ${entry.balance >= 0 ? 'text-red-600' : 'text-green-600'}`}>
                                                 ₹{fmt(Math.abs(entry.balance))}
-                                                <span className="text-xs font-normal ml-1">{entry.balance >= 0 ? 'Dr' : 'Cr'}</span>
+                                                <span className="text-xs font-normal ml-1">{entry.balance >= 0 ? 'Cr' : 'Dr'}</span>
                                             </td>
                                         </tr>
                                     );
                                 })}
                             </tbody>
-                            <tfoot>
-                                <tr className="bg-gray-800 text-white">
-                                    <td colSpan={4} className="px-4 py-3 font-bold text-sm">TOTAL</td>
-                                    <td className="px-4 py-3 text-right font-bold text-red-300">
-                                        ₹{fmt(entries.reduce((s, e) => s + e.debit, 0))}
-                                    </td>
-                                    <td className="px-4 py-3 text-right font-bold text-green-300">
-                                        ₹{fmt(entries.reduce((s, e) => s + e.credit, 0))}
-                                    </td>
-                                    <td className={`px-4 py-3 text-right font-bold text-lg ${balance >= 0 ? 'text-orange-300' : 'text-green-300'}`}>
-                                        ₹{fmt(Math.abs(balance))} {balance >= 0 ? 'Dr' : 'Cr'}
-                                    </td>
-                                </tr>
-                            </tfoot>
                         </table>
                     </div>
                 )}
@@ -296,55 +229,51 @@ const CustomerLedger = () => {
             {/* Payment Modal */}
             {payModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-200">
-                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-green-50">
-                            <div className="flex flex-col">
-                                <h2 className="text-xl font-bold text-green-800">💵 Receive Payment</h2>
-                                <p className="text-xs font-bold text-green-600 uppercase tracking-tight mt-0.5">CUSTOMER: {customer?.companyName || customer?.name}</p>
-                            </div>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-red-50">
+                            <h2 className="text-xl font-bold text-red-800">💸 Record Payment</h2>
                             <button onClick={() => setPayModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
                         </div>
                         <form onSubmit={handlePaymentSubmit} className="p-6 space-y-4">
-                            {/* Current balance chip */}
-                            <div className={`p-3 rounded-lg text-center font-semibold text-sm ${balance > 0 ? 'bg-orange-50 text-orange-700 border border-orange-100' : 'bg-green-50 text-green-700 border border-green-100'}`}>
-                                Current Balance: ₹{fmt(Math.abs(balance))} {balance >= 0 ? 'Dr (Pending)' : 'Cr (Advance)'}
+                            <div className={`p-3 rounded-lg text-center font-semibold text-sm ${balance > 0 ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-green-50 text-green-700 border border-green-100'}`}>
+                                Current Dues: ₹{fmt(Math.abs(balance))} {balance >= 0 ? 'Cr (Owed)' : 'Dr (Advance)'}
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">Amount Received *</label>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">Amount Paid *</label>
                                 <input type="number" step="0.01" min="0.01" required
                                     value={payForm.amount} onChange={e => setPayForm({ ...payForm, amount: e.target.value })}
                                     placeholder="Enter amount"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-lg font-bold" />
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-lg font-bold" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">Payment Mode</label>
                                     <select value={payForm.paymentMode} onChange={e => setPayForm({ ...payForm, paymentMode: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none">
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
                                         {PAYMENT_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                                     </select>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">Date</label>
                                     <input type="date" value={payForm.date} onChange={e => setPayForm({ ...payForm, date: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" />
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" />
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">Ref / Cheque No. (optional)</label>
-                                <input type="text" value={payForm.refNumber} onChange={e => setPayForm({ ...payForm, refNumber: e.target.value })}
-                                    placeholder="e.g. CHQ-123456, UPI Ref"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" />
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">Description (optional)</label>
+                                <input type="text" value={payForm.description} onChange={e => setPayForm({ ...payForm, description: e.target.value })}
+                                    placeholder="e.g. Paid for INV-123"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" />
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1">Notes (optional)</label>
                                 <textarea rows={2} value={payForm.notes} onChange={e => setPayForm({ ...payForm, notes: e.target.value })}
                                     placeholder="Any remarks..."
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none resize-none" />
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none resize-none" />
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" disabled={paying}
-                                    className="flex-1 py-2.5 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 disabled:opacity-50">
+                                    className="flex-1 py-2.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 disabled:opacity-50">
                                     {paying ? 'Recording...' : '✅ Record Payment'}
                                 </button>
                                 <button type="button" onClick={() => setPayModal(false)}
@@ -360,4 +289,4 @@ const CustomerLedger = () => {
     );
 };
 
-export default CustomerLedger;
+export default VendorLedger;

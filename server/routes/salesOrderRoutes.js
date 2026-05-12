@@ -12,7 +12,7 @@ import { checkMenuAccess } from '../middleware/accessMiddleware.js';
 const router = express.Router();
 
 // router.use(protect); // Global middleware handles this now
-router.use(checkMenuAccess('sales'));
+router.use(checkMenuAccess('sales-orders'));
 
 router.route('/')
     .get(getSalesOrders)

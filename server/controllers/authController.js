@@ -124,7 +124,7 @@ export const addUser = async (req, res, next) => {
                 proposal: null,
                 hr: null,
                 task: null,
-                inventory: inventoryRole || (role === 'admin' ? "inventory_admin" : "inventory_user"),
+                inventory: inventoryRole || (['admin', 'manager', 'super_admin', 'tenant_admin', 'tenant_owner'].includes(role) ? "inventory_admin" : "inventory_user"),
                 billing: null,
                 whatsapp: null
             }
@@ -190,7 +190,9 @@ export const login = async (req, res, next) => {
             if (tenant) {
                 // Check if user has access to this specific app via appRoles
                 const inventoryRole = user.appRoles?.inventory;
-                if (!inventoryRole || inventoryRole === 'none') {
+                const hasAccess = inventoryRole && inventoryRole !== 'none' && inventoryRole !== 'null' && inventoryRole !== '';
+                
+                if (!hasAccess) {
                     console.warn(`Login blocked: User ${email} does not have an inventory app role assigned.`);
                     return res.status(403).json({
                         message: 'You do not have access to the Inventory application. Please contact your administrator.'
@@ -349,6 +351,7 @@ export const updateProfile = async (req, res, next) => {
 // @route   PUT /api/auth/users/:id
 // @access  Private/Admin
 export const updateUser = async (req, res, next) => {
+    console.log('UpdateUser Request Body:', JSON.stringify(req.body, null, 2));
     try {
         const { name, email, role, inventoryRole, isActive, menuAccess, allowedMenus } = req.body;
         const userId = req.params.id;
@@ -393,7 +396,7 @@ export const updateUser = async (req, res, next) => {
             }
         } else if (role && !user.appRoles.inventory) {
             // Default mapping if not set
-            user.appRoles.inventory = (role === 'admin' ? "inventory_admin" : "inventory_user");
+            user.appRoles.inventory = (['admin', 'manager', 'super_admin', 'tenant_admin', 'tenant_owner'].includes(role) ? "inventory_admin" : "inventory_user");
             user.markModified('appRoles');
         }
 

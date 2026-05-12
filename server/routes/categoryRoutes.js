@@ -8,16 +8,18 @@ import {
 import { authorize } from '../middleware/authMiddleware.js';
 import { validateRequest, schemas } from '../middleware/validateRequest.js';
 
+import { checkMenuAccess } from '../middleware/accessMiddleware.js';
+
 const router = express.Router();
 
 router
     .route('/')
     .get(getCategories)
-    .post(authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), validateRequest(schemas.createCategory), createCategory);
+    .post(authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), checkMenuAccess('categories'), validateRequest(schemas.createCategory), createCategory);
 
 router
     .route('/:id')
-    .put(authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), updateCategory)
-    .delete(authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), deleteCategory);
+    .put(authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), checkMenuAccess('categories'), updateCategory)
+    .delete(authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), checkMenuAccess('categories'), deleteCategory);
 
 export default router;

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import { formatCurrency } from '../utils/helpers';
+import { AuthContext } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, 
@@ -9,10 +10,14 @@ import {
 } from 'recharts';
 
 const Dashboard = () => {
+    const { user } = useContext(AuthContext);
     const [stats, setStats] = useState(null);
     const [lowStockItems, setLowStockItems] = useState([]);
     const [trendData, setTrendData] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    const isFinancialAdmin = ['super_admin', 'admin', 'tenant_owner', 'tenant_admin', 'manager', 'accounts'].includes(user?.role);
+    const isAdmin = ['super_admin', 'admin', 'tenant_owner', 'tenant_admin', 'manager'].includes(user?.role);
 
     useEffect(() => {
         fetchDashboardData();
@@ -196,38 +201,41 @@ const Dashboard = () => {
                         </div>
                     </div>
 
-                    {/* Order Summaries */}
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="zoho-card p-6">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Purchase Order</h3>
-                                <span className="text-[10px] text-gray-400 font-bold">Total</span>
+                    {/* Financial Overview (Amount Flow) */}
+                    {isFinancialAdmin && (
+                        <div className="zoho-card p-6 border-l-4 border-l-emerald-500">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-sm font-bold text-gray-700 uppercase tracking-widest">Financial Overview (Amount Flow)</h2>
+                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Net Volume</span>
                             </div>
-                            <div className="flex flex-col items-center justify-center h-24 bg-gray-50/30 rounded-xl border border-dashed border-gray-200">
-                                <span className="text-2xl font-black text-rose-600">{formatCurrency(stats?.totalPurchase || 0)}</span>
-                                <span className="text-[10px] text-gray-400 uppercase font-bold mt-1">Total Purchased</span>
-                            </div>
-                        </div>
-                        <div className="zoho-card p-6">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Sales Order</h3>
-                                <span className="text-[10px] text-gray-400 font-bold">Summary</span>
-                            </div>
-                            <div className="grid grid-cols-4 gap-1">
-                                {[
-                                    { status: 'draft', label: 'Draft' },
-                                    { status: 'confirmed', label: 'Confirmed' },
-                                    { status: 'packed', label: 'Packed' },
-                                    { status: 'shipped', label: 'Shipped' }
-                                ].map((s, i) => (
-                                    <div key={i} className="text-center p-2 rounded-lg bg-gray-50/50">
-                                        <div className="text-[10px] font-bold text-gray-400 uppercase leading-tight mb-1">{s.label}</div>
-                                        <div className="text-sm font-black text-gray-700">{stats?.salesActivity?.[s.status] || 0}</div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 divide-x divide-gray-100">
+                                <div className="text-center">
+                                    <div className="text-2xl font-black text-rose-600 mb-1">
+                                        {formatCurrency(stats?.totalPurchase || 0)}
                                     </div>
-                                ))}
+                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
+                                        🛒 Total Purchases
+                                    </div>
+                                </div>
+                                <div className="text-center px-4">
+                                    <div className="text-2xl font-black text-emerald-600 mb-1">
+                                        {formatCurrency(stats?.totalSales || 0)}
+                                    </div>
+                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
+                                        💰 Total Sales
+                                    </div>
+                                </div>
+                                <div className="text-center px-4">
+                                    <div className={`text-2xl font-black mb-1 ${(stats?.totalSales - stats?.totalPurchase) >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                                        {formatCurrency(stats?.totalSales - stats?.totalPurchase)}
+                                    </div>
+                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
+                                        📈 Net Flow (S-P)
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 {/* Sidebar Column: Right 4 Columns */}
@@ -250,16 +258,18 @@ const Dashboard = () => {
                     </div>
 
                     {/* Stock Value Card */}
-                    <div className="zoho-card p-6 bg-gradient-to-br from-white to-rose-50/30">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Global Value</h3>
-                            <span className="text-lg">💰</span>
+                    {isFinancialAdmin && (
+                        <div className="zoho-card p-6 bg-gradient-to-br from-white to-rose-50/30">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Global Value</h3>
+                                <span className="text-lg">💰</span>
+                            </div>
+                            <div className="text-3xl font-black text-rose-600 tracking-tighter mb-1">
+                                {formatCurrency(stats?.stockValue || 0)}
+                            </div>
+                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Total Valuation of Stock</div>
                         </div>
-                        <div className="text-3xl font-black text-rose-600 tracking-tighter mb-1">
-                            {formatCurrency(stats?.stockValue || 0)}
-                        </div>
-                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Total Valuation of Stock</div>
-                    </div>
+                    )}
 
                     {/* Active Channels / Integrations */}
                     <div className="zoho-card p-6 relative overflow-hidden group">

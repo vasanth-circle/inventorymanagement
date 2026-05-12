@@ -21,22 +21,26 @@ const Users = () => {
     
     const availableMenus = [
         { id: 'dashboard', name: 'Dashboard' },
-        { id: 'inventory', name: 'Inventory' },
+        { id: 'inventory', name: 'Items & Stocks' },
         { id: 'categories', name: 'Categories' },
         { id: 'stock-inward', name: 'Stock Inward' },
         { id: 'stock-outward', name: 'Stock Outward' },
         { id: 'stock-return', name: 'Stock Return' },
         { id: 'stock-adjustment', name: 'Stock Adjustment' },
         { id: 'bulk-import', name: 'Bulk Import' },
-        { id: 'stocks', name: 'Stocks' },
-        { id: 'reports', name: 'Reports' },
+        { id: 'stocks', name: 'Stocks Summary' },
+        { id: 'reports', name: 'All Reports' },
         { id: 'customers', name: 'Customers' },
+        { id: 'customer-ledger', name: 'Customer Ledgers' },
         { id: 'vendors', name: 'Vendors' },
+        { id: 'vendor-ledger', name: 'Vendor Ledgers' },
+        { id: 'quotations', name: 'Quotations' },
         { id: 'sales-orders', name: 'Sales Orders' },
         { id: 'purchase-orders', name: 'Purchase Orders' },
         { id: 'locations', name: 'Locations' },
-        { id: 'users', name: 'Users' },
-        { id: 'assets', name: 'Assets' },
+        { id: 'dispatch-management', name: 'Dispatch' },
+        { id: 'users', name: 'User Management' },
+        { id: 'assets', name: 'Asset Management' },
     ];
 
     useEffect(() => {
@@ -177,8 +181,11 @@ const Users = () => {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                         <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
-                                            u.role === 'admin' ? 'bg-purple-100 text-purple-800' : 
-                                            u.role === 'tenant_admin' ? 'bg-indigo-100 text-indigo-800' :
+                                            ['admin', 'super_admin', 'tenant_owner'].includes(u.role) ? 'bg-purple-100 text-purple-800' : 
+                                            u.role === 'manager' ? 'bg-indigo-100 text-indigo-800' :
+                                            u.role === 'sales_person' ? 'bg-orange-100 text-orange-800' :
+                                            u.role === 'accounts' ? 'bg-emerald-100 text-emerald-800' :
+                                            u.role === 'godown_staff' ? 'bg-amber-100 text-amber-800' :
                                             'bg-blue-100 text-blue-800'
                                         }`}>
                                             {u.role?.replace('_', ' ')}
@@ -256,8 +263,11 @@ const Users = () => {
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">System Role</label>
                                     <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white transition-all">
-                                        <option value="admin">System Admin</option>
+                                        <option value="admin">Admin</option>
                                         <option value="manager">Manager</option>
+                                        <option value="sales_person">Sales Person</option>
+                                        <option value="accounts">Accounts</option>
+                                        <option value="godown_staff">Godown Staff</option>
                                         <option value="staff">Staff Member</option>
                                     </select>
                                 </div>
@@ -265,6 +275,10 @@ const Users = () => {
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">Inventory App Role</label>
                                     <select value={formData.inventoryRole} onChange={(e) => setFormData({ ...formData, inventoryRole: e.target.value })} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white transition-all">
                                         <option value="inventory_admin">App Admin</option>
+                                        <option value="manager">Manager</option>
+                                        <option value="sales_person">Sales Person</option>
+                                        <option value="accounts">Accounts</option>
+                                        <option value="godown_staff">Godown Staff</option>
                                         <option value="inventory_user">App User</option>
                                         <option value="none">No Access</option>
                                     </select>

@@ -16,7 +16,7 @@ import { checkMenuAccess } from '../middleware/accessMiddleware.js';
 const router = express.Router();
 
 // router.use(protect); // Global middleware handles this now
-router.use(checkMenuAccess('sales')); // Using 'sales' as menu ID for sales module
+router.use(checkMenuAccess('customers'));
 
 router.route('/')
     .get(getCustomers)

@@ -256,7 +256,7 @@ export const updateSalesOrder = async (req, res, next) => {
         }
 
         // Only allow editing if user is admin or higher
-        const isAdmin = ['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(req.user.role);
+        const isAdmin = ['super_admin', 'admin', 'tenant_owner', 'tenant_admin', 'manager'].includes(req.user.role);
         if (!isAdmin) {
             return sendError(res, 403, 'Permission denied: Only administrators can edit bills');
         }

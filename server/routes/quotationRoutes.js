@@ -8,7 +8,11 @@ import {
     deleteQuotation,
 } from '../controllers/quotationController.js';
 
+import { checkMenuAccess } from '../middleware/accessMiddleware.js';
+
 const router = express.Router();
+
+router.use(checkMenuAccess('quotations'));
 
 router.get('/', getQuotations);
 router.get('/:id', getQuotation);

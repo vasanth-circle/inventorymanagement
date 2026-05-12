@@ -5,6 +5,41 @@ import Transaction from '../models/Transaction.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { getNextSequenceValue } from '../utils/sequence.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
+import VendorLedger from '../models/VendorLedger.js';
+import Vendor from '../models/Vendor.js';
+
+// ─── Ledger helper (called after PO receipt/bill, does not change existing flow) ─
+export const createPurchaseLedgerEntry = async ({ orderId, orderNumber, vendorId, amount, tenantId, userId, orderDate }) => {
+    try {
+        const vendor = await Vendor.findById(vendorId);
+        if (!vendor) return;
+
+        const lastEntry = await VendorLedger.findOne({ vendor: vendorId, tenantId }).sort({ date: -1, createdAt: -1 });
+        const previousBalance = lastEntry ? lastEntry.balance : (vendor.openingBalance || 0);
+        
+        // Credit increases our liability (balance)
+        const newBalance = previousBalance + amount;
+
+        await VendorLedger.create({
+            tenantId,
+            vendor: vendorId,
+            date: orderDate || new Date(),
+            type: 'bill',
+            refType: 'PurchaseOrder',
+            refId: orderId,
+            refNumber: orderNumber,
+            description: `Bill from PO #${orderNumber}`,
+            debit: 0,
+            credit: amount,
+            balance: newBalance,
+            createdBy: userId,
+        });
+
+        await Vendor.findByIdAndUpdate(vendorId, { currentBalance: newBalance });
+    } catch (err) {
+        console.error('createPurchaseLedgerEntry error:', err.message);
+    }
+};
 
 // @desc    Get all purchase orders
 // @route   GET /api/purchase-orders
@@ -124,6 +159,22 @@ export const updatePOStatus = async (req, res, next) => {
         order.status = status;
         await order.save();
 
+        // If marked as billed, ensure ledger entry exists (if not already received)
+        if (status === 'billed') {
+            const alreadyInLedger = await VendorLedger.findOne({ refId: order._id, refType: 'PurchaseOrder' });
+            if (!alreadyInLedger) {
+                createPurchaseLedgerEntry({
+                    orderId: order._id,
+                    orderNumber: order.orderNumber,
+                    vendorId: order.vendor,
+                    amount: order.totalAmount,
+                    tenantId: req.tenantId,
+                    userId: req.user._id,
+                    orderDate: order.orderDate,
+                });
+            }
+        }
+
         sendResponse(res, 200, order, `Purchase order status updated to ${status}`);
     } catch (error) {
         next(error);
@@ -204,6 +255,17 @@ export const receivePurchaseOrder = async (req, res, next) => {
 
         order.status = 'received';
         await order.save();
+
+        // ── Auto-create vendor ledger credit entry ──
+        createPurchaseLedgerEntry({
+            orderId: order._id,
+            orderNumber: order.orderNumber,
+            vendorId: order.vendor,
+            amount: order.totalAmount,
+            tenantId: req.tenantId,
+            userId: req.user._id,
+            orderDate: order.orderDate,
+        });
 
         sendResponse(res, 200, order, 'Purchase order received successfully');
     } catch (error) {

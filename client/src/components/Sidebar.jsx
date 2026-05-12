@@ -23,13 +23,14 @@ const Sidebar = ({ isOpen, onClose }) => {
             icon: '📦',
             items: [
                 { name: 'Dashboard', path: '/dashboard', id: 'dashboard' },
-                { name: 'Items', path: '/inventory', id: 'inventory' },
+                { name: 'Items', path: '/inventory', id: 'items' },
+                { name: 'HSN Codes', path: '/hsn-management', id: 'hsn' },
                 { name: 'Categories', path: '/categories', id: 'categories' },
-                { name: 'Locations', path: '/locations', id: 'inventory' },
+                { name: 'Locations', path: '/locations', id: 'locations' },
                 { name: 'Bulk Import', path: '/bulk-import', id: 'bulk-import' },
                 { name: 'Stock Summary', path: '/stocks', id: 'stocks' },
                 { name: 'Stock Returns', path: '/stock-return', id: 'stock-return' },
-                { name: 'Make Adjustment', path: '/stock-adjustment', id: 'stocks' },
+                { name: 'Make Adjustment', path: '/stock-adjustment', id: 'stock-adjustment' },
             ]
         },
         {
@@ -37,11 +38,11 @@ const Sidebar = ({ isOpen, onClose }) => {
             id: 'sales',
             icon: '🛒',
             items: [
-                { name: 'Customers', path: '/customers', id: 'sales' },
-                { name: 'Customer Ledgers', path: '/customer-ledger', id: 'sales' },
-                { name: 'Quotations', path: '/quotations', id: 'sales' },
-                { name: 'Sales Orders', path: '/sales-orders', id: 'sales' },
-                { name: 'Dispatch Management', path: '/dispatch-management', id: 'sales' },
+                { name: 'Customers', path: '/customers', id: 'customers' },
+                { name: 'Customer Ledgers', path: '/customer-ledger', id: 'customer-ledger' },
+                { name: 'Quotations', path: '/quotations', id: 'quotations' },
+                { name: 'Sales Orders', path: '/sales-orders', id: 'sales-orders' },
+                { name: 'Dispatch Management', path: '/dispatch-management', id: 'dispatch-management' },
             ]
         },
         {
@@ -49,8 +50,9 @@ const Sidebar = ({ isOpen, onClose }) => {
             id: 'purchases',
             icon: '🎫',
             items: [
-                { name: 'Vendors', path: '/vendors', id: 'purchases' },
-                { name: 'Purchase Orders', path: '/purchase-orders', id: 'purchases' },
+                { name: 'Vendors', path: '/vendors', id: 'vendors' },
+                { name: 'Vendor Ledgers', path: '/vendor-ledger', id: 'vendor-ledger' },
+                { name: 'Purchase Orders', path: '/purchase-orders', id: 'purchase-orders' },
                 { name: 'Stock Inward', path: '/stock-inward', id: 'stock-inward' },
             ]
         },
@@ -118,8 +120,36 @@ const Sidebar = ({ isOpen, onClose }) => {
     }
 
     const checkAccess = (itemId) => {
-        if (user?.role === 'super_admin' || user?.role === 'admin' || user?.role === 'tenant_owner' || user?.role === 'tenant_admin' || user?.menuAccess === 'all') return true;
-        return user?.allowedMenus?.includes(itemId);
+        const effectiveRole = user?.appRoles?.inventory || user?.role;
+
+        // 1. Apply restrictive roles first (Top Priority)
+        if (effectiveRole === 'sales_person' || effectiveRole === 'sales person' || effectiveRole === 'sales user' || effectiveRole === 'sales_user') {
+            const salesAllowed = ['dashboard', 'items', 'stocks', 'quotations', 'sales-orders', 'dispatch-management', 'customers', 'customer-ledger'];
+            return salesAllowed.includes(itemId);
+        }
+
+        if (effectiveRole === 'accounts') {
+            const accountsAllowed = ['dashboard', 'items', 'customers', 'vendors', 'customer-ledger', 'vendor-ledger', 'reports'];
+            return accountsAllowed.includes(itemId);
+        }
+
+        if (effectiveRole === 'godown_staff' || effectiveRole === 'godown staff') {
+            const godownAllowed = ['dashboard', 'items', 'stocks', 'dispatch-management', 'stock-adjustment', 'stock-return'];
+            return godownAllowed.includes(itemId);
+        }
+
+        // 2. Full Access overrides (If no restrictive app role is set)
+        if (user?.menuAccess === 'all') return true;
+        if (effectiveRole === 'admin' || effectiveRole === 'manager' || effectiveRole === 'inventory_admin' || user?.role === 'admin' || user?.role === 'manager') {
+            return true;
+        }
+
+        // 3. Specific menu access check
+        if (user?.menuAccess === 'specific' && user?.allowedMenus?.includes(itemId)) {
+            return true;
+        }
+
+        return false;
     };
 
     return (

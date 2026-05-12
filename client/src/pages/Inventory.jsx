@@ -4,11 +4,12 @@ import { formatCurrency, formatDate, getStockStatusColor, exportToCSV, debounce 
 import toast from 'react-hot-toast';
 
 const Inventory = () => {
-    const { 
-        items, fetchItems, deleteItem, createItem, updateItem, 
+    const {
+        items, fetchItems, deleteItem, createItem, updateItem,
         categories, locations, fetchLocations, loading, confirmDelete,
         billingSettings
     } = useContext(InventoryContext);
+    const [hsnCodes, setHsnCodes] = useState([]);
     const [filters, setFilters] = useState({
         search: '',
         category: '',
@@ -56,7 +57,17 @@ const Inventory = () => {
     useEffect(() => {
         loadItems();
         fetchLocations();
+        fetchHSNCodes();
     }, [filters]);
+
+    const fetchHSNCodes = async () => {
+        try {
+            const { data } = await api.get('/hsn');
+            setHsnCodes(data.data);
+        } catch (error) {
+            console.error('Error fetching HSN codes:', error);
+        }
+    };
 
     const loadItems = async () => {
         const data = await fetchItems(filters);
@@ -538,14 +549,17 @@ const Inventory = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">HSN Code</label>
-                                    <input
-                                        type="text"
+                                    <select
                                         name="hsn"
                                         value={editFormData.hsn}
                                         onChange={handleEditChange}
-                                        placeholder="Optional"
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    />
+                                    >
+                                        <option value="">Select HSN</option>
+                                        {hsnCodes.map(hsn => (
+                                            <option key={hsn._id} value={hsn.code}>{hsn.code} - {hsn.description}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Size (Dimensions)</label>
@@ -736,14 +750,17 @@ const Inventory = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">HSN Code</label>
-                                    <input
-                                        type="text"
+                                    <select
                                         name="hsn"
                                         value={createFormData.hsn}
                                         onChange={handleCreateChange}
-                                        placeholder="Optional"
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    />
+                                    >
+                                        <option value="">Select HSN</option>
+                                        {hsnCodes.map(hsn => (
+                                            <option key={hsn._id} value={hsn.code}>{hsn.code} - {hsn.description}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Size (Dimensions)</label>
