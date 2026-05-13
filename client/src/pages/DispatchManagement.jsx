@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from 'react';
 import { InventoryContext } from '../context/InventoryContext';
-import axios from 'axios';
+import api from '../utils/api';
 import toast from 'react-hot-toast';
 
 const DispatchManagement = () => {
@@ -25,15 +25,17 @@ const DispatchManagement = () => {
     const fetchPendingOrders = async () => {
         try {
             setLoading(true);
-            const res = await axios.get('/api/sales-orders?status=confirmed', {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
-            // Also include partially dispatched orders
-            const res2 = await axios.get('/api/sales-orders?status=partially_dispatched', {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
-            setOrders([...res.data.data.orders, ...res2.data.data.orders]);
+            const [confirmedRes, partialRes] = await Promise.all([
+                api.get('/sales-orders?status=confirmed'),
+                api.get('/sales-orders?status=partially_dispatched')
+            ]);
+            
+            const confirmedOrders = confirmedRes.data?.data?.orders || [];
+            const partialOrders = partialRes.data?.data?.orders || [];
+            
+            setOrders([...confirmedOrders, ...partialOrders]);
         } catch (error) {
+            console.error('Fetch orders error:', error);
             toast.error('Failed to fetch pending orders');
         } finally {
             setLoading(false);
@@ -46,10 +48,8 @@ const DispatchManagement = () => {
 
         try {
             // Fetch past dispatches to prevent over-dispatching
-            const res = await axios.get(`/api/dispatches/order/${order._id}`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
-            const pastDispatches = res.data.data;
+            const res = await api.get(`/dispatches/order/${order._id}`);
+            const pastDispatches = res.data?.data || [];
 
             setDispatchData({
                 vehicleNumber: '',
@@ -221,12 +221,10 @@ const DispatchManagement = () => {
     const handleViewDetails = async (order) => {
         setSelectedOrder(order);
         try {
-            const res = await axios.get(`/api/dispatches/order/${order._id}`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
+            const res = await api.get(`/dispatches/order/${order._id}`);
             setOrderDetails({
                 ...order,
-                dispatches: res.data.data
+                dispatches: res.data?.data || []
             });
             setIsDetailsModalOpen(true);
         } catch (error) {
@@ -243,7 +241,7 @@ const DispatchManagement = () => {
         }
 
         try {
-            await axios.post('/api/dispatches', {
+            await api.post('/dispatches', {
                 order: selectedOrder._id,
                 vehicleNumber: dispatchData.vehicleNumber,
                 driverPhone: dispatchData.driverPhone,
@@ -252,8 +250,6 @@ const DispatchManagement = () => {
                     item: i.item,
                     quantity: i.quantity
                 }))
-            }, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
 
             toast.success('Dispatch recorded successfully');
@@ -265,7 +261,7 @@ const DispatchManagement = () => {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-24 lg:pb-8">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-800">Godown Dispatch Management</h1>
                 <p className="text-sm text-gray-500 font-medium">Pending Shipments & Deliveries</p>
@@ -317,10 +313,8 @@ const DispatchManagement = () => {
                                             </button>
                                             <button 
                                                 onClick={async () => {
-                                                    const res = await axios.get(`/api/dispatches/order/${order._id}`, {
-                                                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                                                    });
-                                                    handlePrintSummary(order, res.data.data);
+                                                    const res = await api.get(`/dispatches/order/${order._id}`);
+                                                    handlePrintSummary(order, res.data?.data || []);
                                                 }}
                                                 className="flex-1 bg-emerald-100 text-emerald-700 py-3 rounded-xl font-bold text-sm hover:bg-emerald-200 transition-all flex items-center justify-center"
                                                 title="Print Summary"

@@ -59,6 +59,9 @@ const template1 = (order, settings, docType = 'invoice') => {
     const qtyLabel = s.unitConfig?.quantityLabel || 'Qty (SqFt)';
     const rateLabel = s.unitConfig?.rateLabel || 'Rate';
     const terms = order.terms || s.branding?.termsAndConditions || 'E. & O.E.';
+    const logoSrc = s.branding?.logoUrl
+        ? (s.branding.logoUrl.startsWith('http') ? s.branding.logoUrl : `${window.location.origin}${s.branding.logoUrl}`)
+        : '';
 
     return `<html><head><title>${title} - ${docNo}</title>
 <style>
@@ -93,6 +96,7 @@ const template1 = (order, settings, docType = 'invoice') => {
 <div class="container">
   <div class="company-header">
     <div class="contact-info">CELL: ${s.phone1 || ''}${s.phone2 ? ', ' + s.phone2 : ''}</div>
+    ${logoSrc ? `<img src="${logoSrc}" alt="Logo" style="max-height:55px;max-width:160px;object-fit:contain;margin:0 auto 6px;display:block;"/>` : ''}
     <h1>${s.companyName || 'YOUR COMPANY'}</h1>
     <p>${s.address || ''}</p>
     ${s.gstNumber ? `<p><strong>GSTIN: ${s.gstNumber}</strong></p>` : ''}
@@ -181,6 +185,9 @@ const template2 = (order, settings, docType = 'invoice') => {
     const rateLabel = s.unitConfig?.rateLabel || 'Rate';
     const terms = order.terms || s.branding?.termsAndConditions || 'E. & O.E.';
     const sym = s.documentConfig?.currencySymbol || '₹';
+    const logoSrc = s.branding?.logoUrl
+        ? (s.branding.logoUrl.startsWith('http') ? s.branding.logoUrl : `${window.location.origin}${s.branding.logoUrl}`)
+        : '';
 
     return `<html><head><title>${title} - ${docNo}</title>
 <style>
@@ -222,6 +229,7 @@ const template2 = (order, settings, docType = 'invoice') => {
 <div class="container">
   <div class="header">
     <div>
+      ${logoSrc ? `<img src="${logoSrc}" alt="Logo" style="max-height:50px;max-width:150px;object-fit:contain;margin-bottom:6px;display:block;"/>` : ''}
       <div class="company-name">${s.companyName || 'YOUR COMPANY'}</div>
       <div class="company-sub">${s.address || ''}</div>
       ${s.gstNumber ? `<div class="company-sub">GSTIN: ${s.gstNumber}</div>` : ''}
@@ -328,6 +336,9 @@ const template3 = (order, settings, docType = 'invoice') => {
     const rateLabel = s.unitConfig?.rateLabel || 'Rate';
     const terms = order.terms || s.branding?.termsAndConditions || 'E. & O.E.';
     const sym = s.documentConfig?.currencySymbol || '₹';
+    const logoSrc = s.branding?.logoUrl
+        ? (s.branding.logoUrl.startsWith('http') ? s.branding.logoUrl : `${window.location.origin}${s.branding.logoUrl}`)
+        : '';
 
     return `<html><head><title>${title} - ${docNo}</title>
 <style>
@@ -367,6 +378,7 @@ const template3 = (order, settings, docType = 'invoice') => {
 </style></head><body>
   <div class="top">
     <div>
+      ${logoSrc ? `<img src="${logoSrc}" alt="Logo" style="max-height:50px;max-width:160px;object-fit:contain;margin-bottom:6px;display:block;"/>` : ''}
       <div class="company-name">${s.companyName || 'YOUR COMPANY'}</div>
       <div class="company-detail">
         ${s.address || ''}<br/>

@@ -2,7 +2,7 @@ import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { InventoryContext } from '../context/InventoryContext';
 import { AuthContext } from '../context/AuthContext';
-import axios from 'axios';
+import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { printDocument } from '../utils/printTemplates';
 
@@ -68,9 +68,9 @@ const Quotations = () => {
         try {
             setLoading(true);
             const [quotRes, custRes, itemsRes] = await Promise.all([
-                axios.get('/api/quotations', headers()),
-                axios.get('/api/customers?limit=1000', headers()),
-                axios.get('/api/items?limit=1000', headers()),
+                api.get('/quotations'),
+                api.get('/customers?limit=1000'),
+                api.get('/items?limit=1000'),
             ]);
             setQuotations(quotRes.data.data?.quotations || []);
             setCustomers(custRes.data.data?.customers || []);
@@ -88,7 +88,7 @@ const Quotations = () => {
         if (customerId) {
             setFetchingBalance(true);
             try {
-                const res = await axios.get(`/api/customers/${customerId}/balance`, headers());
+                const res = await api.get(`/customers/${customerId}/balance`);
                 const bal = res.data.data?.balance ?? 0;
                 setFormData(p => ({ ...p, oldBalance: bal }));
             } catch (err) {
@@ -208,10 +208,10 @@ const Quotations = () => {
         
         try {
             if (editingQuotation) {
-                await axios.put(`/api/quotations/${editingQuotation._id}`, payload, headers());
+                await api.put(`/quotations/${editingQuotation._id}`, payload);
                 toast.success('Quotation updated');
             } else {
-                await axios.post('/api/quotations', payload, headers());
+                await api.post('/quotations', payload);
                 toast.success('Quotation created');
             }
             closeModal();
@@ -225,7 +225,7 @@ const Quotations = () => {
         if (!window.confirm(`Convert Quotation ${quotation.quotationNumber} to an Invoice? This cannot be undone.`)) return;
         setConvertingId(quotation._id);
         try {
-            const res = await axios.post(`/api/quotations/${quotation._id}/convert`, {}, headers());
+            const res = await api.post(`/quotations/${quotation._id}/convert`, {});
             toast.success(`Invoice ${res.data.data.salesOrder.orderNumber} created!`);
             fetchAll();
         } catch (err) {
@@ -238,7 +238,7 @@ const Quotations = () => {
     const handleDelete = async (quotation) => {
         if (!window.confirm(`Reject Quotation ${quotation.quotationNumber}?`)) return;
         try {
-            await axios.delete(`/api/quotations/${quotation._id}`, headers());
+            await api.delete(`/quotations/${quotation._id}`);
             toast.success('Quotation rejected');
             fetchAll();
         } catch (err) {
@@ -344,69 +344,105 @@ const Quotations = () => {
                 </select>
             </div>
 
-            {/* Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Table / Card View */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden pb-24 lg:pb-0">
                 {loading ? (
                     <div className="p-12 text-center text-gray-400">Loading...</div>
                 ) : filtered.length === 0 ? (
                     <div className="p-12 text-center text-gray-400">No quotations found. Create one!</div>
                 ) : (
-                    <table className="w-full text-sm">
-                        <thead className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100 bg-gray-50">
-                            <tr>
-                                <th className="text-left p-4">Quotation #</th>
-                                <th className="text-left p-4">Customer</th>
-                                <th className="text-left p-4">Date</th>
-                                <th className="text-left p-4">Valid Until</th>
-                                <th className="text-right p-4">Amount</th>
-                                <th className="text-center p-4">Status</th>
-                                <th className="text-center p-4">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
+                    <>
+                        {/* Desktop Table View */}
+                        <div className="hidden lg:block overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100 bg-gray-50">
+                                    <tr>
+                                        <th className="text-left p-4">Quotation #</th>
+                                        <th className="text-left p-4">Customer</th>
+                                        <th className="text-left p-4">Date</th>
+                                        <th className="text-left p-4">Valid Until</th>
+                                        <th className="text-right p-4">Amount</th>
+                                        <th className="text-center p-4">Status</th>
+                                        <th className="text-center p-4">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {filtered.map(q => (
+                                        <tr key={q._id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="p-4 font-bold text-gray-800">{q.quotationNumber}</td>
+                                            <td className="p-4">
+                                                <div className="font-semibold text-gray-700">{q.customer?.companyName || q.customer?.name}</div>
+                                                <div className="text-xs text-gray-400">{q.customer?.phone}</div>
+                                            </td>
+                                            <td className="p-4 text-gray-500 text-xs">{new Date(q.quotationDate || q.createdAt).toLocaleDateString()}</td>
+                                            <td className={`p-4 text-xs font-medium ${q.validUntil && new Date(q.validUntil) < new Date() && q.status !== 'converted' ? 'text-red-500' : 'text-gray-500'}`}>
+                                                {q.validUntil ? new Date(q.validUntil).toLocaleDateString() : '-'}
+                                            </td>
+                                            <td className="p-4 text-right font-bold text-gray-800">₹{(q.totalAmount || 0).toLocaleString()}</td>
+                                            <td className="p-4 text-center">
+                                                <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${STATUS_COLORS[q.status] || 'bg-gray-100 text-gray-600'}`}>
+                                                    {q.status}
+                                                </span>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                                                    <button onClick={() => handlePrint(q)} title="Print" className="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-xs font-bold">📄</button>
+                                                    {q.status !== 'converted' && q.status !== 'rejected' && (
+                                                        <>
+                                                            <button onClick={() => openEdit(q)} title="Edit" className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded text-xs font-bold">✏️</button>
+                                                            <button
+                                                                onClick={() => handleConvert(q)}
+                                                                disabled={convertingId === q._id}
+                                                                title="Convert to Invoice"
+                                                                className="px-2 py-1 bg-green-50 hover:bg-green-100 text-green-700 rounded text-xs font-bold disabled:opacity-50"
+                                                            >
+                                                                {convertingId === q._id ? '...' : '✅ Invoice'}
+                                                            </button>
+                                                            <button onClick={() => handleDelete(q)} title="Reject" className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded text-xs font-bold">✕</button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Mobile Card View */}
+                        <div className="lg:hidden p-4 space-y-4">
                             {filtered.map(q => (
-                                <tr key={q._id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="p-4 font-bold text-gray-800">{q.quotationNumber}</td>
-                                    <td className="p-4">
-                                        <div className="font-semibold text-gray-700">{q.customer?.companyName || q.customer?.name}</div>
-                                        <div className="text-xs text-gray-400">{q.customer?.phone}</div>
-                                    </td>
-                                    <td className="p-4 text-gray-500 text-xs">{new Date(q.quotationDate || q.createdAt).toLocaleDateString()}</td>
-                                    <td className={`p-4 text-xs font-medium ${q.validUntil && new Date(q.validUntil) < new Date() && q.status !== 'converted' ? 'text-red-500' : 'text-gray-500'}`}>
-                                        {q.validUntil ? new Date(q.validUntil).toLocaleDateString() : '-'}
-                                    </td>
-                                    <td className="p-4 text-right font-bold text-gray-800">₹{(q.totalAmount || 0).toLocaleString()}</td>
-                                    <td className="p-4 text-center">
-                                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${STATUS_COLORS[q.status] || 'bg-gray-100 text-gray-600'}`}>
+                                <div key={q._id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 relative">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <div className="text-[10px] font-black text-rose-600 uppercase tracking-widest">{q.quotationNumber}</div>
+                                            <div className="font-bold text-gray-900">{q.customer?.companyName || q.customer?.name}</div>
+                                        </div>
+                                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${STATUS_COLORS[q.status] || 'bg-gray-100 text-gray-600'}`}>
                                             {q.status}
                                         </span>
-                                        {q.convertedToInvoice && (
-                                            <div className="text-[9px] text-purple-500 mt-1">Invoice created</div>
-                                        )}
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                                            <button onClick={() => handlePrint(q)} title="Print" className="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-xs font-bold">📄</button>
-                                            {q.status !== 'converted' && q.status !== 'rejected' && (
-                                                <>
-                                                    <button onClick={() => openEdit(q)} title="Edit" className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded text-xs font-bold">✏️</button>
-                                                    <button
-                                                        onClick={() => handleConvert(q)}
-                                                        disabled={convertingId === q._id}
-                                                        title="Convert to Invoice"
-                                                        className="px-2 py-1 bg-green-50 hover:bg-green-100 text-green-700 rounded text-xs font-bold disabled:opacity-50"
-                                                    >
-                                                        {convertingId === q._id ? '...' : '✅ Invoice'}
-                                                    </button>
-                                                    <button onClick={() => handleDelete(q)} title="Reject" className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded text-xs font-bold">✕</button>
-                                                </>
-                                            )}
+                                    </div>
+                                    <div className="flex justify-between items-end mt-4">
+                                        <div className="text-[10px] text-gray-400 font-bold uppercase">
+                                            {new Date(q.quotationDate || q.createdAt).toLocaleDateString()}
                                         </div>
-                                    </td>
-                                </tr>
+                                        <div className="text-right">
+                                            <div className="text-lg font-black text-gray-900">₹{(q.totalAmount || 0).toLocaleString()}</div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 flex gap-2 border-t border-gray-50 pt-3">
+                                        <button onClick={() => handlePrint(q)} className="flex-1 py-2 bg-gray-50 text-gray-600 rounded-lg text-[10px] font-bold uppercase">📄 Print</button>
+                                        {q.status !== 'converted' && q.status !== 'rejected' && (
+                                            <button onClick={() => openEdit(q)} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-bold uppercase">✏️ Edit</button>
+                                        )}
+                                        {q.status === 'accepted' && (
+                                            <button onClick={() => handleConvert(q)} disabled={convertingId === q._id} className="flex-[2] py-2 bg-green-600 text-white rounded-lg text-[10px] font-bold uppercase">✅ Convert</button>
+                                        )}
+                                    </div>
+                                </div>
                             ))}
-                        </tbody>
-                    </table>
+                        </div>
+                    </>
                 )}
             </div>
 

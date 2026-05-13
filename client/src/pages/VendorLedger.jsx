@@ -1,10 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 import { toast } from 'react-hot-toast';
-
-const api = (path, opts = {}) =>
-    axios({ url: `/api${path}`, ...opts, headers: { Authorization: `Bearer ${localStorage.getItem('token')}`, ...opts.headers } });
 
 const fmt = (n) => Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -24,9 +21,7 @@ const VendorLedger = () => {
     const [vendors, setVendors] = useState([]);
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [from, setFrom] = useState('');
-    const [to, setTo] = useState('');
-
+    
     // Payment modal state
     const [payModal, setPayModal] = useState(false);
     const [paying, setPaying] = useState(false);
@@ -39,9 +34,10 @@ const VendorLedger = () => {
         }
         try {
             setLoading(true);
-            const res = await api(`/vendor-ledger/${selectedVendorId}`);
-            setData(res.data.data);
-        } catch {
+            const res = await api.get(`/vendor-ledger/${selectedVendorId}`);
+            setData(res.data?.data || null);
+        } catch (err) {
+            console.error('Ledger fetch error:', err);
             toast.error('Failed to fetch ledger');
         } finally {
             setLoading(false);
@@ -50,9 +46,15 @@ const VendorLedger = () => {
 
     useEffect(() => {
         // Fetch vendors list for dropdown
-        api('/vendors').then(res => {
-            setVendors(res.data.data);
-        }).catch(() => {});
+        api.get('/vendors?limit=1000').then(res => {
+            const list = res.data?.data?.vendors || [];
+            setVendors(list);
+        }).catch(err => {
+            console.error('Vendors fetch error:', err);
+        });
+    }, []);
+
+    useEffect(() => {
         fetchLedger(); 
     }, [fetchLedger]);
 
@@ -77,10 +79,7 @@ const VendorLedger = () => {
         if (!payForm.amount || Number(payForm.amount) <= 0) return toast.error('Enter a valid amount');
         setPaying(true);
         try {
-            await api(`/vendor-ledger/payment`, {
-                method: 'POST',
-                data: { ...payForm, vendorId: selectedVendorId, amount: Number(payForm.amount) }
-            });
+            await api.post(`/vendor-ledger/payment`, { ...payForm, vendorId: selectedVendorId, amount: Number(payForm.amount) });
             toast.success('Payment recorded successfully');
             setPayModal(false);
             setPayForm({ amount: '', paymentMode: 'cash', date: new Date().toISOString().split('T')[0], notes: '', description: '' });
@@ -93,7 +92,7 @@ const VendorLedger = () => {
     };
 
     const vendor = data?.vendor;
-    const entries = data?.ledger || [];
+    const entries = Array.isArray(data?.ledger) ? data.ledger : [];
     const balance = vendor?.currentBalance ?? 0;
 
     const typeStyle = (type) => {

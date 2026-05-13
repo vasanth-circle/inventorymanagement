@@ -155,10 +155,13 @@ const StockInward = () => {
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold text-gray-900">Stock Inward</h1>
-                <p className="text-gray-600 mt-2">Add new items or increase existing stock</p>
+        <div className="max-w-4xl mx-auto space-y-4 pb-24 lg:pb-8">
+            <div className="flex items-center space-x-3 pb-2 border-b border-gray-100">
+                <div className="w-10 h-10 bg-white shadow-sm border border-gray-100 rounded-lg flex items-center justify-center text-xl">📥</div>
+                <div>
+                    <h1 className="text-xl font-bold text-gray-900 leading-tight">Stock Inward</h1>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Add or Restock Items</p>
+                </div>
             </div>
 
             <div className="bg-white rounded-lg shadow-md p-6">

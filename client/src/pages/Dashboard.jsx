@@ -65,68 +65,68 @@ const Dashboard = () => {
     }
 
     return (
-        <div className="p-1 space-y-6 max-w-[1600px] mx-auto">
+        <div className="p-1 space-y-4 max-w-[1600px] mx-auto pb-24 lg:pb-8">
             {/* Header Section */}
             <div className="flex justify-between items-end pb-2 border-b border-gray-100">
                 <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-white shadow-sm border border-gray-100 rounded-lg flex items-center justify-center text-xl">🏠</div>
+                    <div className="w-9 h-9 bg-white shadow-sm border border-gray-100 rounded-lg flex items-center justify-center text-lg">🏠</div>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-800">Hello, {stats?.userName || 'User'}!</h1>
-                        <p className="text-xs text-gray-400 font-medium">{stats?.companyName || 'Inventory Management'}</p>
+                        <h1 className="text-xl font-bold text-gray-800 leading-tight">Hello, {stats?.userName || 'User'}!</h1>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">{stats?.companyName || 'Inventory Management'}</p>
                     </div>
                 </div>
-                <button onClick={fetchDashboardData} className="p-2 text-gray-400 hover:text-rose-600 transition-colors">
-                    🔄 Refresh
+                <button onClick={fetchDashboardData} className="p-2 text-gray-400 hover:text-rose-600 transition-colors text-xs font-bold uppercase tracking-widest">
+                    Refresh
                 </button>
             </div>
 
-            <div className="grid grid-cols-12 gap-6">
-                {/* Main Content: Left 8 Columns */}
-                <div className="col-span-12 lg:col-span-8 space-y-6">
+            <div className="grid grid-cols-12 gap-4 lg:gap-6">
+                {/* Main Content */}
+                <div className="col-span-12 lg:col-span-8 space-y-4 lg:space-y-6">
 
-                    {/* Sales Activity Header */}
-                    <div className="zoho-card p-6 border-l-4 border-l-rose-500">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-sm font-bold text-gray-700 uppercase tracking-widest">Sales Activity</h2>
-                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">This Month</span>
+                    {/* Sales Activity */}
+                    <div className="zoho-card border-l-4 border-l-rose-500 overflow-hidden">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sales Activity</h2>
+                            <span className="text-[9px] text-gray-300 font-bold uppercase">This Month</span>
                         </div>
-                        <div className="grid grid-cols-4 divide-x divide-gray-100">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 divide-y md:divide-y-0 md:divide-x divide-gray-100">
                             {[
                                 { key: 'packed', label: 'To Be Packed', color: 'text-blue-600', icon: '📦' },
                                 { key: 'shipped', label: 'To Be Shipped', color: 'text-rose-500', icon: '🚚' },
                                 { key: 'delivered', label: 'To Be Delivered', color: 'text-emerald-500', icon: '🏠' },
                                 { key: 'invoiced', label: 'To Be Invoiced', color: 'text-yellow-600', icon: '📄' }
-                            ].map((activity) => (
-                                <div key={activity.key} className="px-4 text-center group cursor-pointer">
-                                    <div className={`text-3xl font-black mb-1 ${activity.color}`}>
+                            ].map((activity, idx) => (
+                                <div key={activity.key} className={`p-2 text-center group cursor-pointer ${idx >= 2 ? 'pt-4 md:pt-2' : ''}`}>
+                                    <div className={`text-2xl font-black mb-0.5 ${activity.color}`}>
                                         {stats?.salesActivity?.[activity.key] || 0}
                                     </div>
-                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight group-hover:text-gray-600">
-                                        {activity.icon} {activity.label}
+                                    <div className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter group-hover:text-gray-600 whitespace-nowrap">
+                                        {activity.label}
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    {/* Stock Movement Graph */}
-                    <div className="zoho-card p-6">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Stock Movement Trend (Last 7 Days)</h3>
+                    {/* Stock Movement Trend */}
+                    <div className="zoho-card">
+                        <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
+                            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Stock Trend</h3>
                             <div className="flex items-center space-x-3">
                                 <div className="flex items-center space-x-1">
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase">Inward</span>
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                    <span className="text-[8px] font-bold text-gray-400 uppercase">In</span>
                                 </div>
                                 <div className="flex items-center space-x-1">
-                                    <div className="w-2 h-2 rounded-full bg-rose-500"></div>
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase">Sales</span>
+                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
+                                    <span className="text-[8px] font-bold text-gray-400 uppercase">Out</span>
                                 </div>
                             </div>
                         </div>
-                        <div className="h-[250px] w-full">
+                        <div className="h-[180px] lg:h-[250px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={trendData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                <AreaChart data={trendData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="colorIn" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
@@ -142,145 +142,90 @@ const Dashboard = () => {
                                         dataKey="date" 
                                         axisLine={false} 
                                         tickLine={false} 
-                                        tick={{fontSize: 10, fill: '#94a3b8', fontWeight: 600}}
+                                        tick={{fontSize: 8, fill: '#94a3b8', fontWeight: 600}}
                                         tickFormatter={(str) => new Date(str).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                                     />
-                                    <YAxis hide />
+                                    <YAxis tick={{fontSize: 8, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
                                     <Tooltip 
-                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '10px', fontWeight: 'bold' }}
-                                        itemStyle={{ padding: '2px 0' }}
+                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '9px', fontWeight: 'bold' }}
                                     />
-                                    <Area type="monotone" dataKey="inward" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIn)" />
-                                    <Area type="monotone" dataKey="outward" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorOut)" />
+                                    <Area type="monotone" dataKey="inward" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorIn)" />
+                                    <Area type="monotone" dataKey="outward" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorOut)" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
 
-                    {/* Product Details & Top Selling */}
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="zoho-card p-6">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 px-1">Product Details</h3>
-                            <div className="space-y-4">
+                    {/* Summary Cards Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="zoho-card">
+                            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Stock Details</h3>
+                            <div className="space-y-2">
                                 {[
-                                    { label: 'Low Stock Items', value: stats?.lowStockItems || 0, color: 'text-rose-600', path: '/inventory' },
-                                    { label: 'Active Item Groups', value: stats?.totalCategories || 0, color: 'text-slate-700' },
-                                    { label: 'Active Items', value: stats?.totalItems || 0, color: 'text-slate-700' },
-                                    { label: 'Unconfirmed Items', value: stats?.outOfStockItems || 0, color: 'text-yellow-600' },
-                                    { label: 'Damaged Stock', value: stats?.totalDamagedItems || 0, color: 'text-red-500' }
+                                    { label: 'Low Stock', value: stats?.lowStockItems || 0, color: 'text-rose-600' },
+                                    { label: 'Item Groups', value: stats?.totalCategories || 0, color: 'text-slate-700' },
+                                    { label: 'Total Items', value: stats?.totalItems || 0, color: 'text-slate-700' },
+                                    { label: 'Out of Stock', value: stats?.outOfStockItems || 0, color: 'text-orange-600' }
                                 ].map((row, i) => (
-                                    <div key={i} className="flex justify-between items-center p-2 hover:bg-gray-50 rounded-lg transition-colors group cursor-pointer">
-                                        <span className="text-xs text-gray-500 font-medium group-hover:text-gray-700">{row.label}</span>
-                                        <span className={`text-sm font-black ${row.color}`}>{row.value}</span>
+                                    <div key={i} className="flex justify-between items-center p-2 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-50 last:border-0">
+                                        <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">{row.label}</span>
+                                        <span className={`text-xs font-black ${row.color}`}>{row.value}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
-                        <div className="zoho-card p-6">
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Top Selling Items</h3>
-                                <select className="text-[10px] bg-transparent border-none font-bold text-gray-500 outline-none cursor-pointer">
-                                    <option>This Year</option>
-                                    <option>Previous Year</option>
-                                </select>
+                        <div className="zoho-card">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Top Items</h3>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-2">
                                 {stats?.topSellingItems?.length > 0 ? (
                                     stats.topSellingItems.slice(0, 2).map((item, i) => (
-                                        <div key={i} className="text-center p-3 border border-gray-50 rounded-xl bg-slate-50/50">
-                                            <div className="text-xl mb-1">{i === 0 ? '👔' : '👖'}</div>
-                                            <div className="text-[10px] font-bold text-gray-400 uppercase truncate" title={item.name}>{item.name}</div>
-                                            <div className="text-xs font-black text-gray-700">{item.totalSold} pcs</div>
+                                        <div key={i} className="text-center p-2 border border-gray-50 rounded-xl bg-slate-50/50">
+                                            <div className="text-[9px] font-bold text-gray-400 uppercase truncate mb-1" title={item.name}>{item.name}</div>
+                                            <div className="text-xs font-black text-gray-700">{item.totalSold} <span className="text-[8px] font-normal">PCS</span></div>
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="col-span-2 text-center py-4 text-[10px] text-gray-400 font-bold uppercase">No sales yet</div>
+                                    <div className="col-span-2 text-center py-4 text-[9px] text-gray-300 font-bold uppercase">No data</div>
                                 )}
                             </div>
                         </div>
                     </div>
-
-                    {/* Financial Overview (Amount Flow) */}
-                    {isFinancialAdmin && (
-                        <div className="zoho-card p-6 border-l-4 border-l-emerald-500">
-                            <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-sm font-bold text-gray-700 uppercase tracking-widest">Financial Overview (Amount Flow)</h2>
-                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Net Volume</span>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 divide-x divide-gray-100">
-                                <div className="text-center">
-                                    <div className="text-2xl font-black text-rose-600 mb-1">
-                                        {formatCurrency(stats?.totalPurchase || 0)}
-                                    </div>
-                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                        🛒 Total Purchases
-                                    </div>
-                                </div>
-                                <div className="text-center px-4">
-                                    <div className="text-2xl font-black text-emerald-600 mb-1">
-                                        {formatCurrency(stats?.totalSales || 0)}
-                                    </div>
-                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                        💰 Total Sales
-                                    </div>
-                                </div>
-                                <div className="text-center px-4">
-                                    <div className={`text-2xl font-black mb-1 ${(stats?.totalSales - stats?.totalPurchase) >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
-                                        {formatCurrency(stats?.totalSales - stats?.totalPurchase)}
-                                    </div>
-                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                        📈 Net Flow (S-P)
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
-                {/* Sidebar Column: Right 4 Columns */}
-                <div className="col-span-12 lg:col-span-4 space-y-6">
-                    {/* Inventory Summary Widget */}
-                    <div className="zoho-card overflow-hidden">
-                        <div className="bg-slate-50 p-4 border-b border-gray-100">
-                            <h3 className="text-xs font-bold text-gray-600 uppercase tracking-wider">Inventory Summary</h3>
-                        </div>
-                        <div className="p-0">
-                            <div className="flex items-center justify-between p-5 border-b border-gray-50 hover:bg-slate-50/30 transition-colors">
-                                <span className="text-xs font-semibold text-gray-500 uppercase tracking-tighter">Quantity in Hand</span>
-                                <span className="text-lg font-black text-gray-800">{stats?.totalItemsCount || 0}</span>
-                            </div>
-                            <div className="flex items-center justify-between p-5 hover:bg-slate-50/30 transition-colors">
-                                <span className="text-xs font-semibold text-gray-500 uppercase tracking-tighter">Quantity to be Received</span>
-                                <span className="text-lg font-black text-gray-800">{stats?.pendingReceipts || 0}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Stock Value Card */}
+                {/* Sidebar Column */}
+                <div className="col-span-12 lg:col-span-4 space-y-4 lg:space-y-6">
+                    {/* Finance Card */}
                     {isFinancialAdmin && (
-                        <div className="zoho-card p-6 bg-gradient-to-br from-white to-rose-50/30">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Global Value</h3>
-                                <span className="text-lg">💰</span>
+                        <div className="zoho-card bg-slate-900 text-white border-none shadow-lg">
+                            <div className="flex justify-between items-center mb-4 opacity-60">
+                                <span className="text-[10px] font-bold uppercase tracking-widest">Stock Valuation</span>
+                                <span className="text-lg">💎</span>
                             </div>
-                            <div className="text-3xl font-black text-rose-600 tracking-tighter mb-1">
+                            <div className="text-2xl font-black tracking-tight mb-1">
                                 {formatCurrency(stats?.stockValue || 0)}
                             </div>
-                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Total Valuation of Stock</div>
+                            <div className="text-[9px] opacity-40 font-bold uppercase tracking-tighter">Total value at cost</div>
                         </div>
                     )}
 
-                    {/* Active Channels / Integrations */}
-                    <div className="zoho-card p-6 relative overflow-hidden group">
-                        <div className="absolute -right-4 -bottom-4 text-6xl opacity-5 transition-transform group-hover:scale-110">🔌</div>
-                        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Integrations</h3>
-                        <div className="flex items-center space-x-2">
-                            <span className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-rose-500 font-bold">Z</span>
-                            <span className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 font-bold">F</span>
-                            <span className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 font-bold">+</span>
+                    {/* Inventory Summary */}
+                    <div className="zoho-card p-0 overflow-hidden">
+                        <div className="bg-slate-50 px-4 py-2 border-b border-gray-100">
+                            <h3 className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Inventory Summary</h3>
                         </div>
-                        <p className="text-[10px] text-gray-400 font-medium mt-3 italic">Connect with Shopify, Amazon, and more.</p>
+                        <div className="divide-y divide-gray-50">
+                            <div className="flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Qty in Hand</span>
+                                <span className="text-sm font-black text-gray-800">{stats?.totalItemsCount || 0}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Pending Rect</span>
+                                <span className="text-sm font-black text-gray-800">{stats?.pendingReceipts || 0}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

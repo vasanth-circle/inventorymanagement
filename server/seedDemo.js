@@ -39,6 +39,7 @@ import SalesOrder from './models/SalesOrder.js';
 import Dispatch from './models/Dispatch.js';
 import Transaction from './models/Transaction.js';
 import Counter from './models/Counter.js';
+import VendorLedger from './models/VendorLedger.js';
 
 // ── Helpers ───────────────────────────────────────────────────
 const log = (msg) => console.log(`  ✅ ${msg}`);
@@ -61,6 +62,8 @@ const seedDemo = async () => {
             waitForConn(coreConn, 'Core'),
         ]);
         console.log('   DB connections ready.\n');
+
+        const isReset = process.argv.includes('--reset');
 
         // ══════════════════════════════════════════════════════
         // STEP 1: Resolve Tenant & User from existing records
@@ -89,6 +92,34 @@ const seedDemo = async () => {
 
         log(`User   : ${user.name} (${user.email}) — _id: ${userId}`);
         log(`Tenant : ${tenant.businessName} — _id: ${tenantId}`);
+
+        if (isReset) {
+            section('🔥 Reset Flag Detected — Cleaning up existing data');
+            const modelsToClean = [
+                { model: Category, name: 'Categories' },
+                { model: Location, name: 'Locations' },
+                { model: Setting, name: 'Settings' },
+                { model: Vendor, name: 'Vendors' },
+                { model: Customer, name: 'Customers' },
+                { model: CustomerLedger, name: 'Customer Ledgers' },
+                { model: Item, name: 'Items' },
+                { model: PurchaseOrder, name: 'Purchase Orders' },
+                { model: Quotation, name: 'Quotations' },
+                { model: SalesOrder, name: 'Sales Orders' },
+                { model: Dispatch, name: 'Dispatches' },
+                { model: Transaction, name: 'Transactions' },
+                { model: Counter, name: 'Counters' },
+            ];
+
+            for (const { model, name } of modelsToClean) {
+                const res = await model.deleteMany({ tenantId });
+                console.log(`  🗑️  Deleted ${res.deletedCount} ${name}`);
+            }
+            // Also clean VendorLedger
+            const vlRes = await VendorLedger.deleteMany({ tenantId });
+            console.log(`  🗑️  Deleted ${vlRes.deletedCount} Vendor Ledgers`);
+            console.log('  ✨ Cleanup complete.\n');
+        }
 
         // ══════════════════════════════════════════════════════
         // STEP 2: Settings
@@ -487,6 +518,41 @@ const seedDemo = async () => {
                 log(`Inward transaction: ${tx.itemName} +${tx.qty} (ref: ${tx.ref})`);
             } else {
                 warn(`Inward transaction already exists: ${tx.itemName} / ${tx.ref}`);
+            }
+        }
+
+        // ══════════════════════════════════════════════════════
+        // STEP 10.5: Vendor Ledger — Bill Entries (from POs)
+        // ══════════════════════════════════════════════════════
+        section('Step 10.5 — Vendor Ledger (Purchases)');
+
+        const poList = await PurchaseOrder.find({ tenantId });
+        for (const po of poList) {
+            const exists = await VendorLedger.findOne({ refId: po._id, type: 'bill', tenantId });
+            if (!exists) {
+                const vendor = await Vendor.findById(po.vendor);
+                const prevBal = vendor.currentBalance || 0;
+                const newBal = prevBal + po.totalAmount;
+
+                await VendorLedger.create({
+                    tenantId,
+                    vendor: po.vendor,
+                    date: po.orderDate,
+                    type: 'bill',
+                    refType: 'PurchaseOrder',
+                    refId: po._id,
+                    refNumber: po.orderNumber,
+                    description: `Bill from PO #${po.orderNumber}`,
+                    debit: 0,
+                    credit: po.totalAmount,
+                    balance: newBal,
+                    createdBy: userId,
+                });
+
+                await Vendor.findByIdAndUpdate(po.vendor, { currentBalance: newBal });
+                log(`Vendor ledger bill entry: ${vendor.name} — ${po.orderNumber} ₹${po.totalAmount}`);
+            } else {
+                warn(`Vendor ledger bill already exists for ${po.orderNumber}`);
             }
         }
 
@@ -904,11 +970,12 @@ const seedDemo = async () => {
         console.log('   • 2 Customer Ledger opening entries');
         console.log('   • 2 Purchase Orders (received)');
         console.log('   • 4 Inward Transactions');
+        console.log('   • 2 Vendor Ledger bill entries');
         console.log('   • 3 Quotations (draft / sent / converted)');
         console.log('   • 3 Sales Orders (invoiced / confirmed / dispatched)');
         console.log('   • 2 Dispatches');
         console.log('   • 3 Outward Transactions');
-        console.log('   • Ledger bill + payment entries');
+        console.log('   • Customer Ledger bill + payment entries');
         console.log('   • 4 Counters');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 

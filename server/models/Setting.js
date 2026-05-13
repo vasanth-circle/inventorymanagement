@@ -65,6 +65,7 @@ const settingSchema = new mongoose.Schema({
 
     // ── Branding & Bank Details ──────────────────────────────────────────
     branding: {
+        logoUrl: { type: String, default: '' },
         tagline: { type: String, default: '' },
         website: { type: String, default: '' },
         email: { type: String, default: '' },

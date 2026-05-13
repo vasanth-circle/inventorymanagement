@@ -1,6 +1,7 @@
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext, useEffect, useRef } from 'react';
 import { InventoryContext } from '../context/InventoryContext';
 import { generatePreviewHtml } from '../utils/printTemplates';
+import api from '../utils/api';
 import toast from 'react-hot-toast';
 
 const TABS = [
@@ -43,6 +44,9 @@ const Settings = () => {
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('company');
     const [previewTemplate, setPreviewTemplate] = useState(null);
+    const [logoUploading, setLogoUploading] = useState(false);
+    const [logoPreview, setLogoPreview] = useState('');
+    const logoInputRef = useRef(null);
 
     const [formData, setFormData] = useState({
         // Company
@@ -127,6 +131,8 @@ const Settings = () => {
                     termsAndConditions: billingSettings.branding?.termsAndConditions || '1. Goods once sold will not be taken back.\n2. No responsibility for breakages after leaving premises.\n3. E. & O.E.',
                 },
             });
+            // Sync logo preview from saved settings
+            setLogoPreview(billingSettings.branding?.logoUrl || '');
         }
     }, [billingSettings]);
 
@@ -139,6 +145,42 @@ const Settings = () => {
             ...prev,
             [section]: { ...prev[section], [key]: value },
         }));
+    };
+
+    const handleLogoUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        // Local preview immediately
+        setLogoPreview(URL.createObjectURL(file));
+        setLogoUploading(true);
+        try {
+            const form = new FormData();
+            form.append('logo', file);
+            const res = await api.post('/settings/billing/logo', form, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            setLogoPreview(res.data?.data?.logoUrl || logoPreview);
+            toast.success('Logo uploaded successfully!');
+        } catch (err) {
+            toast.error('Failed to upload logo');
+            setLogoPreview(billingSettings?.branding?.logoUrl || '');
+        } finally {
+            setLogoUploading(false);
+            if (logoInputRef.current) logoInputRef.current.value = '';
+        }
+    };
+
+    const handleLogoRemove = async () => {
+        setLogoUploading(true);
+        try {
+            await api.delete('/settings/billing/logo');
+            setLogoPreview('');
+            toast.success('Logo removed');
+        } catch {
+            toast.error('Failed to remove logo');
+        } finally {
+            setLogoUploading(false);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -457,10 +499,61 @@ const Settings = () => {
                         {/* ── TAB: BRANDING & BANK ────────────────────────────────────────── */}
                         {activeTab === 'branding' && (
                             <>
+                                {/* ── Logo Upload ── */}
                                 <h2 className="text-sm font-black text-gray-700 flex items-center gap-2">
-                                    <span className="w-7 h-7 bg-teal-100 text-teal-600 rounded-lg flex items-center justify-center text-sm">✨</span>
-                                    Branding
+                                    <span className="w-7 h-7 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center text-sm">🖼️</span>
+                                    Company Logo
                                 </h2>
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                                    {/* Preview box */}
+                                    <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center overflow-hidden bg-white flex-shrink-0">
+                                        {logoPreview ? (
+                                            <img
+                                                src={logoPreview.startsWith('blob:') ? logoPreview : logoPreview}
+                                                alt="Company Logo"
+                                                className="w-full h-full object-contain p-1"
+                                            />
+                                        ) : (
+                                            <span className="text-3xl opacity-30">🏢</span>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 space-y-2">
+                                        <p className="text-xs font-bold text-gray-600">Upload your company logo to appear on invoices and quotations.</p>
+                                        <p className="text-[10px] text-gray-400">PNG, JPG, WebP or SVG — Max 5MB. Recommended: transparent background, min 200×80px.</p>
+                                        <div className="flex gap-2 flex-wrap">
+                                            <input
+                                                ref={logoInputRef}
+                                                type="file"
+                                                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                                                className="hidden"
+                                                id="logo-upload"
+                                                onChange={handleLogoUpload}
+                                            />
+                                            <label
+                                                htmlFor="logo-upload"
+                                                className={`px-4 py-2 bg-rose-600 text-white text-xs font-black rounded-lg cursor-pointer hover:bg-rose-700 transition-all flex items-center gap-1.5 ${logoUploading ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}
+                                            >
+                                                {logoUploading ? '⏳ Uploading...' : '📤 Upload Logo'}
+                                            </label>
+                                            {logoPreview && (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleLogoRemove}
+                                                    disabled={logoUploading}
+                                                    className="px-4 py-2 border border-gray-300 text-gray-600 text-xs font-black rounded-lg hover:bg-gray-100 transition-all disabled:opacity-50"
+                                                >
+                                                    🗑️ Remove
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="pt-2 border-t border-gray-100">
+                                    <h2 className="text-sm font-black text-gray-700 flex items-center gap-2 mb-4">
+                                        <span className="w-7 h-7 bg-teal-100 text-teal-600 rounded-lg flex items-center justify-center text-sm">✨</span>
+                                        Branding
+                                    </h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <InputField label="Tagline / Slogan" name="tagline"
                                         value={formData.branding.tagline}
@@ -474,6 +567,7 @@ const Settings = () => {
                                         value={formData.branding.email}
                                         onChange={e => handleNested('branding', 'email', e.target.value)}
                                         placeholder="info@yourcompany.com" />
+                                </div>
                                 </div>
 
                                 <div className="pt-4 border-t border-gray-100">

@@ -322,93 +322,79 @@ const Inventory = () => {
                 </div>
             </div>
 
-            {/* Inventory Table */}
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            {/* Inventory Table / Card View */}
+            <div className="bg-white rounded-lg shadow-md overflow-hidden relative min-h-[400px]">
                 {loading ? (
                     <div className="flex items-center justify-center h-64">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
                     </div>
                 ) : (
                     <>
-                        <div className="overflow-x-auto">
+                        {/* Desktop Table View */}
+                        <div className="hidden lg:block overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Barcode</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price (₹)</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Image</th>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Name & Details</th>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Category</th>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Stock</th>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Price (₹)</th>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
+                                <tbody className="bg-white divide-y divide-gray-100">
                                     {items.length > 0 ? (
                                         items.map((item) => (
-                                            <tr key={item._id} className="hover:bg-gray-50">
+                                            <tr key={item._id} className="hover:bg-gray-50/50 transition-colors">
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     {item.image ? (
-                                                        <img src={item.image} alt={item.name} className="h-12 w-12 object-cover rounded" />
+                                                        <img src={item.image} alt={item.name} className="h-12 w-12 object-cover rounded-lg border border-gray-100 shadow-sm" />
                                                     ) : (
-                                                        <div className="h-12 w-12 bg-gray-200 rounded flex items-center justify-center text-gray-400">
+                                                        <div className="h-12 w-12 bg-gray-50 rounded-lg flex items-center justify-center text-gray-400 border border-gray-100 border-dashed">
                                                             📦
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                    <div className="font-bold">{item.name}</div>
-                                                    {item.batches && item.batches.length > 0 && (
-                                                        <div className="mt-2 space-y-1">
-                                                            {item.batches.map((batch, idx) => (
-                                                                <div key={idx} className="flex items-center text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100 w-fit">
-                                                                    <span className="font-bold mr-1">{batch.batchNumber || 'Batch'}:</span>
-                                                                    <span>{batch.quantity} SqFt @ ₹{batch.price}</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
+                                                <td className="px-6 py-4">
+                                                    <div className="font-bold text-gray-900 leading-tight">{item.name}</div>
+                                                    <div className="text-[10px] text-gray-400 font-mono mt-0.5">{item.barcode || 'NO BARCODE'}</div>
                                                     {item.customFields && Object.keys(item.customFields).length > 0 && (
-                                                        <div className="flex flex-wrap gap-1 mt-1">
-                                                            {Object.entries(item.customFields).map(([key, value]) => (
-                                                                <span key={key} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                                                        <div className="flex flex-wrap gap-1 mt-1.5">
+                                                            {Object.entries(item.customFields).slice(0, 3).map(([key, value]) => (
+                                                                <span key={key} className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-tighter">
                                                                     {key}: {value}
                                                                 </span>
                                                             ))}
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                                    {item.barcode || 'N/A'}
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className="px-2 py-1 bg-gray-100 text-gray-600 text-[10px] font-bold rounded-md border border-gray-200">
+                                                        {item.category?.name || 'Uncategorized'}
+                                                    </span>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                                    {item.category?.name}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                                                    {item.quantity}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                    {formatCurrency(item.price)}
+                                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                    <div className="text-sm font-black text-gray-900">{item.quantity}</div>
+                                                    <div className="text-[10px] text-gray-400 uppercase font-bold">Qty</div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStockStatusColor(item.stockStatus)}`}>
+                                                    <div className="text-sm font-black text-rose-600">{formatCurrency(item.price)}</div>
+                                                    {item.purchasePrice && <div className="text-[9px] text-gray-400 line-through">₹{item.purchasePrice}</div>}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className={`px-2 py-1 text-[10px] font-bold rounded-full uppercase tracking-wider ${getStockStatusColor(item.stockStatus)}`}>
                                                         {item.stockStatus}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                                    <div className="flex space-x-2">
-                                                        <button
-                                                            onClick={() => handleEdit(item)}
-                                                            className="text-primary-600 hover:text-primary-900"
-                                                        >
-                                                            ✏️ Edit
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                    <div className="flex space-x-3">
+                                                        <button onClick={() => handleEdit(item)} className="text-slate-400 hover:text-blue-600 transition-colors" title="Edit">
+                                                            <span className="text-lg">✏️</span>
                                                         </button>
-                                                        <button
-                                                            onClick={() => handleDelete(item._id)}
-                                                            className="text-red-600 hover:text-red-900"
-                                                        >
-                                                            🗑️ Delete
+                                                        <button onClick={() => handleDelete(item._id)} className="text-slate-400 hover:text-red-600 transition-colors" title="Delete">
+                                                            <span className="text-lg">🗑️</span>
                                                         </button>
                                                     </div>
                                                 </td>
@@ -416,8 +402,9 @@ const Inventory = () => {
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan="8" className="px-6 py-4 text-center text-gray-500">
-                                                No items found
+                                            <td colSpan="7" className="px-6 py-12 text-center text-gray-400">
+                                                <div className="text-3xl mb-2">🔍</div>
+                                                <div className="font-bold uppercase text-xs tracking-widest">No items found</div>
                                             </td>
                                         </tr>
                                     )}
@@ -425,24 +412,77 @@ const Inventory = () => {
                             </table>
                         </div>
 
+                        {/* Mobile Card View */}
+                        <div className="lg:hidden grid grid-cols-1 gap-4 p-4">
+                            {items.length > 0 ? (
+                                items.map((item) => (
+                                    <div key={item._id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 relative overflow-hidden group">
+                                        <div className={`absolute top-0 left-0 w-1 h-full ${item.stockStatus === 'in-stock' ? 'bg-green-500' : item.stockStatus === 'low-stock' ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
+                                        <div className="flex items-start gap-4">
+                                            <div className="flex-shrink-0">
+                                                {item.image ? (
+                                                    <img src={item.image} alt={item.name} className="h-16 w-16 object-cover rounded-lg shadow-sm border border-gray-100" />
+                                                ) : (
+                                                    <div className="h-16 w-16 bg-gray-50 rounded-lg flex items-center justify-center text-gray-300 border border-gray-100 border-dashed text-2xl">
+                                                        📦
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex justify-between items-start">
+                                                    <h4 className="text-sm font-black text-gray-900 truncate pr-8">{item.name}</h4>
+                                                    <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-100">₹{item.price}</span>
+                                                </div>
+                                                <div className="text-[10px] text-gray-400 font-mono mt-0.5">{item.barcode || 'No Barcode'}</div>
+                                                
+                                                <div className="mt-3 flex items-center justify-between">
+                                                    <div className="flex items-center space-x-2">
+                                                        <div className="text-center">
+                                                            <div className="text-xs font-black text-gray-800">{item.quantity}</div>
+                                                            <div className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">Stock</div>
+                                                        </div>
+                                                        <div className="w-px h-4 bg-gray-100"></div>
+                                                        <span className="text-[9px] font-bold text-gray-500 uppercase">{item.category?.name || 'UNCAT'}</span>
+                                                    </div>
+                                                    <div className="flex space-x-2">
+                                                        <button onClick={() => handleEdit(item)} className="p-1.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100">
+                                                            <span className="text-xs">✏️</span>
+                                                        </button>
+                                                        <button onClick={() => handleDelete(item._id)} className="p-1.5 bg-red-50 text-red-600 rounded-lg border border-red-100">
+                                                            <span className="text-xs">🗑️</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-12 text-gray-400">
+                                    <div className="text-3xl mb-2">🔍</div>
+                                    <div className="font-bold uppercase text-xs tracking-widest">No items found</div>
+                                </div>
+                            )}
+                        </div>
+
                         {/* Pagination */}
                         {pagination.totalPages > 1 && (
-                            <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
-                                <div className="text-sm text-gray-700">
-                                    Showing page {pagination.currentPage} of {pagination.totalPages} ({pagination.totalItems} total items)
+                            <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-100">
+                                <div className="hidden sm:block text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                    Page {pagination.currentPage} / {pagination.totalPages}
                                 </div>
-                                <div className="flex space-x-2">
+                                <div className="flex w-full sm:w-auto justify-between sm:justify-end gap-2">
                                     <button
                                         onClick={() => setFilters({ ...filters, page: filters.page - 1 })}
                                         disabled={filters.page === 1}
-                                        className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="flex-1 sm:flex-none px-4 py-1.5 border border-gray-200 rounded-lg text-[10px] font-bold text-gray-600 hover:bg-white disabled:opacity-30 transition-all uppercase tracking-widest"
                                     >
-                                        Previous
+                                        Prev
                                     </button>
                                     <button
                                         onClick={() => setFilters({ ...filters, page: filters.page + 1 })}
                                         disabled={filters.page >= pagination.totalPages}
-                                        className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="flex-1 sm:flex-none px-4 py-1.5 border border-gray-200 rounded-lg text-[10px] font-bold text-gray-600 hover:bg-white disabled:opacity-30 transition-all uppercase tracking-widest"
                                     >
                                         Next
                                     </button>
@@ -451,6 +491,14 @@ const Inventory = () => {
                         )}
                     </>
                 )}
+
+                {/* Mobile Floating Action Button */}
+                <button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="lg:hidden fixed bottom-20 right-4 w-14 h-14 bg-rose-600 text-white rounded-full shadow-lg flex items-center justify-center text-2xl z-40 animate-bounce-slow"
+                >
+                    +
+                </button>
             </div>
 
             {/* Edit Modal */}

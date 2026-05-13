@@ -84,18 +84,21 @@ const Reports = () => {
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Intelligence & Analytics</h1>
-                    <p className="text-gray-500">Track your inventory flows and sales performance</p>
+        <div className="space-y-6 pb-24 lg:pb-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 pb-4 border-b border-gray-100">
+                <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-white shadow-sm border border-gray-100 rounded-lg flex items-center justify-center text-xl">📊</div>
+                    <div>
+                        <h1 className="text-xl font-bold text-gray-800 leading-tight">Intelligence & Analytics</h1>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Performance & Flow Tracking</p>
+                    </div>
                 </div>
                 <button
                     onClick={handleExport}
                     disabled={reportData.length === 0}
-                    className="px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                    className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 text-white rounded-lg text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50 flex items-center justify-center"
                 >
-                    <span className="mr-2">📊</span> Export CSV
+                    Export CSV
                 </button>
             </div>
 

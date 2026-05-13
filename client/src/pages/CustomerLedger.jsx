@@ -131,10 +131,10 @@ const CustomerLedger = () => {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-24 lg:pb-8">
             {/* Header */}
-            <div className="flex flex-wrap gap-3 items-start justify-between">
-                <div className="flex items-center gap-3 w-full md:w-auto flex-1 max-w-md">
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-end pb-4 border-b border-gray-100">
+                <div className="flex items-center gap-3 w-full sm:w-auto flex-1 max-w-md">
                     <button onClick={() => navigate('/customers')} className="text-gray-500 hover:text-gray-800 text-xl font-bold">←</button>
                     <select 
                         value={selectedCustomerId}
@@ -147,11 +147,11 @@ const CustomerLedger = () => {
                         ))}
                     </select>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full sm:w-auto">
                     {canRecordPayment && (
                         <button
                             onClick={() => setPayModal(true)}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-sm shadow"
+                            className="flex-1 sm:flex-none px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-xs shadow"
                         >
                             + Receive Payment
                         </button>
@@ -159,9 +159,9 @@ const CustomerLedger = () => {
                     <button
                         onClick={handlePrint}
                         disabled={!selectedCustomerId || !data}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold text-sm shadow disabled:opacity-50"
+                        className="flex-1 sm:flex-none px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold text-xs shadow disabled:opacity-50"
                     >
-                        🖨️ Print Statement
+                        🖨️ Statement
                     </button>
                 </div>
             </div>

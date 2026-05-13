@@ -37,6 +37,7 @@ import ProductShowcase from './pages/ProductShowcase';
 import ProductShowcaseEdit from './pages/ProductShowcaseEdit';
 import PublicProductPage from './pages/PublicProductPage';
 import VendorLedger from './pages/VendorLedger';
+import BottomNav from './components/BottomNav';
 import HSNManagement from './pages/HSNManagement';
 
 function AppLayout({ children }) {
@@ -47,11 +48,12 @@ function AppLayout({ children }) {
             {/* Sidebar with mobile responsiveness */}
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
                 <Navbar toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
-                <main className="flex-1 overflow-y-auto p-4 lg:p-8">
+                <main className="flex-1 overflow-y-auto p-4 lg:p-8 pb-20 lg:pb-8">
                     {children}
                 </main>
+                <BottomNav />
             </div>
         </div>
     );
