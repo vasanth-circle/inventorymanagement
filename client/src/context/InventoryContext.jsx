@@ -14,6 +14,7 @@ export const InventoryProvider = ({ children }) => {
     const [assetLocations, setAssetLocations] = useState([]);
     const [transactions, setTransactions] = useState([]);
     const [hsnCodes, setHsnCodes] = useState([]);
+    const [purchaseOrders, setPurchaseOrders] = useState([]);
     const [billingSettings, setBillingSettings] = useState(null);
     const [activePreset, setActivePreset] = useState(getIndustryPreset('generic'));
     const [loading, setLoading] = useState(false);
@@ -143,29 +144,50 @@ export const InventoryProvider = ({ children }) => {
      * Real-world calculation engine based on industry type
      */
     const calculateItemValues = (row, field, value, industry) => {
+        if (!row) return row;
         const updatedRow = { ...row, [field]: value };
-        const pcsPerBox = Number(updatedRow.pcsPerBox) || 1;
-        const sqFtPerPc = Number(updatedRow.sqFtPerPc) || 0;
-        const price = Number(updatedRow.price) || 0;
+        
+        // Ensure core numeric fields are valid numbers
+        const pcsPerBox = Math.max(1, Number(updatedRow.pcsPerBox) || 1);
+        const sqFtPerPc = Math.max(0, Number(updatedRow.sqFtPerPc) || 0);
+        const price = Math.max(0, Number(updatedRow.price) || 0);
         const billingUnit = updatedRow.billingUnit || 'pieces';
+
+        // Initialize variables to avoid undefined
+        updatedRow.totalPcs = Number(updatedRow.totalPcs) || 0;
+        updatedRow.totalSqFt = Number(updatedRow.totalSqFt) || 0;
+        updatedRow.boxCount = Number(updatedRow.boxCount) || 0;
+        updatedRow.quantity = Number(updatedRow.quantity) || 0;
 
         if (industry === 'tiles' && sqFtPerPc > 0) {
             // Tiles Logic: Conversion between Box, Pieces, and SqFt
-            if (field === 'boxCount') {
-                updatedRow.totalPcs = Number(value || 0) * pcsPerBox;
+            if (field === 'boxCount' || field === 'quantity' && billingUnit === 'boxes') {
+                const boxes = Number(value || 0);
+                updatedRow.boxCount = boxes;
+                updatedRow.totalPcs = boxes * pcsPerBox;
                 updatedRow.totalSqFt = Number((updatedRow.totalPcs * sqFtPerPc).toFixed(2));
-                updatedRow.quantity = billingUnit === 'sqft' ? updatedRow.totalSqFt : Number(value || 0);
+                updatedRow.quantity = billingUnit === 'sqft' ? updatedRow.totalSqFt : boxes;
             } else if (field === 'billingUnit') {
                 updatedRow.quantity = value === 'sqft' ? (updatedRow.totalSqFt || 0) : (updatedRow.boxCount || 0);
             } else if (field === 'quantity') {
+                const qty = Number(value || 0);
                 if (billingUnit === 'sqft') {
-                    updatedRow.totalSqFt = Number(value || 0);
-                    updatedRow.totalPcs = sqFtPerPc > 0 ? (updatedRow.totalSqFt / sqFtPerPc) : 0;
+                    updatedRow.totalSqFt = qty;
+                    updatedRow.totalPcs = sqFtPerPc > 0 ? (qty / sqFtPerPc) : 0;
                     updatedRow.boxCount = pcsPerBox > 0 ? (updatedRow.totalPcs / pcsPerBox) : 0;
+                    updatedRow.quantity = qty;
                 } else {
-                    updatedRow.boxCount = Number(value || 0);
+                    updatedRow.boxCount = qty;
+                    updatedRow.totalPcs = qty * pcsPerBox;
+                    updatedRow.totalSqFt = Number((updatedRow.totalPcs * sqFtPerPc).toFixed(2));
+                    updatedRow.quantity = qty;
+                }
+            } else if (field === 'item' || field === 'price') {
+                // When item changes, recalculate based on existing boxes if available
+                if (updatedRow.boxCount > 0) {
                     updatedRow.totalPcs = updatedRow.boxCount * pcsPerBox;
                     updatedRow.totalSqFt = Number((updatedRow.totalPcs * sqFtPerPc).toFixed(2));
+                    updatedRow.quantity = billingUnit === 'sqft' ? updatedRow.totalSqFt : updatedRow.boxCount;
                 }
             }
             updatedRow.total = Number((updatedRow.quantity * price).toFixed(2));
@@ -292,6 +314,17 @@ export const InventoryProvider = ({ children }) => {
         }
     };
 
+    // Fetch Purchase Orders
+    const fetchPurchaseOrders = async (params = {}) => {
+        try {
+            const { data } = await api.get('/purchase-orders', { params });
+            setPurchaseOrders(data.data?.purchaseOrders || []);
+            return data.data?.purchaseOrders || [];
+        } catch (error) {
+            console.error('Failed to fetch purchase orders');
+        }
+    };
+
     // Parse Excel file
     const parseExcelFile = async (file) => {
         try {
@@ -387,6 +420,7 @@ export const InventoryProvider = ({ children }) => {
             fetchAssetLocations();
             fetchBillingSettings();
             fetchHsnCodes();
+            fetchPurchaseOrders({ status: 'issued' });
         }
     }, [user]);
 
@@ -428,6 +462,8 @@ export const InventoryProvider = ({ children }) => {
                 fetchSalesOrders,
                 confirmDelete,
                 calculateItemValues,
+                purchaseOrders,
+                fetchPurchaseOrders,
             }}
         >
             {children}

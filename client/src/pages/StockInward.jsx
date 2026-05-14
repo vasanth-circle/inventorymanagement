@@ -4,7 +4,12 @@ import { InventoryContext } from '../context/InventoryContext';
 import toast from 'react-hot-toast';
 
 const StockInward = () => {
-    const { items, fetchItems, categories, locations, createItem, createTransaction, billingSettings, activePreset, hsnCodes, fetchHsnCodes } = useContext(InventoryContext);
+    const { 
+        items, fetchItems, categories, locations, 
+        createItem, createTransaction, billingSettings, 
+        activePreset, hsnCodes, fetchHsnCodes,
+        purchaseOrders, fetchPurchaseOrders
+    } = useContext(InventoryContext);
     const navigate = useNavigate();
     const [isNewItem, setIsNewItem] = useState(true);
     const [loading, setLoading] = useState(false);
@@ -26,11 +31,17 @@ const StockInward = () => {
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [selectedItem, setSelectedItem] = useState('');
+    const [selectedPO, setSelectedPO] = useState(null);
+    const [poItems, setPoItems] = useState([]);
+    const [receivingPo, setReceivingPo] = useState(false);
 
     useEffect(() => {
         fetchItems({ limit: 1000 });
         fetchHsnCodes();
-    }, []);
+        if (billingSettings?.workflowConfig?.enforcePO) {
+            fetchPurchaseOrders({ status: 'issued' });
+        }
+    }, [billingSettings?.workflowConfig?.enforcePO]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -49,8 +60,55 @@ const StockInward = () => {
                     category: item.category?._id || item.category || '',
                     price: item.price,
                     hsn: item.hsn || '',
+                    brand: item.brand || '',
+                    size: item.size || '',
+                    pcsPerBox: item.pcsPerBox || 1,
+                    sqFtPerPc: item.sqFtPerPc || 0,
                 });
             }
+        }
+    };
+
+    const handlePOSelect = (poId) => {
+        const po = purchaseOrders.find(p => p._id === poId);
+        setSelectedPO(po);
+        if (po) {
+            setPoItems(po.items.map(item => ({
+                ...item,
+                receivedQuantity: item.quantity,
+                damagedQuantity: 0,
+                location: ''
+            })));
+        } else {
+            setPoItems([]);
+        }
+    };
+
+    const handleReceivePO = async () => {
+        if (!selectedPO) return;
+        setReceivingPo(true);
+        try {
+            // Use the single server endpoint to receive the PO
+            const payload = {
+                receivedItems: poItems.map(item => ({
+                    item: item.item._id || item.item,
+                    receivedQuantity: item.receivedQuantity,
+                    damagedQuantity: item.damagedQuantity || 0,
+                    location: item.location || formData.location,
+                    price: item.price,
+                    batchNumber: formData.batchNumber || `PO-${selectedPO.orderNumber}`
+                }))
+            };
+
+            await api.post(`/purchase-orders/${selectedPO._id}/receive`, payload);
+            
+            toast.success(`Purchase Order ${selectedPO.orderNumber} received successfully!`);
+            navigate('/inventory');
+        } catch (error) {
+            console.error('Receive PO error:', error);
+            toast.error(error.response?.data?.message || 'Failed to receive Purchase Order');
+        } finally {
+            setReceivingPo(false);
         }
     };
 
@@ -178,11 +236,124 @@ const StockInward = () => {
                 <div className="w-10 h-10 bg-white shadow-sm border border-gray-100 rounded-lg flex items-center justify-center text-xl">📥</div>
                 <div>
                     <h1 className="text-xl font-bold text-gray-900 leading-tight">Stock Inward</h1>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Add or Restock Items</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                        {billingSettings?.workflowConfig?.enforcePO ? 'Receive Stock via Purchase Order' : 'Add or Restock Items'}
+                    </p>
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
+            {billingSettings?.workflowConfig?.enforcePO ? (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="p-6 space-y-6">
+                        <div className="flex flex-col space-y-2">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Select Active Purchase Order</label>
+                            <select 
+                                value={selectedPO?._id || ''} 
+                                onChange={(e) => handlePOSelect(e.target.value)}
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 outline-none transition-all font-bold text-sm"
+                            >
+                                <option value="">-- Choose an Issued PO --</option>
+                                {purchaseOrders.filter(p => p.status === 'issued').map(po => (
+                                    <option key={po._id} value={po._id}>{po.orderNumber} — {po.vendor?.name} (₹{po.totalAmount.toLocaleString()})</option>
+                                ))}
+                            </select>
+                            {purchaseOrders.filter(p => p.status === 'issued').length === 0 && (
+                                <p className="text-[10px] text-amber-600 font-bold px-1 italic">! No issued Purchase Orders found. Create one in the PO menu first.</p>
+                            )}
+                        </div>
+
+                        {selectedPO && (
+                            <div className="space-y-4 animate-fade-in">
+                                <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl flex justify-between items-center">
+                                    <div>
+                                        <div className="text-[10px] font-black text-rose-600 uppercase tracking-widest">Vendor</div>
+                                        <div className="text-sm font-bold text-gray-900">{selectedPO.vendor?.companyName || selectedPO.vendor?.name}</div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-[10px] font-black text-rose-600 uppercase tracking-widest">PO Date</div>
+                                        <div className="text-sm font-bold text-gray-900">{new Date(selectedPO.orderDate).toLocaleDateString()}</div>
+                                    </div>
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-xs">
+                                        <thead className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
+                                            <tr>
+                                                <th className="text-left p-3">Item</th>
+                                                <th className="text-center p-3">PO Qty</th>
+                                                <th className="text-center p-3">Receive Qty</th>
+                                                <th className="text-center p-3">Damaged</th>
+                                                <th className="text-left p-3">Location</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50">
+                                            {poItems.map((item, idx) => (
+                                                <tr key={idx}>
+                                                    <td className="p-3">
+                                                        <div className="font-bold text-gray-800">{item.name}</div>
+                                                        <div className="text-[10px] text-gray-400">{item.brand} {item.size}</div>
+                                                    </td>
+                                                    <td className="p-3 text-center font-bold text-gray-600">{item.quantity}</td>
+                                                    <td className="p-3 text-center">
+                                                        <input 
+                                                            type="number" 
+                                                            value={item.receivedQuantity}
+                                                            onChange={(e) => {
+                                                                const newItems = [...poItems];
+                                                                newItems[idx].receivedQuantity = parseFloat(e.target.value) || 0;
+                                                                setPoItems(newItems);
+                                                            }}
+                                                            className="w-16 h-8 text-center bg-white border border-gray-200 rounded font-bold focus:ring-2 focus:ring-rose-500 outline-none"
+                                                        />
+                                                    </td>
+                                                    <td className="p-3 text-center">
+                                                        <input 
+                                                            type="number" 
+                                                            value={item.damagedQuantity}
+                                                            onChange={(e) => {
+                                                                const newItems = [...poItems];
+                                                                newItems[idx].damagedQuantity = parseFloat(e.target.value) || 0;
+                                                                setPoItems(newItems);
+                                                            }}
+                                                            className="w-16 h-8 text-center bg-white border border-gray-200 rounded font-bold text-red-500 focus:ring-2 focus:ring-red-500 outline-none"
+                                                        />
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <select 
+                                                            value={item.location}
+                                                            onChange={(e) => {
+                                                                const newItems = [...poItems];
+                                                                newItems[idx].location = e.target.value;
+                                                                setPoItems(newItems);
+                                                            }}
+                                                            className="w-full h-8 px-2 bg-white border border-gray-200 rounded text-[10px] font-bold outline-none"
+                                                        >
+                                                            <option value="">-- Select --</option>
+                                                            {locations.map(loc => <option key={loc._id} value={loc._id}>{loc.name}</option>)}
+                                                        </select>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div className="pt-4 flex justify-end">
+                                    <button 
+                                        onClick={handleReceivePO}
+                                        disabled={receivingPo || poItems.length === 0}
+                                        className="px-8 py-3 bg-rose-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-rose-700 transition-all shadow-lg disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        {receivingPo ? '⏳ Processing...' : '📥 Confirm & Add to Stock'}
+                                        {!receivingPo && <span>✓</span>}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            ) : (
+                <div className="bg-white rounded-lg shadow-md p-6">
                 <div className="mb-6">
                     <div className="flex space-x-4">
                         <button
@@ -624,6 +795,7 @@ const StockInward = () => {
                     </div>
                 </form>
             </div>
+            )}
         </div>
     );
 };

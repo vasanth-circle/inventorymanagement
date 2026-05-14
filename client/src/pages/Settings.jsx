@@ -9,6 +9,7 @@ const TABS = [
     { id: 'units',     label: 'Units & Rates', icon: '📐' },
     { id: 'documents', label: 'Documents',  icon: '📄' },
     { id: 'branding',  label: 'Branding & Bank', icon: '🏦' },
+    { id: 'workflow',  label: 'Workflows',   icon: '🔄' },
 ];
 
 const InputField = ({ label, name, value, onChange, type = 'text', placeholder = '' }) => (
@@ -91,6 +92,10 @@ const Settings = () => {
             ifscCode: '',
             termsAndConditions: '1. Goods once sold will not be taken back.\n2. No responsibility for breakages after leaving premises.\n3. E. & O.E.',
         },
+        // Workflow config
+        workflowConfig: {
+            enforcePO: false,
+        },
     });
 
     useEffect(() => {
@@ -133,6 +138,9 @@ const Settings = () => {
                     accountNumber: billingSettings.branding?.accountNumber || '',
                     ifscCode: billingSettings.branding?.ifscCode || '',
                     termsAndConditions: billingSettings.branding?.termsAndConditions || '1. Goods once sold will not be taken back.\n2. No responsibility for breakages after leaving premises.\n3. E. & O.E.',
+                },
+                workflowConfig: {
+                    enforcePO: billingSettings.workflowConfig?.enforcePO || false,
                 },
             });
             // Sync logo preview from saved settings
@@ -699,6 +707,34 @@ const Settings = () => {
                                         placeholder="Terms printed on every invoice / quotation..."
                                     />
                                     <p className="text-[10px] text-gray-400 mt-1 px-1">These are printed at the bottom of every invoice and quotation. Each line becomes a separate clause.</p>
+                                </div>
+                            </>
+                        )}
+
+                        {/* ── TAB: WORKFLOW ───────────────────────────────────────────────── */}
+                        {activeTab === 'workflow' && (
+                            <>
+                                <h2 className="text-sm font-black text-gray-700 flex items-center gap-2 mb-4">
+                                    <span className="w-7 h-7 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center text-sm">🔄</span>
+                                    Inventory Workflows
+                                </h2>
+                                
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl hover:border-amber-200 transition-all cursor-pointer"
+                                         onClick={() => handleNested('workflowConfig', 'enforcePO', !formData.workflowConfig.enforcePO)}>
+                                        <div className="space-y-1 pr-4">
+                                            <h3 className="text-sm font-bold text-gray-800">Enforce Purchase Order for Stock Inward</h3>
+                                            <p className="text-[10px] text-gray-500 font-medium">When enabled, users cannot manually add stock inward. They must select an approved Purchase Order from a vendor.</p>
+                                        </div>
+                                        <div className={`w-12 h-6 rounded-full transition-all relative ${formData.workflowConfig.enforcePO ? 'bg-amber-500' : 'bg-gray-300'}`}>
+                                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${formData.workflowConfig.enforcePO ? 'left-7' : 'left-1'}`} />
+                                        </div>
+                                    </div>
+
+                                    {/* Add more workflow toggles here if needed */}
+                                    <div className="p-4 border border-dashed border-gray-200 rounded-xl">
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest text-center">More workflow options coming soon</p>
+                                    </div>
                                 </div>
                             </>
                         )}

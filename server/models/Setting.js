@@ -58,10 +58,14 @@ const settingSchema = new mongoose.Schema({
         showSecondaryQty: { type: Boolean, default: false },
     },
 
-    // ── Pricing Configuration ────────────────────────────────────────────
+    // ── Pricing & Workflow Configuration ────────────────────────────────
     pricingConfig: {
         preventSellingBelowPurchase: { type: Boolean, default: false },
         validatePurchasePrice: { type: Boolean, default: false },
+    },
+
+    workflowConfig: {
+        enforcePO: { type: Boolean, default: false }, // If true, stock inward MUST have a PO
     },
 
     // ── Branding & Bank Details ──────────────────────────────────────────

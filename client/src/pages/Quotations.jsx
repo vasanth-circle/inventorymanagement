@@ -103,57 +103,61 @@ const Quotations = () => {
 
     const handleItemChange = (index, field, value) => {
         const newItems = [...formData.items];
-        newItems[index] = { ...newItems[index], [field]: value };
+        let row = { ...newItems[index], [field]: value };
 
         if (field === 'item') {
             const found = allItems.find(i => i._id === value);
             if (found) {
-                newItems[index].name = found.name;
-                newItems[index].brand = found.brand || '';
-                newItems[index].size = found.size || '';
-                newItems[index].hsn = found.hsn || '';
-                newItems[index].pcsPerBox = found.pcsPerBox || 1;
-                newItems[index].sqFtPerPc = found.sqFtPerPc || 0;
-                newItems[index].physicalStock = found.quantity || 0;
-                newItems[index].availableBatches = found.batches || [];
-                newItems[index].price = found.batches?.length ? found.batches[0].price : (found.price || 0);
-                if (found.batches?.length) newItems[index].batchId = found.batches[0]._id;
+                row.name = found.name;
+                row.brand = found.brand || '';
+                row.size = found.size || '';
+                row.hsn = found.hsn || '';
+                row.pcsPerBox = Number(found.pcsPerBox) || 1;
+                row.sqFtPerPc = Number(found.sqFtPerPc) || 0;
+                row.physicalStock = Number(found.quantity) || 0;
+                row.availableBatches = found.batches || [];
+                row.price = found.batches?.length ? (Number(found.batches[0].price) || 0) : (Number(found.price) || 0);
+                if (found.batches?.length) row.batchId = found.batches[0]._id;
                 
                 // Set default billing unit based on if it's a tile
-                if (found.sqFtPerPc > 0) {
-                    newItems[index].billingUnit = 'sqft'; 
-                    newItems[index].stockUnit = 'boxes';
+                if (row.sqFtPerPc > 0) {
+                    row.billingUnit = 'sqft'; 
+                    row.stockUnit = 'boxes';
                 } else {
-                    newItems[index].billingUnit = 'pieces';
-                    newItems[index].stockUnit = 'pieces';
+                    row.billingUnit = 'pieces';
+                    row.stockUnit = 'pieces';
                 }
+            } else {
+                // Reset if cleared
+                row = emptyItem();
+                row.item = '';
             }
         }
 
         if (field === 'batchId') {
-            const batch = newItems[index].availableBatches.find(b => b._id === value);
-            if (batch) newItems[index].price = batch.price;
+            const batch = row.availableBatches?.find(b => b._id === value);
+            if (batch) row.price = Number(batch.price) || 0;
         }
 
         // Use the centralized calculation engine
-        newItems[index] = calculateItemValues(newItems[index], field, value, billingSettings?.industry);
+        newItems[index] = calculateItemValues(row, field, value, billingSettings?.industry);
 
         setFormData(prev => ({ ...prev, items: newItems }));
     };
 
     const calcTotals = () => {
-        const itemsTotal = formData.items.reduce((s, i) => s + (Number(i.total) || 0), 0);
+        const itemsTotal = formData.items.reduce((s, i) => s + (parseFloat(i.total) || 0), 0);
         
         // Auto-calculate tax amount if taxRate is provided
-        const taxRate = Number(formData.taxRate) || 0;
-        let taxAmt = Number(formData.taxAmount) || 0;
+        const taxRate = parseFloat(formData.taxRate) || 0;
+        let taxAmt = parseFloat(formData.taxAmount) || 0;
         
         if (taxRate > 0) {
             taxAmt = parseFloat((itemsTotal * taxRate / 100).toFixed(2));
         }
 
-        const net = itemsTotal + (Number(formData.loadingCharges) || 0) + (Number(formData.unloadingCharges) || 0) + (Number(formData.transportCharges) || 0) + taxAmt + (Number(formData.oldBalance) || 0) - (Number(formData.discountAmount) || 0);
-        return { itemsTotal, taxAmount: taxAmt, net };
+        const net = itemsTotal + (parseFloat(formData.loadingCharges) || 0) + (parseFloat(formData.unloadingCharges) || 0) + (parseFloat(formData.transportCharges) || 0) + taxAmt + (parseFloat(formData.oldBalance) || 0) - (parseFloat(formData.discountAmount) || 0);
+        return { itemsTotal, taxAmount: taxAmt, net: parseFloat(net.toFixed(2)) };
     };
 
     /* ── CRUD ──────────────────────────────────────────────────────── */
@@ -280,7 +284,7 @@ const Quotations = () => {
         return matchSearch && matchStatus && matchUser;
     });
 
-    const uniqueUsers = Array.from(new Set(quotations.filter(q => q.user).map(q => JSON.stringify({ id: q.user._id, name: q.user.name })))).map(u => JSON.parse(u));
+    const uniqueUsers = Array.from(new Set(quotations.filter(q => q.user?._id).map(q => JSON.stringify({ id: q.user._id, name: q.user.name || 'Unknown' })))).map(u => JSON.parse(u));
 
     const { itemsTotal, taxAmount, net } = calcTotals();
 
