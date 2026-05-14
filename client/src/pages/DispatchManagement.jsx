@@ -51,35 +51,49 @@ const DispatchManagement = () => {
             const res = await api.get(`/dispatches/order/${order._id}`);
             const pastDispatches = res.data?.data || [];
 
-            setDispatchData({
-                vehicleNumber: '',
-                driverPhone: '',
-                notes: '',
-                items: order.items.map(item => {
-                    const itemId = item.item._id || item.item;
-                    // Calculate pending limit using stockQty (physical boxes) for tiles, fallback to quantity for generic items
-                    const targetedStockLimit = item.stockQty || item.quantity;
-                    const dispatchedSum = pastDispatches.reduce((sum, d) => {
-                        const dMatch = d.items.find(di => String(di.item._id || di.item) === String(itemId));
-                        return sum + (dMatch ? dMatch.quantity : 0);
-                    }, 0);
+            const mappedItems = order.items.map(item => {
+                // Handle both populated and unpopulated item IDs
+                const itemId = item.item?._id || item.item;
+                if (!itemId) return null;
 
-                    return {
-                        item: itemId,
-                        name: item.name,
-                        brand: item.brand,
-                        size: item.size,
-                        orderedQuantity: targetedStockLimit,
-                        previouslyDispatched: dispatchedSum,
-                        pendingQuantity: targetedStockLimit - dispatchedSum,
-                        quantity: 0,
-                        selected: false,
-                        stockUnit: item.stockUnit || (item.sqFtPerPc > 0 ? 'Boxes' : 'Units')
-                    };
-                }).filter(i => i.pendingQuantity > 0) // Only allow dispatching items with pending qty
-            });
+                // Calculate pending limit using stockQty (physical boxes) for tiles, fallback to quantity for generic items
+                // Ensure we use numbers to avoid NaN issues
+                const stockLimit = Number(item.stockQty) || 0;
+                const billedQty = Number(item.quantity) || 0;
+                const targetedStockLimit = stockLimit > 0 ? stockLimit : billedQty;
+
+                const dispatchedSum = pastDispatches.reduce((sum, d) => {
+                    const dMatch = d.items.find(di => {
+                        const diItemId = di.item?._id || di.item;
+                        return String(diItemId) === String(itemId);
+                    });
+                    return sum + (dMatch ? Number(dMatch.quantity) || 0 : 0);
+                }, 0);
+
+                const pending = Math.max(0, targetedStockLimit - dispatchedSum);
+
+                return {
+                    item: itemId,
+                    name: item.name,
+                    brand: item.brand,
+                    size: item.size,
+                    orderedQuantity: targetedStockLimit,
+                    previouslyDispatched: dispatchedSum,
+                    pendingQuantity: Number(pending.toFixed(2)),
+                    quantity: 0,
+                    selected: false,
+                    stockUnit: item.stockUnit || 'Units'
+                };
+            }).filter(i => i !== null && i.pendingQuantity > 0);
+
+            setDispatchData(prev => ({
+                ...prev,
+                items: mappedItems
+            }));
+            
             setIsDispatchModalOpen(true);
         } catch (err) {
+            console.error('Dispatch limit load error:', err);
             toast.error('Failed to load dispatch limits');
         }
     };

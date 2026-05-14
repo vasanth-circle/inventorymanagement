@@ -167,6 +167,8 @@ export const InventoryProvider = ({ children }) => {
                 updatedRow.totalPcs = boxes * pcsPerBox;
                 updatedRow.totalSqFt = Number((updatedRow.totalPcs * sqFtPerPc).toFixed(2));
                 updatedRow.quantity = billingUnit === 'sqft' ? updatedRow.totalSqFt : boxes;
+                updatedRow.stockQty = boxes;
+                updatedRow.stockUnit = 'boxes';
             } else if (field === 'billingUnit') {
                 updatedRow.quantity = value === 'sqft' ? (updatedRow.totalSqFt || 0) : (updatedRow.boxCount || 0);
             } else if (field === 'quantity') {
@@ -181,6 +183,8 @@ export const InventoryProvider = ({ children }) => {
                     updatedRow.totalPcs = qty * pcsPerBox;
                     updatedRow.totalSqFt = Number((updatedRow.totalPcs * sqFtPerPc).toFixed(2));
                     updatedRow.quantity = qty;
+                    updatedRow.stockQty = qty;
+                    updatedRow.stockUnit = 'boxes';
                 }
             } else if (field === 'item' || field === 'price') {
                 // When item changes, recalculate based on existing boxes if available
@@ -188,12 +192,16 @@ export const InventoryProvider = ({ children }) => {
                     updatedRow.totalPcs = updatedRow.boxCount * pcsPerBox;
                     updatedRow.totalSqFt = Number((updatedRow.totalPcs * sqFtPerPc).toFixed(2));
                     updatedRow.quantity = billingUnit === 'sqft' ? updatedRow.totalSqFt : updatedRow.boxCount;
+                    updatedRow.stockQty = updatedRow.boxCount;
+                    updatedRow.stockUnit = 'boxes';
                 }
             }
             updatedRow.total = Number((updatedRow.quantity * price).toFixed(2));
         } else {
             // Standard Logic: Qty * Price
             updatedRow.quantity = field === 'quantity' ? Number(value || 0) : Number(updatedRow.quantity || 0);
+            updatedRow.stockQty = updatedRow.quantity;
+            updatedRow.stockUnit = 'units';
             updatedRow.total = Number((updatedRow.quantity * price).toFixed(2));
         }
 

@@ -221,29 +221,44 @@ const Settings = () => {
     const handleLogoUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        // Local preview immediately
-        setLogoPreview(URL.createObjectURL(file));
+
+        // Local preview immediately for better UX
+        const blobUrl = URL.createObjectURL(file);
+        setLogoPreview(blobUrl);
         setLogoUploading(true);
+
         try {
             const form = new FormData();
             form.append('logo', file);
+            
             const res = await api.post('/settings/billing/logo', form, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
+
             const newLogoUrl = res.data?.data?.logoUrl;
-            setLogoPreview(newLogoUrl || logoPreview);
-            setFormData(prev => ({
-                ...prev,
-                branding: { ...prev.branding, logoUrl: newLogoUrl || prev.branding.logoUrl }
-            }));
-            if (fetchBillingSettings) await fetchBillingSettings();
-            toast.success('Logo uploaded successfully!');
+            
+            if (newLogoUrl) {
+                // Update local state with the actual server path
+                setLogoPreview(newLogoUrl);
+                setFormData(prev => ({
+                    ...prev,
+                    branding: { ...prev.branding, logoUrl: newLogoUrl }
+                }));
+                
+                // Refresh global settings context to sync across app
+                if (fetchBillingSettings) await fetchBillingSettings();
+                toast.success('Logo uploaded successfully!');
+            }
         } catch (err) {
+            console.error('Logo Upload Error:', err);
             toast.error('Failed to upload logo');
+            // Revert preview on failure
             setLogoPreview(billingSettings?.branding?.logoUrl || '');
         } finally {
             setLogoUploading(false);
             if (logoInputRef.current) logoInputRef.current.value = '';
+            // Cleanup blob URL to prevent memory leaks
+            if (blobUrl.startsWith('blob:')) URL.revokeObjectURL(blobUrl);
         }
     };
 

@@ -8,6 +8,18 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const flattenObject = (obj, prefix = '') => {
+    return Object.keys(obj).reduce((acc, k) => {
+        const pre = prefix.length ? prefix + '.' : '';
+        if (typeof obj[k] === 'object' && obj[k] !== null && !Array.isArray(obj[k])) {
+            Object.assign(acc, flattenObject(obj[k], pre + k));
+        } else {
+            acc[pre + k] = obj[k];
+        }
+        return acc;
+    }, {});
+};
+
 export const getBillingSettings = async (req, res, next) => {
     try {
         let settings = await Setting.findOne({ ...tenantQuery(req) });
@@ -28,9 +40,17 @@ export const getBillingSettings = async (req, res, next) => {
 
 export const updateBillingSettings = async (req, res, next) => {
     try {
+        // Flatten the object to handle nested updates safely (e.g. branding.tagline)
+        // This prevents overwriting the entire branding object and losing logoUrl
+        const updateData = flattenObject(req.body);
+        
+        // Remove protected fields
+        delete updateData.tenantId;
+        delete updateData._id;
+
         const settings = await Setting.findOneAndUpdate(
             { tenantId: req.tenantId },
-            { $set: req.body },
+            { $set: updateData },
             { new: true, upsert: true }
         );
         

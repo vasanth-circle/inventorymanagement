@@ -6,7 +6,7 @@ import { InventoryContext } from '../context/InventoryContext';
 
 const Sidebar = ({ isOpen, onClose }) => {
     const { user, logout } = useContext(AuthContext);
-    const { activePreset } = useContext(InventoryContext);
+    const { activePreset, billingSettings } = useContext(InventoryContext);
     const { theme, toggleTheme } = useContext(ThemeContext);
     const location = useLocation();
     const navigate = useNavigate();
@@ -14,6 +14,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     const [showAppSwitcher, setShowAppSwitcher] = useState(false);
 
     const activeApp = localStorage.getItem('activeApp') || 'inventory';
+    const companyLogo = billingSettings?.branding?.logoUrl;
 
     let navGroups = [];
 
@@ -177,8 +178,12 @@ const Sidebar = ({ isOpen, onClose }) => {
                             className="flex items-center space-x-3 cursor-pointer hover:bg-slate-800 p-2 -ml-2 rounded-lg transition-colors group"
                             onClick={() => setShowAppSwitcher(!showAppSwitcher)}
                         >
-                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white text-xl shadow-inner ${activeApp === 'assets' ? 'bg-blue-600' : 'bg-primary-600'}`}>
-                                {activeApp === 'assets' ? '🖥️' : '📦'}
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white text-xl shadow-inner overflow-hidden ${activeApp === 'assets' ? 'bg-blue-600' : 'bg-primary-600'}`}>
+                                {companyLogo ? (
+                                    <img src={companyLogo} alt="Logo" className="w-full h-full object-contain bg-white" />
+                                ) : (
+                                    activeApp === 'assets' ? '🖥️' : '📦'
+                                )}
                             </div>
                             <div className="flex flex-col">
                                 <h1 className="text-lg font-bold text-white tracking-tight leading-none group-hover:text-blue-400 transition-colors">
