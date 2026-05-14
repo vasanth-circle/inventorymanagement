@@ -48,6 +48,15 @@ export const updateBillingSettings = async (req, res, next) => {
         delete updateData.tenantId;
         delete updateData._id;
 
+        // PROTECTION: If branding.logoUrl is empty in the request, but exists in the DB, 
+        // preserve the existing one to prevent accidental erasure from stale frontend state.
+        const currentSettings = await Setting.findOne({ tenantId: req.tenantId });
+        if (req.body.branding && (req.body.branding.logoUrl === '' || req.body.branding.logoUrl === undefined)) {
+            if (currentSettings?.branding?.logoUrl) {
+                updateData['branding.logoUrl'] = currentSettings.branding.logoUrl;
+            }
+        }
+
         const settings = await Setting.findOneAndUpdate(
             { tenantId: req.tenantId },
             { $set: updateData },

@@ -180,7 +180,15 @@ const Sidebar = ({ isOpen, onClose }) => {
                         >
                             <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white text-xl shadow-inner overflow-hidden ${activeApp === 'assets' ? 'bg-blue-600' : 'bg-primary-600'}`}>
                                 {companyLogo ? (
-                                    <img src={companyLogo} alt="Logo" className="w-full h-full object-contain bg-white" />
+                                    <img 
+                                        src={companyLogo} 
+                                        alt="Logo" 
+                                        className="w-full h-full object-contain bg-white"
+                                        onError={(e) => {
+                                            e.target.style.display = 'none';
+                                            e.target.parentElement.innerHTML = activeApp === 'assets' ? '🖥️' : '📦';
+                                        }}
+                                    />
                                 ) : (
                                     activeApp === 'assets' ? '🖥️' : '📦'
                                 )}
