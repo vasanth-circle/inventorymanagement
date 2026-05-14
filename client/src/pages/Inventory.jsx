@@ -7,9 +7,8 @@ const Inventory = () => {
     const {
         items, fetchItems, deleteItem, createItem, updateItem,
         categories, locations, fetchLocations, loading, confirmDelete,
-        billingSettings, activePreset
+        billingSettings, activePreset, hsnCodes, fetchHsnCodes
     } = useContext(InventoryContext);
-    const [hsnCodes, setHsnCodes] = useState([]);
     const [filters, setFilters] = useState({
         search: '',
         category: '',
@@ -85,7 +84,7 @@ const Inventory = () => {
     useEffect(() => {
         loadItems();
         fetchLocations();
-        fetchHSNCodes();
+        fetchHsnCodes();
     }, [filters]);
 
     /**
@@ -139,14 +138,6 @@ const Inventory = () => {
         );
     };
 
-    const fetchHSNCodes = async () => {
-        try {
-            const { data } = await api.get('/hsn');
-            setHsnCodes(data.data);
-        } catch (error) {
-            console.error('Error fetching HSN codes:', error);
-        }
-    };
 
     const loadItems = async () => {
         const data = await fetchItems(filters);
@@ -208,11 +199,18 @@ const Inventory = () => {
 
         try {
             const formData = new FormData();
+            const standardFields = ['name', 'barcode', 'category', 'price', 'purchasePrice', 'minStockThreshold', 'location', 'description', 'brand', 'size', 'hsn', 'pcsPerBox', 'sqFtPerPc'];
+            
+            const customFieldsObj = {};
+
             Object.entries(editFormData).forEach(([key, value]) => {
-                formData.append(key, value);
+                if (standardFields.includes(key)) {
+                    formData.append(key, value);
+                } else if (value !== undefined && value !== '') {
+                    customFieldsObj[key] = value;
+                }
             });
 
-            const customFieldsObj = {};
             editCustomFields.forEach(field => {
                 if (field.key.trim()) {
                     customFieldsObj[field.key.trim()] = field.value;
@@ -270,12 +268,23 @@ const Inventory = () => {
 
         try {
             const formData = new FormData();
+            const standardFields = ['name', 'barcode', 'category', 'price', 'purchasePrice', 'minStockThreshold', 'location', 'description', 'brand', 'size', 'hsn', 'pcsPerBox', 'sqFtPerPc'];
+            
+            const customFieldsObj = {};
+            
+            // Add standard fields to FormData
             Object.entries(createFormData).forEach(([key, value]) => {
-                formData.append(key, value);
+                if (standardFields.includes(key)) {
+                    formData.append(key, value);
+                } else if (value !== undefined && value !== '') {
+                    // Move non-standard fields to customFields
+                    customFieldsObj[key] = value;
+                }
             });
+            
             formData.append('quantity', 0);
 
-            const customFieldsObj = {};
+            // Add manually added custom fields
             createCustomFields.forEach(field => {
                 if (field.key.trim()) {
                     customFieldsObj[field.key.trim()] = field.value;

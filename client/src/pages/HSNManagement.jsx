@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import { InventoryContext } from '../context/InventoryContext';
+import { useContext } from 'react';
 
 const HSNManagement = () => {
+    const { fetchHsnCodes } = useContext(InventoryContext);
     const [hsnCodes, setHsnCodes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -59,6 +62,7 @@ const HSNManagement = () => {
                 toast.success('HSN code created successfully');
             }
             fetchHSNCodes();
+            fetchHsnCodes(); // Update global context
             handleCloseModal();
         } catch (error) {
             toast.error(error.response?.data?.message || 'Error saving HSN code');
@@ -71,6 +75,7 @@ const HSNManagement = () => {
             await api.delete(`/hsn/${id}`);
             toast.success('HSN code deleted successfully');
             fetchHSNCodes();
+            fetchHsnCodes(); // Update global context
         } catch (error) {
             toast.error(error.response?.data?.message || 'Error deleting HSN code');
         }

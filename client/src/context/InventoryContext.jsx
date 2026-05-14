@@ -13,6 +13,7 @@ export const InventoryProvider = ({ children }) => {
     const [locations, setLocations] = useState([]);
     const [assetLocations, setAssetLocations] = useState([]);
     const [transactions, setTransactions] = useState([]);
+    const [hsnCodes, setHsnCodes] = useState([]);
     const [billingSettings, setBillingSettings] = useState(null);
     const [activePreset, setActivePreset] = useState(getIndustryPreset('generic'));
     const [loading, setLoading] = useState(false);
@@ -281,6 +282,16 @@ export const InventoryProvider = ({ children }) => {
         }
     };
 
+    // Fetch HSN Codes
+    const fetchHsnCodes = async () => {
+        try {
+            const { data } = await api.get('/hsn');
+            setHsnCodes(data.data || []);
+        } catch (error) {
+            console.error('Failed to fetch HSN codes');
+        }
+    };
+
     // Parse Excel file
     const parseExcelFile = async (file) => {
         try {
@@ -375,6 +386,7 @@ export const InventoryProvider = ({ children }) => {
             fetchLocations();
             fetchAssetLocations();
             fetchBillingSettings();
+            fetchHsnCodes();
         }
     }, [user]);
 
@@ -409,6 +421,8 @@ export const InventoryProvider = ({ children }) => {
                 importMappedData,
                 billingSettings,
                 activePreset,
+                hsnCodes,
+                fetchHsnCodes,
                 fetchBillingSettings,
                 updateBillingSettings,
                 fetchSalesOrders,

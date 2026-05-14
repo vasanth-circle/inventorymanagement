@@ -24,7 +24,7 @@ export const createHSNCode = async (req, res, next) => {
             code,
             description,
             gstRate,
-            tenantId: req.user.tenantId
+            tenantId: req.tenantId
         });
 
         sendResponse(res, 201, hsn, 'HSN code created successfully');

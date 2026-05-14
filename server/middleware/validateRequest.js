@@ -66,7 +66,7 @@ export const schemas = {
 
     createItem: Joi.object({
         name: Joi.string().required().trim(),
-        barcode: Joi.string().optional().trim(),
+        barcode: Joi.string().optional().allow('').trim(),
         hsn: Joi.string().optional().allow('').trim(),
         sku: Joi.string().optional().trim(),
         category: Joi.string().required(),
@@ -81,11 +81,11 @@ export const schemas = {
         pcsPerBox: Joi.number().min(1).default(1),
         sqFtPerPc: Joi.number().min(0).optional(),
         customFields: Joi.any().optional(),
-    }),
+    }).unknown(true),
 
     updateItem: Joi.object({
         name: Joi.string().optional().trim(),
-        barcode: Joi.string().optional().trim(),
+        barcode: Joi.string().optional().allow('').trim(),
         hsn: Joi.string().optional().allow('').trim(),
         category: Joi.string().optional(),
         quantity: Joi.number().min(0).optional(),
@@ -99,7 +99,7 @@ export const schemas = {
         pcsPerBox: Joi.number().min(1).optional(),
         sqFtPerPc: Joi.number().min(0).optional(),
         customFields: Joi.any().optional(),
-    }),
+    }).unknown(true),
 
     createTransaction: Joi.object({
         item: Joi.string().required(),

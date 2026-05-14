@@ -4,7 +4,7 @@ import { InventoryContext } from '../context/InventoryContext';
 import toast from 'react-hot-toast';
 
 const StockInward = () => {
-    const { items, fetchItems, categories, locations, createItem, createTransaction, billingSettings, activePreset } = useContext(InventoryContext);
+    const { items, fetchItems, categories, locations, createItem, createTransaction, billingSettings, activePreset, hsnCodes, fetchHsnCodes } = useContext(InventoryContext);
     const navigate = useNavigate();
     const [isNewItem, setIsNewItem] = useState(true);
     const [loading, setLoading] = useState(false);
@@ -20,6 +20,7 @@ const StockInward = () => {
         reason: '',
         notes: '',
         batchNumber: '',
+        hsn: '',
     });
     const [customFields, setCustomFields] = useState([]);
     const [imageFile, setImageFile] = useState(null);
@@ -28,6 +29,7 @@ const StockInward = () => {
 
     useEffect(() => {
         fetchItems({ limit: 1000 });
+        fetchHsnCodes();
     }, []);
 
     const handleChange = (e) => {
@@ -46,6 +48,7 @@ const StockInward = () => {
                     barcode: item.barcode || '',
                     category: item.category?._id || item.category || '',
                     price: item.price,
+                    hsn: item.hsn || '',
                 });
             }
         }
@@ -88,7 +91,7 @@ const StockInward = () => {
                 const itemFormData = new FormData();
                 
                 // Standard fields
-                const standardFields = ['name', 'barcode', 'sku', 'category', 'price', 'minStockThreshold', 'location', 'brand', 'size', 'pcsPerBox', 'sqFtPerPc'];
+                const standardFields = ['name', 'barcode', 'sku', 'category', 'price', 'minStockThreshold', 'location', 'brand', 'size', 'pcsPerBox', 'sqFtPerPc', 'hsn'];
                 standardFields.forEach(field => {
                     if (formData[field] !== undefined) {
                         itemFormData.append(field, formData[field]);
@@ -106,7 +109,7 @@ const StockInward = () => {
                 
                 // 1. Add fields from activePreset that are NOT in standardFields
                 activePreset?.productFields?.forEach(field => {
-                    const standardFields = ['name', 'barcode', 'sku', 'category', 'price', 'minStockThreshold', 'location', 'brand', 'size', 'pcsPerBox', 'sqFtPerPc'];
+                    const standardFields = ['name', 'barcode', 'sku', 'category', 'price', 'minStockThreshold', 'location', 'brand', 'size', 'pcsPerBox', 'sqFtPerPc', 'hsn'];
                     if (!standardFields.includes(field.name) && formData[field.name]) {
                         customFieldsObj[field.name] = formData[field.name];
                     }
@@ -248,6 +251,23 @@ const StockInward = () => {
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                                         placeholder="Enter SKU (optional)"
                                     />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        HSN Code
+                                    </label>
+                                    <select
+                                        name="hsn"
+                                        value={formData.hsn}
+                                        onChange={handleChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                    >
+                                        <option value="">Select HSN</option>
+                                        {hsnCodes.map(hsn => (
+                                            <option key={hsn._id} value={hsn.code}>{hsn.code} - {hsn.description}</option>
+                                        ))}
+                                    </select>
                                 </div>
 
                                 <div>
