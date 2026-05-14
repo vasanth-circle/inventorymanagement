@@ -477,7 +477,7 @@ const SalesOrders = () => {
                                                 <tr className="bg-gray-50 border-b border-gray-100">
                                                     <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Item / Batch</th>
                                                     <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-32">
-                                                        {billingSettings?.industry === 'tiles' ? 'Boxes' : 'Quantity'}
+                                                        {billingSettings?.unitConfig?.secondaryLabel || (billingSettings?.industry === 'tiles' ? 'Boxes' : 'Quantity')}
                                                     </th>
                                                     <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-32">
                                                         {billingSettings?.unitConfig?.quantityLabel || 'Billed Qty'}

@@ -123,10 +123,12 @@ export const schemas = {
     createLocation: Joi.object({
         name: Joi.string().required().trim(),
         description: Joi.string().optional().allow('').trim(),
+        type: Joi.string().valid('inventory', 'asset').optional(),
     }),
     updateLocation: Joi.object({
         name: Joi.string().optional().trim(),
         description: Joi.string().optional().allow('').trim(),
         isActive: Joi.boolean().optional(),
+        type: Joi.string().valid('inventory', 'asset').optional(),
     }),
 };

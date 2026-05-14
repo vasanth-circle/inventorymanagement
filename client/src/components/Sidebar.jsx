@@ -44,7 +44,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 { name: 'Customer Ledgers', path: '/customer-ledger', id: 'customer-ledger' },
                 { name: 'Quotations', path: '/quotations', id: 'quotations' },
                 { name: 'Sales Orders', path: '/sales-orders', id: 'sales-orders' },
-                { name: 'Dispatch Management', path: '/dispatch-management', id: 'dispatch-management' },
+                { name: activePreset?.terminology?.outward || 'Dispatch Management', path: '/dispatch-management', id: 'dispatch-management' },
             ]
         },
         {

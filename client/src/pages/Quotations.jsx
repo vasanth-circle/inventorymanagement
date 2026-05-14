@@ -506,7 +506,7 @@ const Quotations = () => {
                                             {/* Qty */}
                                             <div className="col-span-2">
                                                 <label className="text-[9px] text-gray-400 font-bold uppercase">
-                                                    {billingSettings?.unitConfig?.quantityLabel || 'Qty'} {row.sqFtPerPc > 0 ? `(${row.billingUnit === 'sqft' ? 'SqFt' : 'Boxes'})` : ''}
+                                                    {billingSettings?.unitConfig?.secondaryLabel || (billingSettings?.industry === 'tiles' ? 'Boxes' : 'Qty')}
                                                 </label>
                                                 <input type="number" min="0" step="any" value={row.quantity}
                                                     onChange={e => handleItemChange(idx, 'quantity', e.target.value)}

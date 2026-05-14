@@ -184,6 +184,15 @@ const Settings = () => {
                 secondaryLabel: '',
                 rateLabel: 'Rate'
             };
+        } else if (industry === 'medical') {
+            unitConfig = {
+                quantityBasis: 'pieces',
+                secondaryUnit: 'boxes',
+                rateBasis: 'per_piece',
+                quantityLabel: 'Strips / Pcs',
+                secondaryLabel: 'Packing',
+                rateLabel: 'Rate'
+            };
         }
 
         setFormData(prev => ({ 
@@ -342,6 +351,7 @@ const Settings = () => {
                                             { value: 'tiles', label: 'Tiles & Sanitary Ware' },
                                             { value: 'machine_shop', label: 'Machine Shop / Fabrication' },
                                             { value: 'electronics', label: 'Electronics / Appliances' },
+                                            { value: 'medical', label: 'Pharmacy / Medical' },
                                         ]}
                                     />
                                 </div>

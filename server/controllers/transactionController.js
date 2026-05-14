@@ -47,7 +47,7 @@ export const upload = multer({
 // @access  Private
 export const stockInward = async (req, res, next) => {
     try {
-        const { item: itemId, quantity, damagedQuantity, reason, notes, batchNumber, price } = req.body;
+        const { item: itemId, quantity, damagedQuantity, reason, notes, batchNumber, price, expiryDate } = req.body;
 
         let invoiceImage = '';
         if (req.file) {
@@ -78,11 +78,13 @@ export const stockInward = async (req, res, next) => {
         
         if (batch) {
             batch.quantity += qty;
+            if (expiryDate) batch.expiryDate = expiryDate;
         } else {
             itemDoc.batches.push({
                 batchNumber: batchNumber || `B-${Date.now()}`,
                 quantity: qty,
                 price: rate,
+                expiryDate: expiryDate,
                 receivedDate: Date.now()
             });
             batch = itemDoc.batches[itemDoc.batches.length - 1];

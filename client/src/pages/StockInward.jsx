@@ -86,26 +86,39 @@ const StockInward = () => {
             if (isNewItem) {
                 // Create new item logic
                 const itemFormData = new FormData();
-                itemFormData.append('name', formData.name);
-                itemFormData.append('barcode', formData.barcode);
-                itemFormData.append('sku', formData.sku || '');
-                itemFormData.append('category', formData.category);
+                
+                // Standard fields
+                const standardFields = ['name', 'barcode', 'sku', 'category', 'price', 'minStockThreshold', 'location', 'brand', 'size', 'pcsPerBox', 'sqFtPerPc'];
+                standardFields.forEach(field => {
+                    if (formData[field] !== undefined) {
+                        itemFormData.append(field, formData[field]);
+                    }
+                });
+
                 itemFormData.append('quantity', 0); // Start at 0, transaction will add the quantity
-                itemFormData.append('price', formData.price);
-                itemFormData.append('minStockThreshold', formData.minStockThreshold);
-                itemFormData.append('location', formData.location);
 
                 if (imageFile) {
                     itemFormData.append('image', imageFile);
                 }
 
-                // Convert customFields array to Map-like object
+                // Handle industry-specific and custom fields
                 const customFieldsObj = {};
+                
+                // 1. Add fields from activePreset that are NOT in standardFields
+                activePreset?.productFields?.forEach(field => {
+                    const standardFields = ['name', 'barcode', 'sku', 'category', 'price', 'minStockThreshold', 'location', 'brand', 'size', 'pcsPerBox', 'sqFtPerPc'];
+                    if (!standardFields.includes(field.name) && formData[field.name]) {
+                        customFieldsObj[field.name] = formData[field.name];
+                    }
+                });
+
+                // 2. Add manually added custom fields
                 customFields.forEach(field => {
                     if (field.key.trim()) {
                         customFieldsObj[field.key.trim()] = field.value;
                     }
                 });
+                
                 itemFormData.append('customFields', JSON.stringify(customFieldsObj));
 
                 const result = await createItem(itemFormData);
@@ -119,6 +132,7 @@ const StockInward = () => {
                         damagedQuantity: parseFloat(formData.damagedQuantity) || 0,
                         reason: formData.reason || 'Initial stock',
                         notes: formData.notes,
+                        expiryDate: formData.expiryDate,
                     });
 
                     toast.success('Item created and stock added successfully!');
@@ -140,6 +154,7 @@ const StockInward = () => {
                     notes: formData.notes,
                     batchNumber: formData.batchNumber,
                     price: formData.price,
+                    expiryDate: formData.expiryDate,
                 });
 
                 if (result.success) {
@@ -301,6 +316,50 @@ const StockInward = () => {
                                         ))}
                                     </select>
                                 </div>
+
+                                {/* Dynamic Industry-Specific Fields */}
+                                {activePreset?.productFields?.map((field) => (
+                                    <div key={field.name}>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            {field.label} {field.required && <span className="text-red-500">*</span>}
+                                        </label>
+                                        {field.type === 'select' ? (
+                                            <select
+                                                name={field.name}
+                                                required={field.required}
+                                                value={formData[field.name] || field.default || ''}
+                                                onChange={handleChange}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                            >
+                                                <option value="">Select {field.label}</option>
+                                                {field.options.map(opt => (
+                                                    <option key={opt} value={opt}>{opt}</option>
+                                                ))}
+                                            </select>
+                                        ) : field.type === 'textarea' ? (
+                                            <textarea
+                                                name={field.name}
+                                                required={field.required}
+                                                value={formData[field.name] || ''}
+                                                onChange={handleChange}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                                placeholder={field.placeholder || `Enter ${field.label}`}
+                                                rows="3"
+                                            />
+                                        ) : (
+                                            <input
+                                                type={field.type || 'text'}
+                                                name={field.name}
+                                                required={field.required}
+                                                value={formData[field.name] || ''}
+                                                onChange={handleChange}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                                placeholder={field.placeholder || `Enter ${field.label}`}
+                                                step={field.precision ? `0.${'0'.repeat(field.precision - 1)}1` : undefined}
+                                            />
+                                        )}
+                                    </div>
+                                ))}
                             </div>
 
                             <div className="border-t border-gray-100 pt-6">
@@ -464,6 +523,22 @@ const StockInward = () => {
                                 placeholder="e.g. B-01 or Date"
                             />
                         </div>
+
+                        {activePreset?.id === 'medical' && (
+                            <div className="md:col-span-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Expiry Date <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    name="expiryDate"
+                                    required
+                                    value={formData.expiryDate || ''}
+                                    onChange={handleChange}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                />
+                            </div>
+                        )}
 
                         {!isNewItem && (
                             <div className="md:col-span-1">
