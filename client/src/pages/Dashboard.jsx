@@ -22,7 +22,8 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!settingsLoading && billingSettings && !billingSettings.industry) {
+        // Redirect to onboarding if industry is not set or still generic
+        if (!settingsLoading && billingSettings && (!billingSettings.industry || billingSettings.industry === 'generic')) {
             navigate('/onboarding');
         }
     }, [billingSettings, settingsLoading, navigate]);

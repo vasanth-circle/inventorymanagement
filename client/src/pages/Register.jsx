@@ -19,7 +19,7 @@ const Register = () => {
 
     useEffect(() => {
         if (user) {
-            navigate('/dashboard');
+            navigate('/onboarding');
         }
     }, [user, navigate]);
 
@@ -56,7 +56,7 @@ const Register = () => {
                 position: 'top-right',
                 duration: 5000
             });
-            navigate('/dashboard');
+            navigate('/onboarding');
         } else {
             toast.error(result.message);
         }

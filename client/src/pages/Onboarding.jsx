@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { InventoryContext } from '../context/InventoryContext';
 import { AuthContext } from '../context/AuthContext';
@@ -11,6 +11,14 @@ const Onboarding = () => {
     const navigate = useNavigate();
     const [selectedIndustry, setSelectedIndustry] = useState(null);
     const [loading, setLoading] = useState(false);
+
+    const { billingSettings, loading: settingsLoading } = useContext(InventoryContext);
+
+    useEffect(() => {
+        if (!settingsLoading && billingSettings?.industry && billingSettings.industry !== 'generic') {
+            navigate('/dashboard');
+        }
+    }, [billingSettings, settingsLoading, navigate]);
 
     const industries = Object.keys(INDUSTRY_PRESETS).map(id => ({
         id,
