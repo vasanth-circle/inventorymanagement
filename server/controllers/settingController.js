@@ -29,13 +29,14 @@ export const getBillingSettings = async (req, res, next) => {
 export const updateBillingSettings = async (req, res, next) => {
     try {
         const settings = await Setting.findOneAndUpdate(
-            { ...tenantQuery(req) },
+            { tenantId: req.tenantId },
             { $set: req.body },
             { new: true, upsert: true }
         );
         
         sendResponse(res, 200, settings, 'Settings updated successfully');
     } catch (error) {
+        console.error('Update Settings Error:', error);
         next(error);
     }
 };

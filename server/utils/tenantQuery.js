@@ -11,14 +11,23 @@
  *   Model.create({ ...req.body, tenantId: req.tenantId })
  *   — always use req.tenantId directly for writes (ObjectId for new records)
  */
+import mongoose from 'mongoose';
+
 export const tenantQuery = (req) => {
-    const ids = [req.tenantId];
+    const ids = [];
+    
+    if (req.tenantId) ids.push(req.tenantId);
+    
+    // Only add tenantCode if it's a valid ObjectId string or if we are certain the model handles strings
+    // For safety with current strictly-typed ObjectId models, we prioritize the validated tenantId.
     if (req.tenantCode && String(req.tenantCode) !== String(req.tenantId)) {
-        ids.push(req.tenantCode);
+        if (mongoose.Types.ObjectId.isValid(req.tenantCode)) {
+            ids.push(req.tenantCode);
+        }
     }
-    if (ids.length === 1) {
-        // Only one value — simpler equality query, avoids $in overhead
-        return { tenantId: ids[0] };
-    }
+
+    if (ids.length === 0) return { tenantId: null };
+    if (ids.length === 1) return { tenantId: ids[0] };
+    
     return { tenantId: { $in: ids } };
 };

@@ -54,8 +54,8 @@ const template1 = (order, settings, docType = 'invoice') => {
     const title = isQuotation
         ? (s.documentConfig?.quotationTitle || 'QUOTATION')
         : (s.documentConfig?.invoiceTitle || 'TAX INVOICE');
-    const docNo = isQuotation ? order.quotationNumber : order.orderNumber;
-    const docDate = isQuotation ? (order.quotationDate || order.createdAt) : order.orderDate;
+    const docNo = isQuotation ? (order.quotationNumber || order.orderNumber) : order.orderNumber;
+    const docDate = isQuotation ? (order.quotationDate || order.orderDate || order.createdAt) : order.orderDate;
     const qtyLabel = s.unitConfig?.quantityLabel || 'Qty (SqFt)';
     const rateLabel = s.unitConfig?.rateLabel || 'Rate';
     const terms = order.terms || s.branding?.termsAndConditions || 'E. & O.E.';
@@ -94,12 +94,14 @@ const template1 = (order, settings, docType = 'invoice') => {
   .footer { padding: 10px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; }
 </style></head><body>
 <div class="container">
-  <div class="company-header">
+  <div class="company-header" style="min-height: 80px; display: flex; flex-direction: column; justify-content: center;">
+    ${logoSrc ? `<div style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%);"><img src="${logoSrc}" alt="Logo" style="max-height:65px;max-width:180px;object-fit:contain;display:block;"/></div>` : ''}
     <div class="contact-info">CELL: ${s.phone1 || ''}${s.phone2 ? ', ' + s.phone2 : ''}</div>
-    ${logoSrc ? `<img src="${logoSrc}" alt="Logo" style="max-height:55px;max-width:160px;object-fit:contain;margin:0 auto 6px;display:block;"/>` : ''}
-    <h1>${s.companyName || 'YOUR COMPANY'}</h1>
-    <p>${s.address || ''}</p>
-    ${s.gstNumber ? `<p><strong>GSTIN: ${s.gstNumber}</strong></p>` : ''}
+    <div style="margin: 0 auto; width: 60%; z-index: 1;">
+        <h1>${s.companyName || 'YOUR COMPANY'}</h1>
+        <p>${s.address || ''}</p>
+        ${s.gstNumber ? `<p><strong>GSTIN: ${s.gstNumber}</strong></p>` : ''}
+    </div>
   </div>
   <div class="doc-title">${title}</div>
   <div class="meta-grid">
@@ -153,6 +155,7 @@ const template1 = (order, settings, docType = 'invoice') => {
     <div class="summary-right">
       <div class="math-row"><span>Taxable Value:</span><span>${s.documentConfig?.currencySymbol || '₹'}${(order.itemsTotal || 0).toLocaleString()}</span></div>
       ${order.loadingCharges > 0 ? `<div class="math-row"><span>Loading:</span><span>${s.documentConfig?.currencySymbol || '₹'}${order.loadingCharges.toLocaleString()}</span></div>` : ''}
+      ${order.unloadingCharges > 0 ? `<div class="math-row"><span>Unloading:</span><span>${s.documentConfig?.currencySymbol || '₹'}${order.unloadingCharges.toLocaleString()}</span></div>` : ''}
       ${order.transportCharges > 0 ? `<div class="math-row"><span>Transport:</span><span>${s.documentConfig?.currencySymbol || '₹'}${order.transportCharges.toLocaleString()}</span></div>` : ''}
       ${(order.discountAmount || 0) > 0 ? `<div class="math-row" style="color:green"><span>Discount:</span><span>- ${s.documentConfig?.currencySymbol || '₹'}${order.discountAmount.toLocaleString()}</span></div>` : ''}
       ${order.oldBalance > 0 ? `<div class="math-row"><span>Old Balance:</span><span>${s.documentConfig?.currencySymbol || '₹'}${order.oldBalance.toLocaleString()}</span></div>` : ''}
@@ -179,8 +182,8 @@ const template2 = (order, settings, docType = 'invoice') => {
     const taxPct = order.taxAmount > 0 ? (s.documentConfig?.defaultTaxRate || 18) : 0;
     const isQuotation = docType === 'quotation';
     const title = isQuotation ? (s.documentConfig?.quotationTitle || 'QUOTATION') : (s.documentConfig?.invoiceTitle || 'TAX INVOICE');
-    const docNo = isQuotation ? order.quotationNumber : order.orderNumber;
-    const docDate = isQuotation ? (order.quotationDate || order.createdAt) : order.orderDate;
+    const docNo = isQuotation ? (order.quotationNumber || order.orderNumber) : order.orderNumber;
+    const docDate = isQuotation ? (order.quotationDate || order.orderDate || order.createdAt) : order.orderDate;
     const qtyLabel = s.unitConfig?.quantityLabel || 'Qty';
     const rateLabel = s.unitConfig?.rateLabel || 'Rate';
     const terms = order.terms || s.branding?.termsAndConditions || 'E. & O.E.';
@@ -305,6 +308,7 @@ const template2 = (order, settings, docType = 'invoice') => {
       <div class="total-row"><span>Subtotal:</span><span><b>${sym}${(order.itemsTotal || 0).toLocaleString()}</b></span></div>
       ${order.taxAmount > 0 ? `<div class="total-row"><span>Tax (${taxPct}%):</span><span>${sym}${(order.taxAmount || 0).toLocaleString()}</span></div>` : ''}
       ${order.loadingCharges > 0 ? `<div class="total-row"><span>Loading:</span><span>${sym}${order.loadingCharges.toLocaleString()}</span></div>` : ''}
+      ${order.unloadingCharges > 0 ? `<div class="total-row"><span>Unloading:</span><span>${sym}${order.unloadingCharges.toLocaleString()}</span></div>` : ''}
       ${order.transportCharges > 0 ? `<div class="total-row"><span>Transport:</span><span>${sym}${order.transportCharges.toLocaleString()}</span></div>` : ''}
       ${(order.discountAmount || 0) > 0 ? `<div class="total-row" style="color:green"><span>Discount:</span><span>- ${sym}${order.discountAmount.toLocaleString()}</span></div>` : ''}
       ${order.advanceAmount > 0 ? `<div class="total-row" style="color:green"><span>Advance:</span><span>- ${sym}${order.advanceAmount.toLocaleString()}</span></div>` : ''}
@@ -330,8 +334,8 @@ const template3 = (order, settings, docType = 'invoice') => {
     const taxPct = order.taxAmount > 0 ? (s.documentConfig?.defaultTaxRate || 18) : 0;
     const isQuotation = docType === 'quotation';
     const title = isQuotation ? (s.documentConfig?.quotationTitle || 'Quotation') : (s.documentConfig?.invoiceTitle || 'Tax Invoice');
-    const docNo = isQuotation ? order.quotationNumber : order.orderNumber;
-    const docDate = isQuotation ? (order.quotationDate || order.createdAt) : order.orderDate;
+    const docNo = isQuotation ? (order.quotationNumber || order.orderNumber) : order.orderNumber;
+    const docDate = isQuotation ? (order.quotationDate || order.orderDate || order.createdAt) : order.orderDate;
     const qtyLabel = s.unitConfig?.quantityLabel || 'Qty';
     const rateLabel = s.unitConfig?.rateLabel || 'Rate';
     const terms = order.terms || s.branding?.termsAndConditions || 'E. & O.E.';
@@ -454,6 +458,7 @@ const template3 = (order, settings, docType = 'invoice') => {
       <div class="total-row"><span class="lbl">Subtotal</span><span>${sym}${(order.itemsTotal || 0).toLocaleString()}</span></div>
       ${order.taxAmount > 0 ? `<div class="total-row"><span class="lbl">Tax (${taxPct}%)</span><span>${sym}${(order.taxAmount||0).toLocaleString()}</span></div>` : ''}
       ${order.loadingCharges > 0 ? `<div class="total-row"><span class="lbl">Loading</span><span>${sym}${order.loadingCharges.toLocaleString()}</span></div>` : ''}
+      ${order.unloadingCharges > 0 ? `<div class="total-row"><span class="lbl">Unloading</span><span>${sym}${order.unloadingCharges.toLocaleString()}</span></div>` : ''}
       ${order.transportCharges > 0 ? `<div class="total-row"><span class="lbl">Transport</span><span>${sym}${order.transportCharges.toLocaleString()}</span></div>` : ''}
       ${(order.discountAmount||0) > 0 ? `<div class="total-row"><span class="lbl" style="color:green">Discount</span><span style="color:green">- ${sym}${order.discountAmount.toLocaleString()}</span></div>` : ''}
       ${order.advanceAmount > 0 ? `<div class="total-row"><span class="lbl" style="color:green">Advance</span><span style="color:green">- ${sym}${order.advanceAmount.toLocaleString()}</span></div>` : ''}
@@ -506,11 +511,12 @@ export const generatePreviewHtml = (templateNo, settings) => {
         itemsTotal: 4300,
         taxAmount: 774, // 18% of 4300
         loadingCharges: 100,
+        unloadingCharges: 50,
         transportCharges: 300,
         discountAmount: 150,
         advanceAmount: 0,
         oldBalance: 0,
-        totalAmount: 5324
+        totalAmount: 5374
     };
 
     let html;

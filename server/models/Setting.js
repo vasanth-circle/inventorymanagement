@@ -15,25 +15,26 @@ const settingSchema = new mongoose.Schema({
     gstNumber: { type: String, default: '', trim: true },
     invoicePrefix: { type: String, default: 'INV' },
     estimatePrefix: { type: String, default: 'EST' },
+    industry: {
+        type: String,
+        default: 'generic'
+    },
 
     // ── Unit & Measurement Configuration ─────────────────────────────────
     unitConfig: {
         // Primary quantity basis (what the item is measured/sold in)
         quantityBasis: {
             type: String,
-            enum: ['pieces', 'boxes', 'sqft', 'meters', 'kg', 'liters', 'units'],
             default: 'units',
         },
         // Optional secondary unit (e.g. show SqFt AND Boxes)
         secondaryUnit: {
             type: String,
-            enum: ['none', 'pieces', 'boxes', 'sqft', 'meters'],
             default: 'none',
         },
         // What the price/rate is charged per
         rateBasis: {
             type: String,
-            enum: ['per_piece', 'per_box', 'per_sqft', 'per_meter', 'per_kg', 'per_unit'],
             default: 'per_unit',
         },
         // Column label overrides shown on bills

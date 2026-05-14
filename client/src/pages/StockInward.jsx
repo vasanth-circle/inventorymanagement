@@ -4,7 +4,7 @@ import { InventoryContext } from '../context/InventoryContext';
 import toast from 'react-hot-toast';
 
 const StockInward = () => {
-    const { items, fetchItems, categories, locations, createItem, createTransaction, billingSettings } = useContext(InventoryContext);
+    const { items, fetchItems, categories, locations, createItem, createTransaction, billingSettings, activePreset } = useContext(InventoryContext);
     const navigate = useNavigate();
     const [isNewItem, setIsNewItem] = useState(true);
     const [loading, setLoading] = useState(false);
@@ -406,6 +406,33 @@ const StockInward = () => {
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                                 placeholder={`Usable ${billingSettings?.unitConfig?.quantityLabel || 'stock'} quantity`}
                             />
+                            {activePreset?.id === 'tiles' && selectedItem && (
+                                <div className="mt-2 p-3 bg-amber-50 rounded-lg border border-amber-100">
+                                    <div className="flex justify-between items-center text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1">
+                                        <span>Tiles Smart Calc</span>
+                                        <span>Auto-Conversion</span>
+                                    </div>
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-xl font-black text-amber-700">
+                                            {(() => {
+                                                const item = items.find(i => i._id === selectedItem);
+                                                if (!item) return '0.00';
+                                                const qty = parseFloat(formData.quantity) || 0;
+                                                const pcsPerBox = parseFloat(item.pcsPerBox) || 1;
+                                                const sqFtPerPc = parseFloat(item.sqFtPerPc) || 0;
+                                                
+                                                // Assuming inward is done in BOXES for tiles
+                                                const totalSqFt = qty * pcsPerBox * sqFtPerPc;
+                                                return totalSqFt.toFixed(2);
+                                            })()}
+                                        </span>
+                                        <span className="text-xs font-bold text-amber-500 uppercase">Total SqFt</span>
+                                    </div>
+                                    <p className="text-[9px] text-amber-500/70 mt-1 italic font-medium">
+                                        Based on {items.find(i => i._id === selectedItem)?.pcsPerBox || 1} Pcs/Box and {items.find(i => i._id === selectedItem)?.sqFtPerPc || 0} SqFt/Pc
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         <div>

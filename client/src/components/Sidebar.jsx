@@ -2,9 +2,11 @@ import { useContext, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
+import { InventoryContext } from '../context/InventoryContext';
 
 const Sidebar = ({ isOpen, onClose }) => {
     const { user, logout } = useContext(AuthContext);
+    const { activePreset } = useContext(InventoryContext);
     const { theme, toggleTheme } = useContext(ThemeContext);
     const location = useLocation();
     const navigate = useNavigate();
@@ -23,7 +25,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             icon: '📦',
             items: [
                 { name: 'Dashboard', path: '/dashboard', id: 'dashboard' },
-                { name: 'Items', path: '/inventory', id: 'items' },
+                { name: activePreset?.terminology?.items || 'Items', path: '/inventory', id: 'items' },
                 { name: 'HSN Codes', path: '/hsn-management', id: 'hsn' },
                 { name: 'Categories', path: '/categories', id: 'categories' },
                 { name: 'Locations', path: '/locations', id: 'locations' },
@@ -38,7 +40,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             id: 'sales',
             icon: '🛒',
             items: [
-                { name: 'Customers', path: '/customers', id: 'customers' },
+                { name: activePreset?.terminology?.customers || 'Customers', path: '/customers', id: 'customers' },
                 { name: 'Customer Ledgers', path: '/customer-ledger', id: 'customer-ledger' },
                 { name: 'Quotations', path: '/quotations', id: 'quotations' },
                 { name: 'Sales Orders', path: '/sales-orders', id: 'sales-orders' },
@@ -53,7 +55,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 { name: 'Vendors', path: '/vendors', id: 'vendors' },
                 { name: 'Vendor Ledgers', path: '/vendor-ledger', id: 'vendor-ledger' },
                 { name: 'Purchase Orders', path: '/purchase-orders', id: 'purchase-orders' },
-                { name: 'Stock Inward', path: '/stock-inward', id: 'stock-inward' },
+                { name: activePreset?.terminology?.inward || 'Stock Inward', path: '/stock-inward', id: 'stock-inward' },
             ]
         },
         {
@@ -61,7 +63,8 @@ const Sidebar = ({ isOpen, onClose }) => {
             id: 'reports',
             icon: '📈',
             items: [
-                { name: 'All Reports', path: '/reports', id: 'reports' }
+                { name: 'Analytics Dashboard', path: '/reports', id: 'reports' },
+                { name: 'Financial Ledgers', path: '/ledger-reports', id: 'ledger-reports' }
             ]
         },
         {
@@ -129,7 +132,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         }
 
         if (effectiveRole === 'accounts') {
-            const accountsAllowed = ['dashboard', 'items', 'customers', 'vendors', 'customer-ledger', 'vendor-ledger', 'reports'];
+            const accountsAllowed = ['dashboard', 'items', 'customers', 'vendors', 'customer-ledger', 'vendor-ledger', 'reports', 'ledger-reports'];
             return accountsAllowed.includes(itemId);
         }
 

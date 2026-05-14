@@ -11,7 +11,7 @@ const ITEMS_API = '/api/items';
 
 const SalesOrders = () => {
     const { user } = useContext(AuthContext);
-    const { billingSettings } = useContext(InventoryContext);
+    const { billingSettings, calculateItemValues } = useContext(InventoryContext);
     const [orders, setOrders] = useState([]);
     const [customers, setCustomers] = useState([]);
     const [items, setItems] = useState([]);
@@ -19,6 +19,8 @@ const SalesOrders = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingOrder, setEditingOrder] = useState(null);
     const [fetchingBalance, setFetchingBalance] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [userFilter, setUserFilter] = useState('');
 
     const [formData, setFormData] = useState({
         customer: '',
@@ -45,6 +47,7 @@ const SalesOrders = () => {
         isEstimation: false,
         notes: '',
         loadingCharges: '',
+        unloadingCharges: '',
         transportCharges: '',
         taxAmount: '',
         oldBalance: '',
@@ -59,7 +62,7 @@ const SalesOrders = () => {
 
     const fetchOrders = async () => {
         try {
-            const res = await axios.get(API_URL, {
+            const res = await axios.get(`${API_URL}?limit=1000`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
             setOrders(res.data.data?.orders || res.data.orders || []);
@@ -164,34 +167,8 @@ const SalesOrders = () => {
             row[field] = value;
         }
 
-        const sqFtPerPc = row.sqFtPerPc || 0;
-        const pcsPerBox = row.pcsPerBox || 1;
-        const isTile = sqFtPerPc > 0;
-
-        if (isTile) {
-            if (field === 'boxCount') {
-                row.totalPcs = parseFloat(value || 0) * pcsPerBox;
-                row.totalSqFt = row.totalPcs * sqFtPerPc;
-                row.quantity = row.billingUnit === 'sqft' ? row.totalSqFt : parseFloat(value || 0);
-            } else if (field === 'billingUnit') {
-                row.quantity = value === 'sqft' ? row.totalSqFt : row.boxCount;
-            } else if (field === 'quantity') {
-                if (row.billingUnit === 'sqft') {
-                    row.totalSqFt = parseFloat(value || 0);
-                    row.totalPcs = row.totalSqFt / sqFtPerPc;
-                    row.boxCount = row.totalPcs / pcsPerBox;
-                } else {
-                    row.boxCount = parseFloat(value || 0);
-                    row.totalPcs = row.boxCount * pcsPerBox;
-                    row.totalSqFt = row.totalPcs * sqFtPerPc;
-                }
-            }
-        } else {
-            row.totalPcs = parseFloat(row.quantity || 0);
-        }
-
-        row.total = (parseFloat(row.quantity || 0) * parseFloat(row.price || 0)) || 0;
-        newItems[index] = row;
+        const updatedRow = calculateItemValues(row, field, value, billingSettings?.industry);
+        newItems[index] = updatedRow;
         setFormData({ ...formData, items: newItems });
     };
 
@@ -199,6 +176,7 @@ const SalesOrders = () => {
         const itemsTotal = formData.items.reduce((sum, item) => sum + (item.total || 0), 0);
         const netTotal = itemsTotal + 
             parseFloat(formData.loadingCharges || 0) + 
+            parseFloat(formData.unloadingCharges || 0) + 
             parseFloat(formData.transportCharges || 0) + 
             parseFloat(formData.taxAmount || 0) + 
             parseFloat(formData.oldBalance || 0) - 
@@ -225,6 +203,7 @@ const SalesOrders = () => {
             isEstimation: order.isEstimation || false,
             notes: order.notes || '',
             loadingCharges: order.loadingCharges || 0,
+            unloadingCharges: order.unloadingCharges || 0,
             transportCharges: order.transportCharges || 0,
             taxAmount: order.taxAmount || 0,
             oldBalance: order.oldBalance || 0,
@@ -250,6 +229,7 @@ const SalesOrders = () => {
             isEstimation: false,
             notes: '',
             loadingCharges: '',
+            unloadingCharges: '',
             transportCharges: '',
             taxAmount: '',
             oldBalance: '',
@@ -329,6 +309,16 @@ const SalesOrders = () => {
 
     const { itemsTotal, netTotal } = calculateTotals();
 
+    const filteredOrders = orders.filter(order => {
+        const matchSearch = !searchTerm || order.orderNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (order.customer?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (order.customer?.companyName || '').toLowerCase().includes(searchTerm.toLowerCase());
+        const matchUser = !userFilter || order.user?._id === userFilter;
+        return matchSearch && matchUser;
+    });
+
+    const uniqueUsers = Array.from(new Set(orders.filter(o => o.user).map(o => JSON.stringify({ id: o.user._id, name: o.user.name })))).map(u => JSON.parse(u));
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -344,6 +334,26 @@ const SalesOrders = () => {
                 </button>
             </div>
 
+            <div className="flex gap-3 flex-wrap">
+                <input
+                    type="text"
+                    placeholder="Search by order # or customer..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="flex-1 min-w-[200px] h-10 px-4 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none shadow-sm"
+                />
+                <select
+                    value={userFilter}
+                    onChange={e => setUserFilter(e.target.value)}
+                    className="h-10 px-4 bg-white border border-gray-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none shadow-sm"
+                >
+                    <option value="">All Reps / Users</option>
+                    {uniqueUsers.map(u => (
+                        <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                </select>
+            </div>
+
             {loading ? (
                 <div className="flex justify-center items-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
@@ -356,13 +366,14 @@ const SalesOrders = () => {
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Order #</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Customer</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Date</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Created By</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Net Amount</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Status</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {orders.map((order) => (
+                            {filteredOrders.map((order) => (
                                 <tr key={order._id} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4 font-medium text-primary-700">
                                         {order.orderNumber}
@@ -370,6 +381,7 @@ const SalesOrders = () => {
                                     </td>
                                     <td className="px-6 py-4 text-gray-900 font-medium">{order.customer?.companyName || order.customer?.name}</td>
                                     <td className="px-6 py-4 text-gray-600 text-sm">{new Date(order.orderDate).toLocaleDateString()}</td>
+                                    <td className="px-6 py-4 text-sm font-semibold text-gray-600">{order.user?.name || 'System'}</td>
                                     <td className="px-6 py-4 font-bold text-gray-900">₹{order.totalAmount?.toLocaleString() || 0}</td>
                                     <td className="px-6 py-4">
                                         <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${getStatusColor(order.status)}`}>
@@ -461,19 +473,25 @@ const SalesOrders = () => {
                                     </div>
                                     <div className="overflow-x-auto border rounded-xl shadow-sm">
                                         <table className="w-full text-left min-w-[800px]">
-                                            <thead className="bg-gray-100">
-                                                <tr>
-                                                    <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider">Item / Batch</th>
-                                                    <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-24">Input Qty</th>
-                                                    <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-32">Billed Qty</th>
-                                                    <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-32">Rate (₹)</th>
-                                                    <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider w-32">Unit</th>
-                                                    <th className="px-4 py-3 text-[10px] font-black text-gray-600 uppercase tracking-wider text-right w-32">Total</th>
+                                            <thead>
+                                                <tr className="bg-gray-50 border-b border-gray-100">
+                                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Item / Batch</th>
+                                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-32">
+                                                        {billingSettings?.industry === 'tiles' ? 'Boxes' : 'Quantity'}
+                                                    </th>
+                                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-32">
+                                                        {billingSettings?.unitConfig?.quantityLabel || 'Billed Qty'}
+                                                    </th>
+                                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-32">
+                                                        {billingSettings?.unitConfig?.rateLabel || 'Rate'}
+                                                    </th>
+                                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-24">Unit</th>
+                                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right w-32">Total</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-100">
                                                 {formData.items.map((row, index) => {
-                                                    const isTile = row.sqFtPerPc > 0;
+                                                    const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0;
                                                     return (
                                                         <tr key={index} className="hover:bg-gray-50">
                                                             <td className="px-4 py-3">
@@ -512,12 +530,18 @@ const SalesOrders = () => {
                                                                     type="number" 
                                                                     step="0.01" 
                                                                     min="0" 
-                                                                    value={isTile ? row.boxCount : row.quantity} 
+                                                                    value={isTile ? (row.boxCount || '') : (row.quantity || '')} 
                                                                     onChange={(e) => handleItemChange(index, isTile ? 'boxCount' : 'quantity', e.target.value)} 
-                                                                    placeholder={isTile ? (billingSettings?.unitConfig?.piecesPerBoxLabel?.replace('Pcs per ', '') || 'Box') : "Qty"}
+                                                                    placeholder={isTile ? "Boxes" : "Qty"}
                                                                     className="w-full px-3 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 text-center font-bold" 
                                                                 />
-                                                                {isTile && <div className="text-[9px] text-gray-400 text-center mt-1 uppercase font-bold">{billingSettings?.unitConfig?.piecesPerBoxLabel?.replace('Pcs per ', '') || 'Boxes'}</div>}
+                                                                {isTile && (
+                                                                    <div className="mt-1 flex flex-col items-center gap-0.5">
+                                                                        <div className="text-[8px] font-black text-rose-500 uppercase">
+                                                                            {row.totalPcs} Pieces
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </td>
                                                             <td className="px-4 py-3">
                                                                 <input 
@@ -525,24 +549,26 @@ const SalesOrders = () => {
                                                                     type="number" 
                                                                     step="0.01" 
                                                                     readOnly={isTile}
-                                                                    value={row.quantity} 
+                                                                    value={row.quantity || ''} 
                                                                     onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value))} 
                                                                     className={`w-full px-3 py-2 border rounded-lg border-gray-200 outline-none font-medium text-center ${isTile ? 'bg-gray-50' : ''}`} 
                                                                 />
-                                                                {isTile && <div className="text-[9px] text-gray-400 text-center mt-1 uppercase font-bold">{row.billingUnit === 'sqft' ? (billingSettings?.unitConfig?.quantityLabel || 'SqFt') : (billingSettings?.unitConfig?.piecesPerBoxLabel?.replace('Pcs per ', '') || 'Box')}</div>}
+                                                                {isTile && <div className="text-[9px] text-gray-400 text-center mt-1 uppercase font-bold">{row.billingUnit === 'sqft' ? (billingSettings?.unitConfig?.quantityLabel || 'SqFt') : 'Boxes'}</div>}
                                                             </td>
                                                             <td className="px-4 py-3">
                                                                 <input required type="number" step="0.01" value={row.price} onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value))} className="w-full px-3 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 font-bold text-right" />
                                                                 <div className="text-[9px] text-gray-400 text-right mt-1 uppercase font-bold">Per {isTile ? row.billingUnit : 'Piece'}</div>
                                                             </td>
                                                             <td className="px-4 py-3">
-                                                                {isTile ? (
+                                                                {billingSettings?.industry === 'tiles' && isTile ? (
                                                                     <select value={row.billingUnit} onChange={(e) => handleItemChange(index, 'billingUnit', e.target.value)} className="w-full px-2 py-2 border rounded-lg border-gray-200 text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none">
                                                                         <option value="sqft">SqFt</option>
                                                                         <option value="boxes">Box</option>
                                                                     </select>
                                                                 ) : (
-                                                                    <div className="text-xs font-bold text-gray-400 text-center uppercase py-2">Pieces</div>
+                                                                    <div className="text-xs font-bold text-gray-400 text-center uppercase py-2">
+                                                                        {billingSettings?.unitConfig?.quantityBasis || 'Pieces'}
+                                                                    </div>
                                                                 )}
                                                             </td>
                                                             <td className="px-4 py-3 text-right font-black text-gray-800 pt-5">
@@ -577,6 +603,10 @@ const SalesOrders = () => {
                                             <div>
                                                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Loading Charges</label>
                                                 <input type="number" value={formData.loadingCharges} onChange={(e) => setFormData({ ...formData, loadingCharges: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Unloading Charges</label>
+                                                <input type="number" value={formData.unloadingCharges} onChange={(e) => setFormData({ ...formData, unloadingCharges: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none" />
                                             </div>
                                             <div>
                                                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Transport / Auto</label>

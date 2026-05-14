@@ -9,6 +9,7 @@ import {
     getCustomerLedger,
     recordPayment,
     getCustomerStatement,
+    getCustomerOverallStatement,
 } from '../controllers/customerController.js';
 import { authorize } from '../middleware/authMiddleware.js';
 import { checkMenuAccess } from '../middleware/accessMiddleware.js';
@@ -21,6 +22,8 @@ router.use(checkMenuAccess('customers'));
 router.route('/')
     .get(getCustomers)
     .post(createCustomer);
+
+router.get('/statements/overall', getCustomerOverallStatement);
 
 router.route('/:id')
     .get(getCustomer)

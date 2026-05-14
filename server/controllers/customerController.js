@@ -251,3 +251,72 @@ export const getCustomerStatement = async (req, res, next) => {
     }
 };
 
+// @desc    Get overall statements and aging for all customers
+// @route   GET /api/customers/statements/overall
+// @access  Private
+export const getCustomerOverallStatement = async (req, res, next) => {
+    try {
+        console.log('Fetching overall customer statements for tenant:', req.tenantId);
+        const query = { ...tenantQuery(req), isActive: true };
+        const customers = await Customer.find(query).sort({ name: 1 });
+
+        const statements = await Promise.all(customers.map(async (customer) => {
+            try {
+                const entries = await CustomerLedger.find({ customer: customer._id, ...tenantQuery(req) }).sort({ date: 1, createdAt: 1 });
+                
+                let totalBilled = 0;
+                let totalPaid = 0;
+                let currentBalance = customer.openingBalance || 0;
+                let oldestUnpaidBillDate = null;
+                
+                if (currentBalance > 0) {
+                     oldestUnpaidBillDate = customer.createdAt;
+                }
+
+                for (const entry of entries) {
+                    totalBilled += (entry.debit || 0);
+                    totalPaid += (entry.credit || 0);
+                    currentBalance = entry.balance;
+
+                    if (currentBalance <= 0) {
+                        oldestUnpaidBillDate = null;
+                    } else if (currentBalance > 0 && entry.debit > 0 && !oldestUnpaidBillDate) {
+                        oldestUnpaidBillDate = entry.date;
+                    }
+                }
+
+                let oldestPendingDays = 0;
+                if (oldestUnpaidBillDate && currentBalance > 0) {
+                    const diffTime = Math.abs(new Date() - new Date(oldestUnpaidBillDate));
+                    oldestPendingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                }
+
+                return {
+                    customerId: customer._id,
+                    name: customer.companyName || customer.name,
+                    contact: customer.phone,
+                    totalBilled,
+                    totalPaid,
+                    currentBalance,
+                    oldestPendingDays
+                };
+            } catch (innerError) {
+                console.error(`Error processing customer ${customer._id}:`, innerError);
+                return {
+                    customerId: customer._id,
+                    name: (customer.companyName || customer.name) + ' (Error)',
+                    contact: customer.phone,
+                    totalBilled: 0,
+                    totalPaid: 0,
+                    currentBalance: customer.currentBalance || 0,
+                    oldestPendingDays: 0
+                };
+            }
+        }));
+
+        sendResponse(res, 200, statements, 'Overall customer statements fetched');
+    } catch (error) {
+        console.error('Error in getCustomerOverallStatement:', error);
+        next(error);
+    }
+};

@@ -9,12 +9,23 @@ import {
     BarChart, Bar, Cell 
 } from 'recharts';
 
+import { InventoryContext } from '../context/InventoryContext';
+import { useNavigate } from 'react-router-dom';
+
 const Dashboard = () => {
     const { user } = useContext(AuthContext);
+    const { billingSettings, loading: settingsLoading } = useContext(InventoryContext);
+    const navigate = useNavigate();
     const [stats, setStats] = useState(null);
     const [lowStockItems, setLowStockItems] = useState([]);
     const [trendData, setTrendData] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!settingsLoading && billingSettings && !billingSettings.industry) {
+            navigate('/onboarding');
+        }
+    }, [billingSettings, settingsLoading, navigate]);
 
     const isFinancialAdmin = ['super_admin', 'admin', 'tenant_owner', 'tenant_admin', 'manager', 'accounts'].includes(user?.role);
     const isAdmin = ['super_admin', 'admin', 'tenant_owner', 'tenant_admin', 'manager'].includes(user?.role);

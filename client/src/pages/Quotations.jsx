@@ -34,6 +34,7 @@ const emptyForm = () => ({
     taxRate: 0,
     taxAmount: 0,
     loadingCharges: 0,
+    unloadingCharges: 0,
     transportCharges: 0,
     oldBalance: 0,
     discountAmount: 0,
@@ -42,7 +43,7 @@ const emptyForm = () => ({
 
 const Quotations = () => {
     const navigate = useNavigate();
-    const { billingSettings } = useContext(InventoryContext);
+    const { billingSettings, calculateItemValues } = useContext(InventoryContext);
     const { user } = useContext(AuthContext);
 
     const [quotations, setQuotations] = useState([]);
@@ -54,6 +55,7 @@ const Quotations = () => {
     const [formData, setFormData] = useState(emptyForm());
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const [userFilter, setUserFilter] = useState('');
     const [convertingId, setConvertingId] = useState(null);
     const [fetchingBalance, setFetchingBalance] = useState(false);
 
@@ -133,32 +135,8 @@ const Quotations = () => {
             if (batch) newItems[index].price = batch.price;
         }
 
-        // Recalc total
-        const q = Number(newItems[index].quantity) || 0; // This is the input qty (e.g. Boxes or Pieces)
-        const p = Number(newItems[index].price) || 0;
-        const bUnit = newItems[index].billingUnit;
-        const pcsPerBox = Number(newItems[index].pcsPerBox) || 1;
-        const sqFtPerPc = Number(newItems[index].sqFtPerPc) || 0;
-
-        if (sqFtPerPc > 0) {
-            // It's a tile/box item
-            newItems[index].boxCount = q;
-            newItems[index].totalPcs = q * pcsPerBox;
-            newItems[index].totalSqFt = parseFloat((q * pcsPerBox * sqFtPerPc).toFixed(2));
-            newItems[index].stockQty = q; // Deduct physical boxes
-            newItems[index].stockUnit = 'boxes';
-
-            if (bUnit === 'sqft') {
-                newItems[index].total = parseFloat((newItems[index].totalSqFt * p).toFixed(2));
-            } else {
-                newItems[index].total = parseFloat((q * p).toFixed(2));
-            }
-        } else {
-            // Generic item
-            newItems[index].stockQty = q;
-            newItems[index].stockUnit = 'pieces';
-            newItems[index].total = parseFloat((q * p).toFixed(2));
-        }
+        // Use the centralized calculation engine
+        newItems[index] = calculateItemValues(newItems[index], field, value, billingSettings?.industry);
 
         setFormData(prev => ({ ...prev, items: newItems }));
     };
@@ -174,7 +152,7 @@ const Quotations = () => {
             taxAmt = parseFloat((itemsTotal * taxRate / 100).toFixed(2));
         }
 
-        const net = itemsTotal + (Number(formData.loadingCharges) || 0) + (Number(formData.transportCharges) || 0) + taxAmt + (Number(formData.oldBalance) || 0) - (Number(formData.discountAmount) || 0);
+        const net = itemsTotal + (Number(formData.loadingCharges) || 0) + (Number(formData.unloadingCharges) || 0) + (Number(formData.transportCharges) || 0) + taxAmt + (Number(formData.oldBalance) || 0) - (Number(formData.discountAmount) || 0);
         return { itemsTotal, taxAmount: taxAmt, net };
     };
 
@@ -199,6 +177,7 @@ const Quotations = () => {
             taxRate: Number(formData.taxRate) || 0,
             taxAmount, 
             loadingCharges: Number(formData.loadingCharges) || 0,
+            unloadingCharges: Number(formData.unloadingCharges) || 0,
             transportCharges: Number(formData.transportCharges) || 0,
             oldBalance: Number(formData.oldBalance) || 0,
             discountAmount: Number(formData.discountAmount) || 0,
@@ -271,6 +250,7 @@ const Quotations = () => {
             taxRate: q.taxRate || 0,
             taxAmount: q.taxAmount || 0,
             loadingCharges: q.loadingCharges || 0,
+            unloadingCharges: q.unloadingCharges || 0,
             transportCharges: q.transportCharges || 0,
             oldBalance: q.oldBalance || 0,
             discountAmount: q.discountAmount || 0,
@@ -296,8 +276,11 @@ const Quotations = () => {
             (q.customer?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (q.customer?.companyName || '').toLowerCase().includes(searchTerm.toLowerCase());
         const matchStatus = !statusFilter || q.status === statusFilter;
-        return matchSearch && matchStatus;
+        const matchUser = !userFilter || q.user?._id === userFilter;
+        return matchSearch && matchStatus && matchUser;
     });
+
+    const uniqueUsers = Array.from(new Set(quotations.filter(q => q.user).map(q => JSON.stringify({ id: q.user._id, name: q.user.name })))).map(u => JSON.parse(u));
 
     const { itemsTotal, taxAmount, net } = calcTotals();
 
@@ -342,6 +325,16 @@ const Quotations = () => {
                     <option value="rejected">Rejected</option>
                     <option value="converted">Converted</option>
                 </select>
+                <select
+                    value={userFilter}
+                    onChange={e => setUserFilter(e.target.value)}
+                    className="h-10 px-3 bg-white border border-gray-100 rounded-lg text-sm font-medium focus:ring-2 focus:ring-rose-500"
+                >
+                    <option value="">All Reps / Users</option>
+                    {uniqueUsers.map(u => (
+                        <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                </select>
             </div>
 
             {/* Table / Card View */}
@@ -361,6 +354,7 @@ const Quotations = () => {
                                         <th className="text-left p-4">Customer</th>
                                         <th className="text-left p-4">Date</th>
                                         <th className="text-left p-4">Valid Until</th>
+                                        <th className="text-left p-4">Created By</th>
                                         <th className="text-right p-4">Amount</th>
                                         <th className="text-center p-4">Status</th>
                                         <th className="text-center p-4">Actions</th>
@@ -377,6 +371,9 @@ const Quotations = () => {
                                             <td className="p-4 text-gray-500 text-xs">{new Date(q.quotationDate || q.createdAt).toLocaleDateString()}</td>
                                             <td className={`p-4 text-xs font-medium ${q.validUntil && new Date(q.validUntil) < new Date() && q.status !== 'converted' ? 'text-red-500' : 'text-gray-500'}`}>
                                                 {q.validUntil ? new Date(q.validUntil).toLocaleDateString() : '-'}
+                                            </td>
+                                            <td className="p-4 text-xs font-semibold text-gray-600">
+                                                {q.user?.name || 'System'}
                                             </td>
                                             <td className="p-4 text-right font-bold text-gray-800">₹{(q.totalAmount || 0).toLocaleString()}</td>
                                             <td className="p-4 text-center">
@@ -508,21 +505,36 @@ const Quotations = () => {
                                             </div>
                                             {/* Qty */}
                                             <div className="col-span-2">
-                                                <label className="text-[9px] text-gray-400 font-bold uppercase">Qty {row.sqFtPerPc > 0 ? '(Boxes)' : ''}</label>
+                                                <label className="text-[9px] text-gray-400 font-bold uppercase">
+                                                    {billingSettings?.unitConfig?.quantityLabel || 'Qty'} {row.sqFtPerPc > 0 ? `(${row.billingUnit === 'sqft' ? 'SqFt' : 'Boxes'})` : ''}
+                                                </label>
                                                 <input type="number" min="0" step="any" value={row.quantity}
                                                     onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
                                                     className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold text-center focus:ring-2 focus:ring-rose-500" />
-                                                {row.sqFtPerPc > 0 && <div className="text-[10px] text-gray-400 text-center mt-0.5">{((row.quantity || 0) * (row.pcsPerBox || 1) * row.sqFtPerPc).toFixed(2)} SqFt</div>}
+                                                
+                                                {/* Smart Calc Preview */}
+                                                {billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 && (
+                                                    <div className="mt-1 flex flex-col items-center gap-0.5">
+                                                        <div className="text-[8px] font-black text-rose-500 uppercase">
+                                                            {row.billingUnit === 'sqft' ? `${row.boxCount?.toFixed(1)} Boxes` : `${row.totalSqFt?.toFixed(2)} SqFt`}
+                                                        </div>
+                                                        <div className="text-[7px] text-gray-400 font-bold uppercase italic">
+                                                            {row.totalPcs} Pieces Total
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
+
                                             {/* Rate */}
                                             <div className="col-span-2">
-                                                <label className="text-[9px] text-gray-400 font-bold uppercase">Rate</label>
+                                                <label className="text-[9px] text-gray-400 font-bold uppercase">{billingSettings?.unitConfig?.rateLabel || 'Rate'}</label>
                                                 <input type="number" min="0" step="0.01" value={row.price}
                                                     onChange={e => handleItemChange(idx, 'price', e.target.value)}
                                                     className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold text-right focus:ring-2 focus:ring-rose-500" />
                                             </div>
+
                                             {/* Billing Unit Select */}
-                                            {row.sqFtPerPc > 0 && (
+                                            {billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 && (
                                                 <div className="col-span-1">
                                                     <label className="text-[9px] text-gray-400 font-bold uppercase">Unit</label>
                                                     <select value={row.billingUnit} onChange={e => handleItemChange(idx, 'billingUnit', e.target.value)}
@@ -533,7 +545,7 @@ const Quotations = () => {
                                                 </div>
                                             )}
                                             {/* Total */}
-                                            <div className={row.sqFtPerPc > 0 ? "col-span-1" : "col-span-2"}>
+                                            <div className={(billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0) ? "col-span-1" : "col-span-2"}>
                                                 <label className="text-[9px] text-gray-400 font-bold uppercase">Total</label>
                                                 <div className="h-9 px-2 bg-gray-100 border border-gray-200 rounded-lg text-xs font-black text-right flex items-center justify-end text-gray-700">
                                                     ₹{(row.total || 0).toLocaleString()}
@@ -552,7 +564,7 @@ const Quotations = () => {
                             </div>
 
                             {/* Charges */}
-                            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 bg-gray-50 p-4 rounded-xl">
+                            <div className="grid grid-cols-2 md:grid-cols-7 gap-4 bg-gray-50 p-4 rounded-xl">
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Tax Rate (%)</label>
                                     <input type="number" min="0" step="0.1" value={formData.taxRate}
@@ -570,6 +582,12 @@ const Quotations = () => {
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Loading</label>
                                     <input type="number" min="0" step="0.01" value={formData.loadingCharges}
                                         onChange={e => setFormData(p => ({ ...p, loadingCharges: e.target.value }))}
+                                        className="w-full h-10 px-3 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-rose-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Unloading</label>
+                                    <input type="number" min="0" step="0.01" value={formData.unloadingCharges}
+                                        onChange={e => setFormData(p => ({ ...p, unloadingCharges: e.target.value }))}
                                         className="w-full h-10 px-3 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-rose-500" />
                                 </div>
                                 <div className="space-y-1">

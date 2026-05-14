@@ -2,6 +2,7 @@ import { createContext, useState, useEffect, useContext } from 'react';
 import api from '../utils/api';
 import { AuthContext } from './AuthContext';
 import toast from 'react-hot-toast';
+import { getIndustryPreset } from '../config/industryPresets';
 
 export const InventoryContext = createContext();
 
@@ -13,7 +14,15 @@ export const InventoryProvider = ({ children }) => {
     const [assetLocations, setAssetLocations] = useState([]);
     const [transactions, setTransactions] = useState([]);
     const [billingSettings, setBillingSettings] = useState(null);
+    const [activePreset, setActivePreset] = useState(getIndustryPreset('generic'));
     const [loading, setLoading] = useState(false);
+
+    // Sync activePreset when billingSettings change
+    useEffect(() => {
+        if (billingSettings?.industry) {
+            setActivePreset(getIndustryPreset(billingSettings.industry));
+        }
+    }, [billingSettings]);
 
     // Fetch categories
     const fetchCategories = async () => {
@@ -127,6 +136,45 @@ export const InventoryProvider = ({ children }) => {
             toast.error('Failed to update settings');
             return { success: false };
         }
+    };
+
+    /**
+     * Real-world calculation engine based on industry type
+     */
+    const calculateItemValues = (row, field, value, industry) => {
+        const updatedRow = { ...row, [field]: value };
+        const pcsPerBox = Number(updatedRow.pcsPerBox) || 1;
+        const sqFtPerPc = Number(updatedRow.sqFtPerPc) || 0;
+        const price = Number(updatedRow.price) || 0;
+        const billingUnit = updatedRow.billingUnit || 'pieces';
+
+        if (industry === 'tiles' && sqFtPerPc > 0) {
+            // Tiles Logic: Conversion between Box, Pieces, and SqFt
+            if (field === 'boxCount') {
+                updatedRow.totalPcs = Number(value || 0) * pcsPerBox;
+                updatedRow.totalSqFt = Number((updatedRow.totalPcs * sqFtPerPc).toFixed(2));
+                updatedRow.quantity = billingUnit === 'sqft' ? updatedRow.totalSqFt : Number(value || 0);
+            } else if (field === 'billingUnit') {
+                updatedRow.quantity = value === 'sqft' ? (updatedRow.totalSqFt || 0) : (updatedRow.boxCount || 0);
+            } else if (field === 'quantity') {
+                if (billingUnit === 'sqft') {
+                    updatedRow.totalSqFt = Number(value || 0);
+                    updatedRow.totalPcs = sqFtPerPc > 0 ? (updatedRow.totalSqFt / sqFtPerPc) : 0;
+                    updatedRow.boxCount = pcsPerBox > 0 ? (updatedRow.totalPcs / pcsPerBox) : 0;
+                } else {
+                    updatedRow.boxCount = Number(value || 0);
+                    updatedRow.totalPcs = updatedRow.boxCount * pcsPerBox;
+                    updatedRow.totalSqFt = Number((updatedRow.totalPcs * sqFtPerPc).toFixed(2));
+                }
+            }
+            updatedRow.total = Number((updatedRow.quantity * price).toFixed(2));
+        } else {
+            // Standard Logic: Qty * Price
+            updatedRow.quantity = field === 'quantity' ? Number(value || 0) : Number(updatedRow.quantity || 0);
+            updatedRow.total = Number((updatedRow.quantity * price).toFixed(2));
+        }
+
+        return updatedRow;
     };
 
     // Fetch Sales Orders (for reporting or lists)
@@ -360,10 +408,12 @@ export const InventoryProvider = ({ children }) => {
                 getExcelHeadersBulk,
                 importMappedData,
                 billingSettings,
+                activePreset,
                 fetchBillingSettings,
                 updateBillingSettings,
                 fetchSalesOrders,
                 confirmDelete,
+                calculateItemValues,
             }}
         >
             {children}

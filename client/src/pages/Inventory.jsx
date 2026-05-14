@@ -7,7 +7,7 @@ const Inventory = () => {
     const {
         items, fetchItems, deleteItem, createItem, updateItem,
         categories, locations, fetchLocations, loading, confirmDelete,
-        billingSettings
+        billingSettings, activePreset
     } = useContext(InventoryContext);
     const [hsnCodes, setHsnCodes] = useState([]);
     const [filters, setFilters] = useState({
@@ -50,15 +50,94 @@ const Inventory = () => {
         size: '',
         hsn: '',
         pcsPerBox: '',
+        sqFtPerPc: '',
     });
     const [createCustomFields, setCreateCustomFields] = useState([]);
     const [createLoading, setCreateLoading] = useState(false);
+
+    // Auto-calculate SqFt from Size (e.g. 2x4 -> 8)
+    useEffect(() => {
+        if (activePreset?.id === 'tiles' && createFormData.size) {
+            const parts = createFormData.size.split(/[x*]/i);
+            if (parts.length === 2) {
+                const w = parseFloat(parts[0]);
+                const h = parseFloat(parts[1]);
+                if (!isNaN(w) && !isNaN(h)) {
+                    setCreateFormData(prev => ({ ...prev, sqFtPerPc: (w * h).toFixed(3) }));
+                }
+            }
+        }
+    }, [createFormData.size, activePreset?.id]);
+
+    useEffect(() => {
+        if (activePreset?.id === 'tiles' && editFormData.size) {
+            const parts = editFormData.size.split(/[x*]/i);
+            if (parts.length === 2) {
+                const w = parseFloat(parts[0]);
+                const h = parseFloat(parts[1]);
+                if (!isNaN(w) && !isNaN(h)) {
+                    setEditFormData(prev => ({ ...prev, sqFtPerPc: (w * h).toFixed(3) }));
+                }
+            }
+        }
+    }, [editFormData.size, activePreset?.id]);
 
     useEffect(() => {
         loadItems();
         fetchLocations();
         fetchHSNCodes();
     }, [filters]);
+
+    /**
+     * Renders industry-specific fields dynamically
+     */
+    const renderDynamicFields = (formData, setFormData) => {
+        if (!activePreset?.productFields?.length) return null;
+
+        const handleChange = (name, value) => {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        };
+
+        return (
+            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                <div className="md:col-span-2 text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                    <span className="w-2 h-2 bg-rose-500 rounded-full animate-pulse"></span>
+                    {activePreset.name} Specific Fields
+                </div>
+                {activePreset.productFields.map((field) => (
+                    <div key={field.name}>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
+                        {field.type === 'select' ? (
+                            <select
+                                value={formData[field.name] || ''}
+                                onChange={(e) => handleChange(field.name, e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                            >
+                                <option value="">Select {field.label}</option>
+                                {field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                            </select>
+                        ) : field.type === 'textarea' ? (
+                            <textarea
+                                value={formData[field.name] || ''}
+                                onChange={(e) => handleChange(field.name, e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none h-20"
+                                placeholder={field.placeholder}
+                            />
+                        ) : (
+                            <input
+                                type={field.type || 'text'}
+                                value={formData[field.name] || ''}
+                                onChange={(e) => handleChange(field.name, e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                placeholder={field.placeholder}
+                                required={field.required}
+                            />
+                        )}
+                    </div>
+                ))}
+            </div>
+        );
+    };
 
     const fetchHSNCodes = async () => {
         try {
@@ -106,6 +185,7 @@ const Inventory = () => {
             size: item.size || '',
             hsn: item.hsn || '',
             pcsPerBox: item.pcsPerBox || '',
+            sqFtPerPc: item.sqFtPerPc || '',
         });
 
         // Convert customFields Map to array
@@ -609,27 +689,7 @@ const Inventory = () => {
                                         ))}
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Size (Dimensions)</label>
-                                    <input
-                                        type="text"
-                                        name="size"
-                                        value={editFormData.size}
-                                        onChange={handleEditChange}
-                                        placeholder="e.g. 4x4 or 18x12"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pcs per Box</label>
-                                    <input
-                                        type="number"
-                                        name="pcsPerBox"
-                                        value={editFormData.pcsPerBox}
-                                        onChange={handleEditChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    />
-                                </div>
+                                {renderDynamicFields(editFormData, setEditFormData)}
                             </div>
 
                             <div className="space-y-4">
@@ -810,27 +870,7 @@ const Inventory = () => {
                                         ))}
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Size (Dimensions)</label>
-                                    <input
-                                        type="text"
-                                        name="size"
-                                        value={createFormData.size}
-                                        onChange={handleCreateChange}
-                                        placeholder="e.g. 4x4 or 18x12"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pcs per Box</label>
-                                    <input
-                                        type="number"
-                                        name="pcsPerBox"
-                                        value={createFormData.pcsPerBox}
-                                        onChange={handleCreateChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    />
-                                </div>
+                                {renderDynamicFields(createFormData, setCreateFormData)}
                             </div>
 
                             <div>

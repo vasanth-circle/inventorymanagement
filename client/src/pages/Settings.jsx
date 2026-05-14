@@ -40,7 +40,7 @@ const SelectField = ({ label, name, value, onChange, options }) => (
 );
 
 const Settings = () => {
-    const { billingSettings, updateBillingSettings } = useContext(InventoryContext);
+    const { billingSettings, fetchBillingSettings, updateBillingSettings } = useContext(InventoryContext);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('company');
     const [previewTemplate, setPreviewTemplate] = useState(null);
@@ -57,6 +57,7 @@ const Settings = () => {
         gstNumber: '',
         invoicePrefix: 'INV',
         estimatePrefix: 'EST',
+        industry: 'generic',
         // Unit config
         unitConfig: {
             quantityBasis: 'units',
@@ -81,6 +82,7 @@ const Settings = () => {
         },
         // Branding
         branding: {
+            logoUrl: '',
             tagline: '',
             website: '',
             email: '',
@@ -101,6 +103,7 @@ const Settings = () => {
                 gstNumber: billingSettings.gstNumber || '',
                 invoicePrefix: billingSettings.invoicePrefix || 'INV',
                 estimatePrefix: billingSettings.estimatePrefix || 'EST',
+                industry: billingSettings.industry || 'generic',
                 unitConfig: {
                     quantityBasis: billingSettings.unitConfig?.quantityBasis || 'units',
                     secondaryUnit: billingSettings.unitConfig?.secondaryUnit || 'none',
@@ -122,6 +125,7 @@ const Settings = () => {
                     showSecondaryQty: billingSettings.documentConfig?.showSecondaryQty || false,
                 },
                 branding: {
+                    logoUrl: billingSettings.branding?.logoUrl || '',
                     tagline: billingSettings.branding?.tagline || '',
                     website: billingSettings.branding?.website || '',
                     email: billingSettings.branding?.email || '',
@@ -138,6 +142,56 @@ const Settings = () => {
 
     const handleChange = (e) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    };
+
+    const handleIndustryChange = (e) => {
+        const industry = e.target.value;
+        let unitConfig = { ...formData.unitConfig };
+
+        if (industry === 'tiles') {
+            unitConfig = {
+                quantityBasis: 'sqft',
+                secondaryUnit: 'boxes',
+                rateBasis: 'per_sqft',
+                quantityLabel: 'SqFt',
+                secondaryLabel: 'Box',
+                rateLabel: 'Rate (SqFt)'
+            };
+        } else if (industry === 'retail') {
+            unitConfig = {
+                quantityBasis: 'pieces',
+                secondaryUnit: 'boxes',
+                rateBasis: 'per_piece',
+                quantityLabel: 'Qty',
+                secondaryLabel: 'Packing',
+                rateLabel: 'Rate'
+            };
+        } else if (industry === 'machine_shop') {
+            unitConfig = {
+                quantityBasis: 'pieces',
+                secondaryUnit: 'none',
+                rateBasis: 'per_piece',
+                quantityLabel: 'Qty',
+                secondaryLabel: '',
+                rateLabel: 'Rate'
+            };
+        } else if (industry === 'electronics') {
+            unitConfig = {
+                quantityBasis: 'pieces',
+                secondaryUnit: 'none',
+                rateBasis: 'per_piece',
+                quantityLabel: 'Qty',
+                secondaryLabel: '',
+                rateLabel: 'Rate'
+            };
+        }
+
+        setFormData(prev => ({ 
+            ...prev, 
+            industry,
+            unitConfig
+        }));
+        toast.success(`Applied ${industry} preset! Don't forget to save.`);
     };
 
     const handleNested = (section, key, value) => {
@@ -159,7 +213,13 @@ const Settings = () => {
             const res = await api.post('/settings/billing/logo', form, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
-            setLogoPreview(res.data?.data?.logoUrl || logoPreview);
+            const newLogoUrl = res.data?.data?.logoUrl;
+            setLogoPreview(newLogoUrl || logoPreview);
+            setFormData(prev => ({
+                ...prev,
+                branding: { ...prev.branding, logoUrl: newLogoUrl || prev.branding.logoUrl }
+            }));
+            if (fetchBillingSettings) await fetchBillingSettings();
             toast.success('Logo uploaded successfully!');
         } catch (err) {
             toast.error('Failed to upload logo');
@@ -175,6 +235,11 @@ const Settings = () => {
         try {
             await api.delete('/settings/billing/logo');
             setLogoPreview('');
+            setFormData(prev => ({
+                ...prev,
+                branding: { ...prev.branding, logoUrl: '' }
+            }));
+            if (fetchBillingSettings) await fetchBillingSettings();
             toast.success('Logo removed');
         } catch {
             toast.error('Failed to remove logo');
@@ -264,10 +329,25 @@ const Settings = () => {
                         {activeTab === 'units' && (
                             <>
                                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-700 font-medium">
-                                    💡 These settings define how items are measured and priced. They affect all invoices and quotations for this company. Choose based on your industry.
+                                    💡 These settings define how items are measured and priced. Choose an industry preset for standard real-world configurations, then customize if needed.
                                 </div>
 
-                                <h2 className="text-sm font-black text-gray-700 flex items-center gap-2">
+                                <div className="pt-2">
+                                    <SelectField label="Industry Template (Suggested Defaults)"
+                                        name="industry" value={formData.industry}
+                                        onChange={handleIndustryChange}
+                                        options={[
+                                            { value: 'generic', label: 'Generic (Manual Config)' },
+                                            { value: 'retail', label: 'Fancy Store / Retail' },
+                                            { value: 'tiles', label: 'Tiles & Sanitary Ware' },
+                                            { value: 'machine_shop', label: 'Machine Shop / Fabrication' },
+                                            { value: 'electronics', label: 'Electronics / Appliances' },
+                                        ]}
+                                    />
+                                </div>
+
+                                <div className="pt-4 border-t border-gray-100">
+                                    <h2 className="text-sm font-black text-gray-700 flex items-center gap-2">
                                     <span className="w-7 h-7 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center text-sm">📦</span>
                                     Quantity Configuration
                                 </h2>
@@ -304,6 +384,7 @@ const Settings = () => {
                                         name="secondaryLabel" value={formData.unitConfig.secondaryLabel}
                                         onChange={e => handleNested('unitConfig', 'secondaryLabel', e.target.value)}
                                         placeholder="e.g. Boxes" />
+                                    </div>
                                 </div>
 
                                 <div className="pt-4 border-t border-gray-100">

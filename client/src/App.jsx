@@ -39,6 +39,8 @@ import PublicProductPage from './pages/PublicProductPage';
 import VendorLedger from './pages/VendorLedger';
 import BottomNav from './components/BottomNav';
 import HSNManagement from './pages/HSNManagement';
+import LedgerReports from './pages/LedgerReports';
+import Onboarding from './pages/Onboarding';
 
 function AppLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -76,6 +78,9 @@ function App() {
                         {/* Public product showcase page — no login required */}
                         <Route path="/p/:slug" element={<PublicProductPage />} />
 
+                        {/* Protected Onboarding (No Sidebar) */}
+                        <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+
                         {/* Protected Routes */}
                         <Route
                             path="/*"
@@ -91,6 +96,7 @@ function App() {
                                             <Route path="/stock-return" element={<StockReturn />} />
                                             <Route path="/stock-adjustment" element={<StockAdjustment />} />
                                             <Route path="/reports" element={<Reports />} />
+                                            <Route path="/ledger-reports" element={<LedgerReports />} />
                                             <Route path="/stocks" element={<Stocks />} />
                                             <Route path="/categories" element={<Categories />} />
                                             <Route path="/bulk-import" element={<BulkImport />} />
