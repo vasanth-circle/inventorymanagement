@@ -120,9 +120,9 @@ const Quotations = () => {
                 row.price = found.batches?.length ? (Number(found.batches[0].price) || 0) : (Number(found.price) || 0);
                 if (found.batches?.length) row.batchId = found.batches[0]._id;
                 
-                // Set default billing unit based on if it's a tile
+                // Default to 'boxes' for tiles (matches inward unit), 'pieces' for others
                 if (row.sqFtPerPc > 0) {
-                    row.billingUnit = 'sqft'; 
+                    row.billingUnit = 'boxes';
                     row.stockUnit = 'boxes';
                 } else {
                     row.billingUnit = 'pieces';
@@ -514,152 +514,179 @@ const Quotations = () => {
                                 <div className="space-y-3">
                                     {/* Desktop view */}
                                     <div className="hidden md:block space-y-3">
-                                        {formData.items.map((row, idx) => (
-                                            <div key={idx} className="grid grid-cols-12 gap-2 items-start bg-gray-50 p-3 rounded-lg">
-                                                {/* Item select */}
-                                                <div className="col-span-4">
-                                                    <select value={row.item} onChange={e => handleItemChange(idx, 'item', e.target.value)}
-                                                        className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold focus:ring-2 focus:ring-rose-500">
-                                                        <option value="">-- Item --</option>
-                                                        {allItems.map(i => <option key={i._id} value={i._id}>{i.name} ({i.brand} - {i.size})</option>)}
-                                                    </select>
-                                                    <div className="flex justify-between items-center mt-1 px-1">
-                                                        <span className={`text-[9px] font-black uppercase ${row.physicalStock > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                                            Stock: {row.physicalStock || 0}
-                                                        </span>
-                                                    </div>
-                                                    {row.availableBatches?.length > 0 && (
-                                                        <select value={row.batchId} onChange={e => handleItemChange(idx, 'batchId', e.target.value)}
-                                                            className="w-full mt-1.5 h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs focus:ring-2 focus:ring-rose-500">
-                                                            {row.availableBatches.map(b => <option key={b._id} value={b._id}>Batch: {b.batchNumber} — ₹{b.price} ({b.quantity})</option>)}
+                                        {formData.items.map((row, idx) => {
+                                            const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0;
+                                            const qtyLabel = isTile
+                                                ? (row.billingUnit === 'boxes' ? 'Boxes (0.5 ok)' : row.billingUnit === 'qty' ? 'Pieces' : 'Sq.Ft')
+                                                : (billingSettings?.unitConfig?.quantityLabel || 'Qty');
+                                            return (
+                                                <div key={idx} className="grid grid-cols-12 gap-2 items-start bg-gray-50 p-3 rounded-lg">
+                                                    {/* Item select — col-span-4 */}
+                                                    <div className="col-span-4">
+                                                        <select value={row.item} onChange={e => handleItemChange(idx, 'item', e.target.value)}
+                                                            className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold focus:ring-2 focus:ring-rose-500">
+                                                            <option value="">-- Item --</option>
+                                                            {allItems.map(i => <option key={i._id} value={i._id}>{i.name}{i.size ? ` [${i.size}]` : ''}</option>)}
                                                         </select>
-                                                    )}
-                                                </div>
-                                                {/* Qty */}
-                                                <div className="col-span-2">
-                                                    <label className="text-[9px] text-gray-400 font-bold uppercase">
-                                                        {billingSettings?.unitConfig?.secondaryLabel || (billingSettings?.industry === 'tiles' ? 'Boxes' : 'Qty')}
-                                                    </label>
-                                                    <input type="number" min="0" step="any" value={row.quantity}
-                                                        onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
-                                                        className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold text-center focus:ring-2 focus:ring-rose-500" />
-                                                    
-                                                    {/* Smart Calc Preview */}
-                                                    {billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 && (
-                                                        <div className="mt-1 flex flex-col items-center gap-0.5">
-                                                            <div className="text-[8px] font-black text-rose-500 uppercase">
-                                                                {row.billingUnit === 'sqft' ? `${row.boxCount?.toFixed(1)} Boxes` : `${row.totalSqFt?.toFixed(2)} SqFt`}
+                                                        <div className="flex justify-between items-center mt-1 px-1">
+                                                            {row.size && <span className="text-[8px] font-black text-amber-600 bg-amber-50 px-1 rounded">{row.size}</span>}
+                                                            <span className={`text-[9px] font-black uppercase ${row.physicalStock > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                                Stock: {row.physicalStock || 0}
+                                                            </span>
+                                                        </div>
+                                                        {row.availableBatches?.length > 0 && (
+                                                            <select value={row.batchId} onChange={e => handleItemChange(idx, 'batchId', e.target.value)}
+                                                                className="w-full mt-1.5 h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs focus:ring-2 focus:ring-rose-500">
+                                                                {row.availableBatches.map(b => <option key={b._id} value={b._id}>Batch: {b.batchNumber} — ₹{b.price} ({b.quantity})</option>)}
+                                                            </select>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Billing mode + Qty — col-span-3 (tiles) or col-span-2 (others) */}
+                                                    {isTile ? (
+                                                        <div className="col-span-3">
+                                                            <div className="flex rounded-lg overflow-hidden border border-gray-200 mb-1">
+                                                                {[{v:'boxes',l:'📦 Box'},{v:'qty',l:'🧩 Pcs'},{v:'sqft',l:'📐 SqFt'}].map(u => (
+                                                                    <button type="button" key={u.v}
+                                                                        onClick={() => handleItemChange(idx, 'billingUnit', u.v)}
+                                                                        className={`flex-1 py-1 text-[8px] font-black uppercase transition-all ${row.billingUnit === u.v ? 'bg-rose-600 text-white' : 'bg-white text-gray-500 hover:bg-rose-50'}`}>
+                                                                        {u.l}
+                                                                    </button>
+                                                                ))}
                                                             </div>
-                                                            <div className="text-[7px] text-gray-400 font-bold uppercase italic">
-                                                                {row.totalPcs} Pieces Total
-                                                            </div>
+                                                            <input type="number" min="0" step={row.billingUnit === 'boxes' ? '0.5' : '1'}
+                                                                value={row.quantity}
+                                                                onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
+                                                                placeholder={qtyLabel}
+                                                                className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold text-center focus:ring-2 focus:ring-rose-500" />
+                                                            {row.totalSqFt > 0 && (
+                                                                <div className="mt-1 text-[7px] font-black text-rose-500 uppercase leading-tight">
+                                                                    {row.boxCount?.toFixed(2)}box · {Math.round(row.totalPcs)}pcs · {row.totalSqFt?.toFixed(2)}sqft
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="col-span-2">
+                                                            <label className="text-[9px] text-gray-400 font-bold uppercase">{qtyLabel}</label>
+                                                            <input type="number" min="0" step="1" value={row.quantity}
+                                                                onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
+                                                                className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold text-center focus:ring-2 focus:ring-rose-500" />
                                                         </div>
                                                     )}
-                                                </div>
 
-                                                {/* Rate */}
-                                                <div className="col-span-2">
-                                                    <label className="text-[9px] text-gray-400 font-bold uppercase">{billingSettings?.unitConfig?.rateLabel || 'Rate'}</label>
-                                                    <input type="number" min="0" step="0.01" value={row.price}
-                                                        onChange={e => handleItemChange(idx, 'price', e.target.value)}
-                                                        className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold text-right focus:ring-2 focus:ring-rose-500" />
-                                                </div>
+                                                    {/* Rate — col-span-2 */}
+                                                    <div className="col-span-2">
+                                                        <label className="text-[9px] text-gray-400 font-bold uppercase">
+                                                            {isTile ? 'Rate / SqFt' : (billingSettings?.unitConfig?.rateLabel || 'Rate')}
+                                                        </label>
+                                                        <input type="number" min="0" step="0.01" value={row.price}
+                                                            onChange={e => handleItemChange(idx, 'price', e.target.value)}
+                                                            className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold text-right focus:ring-2 focus:ring-rose-500" />
+                                                    </div>
 
-                                                {/* Billing Unit Select */}
-                                                {billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 && (
-                                                    <div className="col-span-1">
-                                                        <label className="text-[9px] text-gray-400 font-bold uppercase">Unit</label>
-                                                        <select value={row.billingUnit} onChange={e => handleItemChange(idx, 'billingUnit', e.target.value)}
-                                                            className="w-full h-9 px-1 bg-white border border-gray-100 rounded-lg text-[10px] font-bold focus:ring-2 focus:ring-rose-500">
-                                                            <option value="sqft">SqFt</option>
-                                                            <option value="boxes">Box</option>
-                                                        </select>
+                                                    {/* Total — col-span-2 */}
+                                                    <div className="col-span-2">
+                                                        <label className="text-[9px] text-gray-400 font-bold uppercase">Total</label>
+                                                        <div className="h-9 px-2 bg-gray-900 text-white border border-gray-200 rounded-lg text-xs font-black text-right flex items-center justify-end">
+                                                            ₹{(row.total || 0).toLocaleString()}
+                                                        </div>
                                                     </div>
-                                                )}
-                                                {/* Total */}
-                                                <div className={(billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0) ? "col-span-1" : "col-span-2"}>
-                                                    <label className="text-[9px] text-gray-400 font-bold uppercase">Total</label>
-                                                    <div className="h-9 px-2 bg-gray-100 border border-gray-200 rounded-lg text-xs font-black text-right flex items-center justify-end text-gray-700">
-                                                        ₹{(row.total || 0).toLocaleString()}
+
+                                                    {/* Remove — col-span-1 */}
+                                                    <div className="col-span-1 flex items-end justify-end">
+                                                        {formData.items.length > 1 && (
+                                                            <button type="button" onClick={() => setFormData(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) }))}
+                                                                className="h-9 w-9 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg text-xs font-bold">✕</button>
+                                                        )}
                                                     </div>
                                                 </div>
-                                                {/* Remove */}
-                                                <div className="col-span-2 flex items-end justify-end">
-                                                    {formData.items.length > 1 && (
-                                                        <button type="button" onClick={() => setFormData(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) }))}
-                                                            className="h-9 w-9 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg text-xs font-bold">✕</button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
+
 
                                     {/* Mobile view */}
                                     <div className="md:hidden space-y-4">
                                         {formData.items.map((row, idx) => (
                                             <div key={idx} className="bg-white border-2 border-gray-100 rounded-2xl p-4 shadow-sm relative space-y-4">
                                                 <button type="button" onClick={() => setFormData(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) }))} className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-red-50 text-red-500 rounded-full font-bold">✕</button>
-                                                
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Item</label>
-                                                    <select value={row.item} onChange={e => handleItemChange(idx, 'item', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 outline-none font-bold text-sm">
-                                                        <option value="">-- Item --</option>
-                                                        {allItems.map(i => <option key={i._id} value={i._id}>{i.name} ({i.brand} - {i.size})</option>)}
-                                                    </select>
-                                                    <div className="flex justify-between items-center px-1">
-                                                        <span className={`text-[10px] font-black uppercase ${row.physicalStock > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                                            Stock: {row.physicalStock || 0}
-                                                        </span>
-                                                    </div>
-                                                </div>
 
-                                                {row.availableBatches?.length > 0 && (
-                                                    <div className="space-y-1">
-                                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Batch</label>
-                                                        <select value={row.batchId} onChange={e => handleItemChange(idx, 'batchId', e.target.value)} className="w-full px-4 py-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-800 font-bold outline-none text-sm">
-                                                            {row.availableBatches.map(b => <option key={b._id} value={b._id}>Batch: {b.batchNumber} — ₹{b.price} ({b.quantity})</option>)}
-                                                        </select>
-                                                    </div>
-                                                )}
-
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-1">
-                                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                            {billingSettings?.unitConfig?.secondaryLabel || (billingSettings?.industry === 'tiles' ? 'Boxes' : 'Qty')}
-                                                        </label>
-                                                        <input type="number" min="0" step="any" value={row.quantity} onChange={e => handleItemChange(idx, 'quantity', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none text-center font-bold" />
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Rate (Per {row.billingUnit || 'Unit'})</label>
-                                                        <input type="number" min="0" step="0.01" value={row.price} onChange={e => handleItemChange(idx, 'price', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none font-bold text-right" />
-                                                    </div>
-                                                </div>
-
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    {billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 && (
+                                                {(() => {
+                                                    const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0;
+                                                    return (<>
                                                         <div className="space-y-1">
-                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Unit</label>
-                                                            <select value={row.billingUnit} onChange={e => handleItemChange(idx, 'billingUnit', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl font-bold focus:ring-2 focus:ring-rose-500">
-                                                                <option value="sqft">SqFt</option>
-                                                                <option value="boxes">Box</option>
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Item</label>
+                                                            <select value={row.item} onChange={e => handleItemChange(idx, 'item', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 outline-none font-bold text-sm">
+                                                                <option value="">-- Item --</option>
+                                                                {allItems.map(i => <option key={i._id} value={i._id}>{i.name}{i.size ? ` [${i.size}]` : ''}</option>)}
                                                             </select>
+                                                            <div className="flex justify-between items-center px-1">
+                                                                {row.size && <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-1.5 rounded">{row.size}</span>}
+                                                                <span className={`text-[10px] font-black uppercase ${row.physicalStock > 0 ? 'text-green-500' : 'text-red-500'}`}>Stock: {row.physicalStock || 0}</span>
+                                                            </div>
                                                         </div>
-                                                    )}
-                                                    <div className={billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 ? "space-y-1" : "col-span-2 space-y-1"}>
-                                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total</label>
-                                                        <div className="w-full px-4 py-3 bg-gray-900 text-white rounded-xl font-black text-right">₹{(row.total || 0).toLocaleString()}</div>
-                                                    </div>
-                                                </div>
 
-                                                {billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 && (
-                                                    <div className="flex justify-between items-center px-1 bg-amber-50 p-2 rounded-lg border border-amber-100">
-                                                        <span className="text-[10px] font-black text-amber-600 uppercase">Calc: {row.totalPcs} Pcs</span>
-                                                        <span className="text-[10px] font-black text-amber-600 uppercase">{row.billingUnit === 'sqft' ? `${row.boxCount?.toFixed(1)} Boxes` : `${row.totalSqFt?.toFixed(2)} SqFt`}</span>
-                                                    </div>
-                                                )}
+                                                        {row.availableBatches?.length > 0 && (
+                                                            <div className="space-y-1">
+                                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Batch</label>
+                                                                <select value={row.batchId} onChange={e => handleItemChange(idx, 'batchId', e.target.value)} className="w-full px-4 py-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-800 font-bold outline-none text-sm">
+                                                                    {row.availableBatches.map(b => <option key={b._id} value={b._id}>Batch: {b.batchNumber} — ₹{b.price} ({b.quantity})</option>)}
+                                                                </select>
+                                                            </div>
+                                                        )}
+
+                                                        {isTile && (
+                                                            <div className="space-y-1">
+                                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Billing Mode</label>
+                                                                <div className="flex rounded-xl overflow-hidden border border-gray-200">
+                                                                    {[{v:'boxes',l:'📦 Box'},{v:'qty',l:'🧩 Pieces'},{v:'sqft',l:'📐 SqFt'}].map(u => (
+                                                                        <button type="button" key={u.v}
+                                                                            onClick={() => handleItemChange(idx, 'billingUnit', u.v)}
+                                                                            className={`flex-1 py-2.5 text-[10px] font-black uppercase transition-all ${row.billingUnit === u.v ? 'bg-rose-600 text-white' : 'bg-white text-gray-500'}`}>
+                                                                            {u.l}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div className="space-y-1">
+                                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                                                    {isTile ? (row.billingUnit === 'boxes' ? 'Boxes (0.5 ok)' : row.billingUnit === 'qty' ? 'Pieces' : 'Sq.Ft') : 'Qty'}
+                                                                </label>
+                                                                <input type="number" min="0" step={isTile && row.billingUnit === 'boxes' ? '0.5' : '1'}
+                                                                    value={row.quantity} onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
+                                                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none text-center font-bold" />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                                                    {isTile ? 'Rate / SqFt' : 'Rate'}
+                                                                </label>
+                                                                <input type="number" min="0" step="0.01" value={row.price}
+                                                                    onChange={e => handleItemChange(idx, 'price', e.target.value)}
+                                                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none font-bold text-right" />
+                                                            </div>
+                                                        </div>
+
+                                                        {isTile && row.totalSqFt > 0 && (
+                                                            <div className="flex justify-between items-center px-3 py-2 bg-rose-50 rounded-xl border border-rose-100">
+                                                                <span className="text-[10px] font-black text-rose-700 uppercase">{row.boxCount?.toFixed(2)} Boxes</span>
+                                                                <span className="text-[10px] font-black text-rose-700 uppercase">{Math.round(row.totalPcs)} Pcs</span>
+                                                                <span className="text-[10px] font-black text-rose-700 uppercase">{row.totalSqFt?.toFixed(2)} SqFt</span>
+                                                            </div>
+                                                        )}
+
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total</label>
+                                                            <div className="w-full px-4 py-3 bg-gray-900 text-white rounded-xl font-black text-right text-lg">₹{(row.total || 0).toLocaleString()}</div>
+                                                        </div>
+                                                    </>);
+                                                })()}
                                             </div>
                                         ))}
                                     </div>
+
                                 </div>
                             </div>
 

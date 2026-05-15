@@ -275,142 +275,168 @@ const DispatchManagement = () => {
     };
 
     return (
-        <div className="space-y-6 pb-24 lg:pb-8">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-800">Godown Dispatch Management</h1>
-                <p className="text-sm text-gray-500 font-medium">Pending Shipments & Deliveries</p>
+        <div className="space-y-8 pb-24 lg:pb-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 py-4">
+                <div>
+                    <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Dispatch Management</h1>
+                    <p className="text-sm text-gray-500 mt-1">Pending shipments and delivery loading</p>
+                </div>
             </div>
 
             {loading ? (
                 <div className="flex justify-center items-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {orders.length > 0 ? (
                         orders.map((order) => (
-                            <div key={order._id} className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-shadow group">
-                                <div className="p-5 border-b border-gray-50 bg-gray-50 flex justify-between items-center group-hover:bg-primary-50 transition-colors">
+                            <div key={order._id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:border-gray-300 transition-colors flex flex-col group">
+                                <div className="p-6 border-b border-gray-100 flex justify-between items-start">
                                     <div>
-                                        <span className="text-[10px] font-black text-primary-600 uppercase tracking-widest">Order #</span>
-                                        <h3 className="text-lg font-black text-gray-900 leading-tight">{order.orderNumber}</h3>
+                                        <p className="text-xs font-medium text-indigo-600 uppercase tracking-wider mb-1">Order</p>
+                                        <h3 className="text-lg font-semibold text-gray-900">{order.orderNumber}</h3>
                                     </div>
-                                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${order.status === 'confirmed' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                    <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${order.status === 'confirmed' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
                                         {order.status.replace('_', ' ')}
                                     </span>
                                 </div>
-                                <div className="p-5 space-y-4">
-                                    <div className="flex items-center">
-                                        <div className="bg-gray-100 p-2 rounded-lg mr-3 text-lg">👤</div>
-                                        <div>
-                                            <p className="text-[10px] text-gray-400 font-bold uppercase">Customer</p>
-                                            <p className="font-bold text-gray-800">{order.customer?.companyName || order.customer?.name}</p>
+                                
+                                <div className="p-6 flex-1 flex flex-col">
+                                    <div className="flex items-center mb-6">
+                                        <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 mr-4 border border-gray-100">
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                        </div>
+                                        <div className="overflow-hidden">
+                                            <p className="text-xs text-gray-500 font-medium">Customer</p>
+                                            <p className="font-medium text-gray-900 truncate text-sm">{order.customer?.companyName || order.customer?.name}</p>
                                         </div>
                                     </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase mb-2">Items to dispatch</p>
-                                        {order.items.slice(0, 3).map((item, idx) => (
-                                            <div key={idx} className="flex justify-between text-xs font-medium text-gray-600 border-l-2 border-primary-300 pl-2">
-                                                <span>{item.name}</span>
-                                                <span className="font-bold">x{item.quantity}</span>
-                                            </div>
-                                        ))}
-                                        {order.items.length > 3 && <p className="text-[10px] text-gray-400 italic">+{order.items.length - 3} more items...</p>}
-                                    </div>
-                                        <div className="flex gap-2 mt-4">
-                                            <button 
-                                                onClick={() => handleViewDetails(order)}
-                                                className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all flex items-center justify-center"
-                                                title="View Details"
-                                            >
-                                                👁️
-                                            </button>
-                                            <button 
-                                                onClick={async () => {
-                                                    const res = await api.get(`/dispatches/order/${order._id}`);
-                                                    handlePrintSummary(order, res.data?.data || []);
-                                                }}
-                                                className="flex-1 bg-emerald-100 text-emerald-700 py-3 rounded-xl font-bold text-sm hover:bg-emerald-200 transition-all flex items-center justify-center"
-                                                title="Print Summary"
-                                            >
-                                                🖨️
-                                            </button>
-                                            <button 
-                                                onClick={() => handleOpenDispatch(order)}
-                                                className="flex-[2] bg-primary-600 text-white py-3 rounded-xl font-black text-sm hover:bg-primary-700 shadow-md shadow-primary-200 transition-all active:scale-95 flex items-center justify-center"
-                                            >
-                                                🚚 Dispatch Load
-                                            </button>
+                                    
+                                    <div className="space-y-3 mb-8 flex-1">
+                                        <p className="text-xs text-gray-500 font-medium">Pending Items</p>
+                                        <div className="space-y-2">
+                                            {order.items.slice(0, 3).map((item, idx) => (
+                                                <div key={idx} className="flex justify-between items-center text-sm">
+                                                    <span className="text-gray-700 truncate pr-4">{item.name}</span>
+                                                    <span className="font-medium text-gray-900">x{item.quantity}</span>
+                                                </div>
+                                            ))}
+                                            {order.items.length > 3 && <p className="text-xs text-indigo-600 font-medium mt-2">+{order.items.length - 3} more items</p>}
                                         </div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-4 gap-3 mt-auto pt-4 border-t border-gray-100">
+                                        <button 
+                                            onClick={() => handleViewDetails(order)}
+                                            className="col-span-1 flex items-center justify-center py-2.5 text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-colors"
+                                            title="View History"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        </button>
+                                        <button 
+                                            onClick={async () => {
+                                                const res = await api.get(`/dispatches/order/${order._id}`);
+                                                handlePrintSummary(order, res.data?.data || []);
+                                            }}
+                                            className="col-span-1 flex items-center justify-center py-2.5 text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-colors"
+                                            title="Print Document"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                        </button>
+                                        <button 
+                                            onClick={() => handleOpenDispatch(order)}
+                                            className="col-span-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-2.5 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                                            Dispatch
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         ))
                     ) : (
-                        <div className="col-span-full bg-white p-12 rounded-2xl border-2 border-dashed text-center">
-                            <p className="text-gray-400 font-bold">No orders ready for dispatch</p>
-                            <p className="text-xs text-gray-400">Accept quotations to see them here.</p>
+                        <div className="col-span-full py-20 px-6 bg-white rounded-2xl border border-gray-200 text-center flex flex-col items-center justify-center">
+                            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 mb-4 border border-gray-100">
+                                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                            </div>
+                            <h3 className="text-lg font-medium text-gray-900">No Pending Dispatches</h3>
+                            <p className="text-sm text-gray-500 mt-1 max-w-sm">When you accept quotations, they will appear here ready to be shipped.</p>
                         </div>
                     )}
                 </div>
             )}
 
             {isDispatchModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 overflow-y-auto backdrop-blur-sm">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl my-8">
-                        <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-3xl">
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-0 sm:p-6">
+                    <div className="bg-white sm:rounded-2xl shadow-xl w-full h-full sm:h-auto sm:max-h-[90vh] max-w-3xl flex flex-col animate-[fadeIn_0.15s_ease-out]">
+                        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-white sm:rounded-t-2xl z-10 shrink-0">
                             <div>
-                                <h2 className="text-2xl font-black text-gray-800">New Dispatch Entry</h2>
-                                <p className="text-xs text-gray-500 font-medium font-bold">Order: {selectedOrder?.orderNumber} | Customer: {selectedOrder?.customer?.name}</p>
+                                <h2 className="text-lg font-semibold text-gray-900">New Dispatch Entry</h2>
+                                <p className="text-xs text-gray-500 mt-1">{selectedOrder?.orderNumber} • {selectedOrder?.customer?.name}</p>
                             </div>
-                            <button onClick={() => setIsDispatchModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-3xl">&times;</button>
+                            <button onClick={() => setIsDispatchModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors p-2 -mr-2">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
                         </div>
-                        <form onSubmit={handleSubmitDispatch} className="p-8 space-y-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-primary-50 p-6 rounded-2xl border border-primary-100">
+                        
+                        <form onSubmit={handleSubmitDispatch} className="flex-1 overflow-y-auto p-6 space-y-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <div>
-                                    <label className="block text-xs font-black text-primary-700 uppercase mb-2">Vehicle Number *</label>
-                                    <input required type="text" value={dispatchData.vehicleNumber} onChange={(e) => setDispatchData({ ...dispatchData, vehicleNumber: e.target.value })} placeholder="e.g. TN 01 AB 1234" className="w-full px-4 py-3 border border-primary-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 font-bold text-gray-800" />
+                                    <label className="block text-xs font-medium text-gray-700 mb-1.5">Vehicle Number <span className="text-red-500">*</span></label>
+                                    <input required type="text" value={dispatchData.vehicleNumber} onChange={(e) => setDispatchData({ ...dispatchData, vehicleNumber: e.target.value.toUpperCase() })} placeholder="e.g. TN 01 AB 1234" className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-gray-900 uppercase sm:text-sm" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-black text-primary-700 uppercase mb-2">Driver Phone Number</label>
-                                    <input type="text" value={dispatchData.driverPhone} onChange={(e) => setDispatchData({ ...dispatchData, driverPhone: e.target.value })} placeholder="10-digit mobile number" className="w-full px-4 py-3 border border-primary-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 font-bold text-gray-800" />
+                                    <label className="block text-xs font-medium text-gray-700 mb-1.5">Driver Phone</label>
+                                    <input type="tel" value={dispatchData.driverPhone} onChange={(e) => setDispatchData({ ...dispatchData, driverPhone: e.target.value })} placeholder="10-digit number" className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-gray-900 sm:text-sm" />
                                 </div>
                             </div>
 
-                            <div className="space-y-4">
-                                <h3 className="text-lg font-black text-gray-800">Select Items & Quantities</h3>
+                            <div>
+                                <div className="flex justify-between items-center border-b border-gray-100 pb-3 mb-4">
+                                    <h3 className="text-sm font-semibold text-gray-900">Select Items</h3>
+                                    <span className="text-xs text-gray-500">{dispatchData.items.filter(i => i.selected).length} selected</span>
+                                </div>
+                                
                                 <div className="space-y-3">
                                     {dispatchData.items.map((item, index) => (
-                                        <div key={index} className={`flex items-center p-4 rounded-2xl border-2 transition-all ${item.selected ? 'border-primary-500 bg-primary-50/50' : 'border-gray-100 hover:border-gray-200'}`}>
-                                            <div className="mr-4">
-                                                <input 
-                                                    type="checkbox" 
-                                                    className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                                                    checked={item.selected}
-                                                    onChange={() => handleItemToggle(index)}
-                                                />
+                                        <div key={index} className={`flex flex-col sm:flex-row gap-4 p-4 rounded-xl border transition-colors cursor-pointer ${item.selected ? 'border-indigo-500 bg-indigo-50/30' : 'border-gray-200 hover:border-gray-300 bg-white'}`} onClick={(e) => { if (e.target.tagName !== 'INPUT') handleItemToggle(index); }}>
+                                            <div className="flex items-start gap-4 flex-1">
+                                                <div className="mt-0.5">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                        checked={item.selected}
+                                                        onChange={() => handleItemToggle(index)}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="font-medium text-gray-900 text-sm">{item.name}</p>
+                                                    <p className="text-xs text-gray-500 mt-0.5">{item.brand} • {item.size}</p>
+                                                    <div className="mt-2 flex gap-4 text-xs">
+                                                        <span className="text-gray-500">Ordered: {item.orderedQuantity}</span>
+                                                        <span className="text-emerald-600 font-medium">Done: {item.previouslyDispatched}</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="flex-1">
-                                                <p className="font-black text-gray-800">{item.name}</p>
-                                                <p className="text-[10px] text-gray-400 font-bold uppercase">{item.brand} | {item.size}</p>
-                                            </div>
-                                            <div className="text-right mr-3">
-                                                <p className="text-[9px] text-gray-400 font-bold uppercase">Ordered / Disp.</p>
-                                                <p className="font-bold text-gray-600">{item.orderedQuantity} / <span className="text-green-500">{item.previouslyDispatched}</span></p>
-                                            </div>
-                                            <div className="w-32">
-                                                <label className="block text-[10px] font-black text-gray-400 uppercase mb-1 flex justify-between">
-                                                    <span>Dispatching Now</span>
-                                                    <span className="text-orange-500 mr-2">Max: {item.pendingQuantity}</span>
+                                            
+                                            <div className="sm:w-32 flex flex-col justify-center" onClick={e => e.stopPropagation()}>
+                                                <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5 flex justify-between">
+                                                    <span>Load Qty</span>
                                                 </label>
-                                                <input 
-                                                    type="number" 
-                                                    step="0.01"
-                                                    disabled={!item.selected}
-                                                    value={item.quantity} 
-                                                    max={item.pendingQuantity}
-                                                    onChange={(e) => handleQtyChange(index, e.target.value)}
-                                                    className={`w-full px-3 py-2 border rounded-xl outline-none text-center font-black ${item.selected ? 'border-primary-400 text-primary-700' : 'bg-gray-50 border-gray-100'}`}
-                                                />
+                                                <div className="relative">
+                                                    <input 
+                                                        type="number" 
+                                                        step="any"
+                                                        disabled={!item.selected}
+                                                        value={item.quantity} 
+                                                        max={item.pendingQuantity}
+                                                        onChange={(e) => handleQtyChange(index, e.target.value)}
+                                                        className={`w-full px-3 py-2 rounded-lg border outline-none text-right transition-colors sm:text-sm ${item.selected ? 'border-gray-300 focus:border-indigo-500 text-gray-900 bg-white' : 'bg-gray-50 border-gray-100 text-gray-400 cursor-not-allowed'}`}
+                                                    />
+                                                </div>
+                                                <div className="text-[10px] text-gray-400 mt-1 text-right">Max: {item.pendingQuantity} {item.stockUnit}</div>
                                             </div>
                                         </div>
                                     ))}
@@ -418,101 +444,143 @@ const DispatchManagement = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Dispatch Notes (e.g. Delivery location details)</label>
-                                <textarea rows="3" value={dispatchData.notes} onChange={(e) => setDispatchData({ ...dispatchData, notes: e.target.value })} className="w-full px-4 py-3 border rounded-2xl outline-none focus:ring-2 focus:ring-primary-400"></textarea>
-                            </div>
-
-                            <div className="flex justify-end gap-4 pt-6 border-t font-bold">
-                                <button type="button" onClick={() => setIsDispatchModalOpen(false)} className="px-8 py-3 text-gray-500 border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors">Cancel</button>
-                                <button type="submit" className="px-10 py-3 bg-primary-600 text-white rounded-2xl hover:bg-primary-700 shadow-lg shadow-primary-200 transition-all active:scale-95">
-                                    📦 Confirm & Dispatch Load
-                                </button>
+                                <label className="block text-xs font-medium text-gray-700 mb-1.5">Notes</label>
+                                <textarea rows="2" value={dispatchData.notes} onChange={(e) => setDispatchData({ ...dispatchData, notes: e.target.value })} placeholder="Delivery instructions (optional)" className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-sm"></textarea>
                             </div>
                         </form>
+                        
+                        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex flex-col-reverse sm:flex-row justify-end gap-3 sm:rounded-b-2xl shrink-0">
+                            <button type="button" onClick={() => setIsDispatchModalOpen(false)} className="px-6 py-2.5 text-gray-700 bg-white border border-gray-300 font-medium rounded-xl hover:bg-gray-50 transition-colors text-sm">Cancel</button>
+                            <button type="submit" onClick={handleSubmitDispatch} className="px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors text-sm flex items-center justify-center gap-2">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                Confirm Dispatch
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
+
             {isDetailsModalOpen && orderDetails && (
-                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 overflow-y-auto backdrop-blur-sm">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl my-8">
-                        <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-3xl">
-                            <div className="flex-1">
-                                <h2 className="text-2xl font-black text-gray-800">Order & Dispatch Details</h2>
-                                <p className="text-xs text-gray-500 font-bold">Order # {orderDetails.orderNumber} | {orderDetails.customer?.name}</p>
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-0 sm:p-6">
+                    <div className="bg-white sm:rounded-2xl shadow-xl w-full h-full sm:h-auto sm:max-h-[90vh] max-w-4xl flex flex-col animate-[fadeIn_0.15s_ease-out]">
+                        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-white sm:rounded-t-2xl z-10 shrink-0">
+                            <div>
+                                <h2 className="text-lg font-semibold text-gray-900">Dispatch History</h2>
+                                <p className="text-xs text-gray-500 mt-1">{orderDetails.orderNumber} • {orderDetails.customer?.name}</p>
                             </div>
-                            <div className="flex items-center space-x-3">
+                            <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => handlePrintSummary(orderDetails, orderDetails.dispatches)}
-                                    className="px-4 py-2 bg-emerald-600 text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all flex items-center"
+                                    className="hidden sm:flex px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg text-sm font-medium transition-colors items-center gap-2"
                                 >
-                                    <span className="mr-2">🖨️ Print Summary</span>
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                    Print
                                 </button>
-                                <button onClick={() => setIsDetailsModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-3xl">&times;</button>
+                                <button onClick={() => setIsDetailsModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-2 -mr-2 transition-colors">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
                             </div>
                         </div>
-                        <div className="p-8 space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-4">
-                                    <h3 className="text-lg font-black text-gray-800 border-b pb-2">📦 Items in Order</h3>
-                                    <div className="space-y-3">
+                        
+                        <div className="flex-1 overflow-y-auto p-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <div>
+                                    <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-100 pb-3 mb-4">Overall Status</h3>
+                                    <div className="space-y-4">
                                         {orderDetails.items.map((item, idx) => {
                                             const totalDispatched = orderDetails.dispatches.reduce((sum, d) => {
                                                 const dItem = d.items.find(di => String(di.item._id || di.item) === String(item.item._id || item.item));
                                                 return sum + (dItem ? dItem.quantity : 0);
                                             }, 0);
                                             const pending = item.quantity - totalDispatched;
+                                            const isComplete = pending <= 0;
                                             
                                             return (
-                                                <div key={idx} className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                                                    <div className="flex justify-between items-start">
-                                                        <div>
-                                                            <p className="font-bold text-gray-800">{item.name}</p>
-                                                            <p className="text-[10px] text-gray-400 font-black uppercase">{item.brand} | {item.size}</p>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <p className="text-[10px] text-gray-400 font-black uppercase">Order Total (Stock)</p>
-                                                            <p className="font-black text-primary-600">{item.stockQty || item.quantity} {item.stockUnit || (item.sqFtPerPc > 0 ? 'Boxes' : 'Units')}</p>
-                                                        </div>
+                                                <div key={idx} className="bg-white p-4 rounded-xl border border-gray-200 flex flex-col gap-4 relative overflow-hidden">
+                                                    {isComplete && <div className="absolute top-0 right-0 w-8 h-8 bg-emerald-500 -mr-4 -mt-4 rotate-45"></div>}
+                                                    
+                                                    <div>
+                                                        <p className="font-medium text-gray-900 text-sm">{item.name}</p>
+                                                        <p className="text-xs text-gray-500 mt-1">{item.brand} | {item.size}</p>
                                                     </div>
-                                                    <div className="mt-2 flex gap-4 text-xs font-bold">
-                                                        <div className="text-green-600">Dispatched: {totalDispatched}</div>
-                                                        <div className={pending > 0 ? "text-orange-600" : "text-gray-400"}>Pending: {pending}</div>
+                                                    
+                                                    <div className="grid grid-cols-3 gap-1 bg-gray-50 rounded-lg p-3 text-center">
+                                                        <div>
+                                                            <p className="text-[10px] text-gray-500 uppercase">Ordered</p>
+                                                            <p className="font-semibold text-gray-900 mt-1">{item.stockQty || item.quantity}</p>
+                                                        </div>
+                                                        <div className="border-l border-gray-200">
+                                                            <p className="text-[10px] text-gray-500 uppercase">Shipped</p>
+                                                            <p className="font-semibold text-emerald-600 mt-1">{totalDispatched}</p>
+                                                        </div>
+                                                        <div className="border-l border-gray-200">
+                                                            <p className="text-[10px] text-gray-500 uppercase">Pending</p>
+                                                            <p className={`font-semibold mt-1 ${pending > 0 ? 'text-amber-600' : 'text-gray-400'}`}>{pending}</p>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             );
                                         })}
                                     </div>
                                 </div>
-                                <div className="space-y-4">
-                                    <h3 className="text-lg font-black text-gray-800 border-b pb-2">🚚 Dispatch History</h3>
-                                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                                
+                                <div>
+                                    <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-100 pb-3 mb-4">Dispatch Logs</h3>
+                                    <div className="space-y-4">
                                         {orderDetails.dispatches.length > 0 ? (
                                             orderDetails.dispatches.map((dispatch, idx) => (
-                                                <div key={idx} className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                                                    <div className="flex justify-between items-center mb-2">
-                                                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-wider">{dispatch.dispatchNumber}</span>
-                                                        <span className="text-[10px] text-gray-400 font-bold">{new Date(dispatch.dispatchDate).toLocaleDateString()}</span>
+                                                <div key={idx} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                                                    <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+                                                        <span className="text-xs font-semibold text-gray-700">{dispatch.dispatchNumber}</span>
+                                                        <span className="text-xs text-gray-500">
+                                                            {new Date(dispatch.dispatchDate).toLocaleDateString()}
+                                                        </span>
                                                     </div>
-                                                    <p className="text-xs font-bold text-gray-800">Vehicle: <span className="text-blue-700">{dispatch.vehicleNumber}</span></p>
-                                                    <div className="mt-2 space-y-1">
-                                                        {dispatch.items.map((di, didx) => (
-                                                            <div key={didx} className="flex justify-between text-[10px] font-bold text-gray-600 border-l-2 border-blue-200 pl-2">
-                                                                <span>{di.item?.name || 'Item'}</span>
-                                                                <span>{di.quantity} Boxes</span>
+                                                    <div className="p-4">
+                                                        <div className="flex items-center gap-3 mb-4">
+                                                            <div className="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center">
+                                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                                                             </div>
-                                                        ))}
+                                                            <div>
+                                                                <p className="text-[10px] text-gray-500 uppercase">Vehicle</p>
+                                                                <p className="font-medium text-gray-900 text-sm">{dispatch.vehicleNumber}</p>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="space-y-2 border-t border-gray-100 pt-3">
+                                                            {dispatch.items.map((di, didx) => (
+                                                                <div key={didx} className="flex justify-between items-center text-sm">
+                                                                    <span className="text-gray-600 truncate pr-4">
+                                                                        {di.item?.name || 'Item'}
+                                                                    </span>
+                                                                    <span className="font-medium text-gray-900 bg-gray-50 px-2 py-0.5 rounded">{di.quantity}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             ))
                                         ) : (
-                                            <p className="text-center text-gray-400 py-8 italic">No dispatches recorded yet</p>
+                                            <div className="border border-dashed border-gray-200 rounded-xl p-8 text-center text-gray-500 text-sm">
+                                                No dispatches recorded yet.
+                                            </div>
                                         )}
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex justify-end pt-4">
-                                <button onClick={() => setIsDetailsModalOpen(false)} className="px-10 py-3 bg-gray-800 text-white rounded-2xl font-bold hover:bg-gray-900 transition-all">Close Details</button>
-                            </div>
+                        </div>
+                        
+                        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center sm:rounded-b-2xl shrink-0">
+                            <button
+                                onClick={() => handlePrintSummary(orderDetails, orderDetails.dispatches)}
+                                className="sm:hidden flex px-4 py-2 bg-white text-indigo-600 border border-gray-200 text-sm font-medium rounded-lg items-center gap-2 shadow-sm"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                Print
+                            </button>
+                            <button onClick={() => setIsDetailsModalOpen(false)} className="w-full sm:w-auto px-8 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-black transition-colors ml-auto">
+                                Close
+                            </button>
                         </div>
                     </div>
                 </div>

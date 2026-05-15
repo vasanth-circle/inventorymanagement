@@ -138,61 +138,75 @@ export const InventoryProvider = ({ children }) => {
 
     /**
      * Real-world calculation engine based on industry type
+     * For tiles: rate is ALWAYS per SqFt, total = totalSqFt × price
+     * billingUnit: 'boxes' | 'qty' (pieces) | 'sqft'
      */
     const calculateItemValues = (row, field, value, industry) => {
         if (!row) return row;
         const updatedRow = { ...row, [field]: value };
-        
-        // Ensure core numeric fields are valid numbers
+
         const pcsPerBox = Math.max(1, Number(updatedRow.pcsPerBox) || 1);
         const sqFtPerPc = Math.max(0, Number(updatedRow.sqFtPerPc) || 0);
         const price = Math.max(0, Number(updatedRow.price) || 0);
-        const billingUnit = updatedRow.billingUnit || 'pieces';
+        const billingUnit = updatedRow.billingUnit || 'boxes';
 
-        // Initialize variables to avoid undefined
         updatedRow.totalPcs = Number(updatedRow.totalPcs) || 0;
         updatedRow.totalSqFt = Number(updatedRow.totalSqFt) || 0;
         updatedRow.boxCount = Number(updatedRow.boxCount) || 0;
         updatedRow.quantity = Number(updatedRow.quantity) || 0;
 
         if (industry === 'tiles' && sqFtPerPc > 0) {
-            // Tiles Logic: Conversion between Box, Pieces, and SqFt
-            if (field === 'boxCount' || field === 'quantity' && billingUnit === 'boxes') {
-                const boxes = Number(value || 0);
-                updatedRow.boxCount = boxes;
-                updatedRow.totalPcs = boxes * pcsPerBox;
-                updatedRow.totalSqFt = Number((updatedRow.totalPcs * sqFtPerPc).toFixed(2));
-                updatedRow.quantity = billingUnit === 'sqft' ? updatedRow.totalSqFt : boxes;
-                updatedRow.stockQty = boxes;
-                updatedRow.stockUnit = 'boxes';
-            } else if (field === 'billingUnit') {
-                updatedRow.quantity = value === 'sqft' ? (updatedRow.totalSqFt || 0) : (updatedRow.boxCount || 0);
-            } else if (field === 'quantity') {
+            if (field === 'quantity') {
                 const qty = Number(value || 0);
                 if (billingUnit === 'sqft') {
                     updatedRow.totalSqFt = qty;
-                    updatedRow.totalPcs = sqFtPerPc > 0 ? (qty / sqFtPerPc) : 0;
-                    updatedRow.boxCount = pcsPerBox > 0 ? (updatedRow.totalPcs / pcsPerBox) : 0;
-                    updatedRow.quantity = qty;
-                } else {
+                    updatedRow.totalPcs = sqFtPerPc > 0 ? qty / sqFtPerPc : 0;
+                    updatedRow.boxCount = pcsPerBox > 0 ? updatedRow.totalPcs / pcsPerBox : 0;
+                } else if (billingUnit === 'boxes') {
                     updatedRow.boxCount = qty;
                     updatedRow.totalPcs = qty * pcsPerBox;
-                    updatedRow.totalSqFt = Number((updatedRow.totalPcs * sqFtPerPc).toFixed(2));
-                    updatedRow.quantity = qty;
+                    updatedRow.totalSqFt = Number((updatedRow.totalPcs * sqFtPerPc).toFixed(4));
                     updatedRow.stockQty = qty;
                     updatedRow.stockUnit = 'boxes';
+                } else {
+                    // 'qty' mode = pieces
+                    updatedRow.totalPcs = qty;
+                    updatedRow.boxCount = pcsPerBox > 0 ? qty / pcsPerBox : 0;
+                    updatedRow.totalSqFt = Number((qty * sqFtPerPc).toFixed(4));
+                    updatedRow.stockQty = qty;
+                    updatedRow.stockUnit = 'pieces';
                 }
-            } else if (field === 'item' || field === 'price') {
-                // When item changes, recalculate based on existing boxes if available
-                if (updatedRow.boxCount > 0) {
+            } else if (field === 'billingUnit') {
+                // Adjust quantity display when user switches mode
+                if (value === 'sqft') {
+                    updatedRow.quantity = updatedRow.totalSqFt || 0;
+                } else if (value === 'boxes') {
+                    updatedRow.quantity = updatedRow.boxCount || 0;
+                } else {
+                    updatedRow.quantity = updatedRow.totalPcs || 0;
+                }
+            } else if (field === 'item' || field === 'price' || field === 'batchId') {
+                // Recalculate totals when item or price changes
+                if (billingUnit === 'boxes' && updatedRow.boxCount > 0) {
                     updatedRow.totalPcs = updatedRow.boxCount * pcsPerBox;
-                    updatedRow.totalSqFt = Number((updatedRow.totalPcs * sqFtPerPc).toFixed(2));
-                    updatedRow.quantity = billingUnit === 'sqft' ? updatedRow.totalSqFt : updatedRow.boxCount;
+                    updatedRow.totalSqFt = Number((updatedRow.totalPcs * sqFtPerPc).toFixed(4));
+                    updatedRow.quantity = updatedRow.boxCount;
                     updatedRow.stockQty = updatedRow.boxCount;
                     updatedRow.stockUnit = 'boxes';
+                } else if (billingUnit === 'qty' && updatedRow.totalPcs > 0) {
+                    updatedRow.totalSqFt = Number((updatedRow.totalPcs * sqFtPerPc).toFixed(4));
+                    updatedRow.boxCount = pcsPerBox > 0 ? updatedRow.totalPcs / pcsPerBox : 0;
+                    updatedRow.quantity = updatedRow.totalPcs;
+                    updatedRow.stockQty = updatedRow.totalPcs;
+                    updatedRow.stockUnit = 'pieces';
+                } else if (billingUnit === 'sqft' && updatedRow.totalSqFt > 0) {
+                    updatedRow.totalPcs = sqFtPerPc > 0 ? updatedRow.totalSqFt / sqFtPerPc : 0;
+                    updatedRow.boxCount = pcsPerBox > 0 ? updatedRow.totalPcs / pcsPerBox : 0;
+                    updatedRow.quantity = updatedRow.totalSqFt;
                 }
             }
-            updatedRow.total = Number((updatedRow.quantity * price).toFixed(2));
+            // CRITICAL: For tiles, total is ALWAYS totalSqFt × ratePerSqft
+            updatedRow.total = Number((updatedRow.totalSqFt * price).toFixed(2));
         } else {
             // Standard Logic: Qty * Price
             updatedRow.quantity = field === 'quantity' ? Number(value || 0) : Number(updatedRow.quantity || 0);

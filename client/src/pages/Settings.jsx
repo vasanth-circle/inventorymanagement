@@ -1,5 +1,6 @@
 import { useState, useContext, useEffect, useRef } from 'react';
 import { InventoryContext } from '../context/InventoryContext';
+import { AuthContext } from '../context/AuthContext';
 import { generatePreviewHtml } from '../utils/printTemplates';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
@@ -42,6 +43,8 @@ const SelectField = ({ label, name, value, onChange, options }) => (
 
 const Settings = () => {
     const { billingSettings, fetchBillingSettings, updateBillingSettings } = useContext(InventoryContext);
+    const { user } = useContext(AuthContext);
+    const canChangeIndustry = ['super_admin', 'admin'].includes(user?.role);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('company');
     const [previewTemplate, setPreviewTemplate] = useState(null);
@@ -367,18 +370,31 @@ const Settings = () => {
                                 </div>
 
                                 <div className="pt-2">
-                                    <SelectField label="Industry Template (Suggested Defaults)"
-                                        name="industry" value={formData.industry}
-                                        onChange={handleIndustryChange}
-                                        options={[
-                                            { value: 'generic', label: 'Generic (Manual Config)' },
-                                            { value: 'retail', label: 'Fancy Store / Retail' },
-                                            { value: 'tiles', label: 'Tiles & Sanitary Ware' },
-                                            { value: 'machine_shop', label: 'Machine Shop / Fabrication' },
-                                            { value: 'electronics', label: 'Electronics / Appliances' },
-                                            { value: 'medical', label: 'Pharmacy / Medical' },
-                                        ]}
-                                    />
+                                    {canChangeIndustry ? (
+                                        <SelectField label="Industry Template (Suggested Defaults)"
+                                            name="industry" value={formData.industry}
+                                            onChange={handleIndustryChange}
+                                            options={[
+                                                { value: 'generic', label: 'Generic (Manual Config)' },
+                                                { value: 'retail', label: 'Fancy Store / Retail' },
+                                                { value: 'tiles', label: 'Tiles & Sanitary Ware' },
+                                                { value: 'machine_shop', label: 'Machine Shop / Fabrication' },
+                                                { value: 'electronics', label: 'Electronics / Appliances' },
+                                                { value: 'medical', label: 'Pharmacy / Medical' },
+                                            ]}
+                                        />
+                                    ) : (
+                                        <div className="space-y-1">
+                                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Industry Template</label>
+                                            <div className="flex items-center gap-3 px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl">
+                                                <span className="text-lg">{formData.industry === 'tiles' ? '🧱' : formData.industry === 'electronics' ? '⚡' : formData.industry === 'retail' ? '👕' : formData.industry === 'medical' ? '💊' : '📦'}</span>
+                                                <div>
+                                                    <div className="font-black text-gray-800 capitalize">{formData.industry.replace('_', ' ')}</div>
+                                                    <div className="text-[10px] text-gray-400 font-medium">🔒 Industry is locked. Contact admin to change.</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="pt-4 border-t border-gray-100">
