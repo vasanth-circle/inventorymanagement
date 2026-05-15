@@ -115,7 +115,8 @@ export const parseExcel = async (req, res, next) => {
 // Import validated data
 export const importExcelData = async (req, res, next) => {
     try {
-        const { items } = req.body;
+        const { items, options = {} } = req.body;
+        const updateMode = options.updateMode || 'add'; // 'add' or 'overwrite'
 
         if (!items || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ message: 'No items to import' });
@@ -160,7 +161,11 @@ export const importExcelData = async (req, res, next) => {
                 if (item) {
                     // Item exists - update quantity
                     const previousQuantity = item.quantity;
-                    item.quantity += itemData.quantity;
+                    if (updateMode === 'overwrite') {
+                        item.quantity = itemData.quantity;
+                    } else {
+                        item.quantity += itemData.quantity;
+                    }
                     // Update price and location if provided
                     if (itemData.price) item.price = itemData.price;
                     if (itemData.location) item.location = itemData.location;
@@ -372,6 +377,8 @@ export const importBulkMapped = async (req, res, next) => {
             return res.status(400).json({ message: 'No file uploaded' });
         }
 
+        const options = JSON.parse(req.body.options || '{}');
+        const updateMode = options.updateMode || 'add'; // 'add' or 'overwrite'
         const mapping = JSON.parse(req.body.mapping || '{}');
         const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
@@ -438,7 +445,11 @@ export const importBulkMapped = async (req, res, next) => {
                 if (item) {
                     // Update existing
                     const previousQuantity = item.quantity;
-                    item.quantity += itemData.quantity;
+                    if (updateMode === 'overwrite') {
+                        item.quantity = itemData.quantity;
+                    } else {
+                        item.quantity += itemData.quantity;
+                    }
                     item.price = itemData.price || item.price;
                     if (itemData.location) item.location = itemData.location;
                     if (itemData.description) item.description = itemData.description;

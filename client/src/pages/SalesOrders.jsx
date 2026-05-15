@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
 import { InventoryContext } from '../context/InventoryContext';
 import { printDocument } from '../utils/printTemplates';
+import { shareViaWhatsApp, shareViaEmail } from '../utils/shareUtils';
 
 const API_URL = '/api/sales-orders';
 const CUSTOMERS_API = '/api/customers';
@@ -352,66 +353,110 @@ const SalesOrders = () => {
                         <option key={u.id} value={u.id}>{u.name}</option>
                     ))}
                 </select>
-            </div>
-
-            {loading ? (
+            </div>            {loading ? (
                 <div className="flex justify-center items-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
                 </div>
             ) : (
-                <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-gray-50 border-bottom border-gray-100">
-                                <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Order #</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Customer</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Date</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Created By</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Net Amount</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Status</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {filteredOrders.map((order) => (
-                                <tr key={order._id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-4 font-medium text-primary-700">
-                                        {order.orderNumber}
-                                        {order.isEstimation && <span className="ml-2 text-[10px] bg-purple-100 text-purple-600 px-1 rounded">QUOTE</span>}
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-900 font-medium">{order.customer?.companyName || order.customer?.name}</td>
-                                    <td className="px-6 py-4 text-gray-600 text-sm">{new Date(order.orderDate).toLocaleDateString()}</td>
-                                    <td className="px-6 py-4 text-sm font-semibold text-gray-600">{order.user?.name || 'System'}</td>
-                                    <td className="px-6 py-4 font-bold text-gray-900">₹{order.totalAmount?.toLocaleString() || 0}</td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${getStatusColor(order.status)}`}>
-                                            {order.status.replace('_', ' ')}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right space-x-2">
-                                        <div className="flex justify-end gap-2">
-                                            <button onClick={() => handlePrint(order)} className="text-primary-600 hover:text-primary-800 text-sm font-bold border-2 border-primary-100 px-3 py-1.5 rounded-lg bg-primary-50 transition-all flex items-center inline-flex">
-                                                <span className="mr-1">📄</span> Bill
-                                            </button>
-                                            
-                                            {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
-                                                <button 
-                                                    onClick={() => handleEdit(order)} 
-                                                    className="text-amber-600 hover:text-amber-800 text-sm font-bold border-2 border-amber-100 px-3 py-1.5 rounded-lg bg-amber-50 transition-all flex items-center inline-flex"
-                                                >
-                                                    <span className="mr-1">✏️</span> Edit
-                                                </button>
-                                            )}
-
-                                            {order.status === 'quotation' && (
-                                                <button onClick={() => handleStatusUpdate(order._id, 'confirmed')} className="bg-blue-600 text-white hover:bg-blue-700 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-all">Accept</button>
-                                            )}
-                                        </div>
-                                    </td>
+                <div className="space-y-4">
+                    {/* Desktop Table View */}
+                    <div className="hidden lg:block bg-white rounded-xl shadow-md overflow-hidden">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50 border-bottom border-gray-100">
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Order #</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Customer</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Date</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Created By</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Net Amount</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Status</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase text-right">Actions</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {filteredOrders.map((order) => (
+                                    <tr key={order._id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-6 py-4 font-medium text-primary-700">
+                                            {order.orderNumber}
+                                            {order.isEstimation && <span className="ml-2 text-[10px] bg-purple-100 text-purple-600 px-1 rounded">QUOTE</span>}
+                                        </td>
+                                        <td className="px-6 py-4 text-gray-900 font-medium">{order.customer?.companyName || order.customer?.name}</td>
+                                        <td className="px-6 py-4 text-gray-600 text-sm">{new Date(order.orderDate).toLocaleDateString()}</td>
+                                        <td className="px-6 py-4 text-sm font-semibold text-gray-600">{order.user?.name || 'System'}</td>
+                                        <td className="px-6 py-4 font-bold text-gray-900">₹{order.totalAmount?.toLocaleString() || 0}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${getStatusColor(order.status)}`}>
+                                                {order.status.replace('_', ' ')}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right space-x-2">
+                                            <div className="flex justify-end gap-2">
+                                                <button onClick={() => handlePrint(order)} className="text-primary-600 hover:text-primary-800 text-sm font-bold border-2 border-primary-100 px-3 py-1.5 rounded-lg bg-primary-50 transition-all flex items-center inline-flex">
+                                                    <span className="mr-1">📄</span> Bill
+                                                </button>
+                                                
+                                                {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
+                                                    <button 
+                                                        onClick={() => handleEdit(order)} 
+                                                        className="text-amber-600 hover:text-amber-800 text-sm font-bold border-2 border-amber-100 px-3 py-1.5 rounded-lg bg-amber-50 transition-all flex items-center inline-flex"
+                                                    >
+                                                        <span className="mr-1">✏️</span> Edit
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Mobile Card View */}
+                    <div className="lg:hidden space-y-4">
+                        {filteredOrders.map((order) => (
+                            <div key={order._id} className="bg-white rounded-2xl border border-gray-100 shadow-lg p-5 relative overflow-hidden active:scale-[0.98] transition-all">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-black text-primary-600 uppercase tracking-widest flex items-center gap-1">
+                                            {order.orderNumber}
+                                            {order.isEstimation && <span className="bg-purple-100 text-purple-600 px-1.5 rounded-md text-[8px]">ESTIMATE</span>}
+                                        </span>
+                                        <h3 className="font-extrabold text-gray-900 text-base leading-tight mt-0.5">{order.customer?.companyName || order.customer?.name}</h3>
+                                    </div>
+                                    <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm ${getStatusColor(order.status)}`}>
+                                        {order.status.replace('_', ' ')}
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center gap-4 text-gray-500 mb-5">
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-xs">📅</span>
+                                        <span className="text-[10px] font-bold uppercase">{new Date(order.orderDate).toLocaleDateString()}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-xs">👤</span>
+                                        <span className="text-[10px] font-bold uppercase truncate max-w-[80px]">{order.user?.name || 'Admin'}</span>
+                                    </div>
+                                </div>
+
+                                <div className="bg-primary-900 -mx-5 -mb-5 px-5 py-4 flex justify-between items-center mt-auto">
+                                    <div className="flex flex-col">
+                                        <span className="text-[9px] font-black text-primary-300 uppercase tracking-tighter">Amount Due</span>
+                                        <span className="text-xl font-black text-white">₹{order.totalAmount?.toLocaleString() || 0}</span>
+                                    </div>
+                                    
+                                    <div className="flex gap-2">
+                                        <button onClick={() => handlePrint(order)} className="w-9 h-9 bg-primary-800 hover:bg-primary-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Print/PDF Bill">📄</button>
+                                        <button onClick={() => shareViaWhatsApp(order, billingSettings, 'invoice')} className="w-9 h-9 bg-green-600 hover:bg-green-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="WhatsApp Share">💬</button>
+                                        <button onClick={() => shareViaEmail(order, billingSettings, 'invoice')} className="w-9 h-9 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Email Share">✉️</button>
+                                        {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
+                                            <button onClick={() => handleEdit(order)} className="w-9 h-9 bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Edit">✏️</button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
 

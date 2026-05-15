@@ -5,6 +5,7 @@ import { AuthContext } from '../context/AuthContext';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { printDocument } from '../utils/printTemplates';
+import { shareViaWhatsApp, shareViaEmail } from '../utils/shareUtils';
 
 const STATUS_COLORS = {
     draft:     'bg-gray-100 text-gray-600',
@@ -411,35 +412,60 @@ const Quotations = () => {
                         </div>
 
                         {/* Mobile Card View */}
-                        <div className="lg:hidden p-4 space-y-4">
+                        <div className="lg:hidden p-4 space-y-4 bg-gray-50/50">
                             {filtered.map(q => (
-                                <div key={q._id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 relative">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div>
-                                            <div className="text-[10px] font-black text-rose-600 uppercase tracking-widest">{q.quotationNumber}</div>
-                                            <div className="font-bold text-gray-900">{q.customer?.companyName || q.customer?.name}</div>
+                                <div key={q._id} className="bg-white rounded-2xl border border-gray-100 shadow-lg p-5 relative overflow-hidden group active:scale-[0.98] transition-all">
+                                    {/* Top Line */}
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest">{q.quotationNumber}</span>
+                                            <h3 className="font-extrabold text-gray-900 text-base leading-tight mt-0.5">{q.customer?.companyName || q.customer?.name}</h3>
                                         </div>
-                                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${STATUS_COLORS[q.status] || 'bg-gray-100 text-gray-600'}`}>
+                                        <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm ${STATUS_COLORS[q.status] || 'bg-gray-100 text-gray-600'}`}>
                                             {q.status}
                                         </span>
                                     </div>
-                                    <div className="flex justify-between items-end mt-4">
-                                        <div className="text-[10px] text-gray-400 font-bold uppercase">
-                                            {new Date(q.quotationDate || q.createdAt).toLocaleDateString()}
+
+                                    {/* Middle Section */}
+                                    <div className="flex items-center gap-4 text-gray-500 mb-5">
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-xs">📅</span>
+                                            <span className="text-[10px] font-bold uppercase">{new Date(q.quotationDate || q.createdAt).toLocaleDateString()}</span>
                                         </div>
-                                        <div className="text-right">
-                                            <div className="text-lg font-black text-gray-900">₹{(q.totalAmount || 0).toLocaleString()}</div>
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-xs">👤</span>
+                                            <span className="text-[10px] font-bold uppercase truncate max-w-[80px]">{q.user?.name || 'Admin'}</span>
                                         </div>
                                     </div>
-                                    <div className="mt-4 flex gap-2 border-t border-gray-50 pt-3">
-                                        <button onClick={() => handlePrint(q)} className="flex-1 py-2 bg-gray-50 text-gray-600 rounded-lg text-[10px] font-bold uppercase">📄 Print</button>
-                                        {q.status !== 'converted' && q.status !== 'rejected' && (
-                                            <button onClick={() => openEdit(q)} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-bold uppercase">✏️ Edit</button>
-                                        )}
-                                        {q.status === 'accepted' && (
-                                            <button onClick={() => handleConvert(q)} disabled={convertingId === q._id} className="flex-[2] py-2 bg-green-600 text-white rounded-lg text-[10px] font-bold uppercase">✅ Convert</button>
-                                        )}
+
+                                    {/* Amount Section */}
+                                    <div className="bg-gray-900 -mx-5 -mb-5 px-5 py-4 flex justify-between items-center mt-auto">
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">Total Amount</span>
+                                            <span className="text-xl font-black text-rose-400">₹{(q.totalAmount || 0).toLocaleString()}</span>
+                                        </div>
+                                        
+                                        {/* Action Buttons */}
+                                        <div className="flex gap-2">
+                                            <button onClick={() => handlePrint(q)} className="w-9 h-9 bg-gray-800 hover:bg-gray-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Print/PDF">📄</button>
+                                            <button onClick={() => shareViaWhatsApp(q, billingSettings, 'quotation')} className="w-9 h-9 bg-green-600 hover:bg-green-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="WhatsApp Share">💬</button>
+                                            <button onClick={() => shareViaEmail(q, billingSettings, 'quotation')} className="w-9 h-9 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Email Share">✉️</button>
+                                            {q.status !== 'converted' && q.status !== 'rejected' && (
+                                                <button onClick={() => openEdit(q)} className="w-9 h-9 bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Edit">✏️</button>
+                                            )}
+                                        </div>
                                     </div>
+
+                                    {/* Conversion Button (Floating if accepted) */}
+                                    {q.status === 'accepted' && (
+                                        <button 
+                                            onClick={() => handleConvert(q)} 
+                                            disabled={convertingId === q._id} 
+                                            className="absolute top-1/2 right-4 -translate-y-12 bg-green-500 text-white px-3 py-1.5 rounded-full text-[9px] font-black uppercase shadow-lg animate-bounce"
+                                        >
+                                            {convertingId === q._id ? '...' : '✅ Convert to Bill'}
+                                        </button>
+                                    )}
                                 </div>
                             ))}
                         </div>

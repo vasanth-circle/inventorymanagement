@@ -17,8 +17,10 @@ const BulkImport = () => {
     const [mapping, setMapping] = useState({});
     const [loading, setLoading] = useState(false);
     const [mode, setMode] = useState('template'); // 'template' or 'mapping'
+    const [importType, setImportType] = useState('full'); // 'full' or 'stock'
+    const [updateMode, setUpdateMode] = useState('add'); // 'add' or 'overwrite'
 
-    const appFields = [
+    const fullFields = [
         { key: 'name', label: 'Item Name', required: true, synonyms: ['item', 'product', 'name', 'title'] },
         { key: 'sku', label: 'SKU / Item Code', required: false, synonyms: ['sku', 'code', 'article', 'id'] },
         { key: 'category', label: 'Category', required: false, synonyms: ['category', 'type', 'group'] },
@@ -30,6 +32,14 @@ const BulkImport = () => {
         { key: 'description', label: 'Description', required: false, synonyms: ['description', 'desc', 'notes', 'info'] },
         { key: 'hsn', label: 'HSN Code', required: false, synonyms: ['hsn', 'hsn code', 'sac', 'tax code'] },
     ];
+
+    const stockFields = [
+        { key: 'name', label: 'Item Name', required: true, synonyms: ['item', 'product', 'name', 'title'] },
+        { key: 'quantity', label: 'New Stock Quantity', required: true, synonyms: ['qty', 'quantity', 'stock', 'count'] },
+        { key: 'location', label: 'Storage Location', required: false, synonyms: ['location', 'warehouse', 'rack', 'shelf'] },
+    ];
+
+    const appFields = importType === 'full' ? fullFields : stockFields;
 
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
@@ -99,7 +109,7 @@ const BulkImport = () => {
             }
             const validItems = parsedData.data.filter(item => item.isValid).map(item => item.data);
             setLoading(true);
-            const result = await importExcelData(validItems);
+            const result = await importExcelData(validItems, { updateMode, importType });
             setLoading(false);
             if (result.success) resetAll();
         } else {
@@ -110,7 +120,7 @@ const BulkImport = () => {
             }
 
             setLoading(true);
-            const result = await importMappedData(file, mapping);
+            const result = await importMappedData(file, mapping, { updateMode, importType });
             setLoading(false);
             if (result.success) resetAll();
         }
@@ -142,6 +152,60 @@ const BulkImport = () => {
                 >
                     <span className="text-xl">📥</span> Download Template
                 </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <span className="w-6 h-6 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center text-xs">A</span>
+                        Select Workflow
+                    </h3>
+                    <div className="flex bg-gray-100 p-1 rounded-xl">
+                        <button
+                            onClick={() => setImportType('full')}
+                            className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all ${importType === 'full' ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Full Item Master
+                        </button>
+                        <button
+                            onClick={() => setImportType('stock')}
+                            className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all ${importType === 'stock' ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Stock Only Update
+                        </button>
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-3 italic px-1">
+                        {importType === 'full' 
+                            ? 'Creates new items or updates all fields of existing items.' 
+                            : 'Optimized for fast stock updates. Only name and quantity are required.'}
+                    </p>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <span className="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xs">B</span>
+                        Update Logic
+                    </h3>
+                    <div className="flex bg-gray-100 p-1 rounded-xl">
+                        <button
+                            onClick={() => setUpdateMode('add')}
+                            className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all ${updateMode === 'add' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Add to Current
+                        </button>
+                        <button
+                            onClick={() => setUpdateMode('overwrite')}
+                            className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all ${updateMode === 'overwrite' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Overwrite Current
+                        </button>
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-3 italic px-1">
+                        {updateMode === 'add' 
+                            ? 'New quantities will be ADDED to whatever you currently have in stock.' 
+                            : 'Current stock levels will be COMPLETELY REPLACED by the values in your file.'}
+                    </p>
+                </div>
             </div>
 
             {!mappingData && !parsedData && (

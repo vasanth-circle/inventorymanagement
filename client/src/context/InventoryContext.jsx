@@ -383,9 +383,9 @@ export const InventoryProvider = ({ children }) => {
     };
 
     // Import Excel data
-    const importExcelData = async (itemsData) => {
+    const importExcelData = async (itemsData, options = {}) => {
         try {
-            const { data } = await api.post('/excel/import', { items: itemsData });
+            const { data } = await api.post('/excel/import', { items: itemsData, options });
             toast.success(data.message || 'Import completed successfully');
             fetchItems(); // Refresh items after import
             return { success: true, data };
@@ -427,11 +427,12 @@ export const InventoryProvider = ({ children }) => {
     };
 
     // Import mapped data (Additive)
-    const importMappedData = async (file, mapping) => {
+    const importMappedData = async (file, mapping, options = {}) => {
         try {
             const formData = new FormData();
             formData.append('file', file);
             formData.append('mapping', JSON.stringify(mapping));
+            formData.append('options', JSON.stringify(options));
             
             const { data } = await api.post('/excel/import-mapped', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
