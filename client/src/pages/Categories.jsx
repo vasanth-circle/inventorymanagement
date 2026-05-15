@@ -29,16 +29,23 @@ const Categories = () => {
         e.preventDefault();
         if (editingCategory) {
             const result = await editCategory(editingCategory._id, formData);
-            if (result.success) handleCloseModal();
+            if (result.success) {
+                handleCloseModal();
+                toast.success('Category updated successfully');
+            }
         } else {
             const result = await addCategory(formData);
-            if (result.success) handleCloseModal();
+            if (result.success) {
+                handleCloseModal();
+                toast.success('Category created successfully');
+            }
         }
     };
 
     const handleDelete = async (id) => {
         await confirmDelete('Are you sure you want to delete this category? Items in this category will remain but their category reference may be lost.', async () => {
             await removeCategory(id);
+            toast.success('Category deleted successfully');
         });
     };
 

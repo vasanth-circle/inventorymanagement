@@ -14,6 +14,7 @@ export const InventoryProvider = ({ children }) => {
     const [assetLocations, setAssetLocations] = useState([]);
     const [transactions, setTransactions] = useState([]);
     const [hsnCodes, setHsnCodes] = useState([]);
+    const [sizes, setSizes] = useState([]);
     const [purchaseOrders, setPurchaseOrders] = useState([]);
     const [billingSettings, setBillingSettings] = useState(null);
     const [activePreset, setActivePreset] = useState(getIndustryPreset('generic'));
@@ -57,7 +58,6 @@ export const InventoryProvider = ({ children }) => {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
             setItems([data, ...items]);
-            toast.success('Item created successfully');
             return { success: true, data };
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to create item');
@@ -72,7 +72,6 @@ export const InventoryProvider = ({ children }) => {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
             setItems(items.map(item => item._id === id ? data : item));
-            toast.success('Item updated successfully');
             return { success: true, data };
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to update item');
@@ -85,7 +84,6 @@ export const InventoryProvider = ({ children }) => {
         try {
             await api.delete(`/items/${id}`);
             setItems(items.filter(item => item._id !== id));
-            toast.success('Item deleted successfully');
             return { success: true };
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to delete item');
@@ -98,7 +96,6 @@ export const InventoryProvider = ({ children }) => {
         try {
             const endpoint = `/transactions/${transactionData.type}`;
             const { data } = await api.post(endpoint, transactionData);
-            toast.success(`Stock ${transactionData.type} recorded successfully`);
             return { success: true, data };
         } catch (error) {
             toast.error(error.response?.data?.message || 'Transaction failed');
@@ -132,7 +129,6 @@ export const InventoryProvider = ({ children }) => {
         try {
             const { data } = await api.patch('/settings/billing', settingsData);
             setBillingSettings(data.data);
-            toast.success('Billing settings updated');
             return { success: true, data: data.data };
         } catch (error) {
             toast.error('Failed to update settings');
@@ -223,7 +219,6 @@ export const InventoryProvider = ({ children }) => {
         try {
             const { data } = await api.post('/categories', categoryData);
             setCategories([...categories, data]);
-            toast.success('Category created successfully');
             return { success: true, data };
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to create category');
@@ -236,7 +231,6 @@ export const InventoryProvider = ({ children }) => {
         try {
             const { data } = await api.put(`/categories/${id}`, categoryData);
             setCategories(categories.map(cat => cat._id === id ? data : cat));
-            toast.success('Category updated successfully');
             return { success: true, data };
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to update category');
@@ -249,7 +243,6 @@ export const InventoryProvider = ({ children }) => {
         try {
             await api.delete(`/categories/${id}`);
             setCategories(categories.filter(cat => cat._id !== id));
-            toast.success('Category deleted successfully');
             return { success: true };
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to delete category');
@@ -278,7 +271,6 @@ export const InventoryProvider = ({ children }) => {
         try {
             const { data } = await api.post('/locations', locationData);
             setLocations([...locations, data]);
-            toast.success('Location created successfully');
             return { success: true, data };
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to create location');
@@ -291,7 +283,6 @@ export const InventoryProvider = ({ children }) => {
         try {
             const { data } = await api.put(`/locations/${id}`, locationData);
             setLocations(locations.map(loc => loc._id === id ? data : loc));
-            toast.success('Location updated successfully');
             return { success: true, data };
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to update location');
@@ -304,7 +295,6 @@ export const InventoryProvider = ({ children }) => {
         try {
             await api.delete(`/locations/${id}`);
             setLocations(locations.filter(loc => loc._id !== id));
-            toast.success('Location removed successfully');
             return { success: true };
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to remove location');
@@ -319,6 +309,50 @@ export const InventoryProvider = ({ children }) => {
             setHsnCodes(data.data || []);
         } catch (error) {
             console.error('Failed to fetch HSN codes');
+        }
+    };
+
+    // Size CRUD functions
+    const fetchSizes = async () => {
+        try {
+            const { data } = await api.get('/sizes');
+            setSizes(data || []);
+            return data;
+        } catch (error) {
+            console.error('Failed to fetch sizes');
+        }
+    };
+
+    const addSize = async (sizeData) => {
+        try {
+            const { data } = await api.post('/sizes', sizeData);
+            setSizes([...sizes, data]);
+            return { success: true, data };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to create size');
+            return { success: false };
+        }
+    };
+
+    const editSize = async (id, sizeData) => {
+        try {
+            const { data } = await api.put(`/sizes/${id}`, sizeData);
+            setSizes(sizes.map(s => s._id === id ? data : s));
+            return { success: true, data };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update size');
+            return { success: false };
+        }
+    };
+
+    const removeSize = async (id) => {
+        try {
+            await api.delete(`/sizes/${id}`);
+            setSizes(sizes.filter(s => s._id !== id));
+            return { success: true };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete size');
+            return { success: false };
         }
     };
 
@@ -428,6 +462,7 @@ export const InventoryProvider = ({ children }) => {
             fetchAssetLocations();
             fetchBillingSettings();
             fetchHsnCodes();
+            fetchSizes();
             fetchPurchaseOrders({ status: 'issued' });
         }
     }, [user]);
@@ -465,6 +500,11 @@ export const InventoryProvider = ({ children }) => {
                 activePreset,
                 hsnCodes,
                 fetchHsnCodes,
+                sizes,
+                fetchSizes,
+                addSize,
+                editSize,
+                removeSize,
                 fetchBillingSettings,
                 updateBillingSettings,
                 fetchSalesOrders,

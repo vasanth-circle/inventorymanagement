@@ -252,7 +252,7 @@ const SalesOrders = () => {
                     }
                 }
                 // Stock Validation
-                if (!formData.isEstimation) {
+                if (!formData.isEstimation && billingSettings?.workflowConfig?.allowNegativeStock === false) {
                     const required = row.stockQty || row.quantity;
                     if (required > row.physicalStock) {
                         toast.error(`Insufficient stock for ${row.name || 'item'}. Available: ${row.physicalStock}`);
@@ -471,7 +471,8 @@ const SalesOrders = () => {
                                             Item Details
                                         </h3>
                                     </div>
-                                    <div className="overflow-x-auto border rounded-xl shadow-sm">
+                                    {/* Items List - Desktop Table */}
+                                    <div className="hidden md:block overflow-x-auto border rounded-xl shadow-sm">
                                         <table className="w-full text-left min-w-[800px]">
                                             <thead>
                                                 <tr className="bg-gray-50 border-b border-gray-100">
@@ -580,6 +581,75 @@ const SalesOrders = () => {
                                                 })}
                                             </tbody>
                                         </table>
+                                    </div>
+
+                                    {/* Items List - Mobile Cards */}
+                                    <div className="md:hidden space-y-4">
+                                        {formData.items.map((row, index) => {
+                                            const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0;
+                                            return (
+                                                <div key={index} className="bg-white border-2 border-gray-100 rounded-2xl p-4 shadow-sm relative space-y-4">
+                                                    <button type="button" onClick={() => handleRemoveItem(index)} className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-red-50 text-red-500 rounded-full font-bold">✕</button>
+                                                    
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Item</label>
+                                                        <select required value={row.item} onChange={(e) => handleItemChange(index, 'item', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-bold text-sm">
+                                                            <option value="">Select Item</option>
+                                                            {items.map(i => <option key={i._id} value={i._id}>{i.name} ({i.brand} - {i.size})</option>)}
+                                                        </select>
+                                                        <div className="flex justify-between items-center px-1">
+                                                            <span className={`text-[10px] font-black uppercase ${row.physicalStock > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                                Stock: {row.physicalStock || 0}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    {row.availableBatches && row.availableBatches.length > 0 && (
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Batch</label>
+                                                            <select value={row.batchId} onChange={(e) => handleItemChange(index, 'batchId', e.target.value)} className="w-full px-4 py-3 bg-primary-50 border border-primary-100 rounded-xl text-primary-800 font-bold outline-none text-sm">
+                                                                {row.availableBatches.map(b => (
+                                                                    <option key={b._id} value={b._id}>{b.batchNumber || 'Batch'} - ₹{b.price} ({b.quantity} Left)</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                                                {isTile ? 'Boxes' : (billingSettings?.unitConfig?.quantityLabel || 'Qty')}
+                                                            </label>
+                                                            <input type="number" step="0.01" min="0" value={isTile ? (row.boxCount || '') : (row.quantity || '')} onChange={(e) => handleItemChange(index, isTile ? 'boxCount' : 'quantity', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none text-center font-bold" />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                                                {isTile ? row.billingUnit.toUpperCase() : 'Billed Qty'}
+                                                            </label>
+                                                            <input required type="number" step="0.01" readOnly={isTile} value={row.quantity || ''} onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value))} className={`w-full px-4 py-3 border border-gray-200 rounded-xl outline-none font-bold text-center ${isTile ? 'bg-gray-50' : ''}`} />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Rate (Per {isTile ? row.billingUnit : 'Piece'})</label>
+                                                            <input required type="number" step="0.01" value={row.price} onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value))} className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none font-bold text-right" />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Row Total</label>
+                                                            <div className="w-full px-4 py-3 bg-gray-900 text-white rounded-xl font-black text-right">₹{(row.total || 0).toLocaleString()}</div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {isTile && (
+                                                        <div className="flex justify-between items-center px-1 bg-rose-50 p-2 rounded-lg border border-rose-100">
+                                                            <span className="text-[10px] font-black text-rose-600 uppercase">Calc: {row.totalPcs} Pcs</span>
+                                                            <span className="text-[10px] font-black text-rose-600 uppercase">{row.totalSqFt?.toFixed(2)} {billingSettings?.unitConfig?.quantityLabel || 'SqFt'}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                     <button type="button" onClick={handleAddItem} className="text-primary-600 hover:text-primary-700 text-sm font-black flex items-center bg-primary-50 px-4 py-2 rounded-lg transition-colors">
                                         <span className="text-xl mr-2">+</span> Add Line Item

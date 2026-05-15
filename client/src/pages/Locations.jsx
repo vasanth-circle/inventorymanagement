@@ -45,9 +45,15 @@ const Locations = () => {
         };
 
         if (editingLocation) {
-            await editLocation(editingLocation._id, locationData);
+            const result = await editLocation(editingLocation._id, locationData);
+            if (result.success) {
+                toast.success('Location updated successfully');
+            }
         } else {
-            await addLocation(locationData);
+            const result = await addLocation(locationData);
+            if (result.success) {
+                toast.success('Location created successfully');
+            }
         }
         
         if (locationType === 'asset') {
@@ -62,6 +68,7 @@ const Locations = () => {
         const confirmed = await confirmDelete('Are you sure you want to remove this location?');
         if (confirmed) {
             await removeLocation(id);
+            toast.success('Location removed successfully');
             if (locationType === 'asset') {
                 await fetchAssetLocations();
             } else {

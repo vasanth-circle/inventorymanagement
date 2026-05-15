@@ -95,6 +95,7 @@ const Settings = () => {
         // Workflow config
         workflowConfig: {
             enforcePO: false,
+            allowNegativeStock: true,
         },
     });
 
@@ -141,6 +142,7 @@ const Settings = () => {
                 },
                 workflowConfig: {
                     enforcePO: billingSettings.workflowConfig?.enforcePO || false,
+                    allowNegativeStock: billingSettings.workflowConfig?.allowNegativeStock ?? true,
                 },
             });
             // Sync logo preview from saved settings
@@ -746,7 +748,17 @@ const Settings = () => {
                                         </div>
                                     </div>
 
-                                    {/* Add more workflow toggles here if needed */}
+                                    <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl hover:border-amber-200 transition-all cursor-pointer"
+                                         onClick={() => handleNested('workflowConfig', 'allowNegativeStock', !formData.workflowConfig.allowNegativeStock)}>
+                                        <div className="space-y-1 pr-4">
+                                            <h3 className="text-sm font-bold text-gray-800">Allow Negative Stock Billing</h3>
+                                            <p className="text-[10px] text-gray-500 font-medium">When enabled, you can create bills even if items are out of stock. When disabled, the system will block billing for insufficient stock.</p>
+                                        </div>
+                                        <div className={`w-12 h-6 rounded-full transition-all relative ${formData.workflowConfig.allowNegativeStock ? 'bg-green-500' : 'bg-gray-300'}`}>
+                                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${formData.workflowConfig.allowNegativeStock ? 'left-7' : 'left-1'}`} />
+                                        </div>
+                                    </div>
+
                                     <div className="p-4 border border-dashed border-gray-200 rounded-xl">
                                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest text-center">More workflow options coming soon</p>
                                     </div>

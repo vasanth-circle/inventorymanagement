@@ -122,7 +122,7 @@ export const createSalesOrder = async (req, res, next) => {
             }
 
             // Stock Validation
-            if (!isEstimation) {
+            if (!isEstimation && settings?.workflowConfig?.allowNegativeStock === false) {
                 const stockQtyRequired = lineItem.stockQty || lineItem.quantity;
                 if (itemDoc.quantity < stockQtyRequired) {
                     return sendError(res, 400, `Insufficient stock for ${itemDoc.name}. Available: ${itemDoc.quantity}, Required: ${stockQtyRequired}`);
@@ -205,12 +205,15 @@ export const updateSOStatus = async (req, res, next) => {
 
         // Check stock availability before confirming if transition is from quotation to confirmed
         if (order.status === 'quotation' && status === 'confirmed') {
-            for (const lineItem of order.items) {
-                const itemDoc = await Item.findById(lineItem.item);
-                if (itemDoc) {
-                    const stockQtyRequired = lineItem.stockQty || lineItem.quantity;
-                    if (itemDoc.quantity < stockQtyRequired) {
-                        return sendError(res, 400, `Insufficient stock for ${itemDoc.name} to confirm invoice. Available: ${itemDoc.quantity}`);
+            const settings = await Setting.findOne({ tenantId: req.tenantId });
+            if (settings?.workflowConfig?.allowNegativeStock === false) {
+                for (const lineItem of order.items) {
+                    const itemDoc = await Item.findById(lineItem.item);
+                    if (itemDoc) {
+                        const stockQtyRequired = lineItem.stockQty || lineItem.quantity;
+                        if (itemDoc.quantity < stockQtyRequired) {
+                            return sendError(res, 400, `Insufficient stock for ${itemDoc.name} to confirm invoice. Available: ${itemDoc.quantity}`);
+                        }
                     }
                 }
             }

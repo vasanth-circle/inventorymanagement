@@ -29,6 +29,7 @@ import productShowcaseRoutes from './routes/productShowcaseRoutes.js';
 import publicProductRoutes from './routes/publicProductRoutes.js';
 import vendorLedgerRoutes from './routes/vendorLedgerRoutes.js';
 import hsnRoutes from './routes/hsnRoutes.js';
+import sizeRoutes from './routes/sizeRoutes.js';
 import fixLegacyIndexes from './utils/fixIndexes.js';
 // Ensure User model is registered on appConn for cross-connection populate
 import { AppUser } from './models/User.js';
@@ -94,6 +95,7 @@ app.use('/api/product-showcase', productShowcaseRoutes);
 app.use('/api/public', publicProductRoutes);
 app.use('/api/vendor-ledger', vendorLedgerRoutes);
 app.use('/api/hsn', hsnRoutes);
+app.use('/api/sizes', sizeRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

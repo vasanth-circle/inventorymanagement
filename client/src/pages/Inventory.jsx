@@ -7,7 +7,7 @@ const Inventory = () => {
     const {
         items, fetchItems, deleteItem, createItem, updateItem,
         categories, locations, fetchLocations, loading, confirmDelete,
-        billingSettings, activePreset, hsnCodes, fetchHsnCodes
+        billingSettings, activePreset, hsnCodes, fetchHsnCodes, sizes
     } = useContext(InventoryContext);
     const [filters, setFilters] = useState({
         search: '',
@@ -28,6 +28,7 @@ const Inventory = () => {
         location: '',
         description: '',
         brand: '',
+        partNumber: '',
         size: '',
         hsn: '',
         pcsPerBox: '',
@@ -46,6 +47,7 @@ const Inventory = () => {
         location: '',
         description: '',
         brand: '',
+        partNumber: '',
         size: '',
         hsn: '',
         pcsPerBox: '',
@@ -106,7 +108,24 @@ const Inventory = () => {
                 {activePreset.productFields.map((field) => (
                     <div key={field.name}>
                         <label className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
-                        {field.type === 'select' ? (
+                        {field.name === 'size' && activePreset.id === 'tiles' && sizes.length > 0 ? (
+                            <select
+                                value={formData[field.name] || ''}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    handleChange(field.name, val);
+                                    // Auto-calculate sqft if size is from managed list
+                                    const selectedSize = sizes.find(s => s.name === val);
+                                    if (selectedSize) {
+                                        handleChange('sqFtPerPc', (selectedSize.width * selectedSize.height).toFixed(3));
+                                    }
+                                }}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none font-bold"
+                            >
+                                <option value="">Select Size</option>
+                                {sizes.map(s => <option key={s._id} value={s.name}>{s.name} ({s.width}x{s.height})</option>)}
+                            </select>
+                        ) : field.type === 'select' ? (
                             <select
                                 value={formData[field.name] || ''}
                                 onChange={(e) => handleChange(field.name, e.target.value)}
@@ -158,6 +177,7 @@ const Inventory = () => {
         await confirmDelete('Are you sure you want to delete this item?', async () => {
             await deleteItem(id);
             loadItems();
+            toast.success('Item deleted successfully');
         });
     };
 
@@ -173,6 +193,7 @@ const Inventory = () => {
             location: item.location || '',
             description: item.description || '',
             brand: item.brand || '',
+            partNumber: item.partNumber || '',
             size: item.size || '',
             hsn: item.hsn || '',
             pcsPerBox: item.pcsPerBox || '',
@@ -199,7 +220,7 @@ const Inventory = () => {
 
         try {
             const formData = new FormData();
-            const standardFields = ['name', 'barcode', 'category', 'price', 'purchasePrice', 'minStockThreshold', 'location', 'description', 'brand', 'size', 'hsn', 'pcsPerBox', 'sqFtPerPc'];
+            const standardFields = ['name', 'barcode', 'partNumber', 'category', 'price', 'purchasePrice', 'minStockThreshold', 'location', 'description', 'brand', 'size', 'hsn', 'pcsPerBox', 'sqFtPerPc'];
             
             const customFieldsObj = {};
 
@@ -222,6 +243,7 @@ const Inventory = () => {
             if (result.success) {
                 setEditingItem(null);
                 loadItems();
+                toast.success('Item updated successfully');
             }
         } catch (error) {
             toast.error('Failed to update item');
@@ -268,7 +290,7 @@ const Inventory = () => {
 
         try {
             const formData = new FormData();
-            const standardFields = ['name', 'barcode', 'category', 'price', 'purchasePrice', 'minStockThreshold', 'location', 'description', 'brand', 'size', 'hsn', 'pcsPerBox', 'sqFtPerPc'];
+            const standardFields = ['name', 'barcode', 'partNumber', 'category', 'price', 'purchasePrice', 'minStockThreshold', 'location', 'description', 'brand', 'size', 'hsn', 'pcsPerBox', 'sqFtPerPc'];
             
             const customFieldsObj = {};
             
@@ -304,6 +326,7 @@ const Inventory = () => {
                     location: '',
                     description: '',
                     brand: '',
+                    partNumber: '',
                     size: '',
                     hsn: '',
                     pcsPerBox: 1,
@@ -502,54 +525,68 @@ const Inventory = () => {
                         </div>
 
                         {/* Mobile Card View */}
-                        <div className="lg:hidden grid grid-cols-1 gap-4 p-4">
+                        <div className="lg:hidden grid grid-cols-1 gap-4 p-4 pb-24">
                             {items.length > 0 ? (
                                 items.map((item) => (
-                                    <div key={item._id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 relative overflow-hidden group">
-                                        <div className={`absolute top-0 left-0 w-1 h-full ${item.stockStatus === 'in-stock' ? 'bg-green-500' : item.stockStatus === 'low-stock' ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
-                                        <div className="flex items-start gap-4">
+                                    <div key={item._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden relative group">
+                                        <div className="flex items-start p-4 gap-4">
+                                            {/* Image/Icon Section */}
                                             <div className="flex-shrink-0">
                                                 {item.image ? (
-                                                    <img src={item.image} alt={item.name} className="h-16 w-16 object-cover rounded-lg shadow-sm border border-gray-100" />
+                                                    <img src={item.image} alt={item.name} className="h-20 w-20 object-cover rounded-xl shadow-sm border border-gray-50" />
                                                 ) : (
-                                                    <div className="h-16 w-16 bg-gray-50 rounded-lg flex items-center justify-center text-gray-300 border border-gray-100 border-dashed text-2xl">
+                                                    <div className="h-20 w-20 bg-gray-50 rounded-xl flex items-center justify-center text-gray-300 border border-gray-100 border-dashed text-3xl">
                                                         📦
                                                     </div>
                                                 )}
                                             </div>
+
+                                            {/* Info Section */}
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex justify-between items-start">
-                                                    <h4 className="text-sm font-black text-gray-900 truncate pr-8">{item.name}</h4>
-                                                    <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-100">₹{item.price}</span>
-                                                </div>
-                                                <div className="text-[10px] text-gray-400 font-mono mt-0.5">{item.barcode || 'No Barcode'}</div>
-                                                
-                                                <div className="mt-3 flex items-center justify-between">
-                                                    <div className="flex items-center space-x-2">
-                                                        <div className="text-center">
-                                                            <div className="text-xs font-black text-gray-800">{item.quantity}</div>
-                                                            <div className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">Stock</div>
-                                                        </div>
-                                                        <div className="w-px h-4 bg-gray-100"></div>
-                                                        <span className="text-[9px] font-bold text-gray-500 uppercase">{item.category?.name || 'UNCAT'}</span>
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <div className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[8px] font-black uppercase rounded tracking-widest border border-gray-200">
+                                                        {item.category?.name || 'UNCAT'}
                                                     </div>
-                                                    <div className="flex space-x-2">
-                                                        <button onClick={() => handleEdit(item)} className="p-1.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100">
-                                                            <span className="text-xs">✏️</span>
-                                                        </button>
-                                                        <button onClick={() => handleDelete(item._id)} className="p-1.5 bg-red-50 text-red-600 rounded-lg border border-red-100">
-                                                            <span className="text-xs">🗑️</span>
-                                                        </button>
+                                                    <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${
+                                                        item.stockStatus === 'in-stock' ? 'bg-green-50 text-green-600 border-green-100' : 
+                                                        item.stockStatus === 'low-stock' ? 'bg-amber-50 text-amber-600 border-amber-100' : 
+                                                        'bg-red-50 text-red-600 border-red-100'
+                                                    }`}>
+                                                        {item.stockStatus}
+                                                    </div>
+                                                </div>
+                                                
+                                                <h4 className="text-sm font-black text-gray-900 leading-tight mb-1 truncate">{item.name}</h4>
+                                                <div className="text-[10px] text-gray-400 font-mono mb-3">{item.barcode || 'No Barcode'}</div>
+
+                                                <div className="flex items-end justify-between">
+                                                    <div>
+                                                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Current Stock</div>
+                                                        <div className="text-xl font-black text-gray-900">{item.quantity} <span className="text-[10px] font-bold text-gray-400">PCS</span></div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Price</div>
+                                                        <div className="text-lg font-black text-rose-600">₹{item.price}</div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
+
+                                        {/* Action Bar */}
+                                        <div className="bg-gray-50 border-t border-gray-100 px-4 py-3 flex gap-2">
+                                            <button onClick={() => handleEdit(item)} className="flex-1 bg-white border border-gray-200 text-blue-600 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-sm">
+                                                <span>✏️</span> Edit Item
+                                            </button>
+                                            <button onClick={() => handleDelete(item._id)} className="px-4 bg-white border border-gray-200 text-red-500 py-2 rounded-lg text-sm shadow-sm">
+                                                🗑️
+                                            </button>
+                                        </div>
                                     </div>
                                 ))
                             ) : (
-                                <div className="text-center py-12 text-gray-400">
-                                    <div className="text-3xl mb-2">🔍</div>
-                                    <div className="font-bold uppercase text-xs tracking-widest">No items found</div>
+                                <div className="text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 m-4">
+                                    <div className="text-4xl mb-4 opacity-20">🔍</div>
+                                    <div className="font-black uppercase text-[10px] tracking-widest text-gray-400">No matching items found</div>
                                 </div>
                             )}
                         </div>
@@ -617,6 +654,16 @@ const Inventory = () => {
                                         type="text"
                                         name="barcode"
                                         value={editFormData.barcode}
+                                        onChange={handleEditChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Part Number</label>
+                                    <input
+                                        type="text"
+                                        name="partNumber"
+                                        value={editFormData.partNumber}
                                         onChange={handleEditChange}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                                     />
@@ -788,6 +835,16 @@ const Inventory = () => {
                                         type="text"
                                         name="barcode"
                                         value={createFormData.barcode}
+                                        onChange={handleCreateChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Part Number</label>
+                                    <input
+                                        type="text"
+                                        name="partNumber"
+                                        value={createFormData.partNumber}
                                         onChange={handleCreateChange}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                                     />

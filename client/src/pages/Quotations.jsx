@@ -486,84 +486,154 @@ const Quotations = () => {
                                     </button>
                                 </div>
                                 <div className="space-y-3">
-                                    {formData.items.map((row, idx) => (
-                                        <div key={idx} className="grid grid-cols-12 gap-2 items-start bg-gray-50 p-3 rounded-lg">
-                                            {/* Item select */}
-                                            <div className="col-span-4">
-                                                <select value={row.item} onChange={e => handleItemChange(idx, 'item', e.target.value)}
-                                                    className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold focus:ring-2 focus:ring-rose-500">
-                                                    <option value="">-- Item --</option>
-                                                    {allItems.map(i => <option key={i._id} value={i._id}>{i.name} ({i.brand} - {i.size})</option>)}
-                                                </select>
-                                                <div className="flex justify-between items-center mt-1 px-1">
-                                                    <span className={`text-[9px] font-black uppercase ${row.physicalStock > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                                        Stock: {row.physicalStock || 0}
-                                                    </span>
-                                                </div>
-                                                {row.availableBatches?.length > 0 && (
-                                                    <select value={row.batchId} onChange={e => handleItemChange(idx, 'batchId', e.target.value)}
-                                                        className="w-full mt-1.5 h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs focus:ring-2 focus:ring-rose-500">
-                                                        {row.availableBatches.map(b => <option key={b._id} value={b._id}>Batch: {b.batchNumber} — ₹{b.price} ({b.quantity})</option>)}
+                                    {/* Desktop view */}
+                                    <div className="hidden md:block space-y-3">
+                                        {formData.items.map((row, idx) => (
+                                            <div key={idx} className="grid grid-cols-12 gap-2 items-start bg-gray-50 p-3 rounded-lg">
+                                                {/* Item select */}
+                                                <div className="col-span-4">
+                                                    <select value={row.item} onChange={e => handleItemChange(idx, 'item', e.target.value)}
+                                                        className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold focus:ring-2 focus:ring-rose-500">
+                                                        <option value="">-- Item --</option>
+                                                        {allItems.map(i => <option key={i._id} value={i._id}>{i.name} ({i.brand} - {i.size})</option>)}
                                                     </select>
-                                                )}
-                                            </div>
-                                            {/* Qty */}
-                                            <div className="col-span-2">
-                                                <label className="text-[9px] text-gray-400 font-bold uppercase">
-                                                    {billingSettings?.unitConfig?.secondaryLabel || (billingSettings?.industry === 'tiles' ? 'Boxes' : 'Qty')}
-                                                </label>
-                                                <input type="number" min="0" step="any" value={row.quantity}
-                                                    onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
-                                                    className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold text-center focus:ring-2 focus:ring-rose-500" />
-                                                
-                                                {/* Smart Calc Preview */}
+                                                    <div className="flex justify-between items-center mt-1 px-1">
+                                                        <span className={`text-[9px] font-black uppercase ${row.physicalStock > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                            Stock: {row.physicalStock || 0}
+                                                        </span>
+                                                    </div>
+                                                    {row.availableBatches?.length > 0 && (
+                                                        <select value={row.batchId} onChange={e => handleItemChange(idx, 'batchId', e.target.value)}
+                                                            className="w-full mt-1.5 h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs focus:ring-2 focus:ring-rose-500">
+                                                            {row.availableBatches.map(b => <option key={b._id} value={b._id}>Batch: {b.batchNumber} — ₹{b.price} ({b.quantity})</option>)}
+                                                        </select>
+                                                    )}
+                                                </div>
+                                                {/* Qty */}
+                                                <div className="col-span-2">
+                                                    <label className="text-[9px] text-gray-400 font-bold uppercase">
+                                                        {billingSettings?.unitConfig?.secondaryLabel || (billingSettings?.industry === 'tiles' ? 'Boxes' : 'Qty')}
+                                                    </label>
+                                                    <input type="number" min="0" step="any" value={row.quantity}
+                                                        onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
+                                                        className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold text-center focus:ring-2 focus:ring-rose-500" />
+                                                    
+                                                    {/* Smart Calc Preview */}
+                                                    {billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 && (
+                                                        <div className="mt-1 flex flex-col items-center gap-0.5">
+                                                            <div className="text-[8px] font-black text-rose-500 uppercase">
+                                                                {row.billingUnit === 'sqft' ? `${row.boxCount?.toFixed(1)} Boxes` : `${row.totalSqFt?.toFixed(2)} SqFt`}
+                                                            </div>
+                                                            <div className="text-[7px] text-gray-400 font-bold uppercase italic">
+                                                                {row.totalPcs} Pieces Total
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Rate */}
+                                                <div className="col-span-2">
+                                                    <label className="text-[9px] text-gray-400 font-bold uppercase">{billingSettings?.unitConfig?.rateLabel || 'Rate'}</label>
+                                                    <input type="number" min="0" step="0.01" value={row.price}
+                                                        onChange={e => handleItemChange(idx, 'price', e.target.value)}
+                                                        className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold text-right focus:ring-2 focus:ring-rose-500" />
+                                                </div>
+
+                                                {/* Billing Unit Select */}
                                                 {billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 && (
-                                                    <div className="mt-1 flex flex-col items-center gap-0.5">
-                                                        <div className="text-[8px] font-black text-rose-500 uppercase">
-                                                            {row.billingUnit === 'sqft' ? `${row.boxCount?.toFixed(1)} Boxes` : `${row.totalSqFt?.toFixed(2)} SqFt`}
+                                                    <div className="col-span-1">
+                                                        <label className="text-[9px] text-gray-400 font-bold uppercase">Unit</label>
+                                                        <select value={row.billingUnit} onChange={e => handleItemChange(idx, 'billingUnit', e.target.value)}
+                                                            className="w-full h-9 px-1 bg-white border border-gray-100 rounded-lg text-[10px] font-bold focus:ring-2 focus:ring-rose-500">
+                                                            <option value="sqft">SqFt</option>
+                                                            <option value="boxes">Box</option>
+                                                        </select>
+                                                    </div>
+                                                )}
+                                                {/* Total */}
+                                                <div className={(billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0) ? "col-span-1" : "col-span-2"}>
+                                                    <label className="text-[9px] text-gray-400 font-bold uppercase">Total</label>
+                                                    <div className="h-9 px-2 bg-gray-100 border border-gray-200 rounded-lg text-xs font-black text-right flex items-center justify-end text-gray-700">
+                                                        ₹{(row.total || 0).toLocaleString()}
+                                                    </div>
+                                                </div>
+                                                {/* Remove */}
+                                                <div className="col-span-2 flex items-end justify-end">
+                                                    {formData.items.length > 1 && (
+                                                        <button type="button" onClick={() => setFormData(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) }))}
+                                                            className="h-9 w-9 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg text-xs font-bold">✕</button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Mobile view */}
+                                    <div className="md:hidden space-y-4">
+                                        {formData.items.map((row, idx) => (
+                                            <div key={idx} className="bg-white border-2 border-gray-100 rounded-2xl p-4 shadow-sm relative space-y-4">
+                                                <button type="button" onClick={() => setFormData(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) }))} className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-red-50 text-red-500 rounded-full font-bold">✕</button>
+                                                
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Item</label>
+                                                    <select value={row.item} onChange={e => handleItemChange(idx, 'item', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 outline-none font-bold text-sm">
+                                                        <option value="">-- Item --</option>
+                                                        {allItems.map(i => <option key={i._id} value={i._id}>{i.name} ({i.brand} - {i.size})</option>)}
+                                                    </select>
+                                                    <div className="flex justify-between items-center px-1">
+                                                        <span className={`text-[10px] font-black uppercase ${row.physicalStock > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                            Stock: {row.physicalStock || 0}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {row.availableBatches?.length > 0 && (
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Batch</label>
+                                                        <select value={row.batchId} onChange={e => handleItemChange(idx, 'batchId', e.target.value)} className="w-full px-4 py-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-800 font-bold outline-none text-sm">
+                                                            {row.availableBatches.map(b => <option key={b._id} value={b._id}>Batch: {b.batchNumber} — ₹{b.price} ({b.quantity})</option>)}
+                                                        </select>
+                                                    </div>
+                                                )}
+
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                                            {billingSettings?.unitConfig?.secondaryLabel || (billingSettings?.industry === 'tiles' ? 'Boxes' : 'Qty')}
+                                                        </label>
+                                                        <input type="number" min="0" step="any" value={row.quantity} onChange={e => handleItemChange(idx, 'quantity', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none text-center font-bold" />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Rate (Per {row.billingUnit || 'Unit'})</label>
+                                                        <input type="number" min="0" step="0.01" value={row.price} onChange={e => handleItemChange(idx, 'price', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none font-bold text-right" />
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    {billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 && (
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Unit</label>
+                                                            <select value={row.billingUnit} onChange={e => handleItemChange(idx, 'billingUnit', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl font-bold focus:ring-2 focus:ring-rose-500">
+                                                                <option value="sqft">SqFt</option>
+                                                                <option value="boxes">Box</option>
+                                                            </select>
                                                         </div>
-                                                        <div className="text-[7px] text-gray-400 font-bold uppercase italic">
-                                                            {row.totalPcs} Pieces Total
-                                                        </div>
+                                                    )}
+                                                    <div className={billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 ? "space-y-1" : "col-span-2 space-y-1"}>
+                                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total</label>
+                                                        <div className="w-full px-4 py-3 bg-gray-900 text-white rounded-xl font-black text-right">₹{(row.total || 0).toLocaleString()}</div>
+                                                    </div>
+                                                </div>
+
+                                                {billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 && (
+                                                    <div className="flex justify-between items-center px-1 bg-amber-50 p-2 rounded-lg border border-amber-100">
+                                                        <span className="text-[10px] font-black text-amber-600 uppercase">Calc: {row.totalPcs} Pcs</span>
+                                                        <span className="text-[10px] font-black text-amber-600 uppercase">{row.billingUnit === 'sqft' ? `${row.boxCount?.toFixed(1)} Boxes` : `${row.totalSqFt?.toFixed(2)} SqFt`}</span>
                                                     </div>
                                                 )}
                                             </div>
-
-                                            {/* Rate */}
-                                            <div className="col-span-2">
-                                                <label className="text-[9px] text-gray-400 font-bold uppercase">{billingSettings?.unitConfig?.rateLabel || 'Rate'}</label>
-                                                <input type="number" min="0" step="0.01" value={row.price}
-                                                    onChange={e => handleItemChange(idx, 'price', e.target.value)}
-                                                    className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold text-right focus:ring-2 focus:ring-rose-500" />
-                                            </div>
-
-                                            {/* Billing Unit Select */}
-                                            {billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 && (
-                                                <div className="col-span-1">
-                                                    <label className="text-[9px] text-gray-400 font-bold uppercase">Unit</label>
-                                                    <select value={row.billingUnit} onChange={e => handleItemChange(idx, 'billingUnit', e.target.value)}
-                                                        className="w-full h-9 px-1 bg-white border border-gray-100 rounded-lg text-[10px] font-bold focus:ring-2 focus:ring-rose-500">
-                                                        <option value="sqft">SqFt</option>
-                                                        <option value="boxes">Box</option>
-                                                    </select>
-                                                </div>
-                                            )}
-                                            {/* Total */}
-                                            <div className={(billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0) ? "col-span-1" : "col-span-2"}>
-                                                <label className="text-[9px] text-gray-400 font-bold uppercase">Total</label>
-                                                <div className="h-9 px-2 bg-gray-100 border border-gray-200 rounded-lg text-xs font-black text-right flex items-center justify-end text-gray-700">
-                                                    ₹{(row.total || 0).toLocaleString()}
-                                                </div>
-                                            </div>
-                                            {/* Remove */}
-                                            <div className="col-span-2 flex items-end justify-end">
-                                                {formData.items.length > 1 && (
-                                                    <button type="button" onClick={() => setFormData(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) }))}
-                                                        className="h-9 w-9 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg text-xs font-bold">✕</button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
 
