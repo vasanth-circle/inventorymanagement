@@ -9,35 +9,142 @@ import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { getNextSequenceValue } from '../utils/sequence.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
 
-// ─── Ledger helper (called after bill creation, does not change existing flow) ─
-export const createBillLedgerEntry = async ({ orderId, orderNumber, customerId, amount, tenantId, userId, orderDate }) => {
+// Recalculate customer running ledger balance chronologically
+export const recalculateCustomerBalance = async (customerId, tenantId) => {
     try {
         const customer = await Customer.findById(customerId);
         if (!customer) return;
 
-        const lastEntry = await CustomerLedger.findOne({ customer: customerId, tenantId }).sort({ date: -1, createdAt: -1 });
-        const previousBalance = lastEntry ? lastEntry.balance : (customer.openingBalance || 0);
-        const newBalance = previousBalance + amount;
+        // Fetch all ledger entries sorted chronologically
+        const entries = await CustomerLedger.find({ customer: customerId, tenantId })
+            .sort({ date: 1, createdAt: 1 });
 
-        await CustomerLedger.create({
-            tenantId,
-            customer: customerId,
-            date: orderDate || new Date(),
-            type: 'bill',
-            refType: 'SalesOrder',
-            refId: orderId,
-            refNumber: orderNumber,
-            description: `Bill #${orderNumber}`,
-            debit: amount,
-            credit: 0,
-            balance: newBalance,
-            createdBy: userId,
-        });
+        let runningBalance = customer.openingBalance || 0;
+        for (const entry of entries) {
+            runningBalance = runningBalance + (entry.debit || 0) - (entry.credit || 0);
+            entry.balance = runningBalance;
+            await entry.save();
+        }
 
-        await Customer.findByIdAndUpdate(customerId, { currentBalance: newBalance });
+        await Customer.findByIdAndUpdate(customerId, { currentBalance: runningBalance });
     } catch (err) {
-        console.error('createBillLedgerEntry error:', err.message);
+        console.error(`recalculateCustomerBalance error for customer ${customerId}:`, err.message);
     }
+};
+
+// Synchronize ledger entry for a Sales Order
+export const syncSalesOrderLedger = async (orderId, tenantId, userId) => {
+    try {
+        const order = await SalesOrder.findById(orderId);
+        if (!order) return;
+
+        // An order requires a ledger entry if it's NOT an estimation and is NOT cancelled or void
+        const isRealBill = !order.isEstimation && !['cancelled', 'void'].includes(order.status);
+        const existingBillEntry = await CustomerLedger.findOne({ refId: orderId, refType: 'SalesOrder', type: 'bill' });
+        const existingPaymentEntry = await CustomerLedger.findOne({ refId: orderId, refType: 'SalesOrder', type: 'payment' });
+
+        if (isRealBill) {
+            let oldCustomer = null;
+            const newCustomer = order.customer.toString();
+            const fullAmount = order.totalAmount + (order.advanceAmount || 0);
+
+            // ─── 1. Main Bill Entry (Debit) ───
+            if (existingBillEntry) {
+                oldCustomer = existingBillEntry.customer.toString();
+                
+                existingBillEntry.customer = order.customer;
+                existingBillEntry.date = order.orderDate || new Date();
+                existingBillEntry.refNumber = order.orderNumber;
+                existingBillEntry.description = `Bill #${order.orderNumber}`;
+                existingBillEntry.debit = fullAmount;
+                existingBillEntry.credit = 0;
+                await existingBillEntry.save();
+            } else {
+                await CustomerLedger.create({
+                    tenantId,
+                    customer: order.customer,
+                    date: order.orderDate || new Date(),
+                    type: 'bill',
+                    refType: 'SalesOrder',
+                    refId: order._id,
+                    refNumber: order.orderNumber,
+                    description: `Bill #${order.orderNumber}`,
+                    debit: fullAmount,
+                    credit: 0,
+                    balance: 0,
+                    createdBy: userId,
+                });
+            }
+
+            // ─── 2. Advance Payment Entry (Credit) ───
+            if (order.advanceAmount > 0) {
+                if (existingPaymentEntry) {
+                    if (existingPaymentEntry.customer.toString() !== newCustomer) {
+                        oldCustomer = existingPaymentEntry.customer.toString();
+                    }
+                    
+                    existingPaymentEntry.customer = order.customer;
+                    existingPaymentEntry.date = order.orderDate || new Date();
+                    existingPaymentEntry.refNumber = order.orderNumber;
+                    existingPaymentEntry.description = `Advance Payment for Bill #${order.orderNumber}`;
+                    existingPaymentEntry.debit = 0;
+                    existingPaymentEntry.credit = order.advanceAmount;
+                    await existingPaymentEntry.save();
+                } else {
+                    await CustomerLedger.create({
+                        tenantId,
+                        customer: order.customer,
+                        date: order.orderDate || new Date(),
+                        type: 'payment',
+                        refType: 'SalesOrder',
+                        refId: order._id,
+                        refNumber: order.orderNumber,
+                        description: `Advance Payment for Bill #${order.orderNumber}`,
+                        debit: 0,
+                        credit: order.advanceAmount,
+                        balance: 0,
+                        createdBy: userId,
+                    });
+                }
+            } else {
+                // If advanceAmount is 0 but we have an existing payment entry, delete it!
+                if (existingPaymentEntry) {
+                    if (existingPaymentEntry.customer.toString() !== newCustomer) {
+                        oldCustomer = existingPaymentEntry.customer.toString();
+                    }
+                    await CustomerLedger.deleteOne({ _id: existingPaymentEntry._id });
+                }
+            }
+
+            // ─── 3. Recalculate Balances ───
+            await recalculateCustomerBalance(newCustomer, tenantId);
+            if (oldCustomer && oldCustomer !== newCustomer) {
+                await recalculateCustomerBalance(oldCustomer, tenantId);
+            }
+        } else {
+            // If it shouldn't have ledger entries (e.g. toggled back to estimation or cancelled)
+            const affectedCustomers = new Set();
+            if (existingBillEntry) {
+                affectedCustomers.add(existingBillEntry.customer.toString());
+                await CustomerLedger.deleteOne({ _id: existingBillEntry._id });
+            }
+            if (existingPaymentEntry) {
+                affectedCustomers.add(existingPaymentEntry.customer.toString());
+                await CustomerLedger.deleteOne({ _id: existingPaymentEntry._id });
+            }
+
+            for (const custId of affectedCustomers) {
+                await recalculateCustomerBalance(custId, tenantId);
+            }
+        }
+    } catch (err) {
+        console.error(`syncSalesOrderLedger error for order ${orderId}:`, err.message);
+    }
+};
+
+// Backward-compatible ledger helper (calls syncSalesOrderLedger under the hood)
+export const createBillLedgerEntry = async ({ orderId, tenantId, userId }) => {
+    await syncSalesOrderLedger(orderId, tenantId, userId);
 };
 
 
@@ -46,11 +153,15 @@ export const createBillLedgerEntry = async ({ orderId, orderNumber, customerId, 
 // @access  Private
 export const getSalesOrders = async (req, res, next) => {
     try {
-        const { status = '', page = 1, limit = 10 } = req.query;
+        const { status = '', customer = '', page = 1, limit = 10 } = req.query;
         const query = { ...tenantQuery(req) };
 
         if (status) {
             query.status = status;
+        }
+
+        if (customer) {
+            query.customer = customer;
         }
 
         const orders = await SalesOrder.find(query)
@@ -172,16 +283,8 @@ export const createSalesOrder = async (req, res, next) => {
         }
 
         // ── Auto-create ledger debit entry ──
-        if (!isEstimation && order.customer) {
-            createBillLedgerEntry({
-                orderId: order._id,
-                orderNumber: order.orderNumber,
-                customerId: order.customer,
-                amount: order.totalAmount,
-                tenantId: req.tenantId,
-                userId: req.user._id,
-                orderDate: order.orderDate,
-            });
+        if (order.customer) {
+            await syncSalesOrderLedger(order._id, req.tenantId, req.user._id);
         }
 
         sendResponse(res, 201, order, isEstimation ? 'Estimation created successfully' : 'Sales order created successfully');
@@ -203,8 +306,8 @@ export const updateSOStatus = async (req, res, next) => {
             return sendError(res, 404, 'Sales order not found');
         }
 
-        // Check stock availability before confirming if transition is from quotation to confirmed
-        if (order.status === 'quotation' && status === 'confirmed') {
+        const wasEstimation = order.isEstimation;
+        if (order.isEstimation && ['confirmed', 'dispatched', 'partially_dispatched'].includes(status)) {
             const settings = await Setting.findOne({ tenantId: req.tenantId });
             if (settings?.workflowConfig?.allowNegativeStock === false) {
                 for (const lineItem of order.items) {
@@ -222,6 +325,10 @@ export const updateSOStatus = async (req, res, next) => {
 
         order.status = status;
         await order.save();
+
+        if (order.customer) {
+            await syncSalesOrderLedger(order._id, req.tenantId, req.user._id);
+        }
 
         sendResponse(res, 200, order, `Sales order status updated to ${status}`);
     } catch (error) {
@@ -292,6 +399,10 @@ export const updateSalesOrder = async (req, res, next) => {
         );
 
         await order.save();
+
+        if (order.customer) {
+            await syncSalesOrderLedger(order._id, req.tenantId, req.user._id);
+        }
 
         sendResponse(res, 200, order, 'Sales order updated successfully');
     } catch (error) {

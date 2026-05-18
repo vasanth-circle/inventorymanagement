@@ -281,8 +281,8 @@ export const getMe = async (req, res, next) => {
 // @access  Private/Admin
 export const getUsers = async (req, res, next) => {
     try {
-        // Super admin can see all users
-        if (req.user.role === 'super_admin') {
+        // Super admin can see all users only if they don't have a specific tenant assigned
+        if (req.user.role === 'super_admin' && !req.user.tenantId) {
             const users = await User.find({}).select('-password');
             return res.json(users);
         }

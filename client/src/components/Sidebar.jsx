@@ -172,6 +172,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 transform transition-transform duration-300 ease-in-out
                 lg:relative lg:translate-x-0
                 ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+                print:hidden
             `}>
                 <div className="p-6 border-b border-slate-700/50 flex items-center justify-between overflow-visible relative">
                     <div className="relative">
@@ -180,19 +181,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                             onClick={() => setShowAppSwitcher(!showAppSwitcher)}
                         >
                             <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white text-xl shadow-inner overflow-hidden ${activeApp === 'assets' ? 'bg-blue-600' : 'bg-primary-600'}`}>
-                                {companyLogo ? (
-                                    <img 
-                                        src={companyLogo} 
-                                        alt="Logo" 
-                                        className="w-full h-full object-contain bg-white"
-                                        onError={(e) => {
-                                            e.target.style.display = 'none';
-                                            e.target.parentElement.innerHTML = activeApp === 'assets' ? '🖥️' : '📦';
-                                        }}
-                                    />
-                                ) : (
-                                    activeApp === 'assets' ? '🖥️' : '📦'
-                                )}
+                                {activeApp === 'assets' ? '🖥️' : '📦'}
                             </div>
                             <div className="flex flex-col">
                                 <h1 className="text-lg font-bold text-white tracking-tight leading-none group-hover:text-blue-400 transition-colors">

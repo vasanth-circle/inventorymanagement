@@ -176,6 +176,23 @@ export const InventoryProvider = ({ children }) => {
                     updatedRow.stockQty = qty;
                     updatedRow.stockUnit = 'pieces';
                 }
+            } else if (field === 'boxCount') {
+                const boxes = Number(value || 0);
+                updatedRow.boxCount = boxes;
+                updatedRow.totalPcs = boxes * pcsPerBox;
+                updatedRow.totalSqFt = Number((updatedRow.totalPcs * sqFtPerPc).toFixed(4));
+                
+                if (billingUnit === 'sqft') {
+                    updatedRow.quantity = updatedRow.totalSqFt;
+                } else if (billingUnit === 'boxes') {
+                    updatedRow.quantity = boxes;
+                    updatedRow.stockQty = boxes;
+                    updatedRow.stockUnit = 'boxes';
+                } else {
+                    updatedRow.quantity = updatedRow.totalPcs;
+                    updatedRow.stockQty = updatedRow.totalPcs;
+                    updatedRow.stockUnit = 'pieces';
+                }
             } else if (field === 'billingUnit') {
                 // Adjust quantity display when user switches mode
                 if (value === 'sqft') {

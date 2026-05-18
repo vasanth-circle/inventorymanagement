@@ -19,6 +19,11 @@ import Vendor from './models/Vendor.js';
 import Quotation from './models/Quotation.js';
 import SalesOrder from './models/SalesOrder.js';
 import Setting from './models/Setting.js';
+import HSN from './models/HSN.js';
+import Size from './models/Size.js';
+import Location from './models/Location.js';
+import Transaction from './models/Transaction.js';
+import VendorLedger from './models/VendorLedger.js';
 
 const TARGET_EMAIL = 'srinath@techath.com';
 
@@ -105,7 +110,12 @@ async function seedData() {
             Vendor.deleteMany({ tenantId }),
             Quotation.deleteMany({ tenantId }),
             SalesOrder.deleteMany({ tenantId }),
-            Setting.deleteMany({ tenantId })
+            Setting.deleteMany({ tenantId }),
+            HSN.deleteMany({ tenantId }),
+            Size.deleteMany({ tenantId }),
+            Location.deleteMany({ tenantId }),
+            Transaction.deleteMany({ tenantId }),
+            VendorLedger.deleteMany({ tenantId })
         ]);
 
         // 3. Seed Settings (Force Tiles Industry)
@@ -124,11 +134,20 @@ async function seedData() {
             }
         });
 
-        // 4. Seed Categories
-        console.log('Seeding Categories...');
+        // 4. Seed Categories, Locations, HSN, Sizes
+        console.log('Seeding Categories, Locations, HSN, Sizes...');
         const floorTiles = await Category.create({ name: 'Floor Tiles', tenantId });
         const wallTiles = await Category.create({ name: 'Wall Tiles', tenantId });
         const sanitary = await Category.create({ name: 'Sanitary Ware', tenantId });
+
+        const loc1 = await Location.create({ name: 'Main Warehouse', type: 'inventory', tenantId });
+        const loc2 = await Location.create({ name: 'Showroom', type: 'inventory', tenantId });
+
+        const hsn1 = await HSN.findOneAndUpdate({ code: '6907' }, { code: '6907', description: 'Ceramic tiles', gstRate: 18, tenantId }, { upsert: true, new: true });
+        const hsn2 = await HSN.findOneAndUpdate({ code: '6910' }, { code: '6910', description: 'Ceramic sinks', gstRate: 18, tenantId }, { upsert: true, new: true });
+
+        await Size.create({ name: '60x60 cm', width: 60, height: 60, unit: 'cm', tenantId });
+        await Size.create({ name: '30x45 cm', width: 30, height: 45, unit: 'cm', tenantId });
 
         // 5. Seed Items
         console.log('Seeding Items...');
@@ -136,26 +155,30 @@ async function seedData() {
             {
                 name: 'Kajaria Vitrified Floor',
                 brand: 'Kajaria',
-                size: '60x60', // cm (approx 2x2 ft = 4 sqft)
+                size: '6x4 ft', // 6 ft x 4 ft = 24 sqft
                 category: floorTiles._id,
-                pcsPerBox: 4,
-                sqFtPerPc: 4, // 1 piece = 4 sqft. So 1 box = 16 sqft.
+                pcsPerBox: 10,
+                sqFtPerPc: 24, // 1 piece = 24 sqft. So 1 box = 240 sqft.
                 quantity: 100, // 100 boxes in stock
                 price: 45, // Selling price per SqFt
                 purchasePrice: 35,
+                hsn: hsn1.code,
+                location: loc1.name,
                 tenantId,
                 batches: [{ batchNumber: 'B1-KJ', quantity: 100, price: 45, purchasePrice: 35 }]
             },
             {
                 name: 'Somany Ceramic Wall',
                 brand: 'Somany',
-                size: '30x45', // cm (approx 1x1.5 ft = 1.5 sqft)
+                size: '30x45 cm', // cm (approx 1x1.5 ft = 1.5 sqft)
                 category: wallTiles._id,
                 pcsPerBox: 6,
                 sqFtPerPc: 1.5, // 1 box = 9 sqft.
                 quantity: 50, // boxes
                 price: 35, // per SqFt
                 purchasePrice: 25,
+                hsn: hsn1.code,
+                location: loc1.name,
                 tenantId,
                 batches: [{ batchNumber: 'B1-SM', quantity: 50, price: 35, purchasePrice: 25 }]
             },
@@ -169,6 +192,8 @@ async function seedData() {
                 quantity: 20, // pieces
                 price: 2500, // per Piece
                 purchasePrice: 1800,
+                hsn: hsn2.code,
+                location: loc2.name,
                 tenantId,
                 batches: [{ batchNumber: 'B1-HW', quantity: 20, price: 2500, purchasePrice: 1800 }]
             }
@@ -178,16 +203,43 @@ async function seedData() {
         const tileItem = createdItems[0];
         const sanitaryItem = createdItems[2];
 
+        // Seed Transactions for initial stock (Inward Flow)
+        console.log('Seeding Initial Stock Transactions...');
+        await Transaction.insertMany(createdItems.map(item => ({
+            item: item._id,
+            type: 'inward',
+            quantity: item.quantity,
+            reason: 'Opening Stock',
+            user: user._id,
+            previousQuantity: 0,
+            newQuantity: item.quantity,
+            tenantId
+        })));
+
         // 6. Seed Customers & Vendors
         console.log('Seeding Contacts...');
         const customer1 = await Customer.create({ name: 'Apex Builders Ltd', phone: '9876543210', tenantId });
         const customer2 = await Customer.create({ name: 'Rajesh Home Construction', phone: '9876543211', tenantId });
         
-        await Vendor.create({ name: 'Kajaria Ceramics Ltd', tenantId });
+        const vendor1 = await Vendor.create({ name: 'Kajaria Ceramics Ltd', tenantId });
+
+        // Seed Vendor Ledger opening balance
+        console.log('Seeding Vendor Ledger...');
+        await VendorLedger.create({
+            tenantId,
+            vendor: vendor1._id,
+            type: 'opening',
+            description: 'Opening Balance',
+            credit: 50000,
+            balance: 50000,
+            createdBy: user._id
+        });
 
         // 7. Seed Quotation
         console.log('Seeding Quotations...');
-        const qTotalSqFt = 4 * 16; // 4 boxes * 16 sqft/box = 64 sqft
+        const tileSqFtPerBox = tileItem.pcsPerBox * tileItem.sqFtPerPc;
+        const qBoxCount = 4;
+        const qTotalSqFt = qBoxCount * tileSqFtPerBox; 
         const qPrice = 45;
         const qTotal = qTotalSqFt * qPrice;
 
@@ -217,7 +269,8 @@ async function seedData() {
 
         // 8. Seed Sales Order
         console.log('Seeding Sales Orders...');
-        const soTotalSqFt = 10 * 16; // 10 boxes * 16 sqft = 160 sqft
+        const soBoxCount = 10;
+        const soTotalSqFt = soBoxCount * tileSqFtPerBox; 
         const soPrice = 45;
         const soTotal1 = soTotalSqFt * soPrice;
         

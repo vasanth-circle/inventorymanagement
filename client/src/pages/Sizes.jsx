@@ -129,7 +129,7 @@ const Sizes = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Height</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Length</label>
                                     <input
                                         required
                                         type="number"

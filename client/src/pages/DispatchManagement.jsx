@@ -18,16 +18,57 @@ const DispatchManagement = () => {
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [orderDetails, setOrderDetails] = useState(null);
 
+    const [activeTab, setActiveTab] = useState('pending');
+    const [dispatchHistory, setDispatchHistory] = useState([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [historySearch, setHistorySearch] = useState('');
+
     useEffect(() => {
         fetchPendingOrders();
+        fetchDispatchHistory();
     }, []);
+
+    const fetchDispatchHistory = async () => {
+        try {
+            setHistoryLoading(true);
+            const res = await api.get('/dispatches');
+            setDispatchHistory(res.data?.data || res.data || []);
+        } catch (error) {
+            console.error('Fetch dispatch history error:', error);
+            toast.error('Failed to fetch dispatch logs');
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
+
+    const handlePrintDispatchLog = async (dispatchLog) => {
+        const toastId = toast.loading('Preparing print document...');
+        try {
+            const orderId = dispatchLog.order?._id || dispatchLog.order;
+            
+            // 1. Fetch full Sales Order details
+            const orderRes = await api.get(`/sales-orders/${orderId}`);
+            const fullOrder = orderRes.data?.data || orderRes.data;
+            
+            // 2. Fetch all dispatches for this order to build the summary
+            const dispatchesRes = await api.get(`/dispatches/order/${orderId}`);
+            const dispatchesList = dispatchesRes.data?.data || dispatchesRes.data || [];
+            
+            toast.dismiss(toastId);
+            handlePrintSummary(fullOrder, dispatchesList);
+        } catch (error) {
+            toast.dismiss(toastId);
+            console.error('Print dispatch log error:', error);
+            toast.error('Failed to load dispatch details for printing');
+        }
+    };
 
     const fetchPendingOrders = async () => {
         try {
             setLoading(true);
             const [confirmedRes, partialRes] = await Promise.all([
-                api.get('/sales-orders?status=confirmed'),
-                api.get('/sales-orders?status=partially_dispatched')
+                api.get('/sales-orders?status=confirmed&limit=1000'),
+                api.get('/sales-orders?status=partially_dispatched&limit=1000')
             ]);
             
             const confirmedOrders = confirmedRes.data?.data?.orders || [];
@@ -269,6 +310,7 @@ const DispatchManagement = () => {
             toast.success('Dispatch recorded successfully');
             setIsDispatchModalOpen(false);
             fetchPendingOrders();
+            fetchDispatchHistory();
         } catch (error) {
             toast.error(error.response?.data?.message || 'Error recording dispatch');
         }
@@ -283,85 +325,264 @@ const DispatchManagement = () => {
                 </div>
             </div>
 
-            {loading ? (
-                <div className="flex justify-center items-center h-64">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                </div>
+            {/* Tabs */}
+            <div className="flex border-b border-gray-200">
+                <button
+                    onClick={() => setActiveTab('pending')}
+                    className={`py-4 px-6 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${
+                        activeTab === 'pending'
+                            ? 'border-indigo-600 text-indigo-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                >
+                    📦 Pending Shipments ({orders.length})
+                </button>
+                <button
+                    onClick={() => {
+                        setActiveTab('history');
+                        fetchDispatchHistory();
+                    }}
+                    className={`py-4 px-6 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${
+                        activeTab === 'history'
+                            ? 'border-indigo-600 text-indigo-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                >
+                    📜 Dispatch Logs / Records ({dispatchHistory.length})
+                </button>
+            </div>
+
+            {activeTab === 'pending' ? (
+                loading ? (
+                    <div className="flex justify-center items-center h-64">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {orders.length > 0 ? (
+                            orders.map((order) => (
+                                <div key={order._id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:border-gray-300 transition-colors flex flex-col group">
+                                    <div className="p-6 border-b border-gray-100 flex justify-between items-start">
+                                        <div>
+                                            <p className="text-xs font-medium text-indigo-600 uppercase tracking-wider mb-1">Order</p>
+                                            <h3 className="text-lg font-semibold text-gray-900">{order.orderNumber}</h3>
+                                        </div>
+                                        <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${order.status === 'confirmed' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                                            {order.status.replace('_', ' ')}
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="p-6 flex-1 flex flex-col">
+                                        <div className="flex items-center mb-6">
+                                            <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 mr-4 border border-gray-100">
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                            </div>
+                                            <div className="overflow-hidden">
+                                                <p className="text-xs text-gray-500 font-medium">Customer</p>
+                                                <p className="font-medium text-gray-900 truncate text-sm">{order.customer?.companyName || order.customer?.name}</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="space-y-3 mb-8 flex-1">
+                                            <p className="text-xs text-gray-500 font-medium">Pending Items</p>
+                                            <div className="space-y-2">
+                                                {order.items.slice(0, 3).map((item, idx) => (
+                                                    <div key={idx} className="flex justify-between items-center text-sm">
+                                                        <span className="text-gray-700 truncate pr-4">{item.name}</span>
+                                                        <span className="font-medium text-gray-900">x{item.quantity}</span>
+                                                    </div>
+                                                ))}
+                                                {order.items.length > 3 && <p className="text-xs text-indigo-600 font-medium mt-2">+{order.items.length - 3} more items</p>}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-4 gap-3 mt-auto pt-4 border-t border-gray-100">
+                                            <button 
+                                                onClick={() => handleViewDetails(order)}
+                                                className="col-span-1 flex items-center justify-center py-2.5 text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-colors"
+                                                title="View History"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            </button>
+                                            <button 
+                                                onClick={async () => {
+                                                    const res = await api.get(`/dispatches/order/${order._id}`);
+                                                    handlePrintSummary(order, res.data?.data || []);
+                                                }}
+                                                className="col-span-1 flex items-center justify-center py-2.5 text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-colors"
+                                                title="Print Document"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                            </button>
+                                            <button 
+                                                onClick={() => handleOpenDispatch(order)}
+                                                className="col-span-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-2.5 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                                                Dispatch
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="col-span-full py-20 px-6 bg-white rounded-2xl border border-gray-200 text-center flex flex-col items-center justify-center">
+                                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 mb-4 border border-gray-100">
+                                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                                </div>
+                                <h3 className="text-lg font-medium text-gray-900">No Pending Dispatches</h3>
+                                <p className="text-sm text-gray-500 mt-1 max-w-sm">When you accept quotations, they will appear here ready to be shipped.</p>
+                            </div>
+                        )}
+                    </div>
+                )
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {orders.length > 0 ? (
-                        orders.map((order) => (
-                            <div key={order._id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:border-gray-300 transition-colors flex flex-col group">
-                                <div className="p-6 border-b border-gray-100 flex justify-between items-start">
-                                    <div>
-                                        <p className="text-xs font-medium text-indigo-600 uppercase tracking-wider mb-1">Order</p>
-                                        <h3 className="text-lg font-semibold text-gray-900">{order.orderNumber}</h3>
-                                    </div>
-                                    <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${order.status === 'confirmed' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                                        {order.status.replace('_', ' ')}
-                                    </span>
-                                </div>
-                                
-                                <div className="p-6 flex-1 flex flex-col">
-                                    <div className="flex items-center mb-6">
-                                        <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 mr-4 border border-gray-100">
-                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                                        </div>
-                                        <div className="overflow-hidden">
-                                            <p className="text-xs text-gray-500 font-medium">Customer</p>
-                                            <p className="font-medium text-gray-900 truncate text-sm">{order.customer?.companyName || order.customer?.name}</p>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="space-y-3 mb-8 flex-1">
-                                        <p className="text-xs text-gray-500 font-medium">Pending Items</p>
-                                        <div className="space-y-2">
-                                            {order.items.slice(0, 3).map((item, idx) => (
-                                                <div key={idx} className="flex justify-between items-center text-sm">
-                                                    <span className="text-gray-700 truncate pr-4">{item.name}</span>
-                                                    <span className="font-medium text-gray-900">x{item.quantity}</span>
-                                                </div>
-                                            ))}
-                                            {order.items.length > 3 && <p className="text-xs text-indigo-600 font-medium mt-2">+{order.items.length - 3} more items</p>}
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="grid grid-cols-4 gap-3 mt-auto pt-4 border-t border-gray-100">
-                                        <button 
-                                            onClick={() => handleViewDetails(order)}
-                                            className="col-span-1 flex items-center justify-center py-2.5 text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-colors"
-                                            title="View History"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        </button>
-                                        <button 
-                                            onClick={async () => {
-                                                const res = await api.get(`/dispatches/order/${order._id}`);
-                                                handlePrintSummary(order, res.data?.data || []);
-                                            }}
-                                            className="col-span-1 flex items-center justify-center py-2.5 text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-colors"
-                                            title="Print Document"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                                        </button>
-                                        <button 
-                                            onClick={() => handleOpenDispatch(order)}
-                                            className="col-span-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-2.5 font-medium text-sm transition-colors flex items-center justify-center gap-2"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
-                                            Dispatch
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))
+                /* Dispatch Logs/History Tab */
+                <div className="space-y-6">
+                    {/* Search & Filter */}
+                    <div className="flex gap-3">
+                        <input
+                            type="text"
+                            placeholder="Search by Dispatch #, Order #, Vehicle, or Customer..."
+                            value={historySearch}
+                            onChange={e => setHistorySearch(e.target.value)}
+                            className="flex-1 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
+                        />
+                    </div>
+
+                    {historyLoading ? (
+                        <div className="flex justify-center items-center h-64">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                        </div>
                     ) : (
-                        <div className="col-span-full py-20 px-6 bg-white rounded-2xl border border-gray-200 text-center flex flex-col items-center justify-center">
-                            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 mb-4 border border-gray-100">
-                                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
-                            </div>
-                            <h3 className="text-lg font-medium text-gray-900">No Pending Dispatches</h3>
-                            <p className="text-sm text-gray-500 mt-1 max-w-sm">When you accept quotations, they will appear here ready to be shipped.</p>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {dispatchHistory.filter(dh => {
+                                const query = historySearch.toLowerCase();
+                                const dispatchNum = dh.dispatchNumber?.toLowerCase() || '';
+                                const orderNum = dh.order?.orderNumber?.toLowerCase() || '';
+                                const vehicleNum = dh.vehicleNumber?.toLowerCase() || '';
+                                const driverPh = dh.driverPhone?.toLowerCase() || '';
+                                const custName = (dh.order?.customer?.companyName || dh.order?.customer?.name || '').toLowerCase();
+                                
+                                return dispatchNum.includes(query) || 
+                                       orderNum.includes(query) || 
+                                       vehicleNum.includes(query) || 
+                                       driverPh.includes(query) ||
+                                       custName.includes(query);
+                            }).length > 0 ? (
+                                dispatchHistory.filter(dh => {
+                                    const query = historySearch.toLowerCase();
+                                    const dispatchNum = dh.dispatchNumber?.toLowerCase() || '';
+                                    const orderNum = dh.order?.orderNumber?.toLowerCase() || '';
+                                    const vehicleNum = dh.vehicleNumber?.toLowerCase() || '';
+                                    const driverPh = dh.driverPhone?.toLowerCase() || '';
+                                    const custName = (dh.order?.customer?.companyName || dh.order?.customer?.name || '').toLowerCase();
+                                    
+                                    return dispatchNum.includes(query) || 
+                                           orderNum.includes(query) || 
+                                           vehicleNum.includes(query) || 
+                                           driverPh.includes(query) ||
+                                           custName.includes(query);
+                                }).map((dh) => (
+                                    <div key={dh._id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:border-indigo-300 hover:shadow-md transition-all flex flex-col p-6 space-y-4">
+                                        <div className="flex justify-between items-start border-b border-gray-100 pb-4">
+                                            <div>
+                                                <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">DISPATCH SLIP</span>
+                                                <h3 className="text-base font-black text-gray-900 mt-0.5">{dh.dispatchNumber}</h3>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-xs text-gray-400 font-bold block">{new Date(dh.createdAt).toLocaleDateString()}</span>
+                                                <span className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-black mt-1 inline-block">
+                                                    ORDER: {dh.order?.orderNumber || 'N/A'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4 bg-gray-50 p-3 rounded-xl text-xs">
+                                            <div>
+                                                <span className="text-gray-400 font-medium block uppercase text-[9px] tracking-wider">Customer / Client</span>
+                                                <span className="font-bold text-gray-900 block mt-0.5 truncate">
+                                                    {dh.order?.customer?.companyName || dh.order?.customer?.name || 'Walk-in Customer'}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-400 font-medium block uppercase text-[9px] tracking-wider">Vehicle Number</span>
+                                                <span className="font-bold text-indigo-700 block mt-0.5 uppercase">
+                                                    {dh.vehicleNumber || 'N/A'}
+                                                </span>
+                                            </div>
+                                            {dh.driverPhone && (
+                                                <div>
+                                                    <span className="text-gray-400 font-medium block uppercase text-[9px] tracking-wider">Driver Phone</span>
+                                                    <span className="font-bold text-gray-900 block mt-0.5">
+                                                        {dh.driverPhone}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <div>
+                                                <span className="text-gray-400 font-medium block uppercase text-[9px] tracking-wider">Dispatched By</span>
+                                                <span className="font-bold text-gray-900 block mt-0.5 truncate">
+                                                    {dh.createdBy?.name || 'System'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <span className="text-xs font-bold text-gray-700 block mb-2">Dispatched Items</span>
+                                            <div className="border border-gray-100 rounded-xl overflow-hidden text-xs">
+                                                <table className="w-full text-left">
+                                                    <thead>
+                                                        <tr className="bg-gray-50 text-gray-500 font-bold border-b border-gray-100">
+                                                            <th className="px-3 py-2">Item Details</th>
+                                                            <th className="px-3 py-2 text-right">Loaded Qty</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-50">
+                                                        {dh.items.map((di, idx) => (
+                                                            <tr key={idx} className="hover:bg-gray-50">
+                                                                <td className="px-3 py-2 font-medium text-gray-900">
+                                                                    {di.item?.name || 'Unknown Item'}
+                                                                    <span className="text-[10px] text-gray-400 block font-normal">
+                                                                        {di.item?.brand} | {di.item?.size}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-3 py-2 text-right font-bold text-indigo-600 bg-indigo-50/20">
+                                                                    {di.quantity}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        {dh.notes && (
+                                            <div className="text-xs bg-amber-50 text-amber-800 p-2.5 rounded-xl border border-amber-100/50">
+                                                <strong className="block mb-0.5 text-[10px] uppercase tracking-wider text-amber-600">Gate / Delivery Notes</strong>
+                                                {dh.notes}
+                                            </div>
+                                        )}
+
+                                        <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
+                                            <button
+                                                type="button"
+                                                onClick={() => handlePrintDispatchLog(dh)}
+                                                className="w-full bg-slate-900 hover:bg-black text-white text-xs font-bold py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2"
+                                            >
+                                                📄 Print Delivery Slip
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="col-span-full py-20 px-6 bg-white rounded-2xl border border-gray-200 text-center flex flex-col items-center justify-center">
+                                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 mb-4 border border-gray-100">
+                                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                    </div>
+                                    <h3 className="text-lg font-medium text-gray-900">No matching logs found</h3>
+                                    <p className="text-sm text-gray-500 mt-1 max-w-sm">No dispatches match your search filters.</p>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

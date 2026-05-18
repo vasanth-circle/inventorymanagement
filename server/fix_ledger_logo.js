@@ -34,7 +34,7 @@ async function fixData() {
         // 1. Update logo in Settings
         await Setting.findOneAndUpdate(
             { tenantId },
-            { $set: { 'branding.logoUrl': '/uploads/techath_logo.png' } },
+            { $set: { 'branding.logoUrl': '/uploads/techath_logo.png', companyName: 'Techath Solutions' } },
             { new: true }
         );
         console.log('✅ Updated Settings with new sample logo.');

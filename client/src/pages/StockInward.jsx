@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { InventoryContext } from '../context/InventoryContext';
 import toast from 'react-hot-toast';
+import api from '../utils/api';
 
 const StockInward = () => {
     const { 
@@ -26,6 +27,8 @@ const StockInward = () => {
         notes: '',
         batchNumber: '',
         hsn: '',
+        vendor: '',
+        billNumber: '',
     });
     const [customFields, setCustomFields] = useState([]);
     const [imageFile, setImageFile] = useState(null);
@@ -34,10 +37,20 @@ const StockInward = () => {
     const [selectedPO, setSelectedPO] = useState(null);
     const [poItems, setPoItems] = useState([]);
     const [receivingPo, setReceivingPo] = useState(false);
+    const [vendors, setVendors] = useState([]);
 
     useEffect(() => {
         fetchItems({ limit: 1000 });
         fetchHsnCodes();
+        const fetchVendors = async () => {
+            try {
+                const res = await api.get('/vendors?limit=1000');
+                setVendors(res.data.data?.vendors || []);
+            } catch (error) {
+                console.error('Failed to fetch vendors:', error);
+            }
+        };
+        fetchVendors();
         if (billingSettings?.workflowConfig?.enforcePO) {
             fetchPurchaseOrders({ status: 'issued' });
         }
@@ -538,16 +551,26 @@ const StockInward = () => {
                                                 rows="3"
                                             />
                                         ) : (
-                                            <input
-                                                type={field.type || 'text'}
-                                                name={field.name}
-                                                required={field.required}
-                                                value={formData[field.name] || ''}
-                                                onChange={handleChange}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                                placeholder={field.placeholder || `Enter ${field.label}`}
-                                                step={field.precision ? `0.${'0'.repeat(field.precision - 1)}1` : undefined}
-                                            />
+                                            <>
+                                                <input
+                                                    type={field.type || 'text'}
+                                                    name={field.name}
+                                                    required={field.required}
+                                                    value={formData[field.name] || ''}
+                                                    onChange={handleChange}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                                    placeholder={field.placeholder || `Enter ${field.label}`}
+                                                    step={field.precision ? `0.${'0'.repeat(field.precision - 1)}1` : undefined}
+                                                    list={field.name === 'size' ? 'size-list' : undefined}
+                                                />
+                                                {field.name === 'size' && (
+                                                    <datalist id="size-list">
+                                                        {[...new Set(items.map(i => i.size).filter(Boolean))].map(size => (
+                                                            <option key={size} value={size} />
+                                                        ))}
+                                                    </datalist>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 ))}
@@ -639,6 +662,40 @@ const StockInward = () => {
                             </select>
                         </div>
                     )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Vendor <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                name="vendor"
+                                value={formData.vendor}
+                                onChange={handleChange}
+                                required
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            >
+                                <option value="">-- Select Vendor --</option>
+                                {vendors.map(v => (
+                                    <option key={v._id} value={v._id}>{v.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Vendor Bill / Invoice Number <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                name="billNumber"
+                                value={formData.billNumber}
+                                onChange={handleChange}
+                                required
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                placeholder="Enter Bill Number"
+                            />
+                        </div>
+                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>

@@ -150,7 +150,7 @@ const SalesOrders = () => {
             const selectedItem = items.find(i => i._id === value);
             if (selectedItem) {
                 row.item = value;
-                row.price = selectedItem.sellingPrice || 0;
+                row.price = selectedItem.price || 0;
                 row.brand = selectedItem.brand;
                 row.size = selectedItem.size;
                 row.sqFtPerPc = selectedItem.sqFtPerPc || 0;

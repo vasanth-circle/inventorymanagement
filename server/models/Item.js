@@ -47,7 +47,7 @@ const itemSchema = new mongoose.Schema({
     },
     price: {
         type: Number,
-        required: [true, 'Price is required'],
+        default: 0,
         min: 0,
     },
     purchasePrice: {
@@ -85,6 +85,11 @@ const itemSchema = new mongoose.Schema({
         default: 0,
         min: 0,
     },
+    unitType: {
+        type: String,
+        default: 'box', // e.g. box, bag, pieces
+        trim: true,
+    },
     customFields: {
         type: Map,
         of: mongoose.Schema.Types.Mixed,
@@ -95,14 +100,7 @@ const itemSchema = new mongoose.Schema({
         ref: 'Tenant',
         required: [true, 'Tenant ID is required'],
         index: true,
-    },
-    batches: [{
-        batchNumber: { type: String, trim: true },
-        quantity: { type: Number, default: 0 },
-        price: { type: Number, required: true }, // Selling price for this specific batch
-        purchasePrice: { type: Number, default: 0 },
-        receivedDate: { type: Date, default: Date.now },
-    }],
+    }
 }, {
     timestamps: true,
 });

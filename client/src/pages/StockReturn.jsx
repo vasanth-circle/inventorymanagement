@@ -19,7 +19,10 @@ const StockReturn = () => {
         vendor: '',
         reason: '',
         notes: '',
+        rate: '',
     });
+    const [pastBills, setPastBills] = useState([]);
+    const [selectedBill, setSelectedBill] = useState(null);
 
     useEffect(() => {
         fetchInitialData();
@@ -44,9 +47,25 @@ const StockReturn = () => {
         }
     };
 
-    const handleChange = (e) => {
+    const handleChange = async (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+
+        if (name === 'customer' && value) {
+            try {
+                const res = await api.get(`/sales-orders?customer=${value}&limit=5`);
+                setPastBills(res.data.data?.orders || []);
+            } catch (error) {
+                console.error('Failed to fetch past bills:', error);
+            }
+        }
+
+        if (name === 'item' && formData.returnType === 'customer' && selectedBill) {
+            const billItem = selectedBill.items.find(i => i.item?._id === value);
+            if (billItem) {
+                setFormData(prev => ({ ...prev, rate: billItem.price }));
+            }
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -110,15 +129,21 @@ const StockReturn = () => {
                                 className="w-full h-11 px-4 bg-gray-50 border-none rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all cursor-pointer"
                             >
                                 <option value="">-- Choose Item --</option>
-                                {items.map(i => (
-                                    <option key={i._id} value={i._id}>{i.name} ({i.brand} - {i.size})</option>
-                                ))}
+                                {formData.returnType === 'customer' && selectedBill ? (
+                                    selectedBill.items.map(i => (
+                                        <option key={i.item?._id} value={i.item?._id}>{i.item?.name} (Billed: {i.quantity})</option>
+                                    ))
+                                ) : (
+                                    items.map(i => (
+                                        <option key={i._id} value={i._id}>{i.name} ({i.brand} - {i.size})</option>
+                                    ))
+                                )}
                             </select>
                         </div>
                     </div>
 
                     {/* Specific Details */}
-                    <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50/30">
+                    <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-6 bg-slate-50/30">
                         <div className="space-y-1">
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Quantity</label>
                             <input
@@ -134,19 +159,56 @@ const StockReturn = () => {
                             />
                         </div>
 
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Rate / Price</label>
+                            <input
+                                type="number"
+                                name="rate"
+                                value={formData.rate}
+                                onChange={handleChange}
+                                required
+                                min="0"
+                                step="0.01"
+                                placeholder="0.00"
+                                className="w-full h-11 px-4 bg-white border border-gray-100 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all"
+                            />
+                        </div>
+
                         {formData.returnType === 'customer' ? (
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Customer</label>
-                                <select
-                                    name="customer"
-                                    value={formData.customer}
-                                    onChange={handleChange}
-                                    className="w-full h-11 px-4 bg-white border border-gray-100 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all"
-                                >
-                                    <option value="">-- Select Customer --</option>
-                                    {customers.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
-                                </select>
-                            </div>
+                            <>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Customer</label>
+                                    <select
+                                        name="customer"
+                                        value={formData.customer}
+                                        onChange={handleChange}
+                                        className="w-full h-11 px-4 bg-white border border-gray-100 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all"
+                                    >
+                                        <option value="">-- Select Customer --</option>
+                                        {customers.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                                    </select>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Select Bill</label>
+                                    <select
+                                        name="selectedBill"
+                                        value={selectedBill?._id || ''}
+                                        onChange={(e) => {
+                                            const bill = pastBills.find(b => b._id === e.target.value);
+                                            setSelectedBill(bill);
+                                            if (bill) {
+                                                setFormData(prev => ({ ...prev, referenceOrder: bill.orderNumber }));
+                                            }
+                                        }}
+                                        className="w-full h-11 px-4 bg-white border border-gray-100 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all"
+                                    >
+                                        <option value="">-- Select Bill --</option>
+                                        {pastBills.map(b => (
+                                            <option key={b._id} value={b._id}>{b.orderNumber} ({new Date(b.orderDate).toLocaleDateString()})</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </>
                         ) : (
                             <div className="space-y-1">
                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Vendor</label>

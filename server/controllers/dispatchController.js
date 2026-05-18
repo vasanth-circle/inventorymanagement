@@ -113,8 +113,17 @@ export const createDispatch = async (req, res, next) => {
 
         // Update Order status based on dispatch completion
         const isFullyDispatched = fullyDispatchedItemsCount === order.items.length;
+        const wasEstimation = order.isEstimation;
+        if (wasEstimation) {
+            order.isEstimation = false;
+        }
         order.status = isFullyDispatched ? 'dispatched' : 'partially_dispatched'; 
         await order.save();
+
+        if (order.customer) {
+            const { syncSalesOrderLedger } = await import('./salesOrderController.js');
+            await syncSalesOrderLedger(order._id, req.tenantId, req.user._id);
+        }
 
         sendResponse(res, 201, dispatch, 'Dispatch recorded successfully');
     } catch (error) {
@@ -128,7 +137,11 @@ export const createDispatch = async (req, res, next) => {
 export const getDispatches = async (req, res, next) => {
     try {
         const dispatches = await Dispatch.find({ ...tenantQuery(req) })
-            .populate('order', 'orderNumber status')
+            .populate({
+                path: 'order',
+                select: 'orderNumber status customer totalAmount isEstimation',
+                populate: { path: 'customer', select: 'name companyName' }
+            })
             .populate('items.item', 'name brand size')
             .populate({ path: 'createdBy', model: User, select: 'name' })
             .sort({ createdAt: -1 });

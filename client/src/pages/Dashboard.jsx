@@ -81,7 +81,17 @@ const Dashboard = () => {
             {/* Header Section */}
             <div className="flex justify-between items-end pb-2 border-b border-gray-100">
                 <div className="flex items-center space-x-3">
-                    <div className="w-9 h-9 bg-white shadow-sm border border-gray-100 rounded-lg flex items-center justify-center text-lg">🏠</div>
+                    <div className="w-9 h-9 bg-white shadow-sm border border-gray-100 rounded-lg flex items-center justify-center text-lg overflow-hidden">
+                        {billingSettings?.branding?.logoUrl ? (
+                            <img 
+                                src={billingSettings.branding.logoUrl} 
+                                alt="Logo" 
+                                className="w-full h-full object-contain"
+                            />
+                        ) : (
+                            '🏠'
+                        )}
+                    </div>
                     <div>
                         <h1 className="text-xl font-bold text-gray-800 leading-tight">Hello, {stats?.userName || 'User'}!</h1>
                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">{stats?.companyName || 'Inventory Management'}</p>

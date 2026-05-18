@@ -1,6 +1,8 @@
 import Item from '../models/Item.js';
 import Transaction from '../models/Transaction.js';
 import User from '../models/User.js';
+import VendorLedger from '../models/VendorLedger.js';
+import CustomerLedger from '../models/CustomerLedger.js';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -47,7 +49,7 @@ export const upload = multer({
 // @access  Private
 export const stockInward = async (req, res, next) => {
     try {
-        const { item: itemId, quantity, damagedQuantity, reason, notes, batchNumber, price, expiryDate } = req.body;
+        const { item: itemId, quantity, damagedQuantity, reason, notes, batchNumber, price, expiryDate, vendor, billNumber } = req.body;
 
         let invoiceImage = '';
         if (req.file) {
@@ -90,6 +92,7 @@ export const stockInward = async (req, res, next) => {
             batch = itemDoc.batches[itemDoc.batches.length - 1];
         }
 
+        itemDoc.purchasePrice = rate;
         await itemDoc.save();
 
         // Create transaction record
@@ -109,6 +112,28 @@ export const stockInward = async (req, res, next) => {
             batchNumber: batch.batchNumber,
             tenantId: req.tenantId
         });
+
+        // Create Vendor Ledger Entry if vendor is provided
+        if (vendor) {
+            const totalAmount = qty * rate;
+            const lastEntry = await VendorLedger.findOne({ vendor, tenantId: req.tenantId }).sort({ date: -1, createdAt: -1 });
+            const currentBalance = lastEntry ? lastEntry.balance : 0;
+            const newBalance = currentBalance + totalAmount;
+
+            await VendorLedger.create({
+                tenantId: req.tenantId,
+                vendor,
+                date: Date.now(),
+                type: 'bill',
+                refType: 'Manual',
+                refNumber: billNumber || `INW-${Date.now()}`,
+                description: `Stock Inward: ${itemDoc.name} (${qty} qty)`,
+                credit: totalAmount,
+                balance: newBalance,
+                createdBy: req.user._id,
+                notes: notes || 'Automated entry from stock inward'
+            });
+        }
 
         const populatedTransaction = await Transaction.findOne({ _id: transaction._id, ...tenantQuery(req) })
             .populate('item', 'name barcode')
@@ -371,7 +396,7 @@ export const getItemHistory = async (req, res, next) => {
 // @access  Private
 export const stockReturn = async (req, res, next) => {
     try {
-        const { item: itemId, quantity, returnType, referenceOrder, reason, notes, customer, vendor } = req.body;
+        const { item: itemId, quantity, returnType, referenceOrder, reason, notes, customer, vendor, rate } = req.body;
 
         const itemDoc = await Item.findOne({ _id: itemId, ...tenantQuery(req) });
         if (!itemDoc) {
@@ -412,6 +437,46 @@ export const stockReturn = async (req, res, next) => {
             newQuantity,
             tenantId: req.tenantId
         });
+
+        const totalAmount = qty * (parseFloat(rate) || 0);
+
+        if (returnType === 'vendor' && vendor && totalAmount > 0) {
+            const lastEntry = await VendorLedger.findOne({ vendor, tenantId: req.tenantId }).sort({ date: -1, createdAt: -1 });
+            const currentBalance = lastEntry ? lastEntry.balance : 0;
+            const newBalance = currentBalance - totalAmount; // Debit reduces liability
+
+            await VendorLedger.create({
+                tenantId: req.tenantId,
+                vendor,
+                date: Date.now(),
+                type: 'adjustment',
+                refType: 'Manual',
+                refNumber: referenceOrder || `RET-${Date.now()}`,
+                description: `Stock Return to Vendor: ${itemDoc.name} (${qty} qty)`,
+                debit: totalAmount,
+                balance: newBalance,
+                createdBy: req.user._id,
+                notes: notes || 'Automated entry from stock return'
+            });
+        } else if (returnType === 'customer' && customer && totalAmount > 0) {
+            const lastEntry = await CustomerLedger.findOne({ customer, tenantId: req.tenantId }).sort({ date: -1, createdAt: -1 });
+            const currentBalance = lastEntry ? lastEntry.balance : 0;
+            const newBalance = currentBalance - totalAmount; // Credit reduces customer liability (they owe less)
+
+            await CustomerLedger.create({
+                tenantId: req.tenantId,
+                customer,
+                date: Date.now(),
+                type: 'adjustment',
+                refType: 'Manual',
+                refNumber: referenceOrder || `RET-${Date.now()}`,
+                description: `Stock Return from Customer: ${itemDoc.name} (${qty} qty)`,
+                credit: totalAmount,
+                balance: newBalance,
+                createdBy: req.user._id,
+                notes: notes || 'Automated entry from stock return'
+            });
+        }
 
         const populatedTransaction = await Transaction.findOne({ _id: transaction._id, ...tenantQuery(req) })
             .populate('item', 'name barcode')

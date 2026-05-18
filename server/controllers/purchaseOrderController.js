@@ -55,7 +55,7 @@ export const getPurchaseOrders = async (req, res, next) => {
 
         const orders = await PurchaseOrder.find(query)
             .populate('vendor', 'name companyName')
-            .populate('items.item', 'name sku barcode')
+            .populate('items.item', 'name sku barcode size')
             .populate({ path: 'user', model: User, select: 'name' })
             .sort({ createdAt: -1 })
             .limit(limit * 1)
@@ -77,11 +77,14 @@ export const getPurchaseOrders = async (req, res, next) => {
 // @desc    Get single purchase order
 // @route   GET /api/purchase-orders/:id
 // @access  Private
+// @desc    Get single purchase order
+// @route   GET /api/purchase-orders/:id
+// @access  Private
 export const getPurchaseOrder = async (req, res, next) => {
     try {
         const order = await PurchaseOrder.findOne({ _id: req.params.id, ...tenantQuery(req) })
             .populate('vendor')
-            .populate('items.item', 'name sku barcode')
+            .populate('items.item', 'name sku barcode size')
             .populate({ path: 'user', model: User, select: 'name' });
 
         if (!order) {
@@ -233,6 +236,7 @@ export const receivePurchaseOrder = async (req, res, next) => {
                         batch = itemDoc.batches[itemDoc.batches.length - 1];
                     }
 
+                    itemDoc.purchasePrice = rate;
                     await itemDoc.save();
 
                     // Create transaction record

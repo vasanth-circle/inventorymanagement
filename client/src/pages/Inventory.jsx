@@ -32,6 +32,8 @@ const Inventory = () => {
         size: '',
         hsn: '',
         pcsPerBox: '',
+        sqFtPerPc: '',
+        unitType: 'box',
     });
     const [editCustomFields, setEditCustomFields] = useState([]);
     const [editLoading, setEditLoading] = useState(false);
@@ -52,6 +54,7 @@ const Inventory = () => {
         hsn: '',
         pcsPerBox: '',
         sqFtPerPc: '',
+        unitType: 'box',
     });
     const [createCustomFields, setCreateCustomFields] = useState([]);
     const [createLoading, setCreateLoading] = useState(false);
@@ -198,6 +201,7 @@ const Inventory = () => {
             hsn: item.hsn || '',
             pcsPerBox: item.pcsPerBox || '',
             sqFtPerPc: item.sqFtPerPc || '',
+            unitType: item.unitType || 'box',
         });
 
         // Convert customFields Map to array
@@ -330,6 +334,7 @@ const Inventory = () => {
                     size: '',
                     hsn: '',
                     pcsPerBox: 1,
+                    unitType: 'box',
                 });
                 setCreateCustomFields([]);
                 loadItems();
@@ -471,7 +476,7 @@ const Inventory = () => {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="font-bold text-gray-900 leading-tight">{item.name}</div>
-                                                    <div className="text-[10px] text-gray-400 font-mono mt-0.5">{item.barcode || 'NO BARCODE'}</div>
+                                                    <div className="text-[10px] text-gray-400 font-mono mt-0.5">{item.unitType?.toUpperCase() || 'BOX'}</div>
                                                     {item.customFields && Object.keys(item.customFields).length > 0 && (
                                                         <div className="flex flex-wrap gap-1 mt-1.5">
                                                             {Object.entries(item.customFields).slice(0, 3).map(([key, value]) => (
@@ -557,7 +562,7 @@ const Inventory = () => {
                                                 </div>
                                                 
                                                 <h4 className="text-sm font-black text-gray-900 leading-tight mb-1 truncate">{item.name}</h4>
-                                                <div className="text-[10px] text-gray-400 font-mono mb-3">{item.barcode || 'No Barcode'}</div>
+                                                <div className="text-[10px] text-gray-400 font-mono mb-3">Unit: {item.unitType?.toUpperCase() || 'BOX'}</div>
 
                                                 <div className="flex items-end justify-between">
                                                     <div>
@@ -830,14 +835,19 @@ const Inventory = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Barcode</label>
-                                    <input
-                                        type="text"
-                                        name="barcode"
-                                        value={createFormData.barcode}
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Unit Type</label>
+                                    <select
+                                        name="unitType"
+                                        value={createFormData.unitType}
                                         onChange={handleCreateChange}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    />
+                                    >
+                                        <option value="box">Box</option>
+                                        <option value="bag">Bag</option>
+                                        <option value="pieces">Pieces</option>
+                                        <option value="kg">Kg</option>
+                                        <option value="sqft">SqFt</option>
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Part Number</label>
@@ -865,12 +875,11 @@ const Inventory = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Selling Price (₹) per {billingSettings?.unitConfig?.rateBasis?.replace('per_', '') || 'Unit'} *</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Selling Price (₹) per {billingSettings?.unitConfig?.rateBasis?.replace('per_', '') || 'Unit'}</label>
                                     <input
                                         type="number"
                                         step="0.01"
                                         name="price"
-                                        required
                                         value={createFormData.price}
                                         onChange={handleCreateChange}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
