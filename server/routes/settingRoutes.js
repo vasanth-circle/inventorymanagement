@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { getBillingSettings, updateBillingSettings, uploadLogo, deleteLogo } from '../controllers/settingController.js';
+import { getBillingSettings, updateBillingSettings, uploadLogo, deleteLogo, getQuotationCounter, resetQuotationCounter } from '../controllers/settingController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -40,5 +40,9 @@ router.get('/billing', getBillingSettings);
 router.patch('/billing', updateBillingSettings);
 router.post('/billing/logo', uploadMiddleware.single('logo'), uploadLogo);
 router.delete('/billing/logo', deleteLogo);
+
+// Quotation Number Series Counter
+router.get('/quotation-counter', getQuotationCounter);
+router.patch('/quotation-counter', resetQuotationCounter);
 
 export default router;

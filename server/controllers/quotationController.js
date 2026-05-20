@@ -51,8 +51,11 @@ export const createQuotation = async (req, res, next) => {
         if (!quotationNumber) {
             const settings = await Setting.findOne({ tenantId: req.tenantId });
             const prefix = settings?.documentConfig?.quotationPrefix || 'QUO';
-            const sequence = await getNextSequenceValue('quotation', req.tenantId);
-            quotationNumber = `${prefix}-${sequence.toString().padStart(4, '0')}`;
+            const maxSeq = settings?.documentConfig?.quotationMaxNumber || 500;
+            const startSeq = settings?.documentConfig?.quotationStartNumber || 1;
+            const padding = settings?.documentConfig?.quotationPadding || 3;
+            const sequence = await getNextSequenceValue('quotation', req.tenantId, maxSeq, startSeq);
+            quotationNumber = `${prefix}-${sequence.toString().padStart(padding, '0')}`;
         }
         
         // Ensure uniqueness for tenant

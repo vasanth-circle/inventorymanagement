@@ -47,6 +47,9 @@ const settingSchema = new mongoose.Schema({
     documentConfig: {
         quotationPrefix: { type: String, default: 'QUO' },
         quotationCounter: { type: Number, default: 0 },
+        quotationMaxNumber: { type: Number, default: 500 },   // series restarts after this
+        quotationStartNumber: { type: Number, default: 1 },   // series starts from this value
+        quotationPadding: { type: Number, default: 3 },       // zero-padding digits (3 = 001)
         quotationTitle: { type: String, default: 'Quotation' },
         invoiceTitle: { type: String, default: 'Tax Invoice' },
         quotationTemplate: { type: Number, default: 1 },

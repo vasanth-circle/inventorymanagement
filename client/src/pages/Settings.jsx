@@ -52,6 +52,11 @@ const Settings = () => {
     const [logoPreview, setLogoPreview] = useState('');
     const logoInputRef = useRef(null);
 
+    // Quotation counter state
+    const [counterCurrent, setCounterCurrent] = useState(0);
+    const [counterResetting, setCounterResetting] = useState(false);
+    const [counterStartInput, setCounterStartInput] = useState('');
+
     const [formData, setFormData] = useState({
         // Company
         companyName: '',
@@ -74,6 +79,9 @@ const Settings = () => {
         // Document config
         documentConfig: {
             quotationPrefix: 'QUO',
+            quotationMaxNumber: 500,
+            quotationStartNumber: 1,
+            quotationPadding: 3,
             quotationTitle: 'Quotation',
             invoiceTitle: 'Tax Invoice',
             quotationTemplate: 1,
@@ -102,6 +110,15 @@ const Settings = () => {
         },
     });
 
+    // Fetch current counter value when Documents tab is active
+    useEffect(() => {
+        if (activeTab === 'documents') {
+            api.get('/settings/quotation-counter')
+                .then(res => setCounterCurrent(res.data?.data?.currentValue || 0))
+                .catch(() => {});
+        }
+    }, [activeTab]);
+
     useEffect(() => {
         if (billingSettings) {
             setFormData({
@@ -123,6 +140,9 @@ const Settings = () => {
                 },
                 documentConfig: {
                     quotationPrefix: billingSettings.documentConfig?.quotationPrefix || 'QUO',
+                    quotationMaxNumber: billingSettings.documentConfig?.quotationMaxNumber ?? 500,
+                    quotationStartNumber: billingSettings.documentConfig?.quotationStartNumber ?? 1,
+                    quotationPadding: billingSettings.documentConfig?.quotationPadding ?? 3,
                     quotationTitle: billingSettings.documentConfig?.quotationTitle || 'Quotation',
                     invoiceTitle: billingSettings.documentConfig?.invoiceTitle || 'Tax Invoice',
                     quotationTemplate: billingSettings.documentConfig?.quotationTemplate || 1,
@@ -496,6 +516,106 @@ const Settings = () => {
                                         name="quotationTitle" value={formData.documentConfig.quotationTitle}
                                         onChange={e => handleNested('documentConfig', 'quotationTitle', e.target.value)}
                                         placeholder="Quotation" />
+                                </div>
+
+                                {/* ── Quotation Number Series ── */}
+                                <div className="pt-4 border-t border-gray-100">
+                                    <h2 className="text-sm font-black text-gray-700 flex items-center gap-2 mb-4">
+                                        <span className="w-7 h-7 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center text-sm">🔢</span>
+                                        Quotation Number Series
+                                    </h2>
+
+                                    {/* Live preview badge */}
+                                    <div className="mb-5 flex items-center gap-4">
+                                        <div className="flex flex-col items-center justify-center bg-gradient-to-br from-rose-600 to-rose-700 text-white rounded-2xl px-6 py-4 shadow-lg min-w-[160px]">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-rose-200 mb-1">Next Quotation #</span>
+                                            <span className="text-2xl font-black tracking-wider">
+                                                {formData.documentConfig.quotationPrefix}-{(counterCurrent + 1).toString().padStart(formData.documentConfig.quotationPadding || 3, '0')}
+                                            </span>
+                                            <span className="text-[9px] text-rose-300 mt-1">Current counter: {counterCurrent}</span>
+                                        </div>
+                                        <div className="text-xs text-gray-400 leading-relaxed">
+                                            <p>Series restarts from <strong>{formData.documentConfig.quotationPrefix}-{String(formData.documentConfig.quotationStartNumber || 1).padStart(formData.documentConfig.quotationPadding || 3, '0')}</strong> after reaching <strong>{formData.documentConfig.quotationPrefix}-{String(formData.documentConfig.quotationMaxNumber || 500).padStart(formData.documentConfig.quotationPadding || 3, '0')}</strong>.</p>
+                                            <p className="mt-1 text-amber-600 font-semibold">⚠ Save settings first, then reset the counter if needed.</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                        <div className="space-y-1">
+                                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Max Number (restart after)</label>
+                                            <input
+                                                type="number" min="1" max="99999"
+                                                value={formData.documentConfig.quotationMaxNumber}
+                                                onChange={e => handleNested('documentConfig', 'quotationMaxNumber', parseInt(e.target.value) || 500)}
+                                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 outline-none transition-all font-semibold text-sm"
+                                                placeholder="500"
+                                            />
+                                            <p className="text-[10px] text-gray-400 px-1">e.g. 500 → restarts after QUO-500</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Start Number (after restart)</label>
+                                            <input
+                                                type="number" min="1"
+                                                value={formData.documentConfig.quotationStartNumber}
+                                                onChange={e => handleNested('documentConfig', 'quotationStartNumber', parseInt(e.target.value) || 1)}
+                                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 outline-none transition-all font-semibold text-sm"
+                                                placeholder="1"
+                                            />
+                                            <p className="text-[10px] text-gray-400 px-1">Usually 1 (restart from QUO-001)</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Number Padding (digits)</label>
+                                            <select
+                                                value={formData.documentConfig.quotationPadding || 3}
+                                                onChange={e => handleNested('documentConfig', 'quotationPadding', parseInt(e.target.value))}
+                                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 outline-none transition-all font-semibold text-sm cursor-pointer"
+                                            >
+                                                <option value={2}>2 digits — QUO-01</option>
+                                                <option value={3}>3 digits — QUO-001</option>
+                                                <option value={4}>4 digits — QUO-0001</option>
+                                                <option value={5}>5 digits — QUO-00001</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Reset Counter */}
+                                    <div className="mt-5 p-4 bg-amber-50 border border-amber-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                                        <div className="flex-1">
+                                            <p className="text-xs font-black text-amber-800 mb-1">⚡ Reset / Jump Counter</p>
+                                            <p className="text-[10px] text-amber-600">Set the counter to a specific value. The <em>next</em> quotation created will use this number.</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="number" min="1"
+                                                value={counterStartInput}
+                                                onChange={e => setCounterStartInput(e.target.value)}
+                                                placeholder={`Next # (e.g. 1)`}
+                                                className="w-28 px-3 py-2 bg-white border border-amber-300 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-amber-400"
+                                            />
+                                            <button
+                                                type="button"
+                                                disabled={counterResetting || !counterStartInput}
+                                                onClick={async () => {
+                                                    if (!counterStartInput) return;
+                                                    setCounterResetting(true);
+                                                    try {
+                                                        const res = await api.patch('/settings/quotation-counter', { startFrom: parseInt(counterStartInput) });
+                                                        const next = res.data?.data?.nextValue || parseInt(counterStartInput);
+                                                        setCounterCurrent(next - 1);
+                                                        setCounterStartInput('');
+                                                        toast.success(`Counter set! Next quotation will be ${formData.documentConfig.quotationPrefix}-${String(next).padStart(formData.documentConfig.quotationPadding || 3, '0')}`);
+                                                    } catch {
+                                                        toast.error('Failed to reset counter');
+                                                    } finally {
+                                                        setCounterResetting(false);
+                                                    }
+                                                }}
+                                                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-xs font-black rounded-lg transition-all"
+                                            >
+                                                {counterResetting ? '⏳' : '🔄 Set Counter'}
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="pt-4 border-t border-gray-100">

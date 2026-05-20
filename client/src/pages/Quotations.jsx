@@ -57,6 +57,9 @@ const Quotations = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [userFilter, setUserFilter] = useState('');
+    const [customerFilter, setCustomerFilter] = useState('');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
     const [convertingId, setConvertingId] = useState(null);
     const [fetchingBalance, setFetchingBalance] = useState(false);
 
@@ -277,13 +280,24 @@ const Quotations = () => {
 
     /* ── Filtered list ─────────────────────────────────────────────── */
     const filtered = quotations.filter(q => {
-        const matchSearch = !searchTerm || q.quotationNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (q.customer?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (q.customer?.companyName || '').toLowerCase().includes(searchTerm.toLowerCase());
+        const matchSearch = !searchTerm ||
+            q.quotationNumber?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchCustomer = !customerFilter || (q.customer?._id === customerFilter || q.customer === customerFilter);
         const matchStatus = !statusFilter || q.status === statusFilter;
         const matchUser = !userFilter || q.user?._id === userFilter;
-        return matchSearch && matchStatus && matchUser;
+
+        const qDate = new Date(q.quotationDate || q.createdAt);
+        qDate.setHours(0, 0, 0, 0);
+        const fromOk = !dateFrom || qDate >= new Date(dateFrom);
+        const toDate = dateTo ? new Date(dateTo) : null;
+        if (toDate) toDate.setHours(23, 59, 59, 999);
+        const toOk = !dateTo || qDate <= toDate;
+
+        return matchSearch && matchCustomer && matchStatus && matchUser && fromOk && toOk;
     });
+
+    const hasActiveFilters = !!(searchTerm || customerFilter || statusFilter || userFilter || dateFrom || dateTo);
+    const clearFilters = () => { setSearchTerm(''); setCustomerFilter(''); setStatusFilter(''); setUserFilter(''); setDateFrom(''); setDateTo(''); };
 
     const uniqueUsers = Array.from(new Set(quotations.filter(q => q.user?._id).map(q => JSON.stringify({ id: q.user._id, name: q.user.name || 'Unknown' })))).map(u => JSON.parse(u));
 
@@ -310,36 +324,97 @@ const Quotations = () => {
             </div>
 
             {/* Filters */}
-            <div className="flex gap-3 flex-wrap">
-                <input
-                    type="text"
-                    placeholder="Search by number or customer..."
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                    className="flex-1 min-w-[200px] h-10 px-4 bg-white border border-gray-100 rounded-lg text-sm focus:ring-2 focus:ring-rose-500"
-                />
-                <select
-                    value={statusFilter}
-                    onChange={e => setStatusFilter(e.target.value)}
-                    className="h-10 px-3 bg-white border border-gray-100 rounded-lg text-sm font-medium focus:ring-2 focus:ring-rose-500"
-                >
-                    <option value="">All Statuses</option>
-                    <option value="draft">Draft</option>
-                    <option value="sent">Sent</option>
-                    <option value="accepted">Accepted</option>
-                    <option value="rejected">Rejected</option>
-                    <option value="converted">Converted</option>
-                </select>
-                <select
-                    value={userFilter}
-                    onChange={e => setUserFilter(e.target.value)}
-                    className="h-10 px-3 bg-white border border-gray-100 rounded-lg text-sm font-medium focus:ring-2 focus:ring-rose-500"
-                >
-                    <option value="">All Reps / Users</option>
-                    {uniqueUsers.map(u => (
-                        <option key={u.id} value={u.id}>{u.name}</option>
-                    ))}
-                </select>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+                {/* Row 1: Search + Status + Clear */}
+                <div className="flex gap-3 flex-wrap items-center">
+                    {/* Quotation Number Search */}
+                    <div className="relative flex-1 min-w-[180px]">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+                        <input
+                            id="quat-number-search"
+                            type="text"
+                            placeholder="Search quotation # (e.g. QUO-001)"
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            className="w-full h-10 pl-8 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none"
+                        />
+                    </div>
+
+                    {/* Status filter */}
+                    <select
+                        id="quat-status-filter"
+                        value={statusFilter}
+                        onChange={e => setStatusFilter(e.target.value)}
+                        className="h-10 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-rose-500 outline-none cursor-pointer"
+                    >
+                        <option value="">All Statuses</option>
+                        <option value="draft">Draft</option>
+                        <option value="sent">Sent</option>
+                        <option value="accepted">Accepted</option>
+                        <option value="rejected">Rejected</option>
+                        <option value="converted">Converted</option>
+                    </select>
+
+                    {/* Result count + clear */}
+                    <div className="flex items-center gap-2 ml-auto">
+                        <span className={`px-3 py-1.5 rounded-full text-xs font-black ${
+                            hasActiveFilters ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-500'
+                        }`}>
+                            {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+                        </span>
+                        {hasActiveFilters && (
+                            <button
+                                onClick={clearFilters}
+                                className="h-10 px-4 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-black transition-all flex items-center gap-1"
+                            >
+                                ✕ Clear
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Row 2: Customer + Date range */}
+                <div className="flex gap-3 flex-wrap items-center">
+                    {/* Customer Name Filter */}
+                    <div className="relative flex-1 min-w-[200px]">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">👤</span>
+                        <select
+                            id="quat-customer-filter"
+                            value={customerFilter}
+                            onChange={e => setCustomerFilter(e.target.value)}
+                            className="w-full h-10 pl-8 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-rose-500 outline-none cursor-pointer appearance-none"
+                        >
+                            <option value="">All Customers</option>
+                            {customers.map(c => (
+                                <option key={c._id} value={c._id}>{c.companyName || c.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Date From */}
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400 font-bold whitespace-nowrap">From</span>
+                        <input
+                            id="quat-date-from"
+                            type="date"
+                            value={dateFrom}
+                            onChange={e => setDateFrom(e.target.value)}
+                            className="h-10 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-rose-500 outline-none cursor-pointer"
+                        />
+                    </div>
+
+                    {/* Date To */}
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400 font-bold whitespace-nowrap">To</span>
+                        <input
+                            id="quat-date-to"
+                            type="date"
+                            value={dateTo}
+                            onChange={e => setDateTo(e.target.value)}
+                            className="h-10 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-rose-500 outline-none cursor-pointer"
+                        />
+                    </div>
+                </div>
             </div>
 
             {/* Table / Card View */}
