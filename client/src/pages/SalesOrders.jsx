@@ -395,7 +395,7 @@ const SalesOrders = () => {
                                                     <span className="mr-1">📄</span> Bill
                                                 </button>
                                                 
-                                                {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
+                                                {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && !['dispatched', 'partially_dispatched'].includes(order.status) && (
                                                     <button 
                                                         onClick={() => handleEdit(order)} 
                                                         className="text-amber-600 hover:text-amber-800 text-sm font-bold border-2 border-amber-100 px-3 py-1.5 rounded-lg bg-amber-50 transition-all flex items-center inline-flex"
@@ -449,7 +449,7 @@ const SalesOrders = () => {
                                         <button onClick={() => handlePrint(order)} className="w-9 h-9 bg-primary-800 hover:bg-primary-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Print/PDF Bill">📄</button>
                                         <button onClick={() => shareViaWhatsApp(order, billingSettings, 'invoice')} className="w-9 h-9 bg-green-600 hover:bg-green-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="WhatsApp Share">💬</button>
                                         <button onClick={() => shareViaEmail(order, billingSettings, 'invoice')} className="w-9 h-9 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Email Share">✉️</button>
-                                        {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
+                                        {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && !['dispatched', 'partially_dispatched'].includes(order.status) && (
                                             <button onClick={() => handleEdit(order)} className="w-9 h-9 bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Edit">✏️</button>
                                         )}
                                     </div>

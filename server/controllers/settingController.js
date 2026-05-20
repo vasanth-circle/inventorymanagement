@@ -1,4 +1,5 @@
 import Setting from '../models/Setting.js';
+import Counter from '../models/Counter.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
 import path from 'path';
@@ -117,6 +118,38 @@ export const deleteLogo = async (req, res, next) => {
         );
 
         sendResponse(res, 200, { settings }, 'Logo removed successfully');
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Get current quotation counter value
+// @route   GET /api/settings/quotation-counter
+// @access  Private
+export const getQuotationCounter = async (req, res, next) => {
+    try {
+        const counter = await Counter.findOne({ id: 'quotation', tenantId: req.tenantId });
+        sendResponse(res, 200, { currentValue: counter?.seq || 0 }, 'Counter fetched');
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Reset/Set quotation counter to a specific value
+// @route   PATCH /api/settings/quotation-counter
+// @access  Private (Admin only)
+export const resetQuotationCounter = async (req, res, next) => {
+    try {
+        const { startFrom } = req.body;
+        const newValue = Math.max(0, parseInt(startFrom) - 1); // -1 because getNextSequenceValue increments before use
+
+        await Counter.findOneAndUpdate(
+            { id: 'quotation', tenantId: req.tenantId },
+            { $set: { seq: newValue } },
+            { upsert: true, new: true }
+        );
+
+        sendResponse(res, 200, { nextValue: newValue + 1 }, `Quotation counter will start from ${newValue + 1}`);
     } catch (error) {
         next(error);
     }

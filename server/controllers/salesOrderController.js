@@ -1,4 +1,5 @@
 import SalesOrder from '../models/SalesOrder.js';
+import Dispatch from '../models/Dispatch.js';
 import Item from '../models/Item.js';
 import Setting from '../models/Setting.js';
 import User from '../models/User.js';

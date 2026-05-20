@@ -389,9 +389,9 @@ const Quotations = () => {
                                             <td className="p-4">
                                                 <div className="flex items-center justify-center gap-1.5 flex-wrap">
                                                     <button onClick={() => handlePrint(q)} title="Print" className="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-xs font-bold">📄</button>
+                                                    <button onClick={() => openEdit(q)} title="Edit" className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded text-xs font-bold">✏️</button>
                                                     {q.status !== 'converted' && q.status !== 'rejected' && (
                                                         <>
-                                                            <button onClick={() => openEdit(q)} title="Edit" className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded text-xs font-bold">✏️</button>
                                                             <button
                                                                 onClick={() => handleConvert(q)}
                                                                 disabled={convertingId === q._id}
@@ -450,9 +450,7 @@ const Quotations = () => {
                                             <button onClick={() => handlePrint(q)} className="w-9 h-9 bg-gray-800 hover:bg-gray-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Print/PDF">📄</button>
                                             <button onClick={() => shareViaWhatsApp(q, billingSettings, 'quotation')} className="w-9 h-9 bg-green-600 hover:bg-green-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="WhatsApp Share">💬</button>
                                             <button onClick={() => shareViaEmail(q, billingSettings, 'quotation')} className="w-9 h-9 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Email Share">✉️</button>
-                                            {q.status !== 'converted' && q.status !== 'rejected' && (
-                                                <button onClick={() => openEdit(q)} className="w-9 h-9 bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Edit">✏️</button>
-                                            )}
+                                            <button onClick={() => openEdit(q)} className="w-9 h-9 bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Edit">✏️</button>
                                         </div>
                                     </div>
 
