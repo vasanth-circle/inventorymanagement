@@ -1,4 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
+// Shared Indian number formatting utility
+// ─────────────────────────────────────────────────────────────────────────────
+export const formatIndianNumber = (num, decimals = 2) => {
+    if (num === null || num === undefined || isNaN(num) || num === '') return '0.00';
+    return Number(num).toLocaleString('en-IN', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+    });
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Shared number-to-words utility
 // ─────────────────────────────────────────────────────────────────────────────
 export const numberToWords = (num) => {
@@ -22,7 +33,8 @@ export const numberToWords = (num) => {
 const buildItemRows = (items, settings, taxPct) =>
     items.map((item, i) => {
         const total = item.total || item.quantity * item.price;
-        const withTax = total + (total * taxPct / 100);
+        const taxAmt = (total * taxPct / 100);
+        const withTax = total + taxAmt;
         return `<tr>
             <td style="text-align:center">${i + 1}</td>
             <td><strong>${(item.name || '').toUpperCase()}</strong><br/>
@@ -30,17 +42,18 @@ const buildItemRows = (items, settings, taxPct) =>
             </td>
             <td style="text-align:center">${item.hsn || ''}</td>
             <td style="text-align:center;font-weight:bold">
-                ${item.totalSqFt ? item.totalSqFt.toFixed(2) : (item.primaryQty || item.quantity || 0).toFixed ? Number(item.primaryQty || item.quantity || 0).toFixed(2) : (item.primaryQty || item.quantity || 0)}
-                ${item.boxCount || item.secondaryQty ? `<br/><span style="font-size:7px;font-weight:normal">(${item.boxCount || item.secondaryQty} Box)</span>` : ''}
+                ${item.totalSqFt ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}
             </td>
-            <td style="text-align:right">${Number(item.price || 0).toFixed(2)}</td>
-            <td style="text-align:right">${Number(total).toFixed(2)}</td>
+            <td style="text-align:center">${item.boxCount ? item.boxCount + ' (' + (item.pcsPerBox || '') + ' pcs/box)' : (item.secondaryQty ? item.secondaryQty : '')}</td>
+            <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
+            <td style="text-align:right">${formatIndianNumber(total, 2)}</td>
             <td style="text-align:center">${taxPct}%</td>
-            <td style="text-align:right;font-weight:bold">${Number(withTax).toFixed(2)}</td>
+            <td style="text-align:right">${formatIndianNumber(taxAmt, 2)}</td>
+            <td style="text-align:right;font-weight:bold">${formatIndianNumber(withTax, 2)}</td>
         </tr>`;
     }).join('') +
     Array(Math.max(0, 15 - items.length)).fill(0).map(() =>
-        `<tr style="height:18px"><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`
+        `<tr style="height:18px"><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`
     ).join('');
 
 
@@ -49,7 +62,9 @@ const buildItemRows = (items, settings, taxPct) =>
 // ─────────────────────────────────────────────────────────────────────────────
 const template1 = (order, settings, docType = 'invoice') => {
     const s = settings || {};
-    const taxPct = order.taxAmount > 0 ? (s.documentConfig?.defaultTaxRate || 18) : 0;
+    const taxPct = (order.taxRate !== undefined && order.taxRate !== null && order.taxRate !== '')
+        ? parseFloat(order.taxRate)
+        : (order.taxAmount > 0 ? (s.documentConfig?.defaultTaxRate || 18) : 0);
     const isQuotation = docType === 'quotation';
     const title = isQuotation
         ? (s.documentConfig?.quotationTitle || 'QUOTATION')
@@ -119,13 +134,15 @@ const template1 = (order, settings, docType = 'invoice') => {
     <table>
       <thead><tr>
         <th width="5%">S.No</th>
-        <th width="40%">Description of Goods</th>
+        <th width="35%">Description of Goods</th>
         <th width="8%">HSN Code</th>
         <th width="10%">${qtyLabel}</th>
+        <th width="8%">Box Qty</th>
         <th width="9%">${rateLabel}</th>
         <th width="9%">Amount</th>
         <th width="7%">Tax %</th>
-        <th width="10%">Total</th>
+        <th width="8%">Tax Amt</th>
+        <th width="9%">Total</th>
       </tr></thead>
       <tbody>${buildItemRows(order.items, settings, taxPct)}</tbody>
     </table>
@@ -137,12 +154,12 @@ const template1 = (order, settings, docType = 'invoice') => {
         <table class="tax-table">
           <thead><tr><th>Taxable Value</th><th>CGST%</th><th>CGST Amt</th><th>SGST%</th><th>SGST Amt</th><th>Total Tax</th></tr></thead>
           <tbody><tr>
-            <td>${(order.itemsTotal || 0).toFixed(2)}</td>
+            <td>${formatIndianNumber(order.itemsTotal || 0, 2)}</td>
             <td>${taxPct > 0 ? taxPct / 2 + '%' : '0%'}</td>
-            <td>${((order.taxAmount || 0) / 2).toFixed(2)}</td>
+            <td>${formatIndianNumber((order.taxAmount || 0) / 2, 2)}</td>
             <td>${taxPct > 0 ? taxPct / 2 + '%' : '0%'}</td>
-            <td>${((order.taxAmount || 0) / 2).toFixed(2)}</td>
-            <td>${(order.taxAmount || 0).toFixed(2)}</td>
+            <td>${formatIndianNumber((order.taxAmount || 0) / 2, 2)}</td>
+            <td>${formatIndianNumber(order.taxAmount || 0, 2)}</td>
           </tr></tbody>
         </table>
       </div>
@@ -153,14 +170,14 @@ const template1 = (order, settings, docType = 'invoice') => {
       </div>
     </div>
     <div class="summary-right">
-      <div class="math-row"><span>Taxable Value:</span><span>${s.documentConfig?.currencySymbol || '₹'}${(order.itemsTotal || 0).toLocaleString()}</span></div>
-      ${order.loadingCharges > 0 ? `<div class="math-row"><span>Loading:</span><span>${s.documentConfig?.currencySymbol || '₹'}${order.loadingCharges.toLocaleString()}</span></div>` : ''}
-      ${order.unloadingCharges > 0 ? `<div class="math-row"><span>Unloading:</span><span>${s.documentConfig?.currencySymbol || '₹'}${order.unloadingCharges.toLocaleString()}</span></div>` : ''}
-      ${order.transportCharges > 0 ? `<div class="math-row"><span>Transport:</span><span>${s.documentConfig?.currencySymbol || '₹'}${order.transportCharges.toLocaleString()}</span></div>` : ''}
-      ${(order.discountAmount || 0) > 0 ? `<div class="math-row" style="color:green"><span>Discount:</span><span>- ${s.documentConfig?.currencySymbol || '₹'}${order.discountAmount.toLocaleString()}</span></div>` : ''}
-      ${order.oldBalance > 0 ? `<div class="math-row"><span>Old Balance:</span><span>${s.documentConfig?.currencySymbol || '₹'}${order.oldBalance.toLocaleString()}</span></div>` : ''}
-      ${order.advanceAmount > 0 ? `<div class="math-row" style="color:green"><span>Advance:</span><span>- ${s.documentConfig?.currencySymbol || '₹'}${order.advanceAmount.toLocaleString()}</span></div>` : ''}
-      <div class="grand-total"><span>NET AMOUNT:</span><span>${s.documentConfig?.currencySymbol || '₹'}${(order.totalAmount || 0).toLocaleString()}</span></div>
+      <div class="math-row"><span>Taxable Value:</span><span>${s.documentConfig?.currencySymbol || '₹'}${formatIndianNumber(order.itemsTotal || 0, 2)}</span></div>
+      ${order.loadingCharges > 0 ? `<div class="math-row"><span>Loading:</span><span>${s.documentConfig?.currencySymbol || '₹'}${formatIndianNumber(order.loadingCharges, 2)}</span></div>` : ''}
+      ${order.unloadingCharges > 0 ? `<div class="math-row"><span>Unloading:</span><span>${s.documentConfig?.currencySymbol || '₹'}${formatIndianNumber(order.unloadingCharges, 2)}</span></div>` : ''}
+      ${order.transportCharges > 0 ? `<div class="math-row"><span>Transport:</span><span>${s.documentConfig?.currencySymbol || '₹'}${formatIndianNumber(order.transportCharges, 2)}</span></div>` : ''}
+      ${(order.discountAmount || 0) > 0 ? `<div class="math-row" style="color:green"><span>Discount:</span><span>- ${s.documentConfig?.currencySymbol || '₹'}${formatIndianNumber(order.discountAmount, 2)}</span></div>` : ''}
+      ${order.oldBalance > 0 ? `<div class="math-row"><span>Old Balance:</span><span>${s.documentConfig?.currencySymbol || '₹'}${formatIndianNumber(order.oldBalance, 2)}</span></div>` : ''}
+      ${order.advanceAmount > 0 ? `<div class="math-row" style="color:green"><span>Advance:</span><span>- ${s.documentConfig?.currencySymbol || '₹'}${formatIndianNumber(order.advanceAmount, 2)}</span></div>` : ''}
+      <div class="grand-total"><span>NET AMOUNT:</span><span>${s.documentConfig?.currencySymbol || '₹'}${formatIndianNumber(order.totalAmount || 0, 2)}</span></div>
     </div>
   </div>
   <div class="footer">
@@ -179,7 +196,9 @@ const template1 = (order, settings, docType = 'invoice') => {
 // ─────────────────────────────────────────────────────────────────────────────
 const template2 = (order, settings, docType = 'invoice') => {
     const s = settings || {};
-    const taxPct = order.taxAmount > 0 ? (s.documentConfig?.defaultTaxRate || 18) : 0;
+    const taxPct = (order.taxRate !== undefined && order.taxRate !== null && order.taxRate !== '')
+        ? parseFloat(order.taxRate)
+        : (order.taxAmount > 0 ? (s.documentConfig?.defaultTaxRate || 18) : 0);
     const isQuotation = docType === 'quotation';
     const title = isQuotation ? (s.documentConfig?.quotationTitle || 'QUOTATION') : (s.documentConfig?.invoiceTitle || 'TAX INVOICE');
     const docNo = isQuotation ? (order.quotationNumber || order.orderNumber) : order.orderNumber;
@@ -267,6 +286,7 @@ const template2 = (order, settings, docType = 'invoice') => {
         <th width="38%">Description</th>
         <th width="9%">HSN</th>
         <th width="10%">${qtyLabel}</th>
+        <th width="9%">Box Qty</th>
         <th width="9%">${rateLabel}</th>
         <th width="9%">Amount</th>
         <th width="7%">Tax</th>
@@ -280,14 +300,12 @@ const template2 = (order, settings, docType = 'invoice') => {
             <td style="text-align:center">${i + 1}</td>
             <td><strong>${(item.name || '').toUpperCase()}</strong><span style="display:block;font-size:7px;color:#888">${item.brand || ''} ${item.size || ''}</span></td>
             <td style="text-align:center">${item.hsn || ''}</td>
-            <td style="text-align:center;font-weight:bold">
-              ${item.totalSqFt ? item.totalSqFt.toFixed(2) : Number(item.primaryQty || item.quantity || 0).toFixed(2)}
-              ${item.boxCount || item.secondaryQty ? `<span style="display:block;font-size:7px;font-weight:normal">(${item.boxCount || item.secondaryQty} Box)</span>` : ''}
-            </td>
-            <td style="text-align:right">${Number(item.price || 0).toFixed(2)}</td>
-            <td style="text-align:right">${Number(total).toFixed(2)}</td>
+            <td style="text-align:center;font-weight:bold">${item.totalSqFt ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}</td>
+            <td style="text-align:center">${item.boxCount ? `${item.boxCount} (${item.pcsPerBox || ''} pcs/box)` : (item.secondaryQty ? `${item.secondaryQty}` : '')}</td>
+            <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
+            <td style="text-align:right">${formatIndianNumber(total, 2)}</td>
             <td style="text-align:center;color:#555">${taxPct}%</td>
-            <td style="text-align:right;font-weight:bold">${Number(withTax).toFixed(2)}</td>
+            <td style="text-align:right;font-weight:bold">${formatIndianNumber(withTax, 2)}</td>
           </tr>`;
       }).join('')}
       ${Array(Math.max(0, 13 - order.items.length)).fill(0).map(() => `<tr style="height:18px"><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('')}
@@ -300,19 +318,19 @@ const template2 = (order, settings, docType = 'invoice') => {
         <strong>Amount in Words:</strong><br/>${numberToWords(Math.round(order.totalAmount || 0))}
       </div>
       <div class="tax-mini">
-        <strong>Tax: </strong>Taxable: ${sym}${(order.itemsTotal || 0).toFixed(2)} | CGST ${taxPct / 2}%: ${sym}${((order.taxAmount || 0) / 2).toFixed(2)} | SGST ${taxPct / 2}%: ${sym}${((order.taxAmount || 0) / 2).toFixed(2)}
+        <strong>Tax: </strong>Taxable: ${sym}${formatIndianNumber(order.itemsTotal, 2)} | CGST ${taxPct / 2}%: ${sym}${formatIndianNumber((order.taxAmount || 0) / 2, 2)} | SGST ${taxPct / 2}%: ${sym}${formatIndianNumber((order.taxAmount || 0) / 2, 2)}
       </div>
       <div style="font-size:7px;margin-top:6px;color:#888;line-height:1.5">${terms.replace(/\n/g, ' | ')}</div>
     </div>
     <div class="totals-right">
-      <div class="total-row"><span>Subtotal:</span><span><b>${sym}${(order.itemsTotal || 0).toLocaleString()}</b></span></div>
-      ${order.taxAmount > 0 ? `<div class="total-row"><span>Tax (${taxPct}%):</span><span>${sym}${(order.taxAmount || 0).toLocaleString()}</span></div>` : ''}
-      ${order.loadingCharges > 0 ? `<div class="total-row"><span>Loading:</span><span>${sym}${order.loadingCharges.toLocaleString()}</span></div>` : ''}
-      ${order.unloadingCharges > 0 ? `<div class="total-row"><span>Unloading:</span><span>${sym}${order.unloadingCharges.toLocaleString()}</span></div>` : ''}
-      ${order.transportCharges > 0 ? `<div class="total-row"><span>Transport:</span><span>${sym}${order.transportCharges.toLocaleString()}</span></div>` : ''}
-      ${(order.discountAmount || 0) > 0 ? `<div class="total-row" style="color:green"><span>Discount:</span><span>- ${sym}${order.discountAmount.toLocaleString()}</span></div>` : ''}
-      ${order.advanceAmount > 0 ? `<div class="total-row" style="color:green"><span>Advance:</span><span>- ${sym}${order.advanceAmount.toLocaleString()}</span></div>` : ''}
-      <div class="net-total"><span>TOTAL:</span><span>${sym}${(order.totalAmount || 0).toLocaleString()}</span></div>
+      <div class="total-row"><span>Subtotal:</span><span><b>${sym}${formatIndianNumber(order.itemsTotal || 0, 2)}</b></span></div>
+      ${order.taxAmount > 0 ? `<div class="total-row"><span>Tax (${taxPct}%):</span><span>${sym}${formatIndianNumber(order.taxAmount || 0, 2)}</span></div>` : ''}
+      ${order.loadingCharges > 0 ? `<div class="total-row"><span>Loading:</span><span>${sym}${formatIndianNumber(order.loadingCharges, 2)}</span></div>` : ''}
+      ${order.unloadingCharges > 0 ? `<div class="total-row"><span>Unloading:</span><span>${sym}${formatIndianNumber(order.unloadingCharges, 2)}</span></div>` : ''}
+      ${order.transportCharges > 0 ? `<div class="total-row"><span>Transport:</span><span>${sym}${formatIndianNumber(order.transportCharges, 2)}</span></div>` : ''}
+      ${(order.discountAmount || 0) > 0 ? `<div class="total-row" style="color:green"><span>Discount:</span><span>- ${sym}${formatIndianNumber(order.discountAmount, 2)}</span></div>` : ''}
+      ${order.advanceAmount > 0 ? `<div class="total-row" style="color:green"><span>Advance:</span><span>- ${sym}${formatIndianNumber(order.advanceAmount, 2)}</span></div>` : ''}
+      <div class="net-total"><span>TOTAL:</span><span>${sym}${formatIndianNumber(order.totalAmount || 0, 2)}</span></div>
     </div>
   </div>
   <div class="footer">
@@ -331,7 +349,9 @@ const template2 = (order, settings, docType = 'invoice') => {
 // ─────────────────────────────────────────────────────────────────────────────
 const template3 = (order, settings, docType = 'invoice') => {
     const s = settings || {};
-    const taxPct = order.taxAmount > 0 ? (s.documentConfig?.defaultTaxRate || 18) : 0;
+    const taxPct = (order.taxRate !== undefined && order.taxRate !== null && order.taxRate !== '')
+        ? parseFloat(order.taxRate)
+        : (order.taxAmount > 0 ? (s.documentConfig?.defaultTaxRate || 18) : 0);
     const isQuotation = docType === 'quotation';
     const title = isQuotation ? (s.documentConfig?.quotationTitle || 'Quotation') : (s.documentConfig?.invoiceTitle || 'Tax Invoice');
     const docNo = isQuotation ? (order.quotationNumber || order.orderNumber) : order.orderNumber;
@@ -432,13 +452,13 @@ const template3 = (order, settings, docType = 'invoice') => {
           <td><strong style="color:#111">${(item.name || '').toUpperCase()}</strong><br/><span style="color:#aaa;font-size:7.5px">${item.brand || ''} ${item.size || ''}</span></td>
           <td style="color:#999;text-align:center">${item.hsn || ''}</td>
           <td style="text-align:center;font-weight:700">
-            ${item.totalSqFt ? item.totalSqFt.toFixed(2) : Number(item.primaryQty || item.quantity || 0).toFixed(2)}
-            ${item.boxCount || item.secondaryQty ? `<br/><span style="font-size:7px;font-weight:normal;color:#aaa">(${item.boxCount || item.secondaryQty} Box)</span>` : ''}
+            ${item.totalSqFt ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}
           </td>
-          <td style="text-align:right">${Number(item.price || 0).toFixed(2)}</td>
-          <td style="text-align:right">${Number(total).toFixed(2)}</td>
+          <td style="text-align:center">${item.boxCount ? `${item.boxCount}-${item.pcsPerBox || ''} pcs/box` : (item.secondaryQty ? `${item.secondaryQty}` : '')}</td>
+          <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
+          <td style="text-align:right">${formatIndianNumber(total, 2)}</td>
           <td style="text-align:center;color:#aaa">${taxPct}%</td>
-          <td style="text-align:right;font-weight:700">${Number(withTax).toFixed(2)}</td>
+          <td style="text-align:right;font-weight:700">${formatIndianNumber(withTax, 2)}</td>
         </tr>`;
     }).join('')}
     ${Array(Math.max(0, 12 - order.items.length)).fill(0).map(() => `<tr style="height:18px"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('')}
@@ -451,18 +471,18 @@ const template3 = (order, settings, docType = 'invoice') => {
     <div class="totals-left">
       <strong>Amount in Words:</strong><br/>${numberToWords(Math.round(order.totalAmount || 0))}
       <br/><br/>
-      ${taxPct > 0 ? `Tax: CGST ${taxPct/2}% = ${sym}${((order.taxAmount||0)/2).toFixed(2)} | SGST ${taxPct/2}% = ${sym}${((order.taxAmount||0)/2).toFixed(2)}<br/><br/>` : ''}
+      ${taxPct > 0 ? `Tax: CGST ${taxPct/2}% = ${sym}${formatIndianNumber((order.taxAmount||0)/2, 2)} | SGST ${taxPct/2}% = ${sym}${formatIndianNumber((order.taxAmount||0)/2, 2)}<br/><br/>` : ''}
       ${terms.replace(/\n/g, '<br/>')}
     </div>
     <div class="totals-right">
-      <div class="total-row"><span class="lbl">Subtotal</span><span>${sym}${(order.itemsTotal || 0).toLocaleString()}</span></div>
-      ${order.taxAmount > 0 ? `<div class="total-row"><span class="lbl">Tax (${taxPct}%)</span><span>${sym}${(order.taxAmount||0).toLocaleString()}</span></div>` : ''}
-      ${order.loadingCharges > 0 ? `<div class="total-row"><span class="lbl">Loading</span><span>${sym}${order.loadingCharges.toLocaleString()}</span></div>` : ''}
-      ${order.unloadingCharges > 0 ? `<div class="total-row"><span class="lbl">Unloading</span><span>${sym}${order.unloadingCharges.toLocaleString()}</span></div>` : ''}
-      ${order.transportCharges > 0 ? `<div class="total-row"><span class="lbl">Transport</span><span>${sym}${order.transportCharges.toLocaleString()}</span></div>` : ''}
-      ${(order.discountAmount||0) > 0 ? `<div class="total-row"><span class="lbl" style="color:green">Discount</span><span style="color:green">- ${sym}${order.discountAmount.toLocaleString()}</span></div>` : ''}
-      ${order.advanceAmount > 0 ? `<div class="total-row"><span class="lbl" style="color:green">Advance</span><span style="color:green">- ${sym}${order.advanceAmount.toLocaleString()}</span></div>` : ''}
-      <div class="grand-row"><span>TOTAL</span><span>${sym}${(order.totalAmount || 0).toLocaleString()}</span></div>
+      <div class="total-row"><span class="lbl">Subtotal</span><span>${sym}${formatIndianNumber(order.itemsTotal || 0, 2)}</span></div>
+      ${order.taxAmount > 0 ? `<div class="total-row"><span class="lbl">Tax (${taxPct}%)</span><span>${sym}${formatIndianNumber(order.taxAmount||0, 2)}</span></div>` : ''}
+      ${order.loadingCharges > 0 ? `<div class="total-row"><span class="lbl">Loading</span><span>${sym}${formatIndianNumber(order.loadingCharges, 2)}</span></div>` : ''}
+      ${order.unloadingCharges > 0 ? `<div class="total-row"><span class="lbl">Unloading</span><span>${sym}${formatIndianNumber(order.unloadingCharges, 2)}</span></div>` : ''}
+      ${order.transportCharges > 0 ? `<div class="total-row"><span class="lbl">Transport</span><span>${sym}${formatIndianNumber(order.transportCharges, 2)}</span></div>` : ''}
+      ${(order.discountAmount||0) > 0 ? `<div class="total-row"><span class="lbl" style="color:green">Discount</span><span style="color:green">- ${sym}${formatIndianNumber(order.discountAmount, 2)}</span></div>` : ''}
+      ${order.advanceAmount > 0 ? `<div class="total-row"><span class="lbl" style="color:green">Advance</span><span style="color:green">- ${sym}${formatIndianNumber(order.advanceAmount, 2)}</span></div>` : ''}
+      <div class="grand-row"><span>TOTAL</span><span>${sym}${formatIndianNumber(order.totalAmount || 0, 2)}</span></div>
     </div>
   </div>
 

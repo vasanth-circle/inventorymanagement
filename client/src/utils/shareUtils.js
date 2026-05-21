@@ -4,7 +4,7 @@ export const generateShareMessage = (order, settings, docType = 'quotation') => 
     const title = isQuotation ? 'Quotation' : 'Invoice';
     const docNo = isQuotation ? (order.quotationNumber || order.orderNumber) : order.orderNumber;
     const company = settings?.companyName || 'Our Company';
-    const total = (order.totalAmount || 0).toLocaleString();
+    const total = (order.totalAmount || 0).toLocaleString('en-IN');
     const currency = settings?.documentConfig?.currencySymbol || '₹';
 
     let message = `*${title} from ${company}*\n\n`;

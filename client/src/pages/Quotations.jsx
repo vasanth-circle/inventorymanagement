@@ -62,6 +62,9 @@ const Quotations = () => {
     const [dateTo, setDateTo] = useState('');
     const [convertingId, setConvertingId] = useState(null);
     const [fetchingBalance, setFetchingBalance] = useState(false);
+    const [convertModalOpen, setConvertModalOpen] = useState(false);
+    const [quotationToConvert, setQuotationToConvert] = useState(null);
+    const [advanceAmount, setAdvanceAmount] = useState('');
 
     const token = () => localStorage.getItem('token');
     const headers = () => ({ headers: { Authorization: `Bearer ${token()}` } });
@@ -208,17 +211,27 @@ const Quotations = () => {
         }
     };
 
-    const handleConvert = async (quotation) => {
-        if (!window.confirm(`Convert Quotation ${quotation.quotationNumber} to an Invoice? This cannot be undone.`)) return;
-        setConvertingId(quotation._id);
+    const handleConvert = (quotation) => {
+        setQuotationToConvert(quotation);
+        setAdvanceAmount('');
+        setConvertModalOpen(true);
+    };
+
+    const confirmConversion = async () => {
+        if (!quotationToConvert) return;
+        setConvertingId(quotationToConvert._id);
+        setConvertModalOpen(false);
         try {
-            const res = await api.post(`/quotations/${quotation._id}/convert`, {});
+            const res = await api.post(`/quotations/${quotationToConvert._id}/convert`, {
+                advanceAmount: parseFloat(advanceAmount) || 0
+            });
             toast.success(`Invoice ${res.data.data.salesOrder.orderNumber} created!`);
             fetchAll();
         } catch (err) {
             toast.error(err.response?.data?.message || 'Conversion failed');
         } finally {
             setConvertingId(null);
+            setQuotationToConvert(null);
         }
     };
 
@@ -846,6 +859,81 @@ const Quotations = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Custom Modern Confirmation Modal for Quotation -> Invoice Conversion */}
+            {convertModalOpen && quotationToConvert && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all duration-300 scale-100">
+                        {/* Modal Header */}
+                        <div className="px-6 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                                <span className="text-lg">📄</span>
+                                <h3 className="font-extrabold text-sm uppercase tracking-wider">Convert to Invoice</h3>
+                            </div>
+                            <button 
+                                onClick={() => {
+                                    setConvertModalOpen(false);
+                                    setQuotationToConvert(null);
+                                }} 
+                                className="text-white/80 hover:text-white text-xl font-bold transition-colors"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Modal Content */}
+                        <div className="p-6 space-y-4">
+                            <p className="text-sm font-semibold text-gray-600 leading-relaxed font-sans">
+                                Are you sure you want to convert Quotation <span className="font-black text-rose-500">{quotationToConvert.quotationNumber}</span> to an Invoice? This will generate a confirmed Sales Order and adjust inventory.
+                            </p>
+
+                            {/* Advance Input */}
+                            <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 space-y-2">
+                                <label htmlFor="conversion-advance" className="block text-[10px] font-black text-emerald-800 uppercase tracking-widest">
+                                    Advance Amount Received (₹)
+                                </label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 font-bold text-sm">₹</span>
+                                    <input 
+                                        id="conversion-advance"
+                                        type="number" 
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="0.00"
+                                        value={advanceAmount}
+                                        onChange={e => setAdvanceAmount(e.target.value)}
+                                        className="w-full h-10 pl-7 pr-3 bg-white border border-emerald-200 rounded-lg text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                    />
+                                </div>
+                                <p className="text-[10px] text-emerald-700/80 font-medium leading-normal">
+                                    If the customer has paid an advance, enter it here. This will be deducted from the net total.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                            <button 
+                                type="button" 
+                                onClick={() => {
+                                    setConvertModalOpen(false);
+                                    setQuotationToConvert(null);
+                                }} 
+                                className="px-5 py-2.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-500 rounded-xl text-xs font-black uppercase tracking-wider transition-colors shadow-sm"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                type="button" 
+                                onClick={confirmConversion}
+                                className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md active:scale-95"
+                            >
+                                Convert to Invoice
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

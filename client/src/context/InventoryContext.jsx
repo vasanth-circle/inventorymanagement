@@ -204,22 +204,28 @@ export const InventoryProvider = ({ children }) => {
                 }
             } else if (field === 'item' || field === 'price' || field === 'batchId') {
                 // Recalculate totals when item or price changes
-                if (billingUnit === 'boxes' && updatedRow.boxCount > 0) {
-                    updatedRow.totalPcs = updatedRow.boxCount * pcsPerBox;
+                if (billingUnit === 'boxes') {
+                    const boxes = updatedRow.boxCount > 0 ? updatedRow.boxCount : (updatedRow.quantity || 1);
+                    updatedRow.boxCount = boxes;
+                    updatedRow.totalPcs = boxes * pcsPerBox;
                     updatedRow.totalSqFt = Number((updatedRow.totalPcs * sqFtPerPc).toFixed(4));
-                    updatedRow.quantity = updatedRow.boxCount;
-                    updatedRow.stockQty = updatedRow.boxCount;
+                    updatedRow.quantity = boxes;
+                    updatedRow.stockQty = boxes;
                     updatedRow.stockUnit = 'boxes';
-                } else if (billingUnit === 'qty' && updatedRow.totalPcs > 0) {
-                    updatedRow.totalSqFt = Number((updatedRow.totalPcs * sqFtPerPc).toFixed(4));
-                    updatedRow.boxCount = pcsPerBox > 0 ? updatedRow.totalPcs / pcsPerBox : 0;
-                    updatedRow.quantity = updatedRow.totalPcs;
-                    updatedRow.stockQty = updatedRow.totalPcs;
+                } else if (billingUnit === 'qty') {
+                    const pcs = updatedRow.totalPcs > 0 ? updatedRow.totalPcs : (updatedRow.quantity || 1);
+                    updatedRow.totalPcs = pcs;
+                    updatedRow.totalSqFt = Number((pcs * sqFtPerPc).toFixed(4));
+                    updatedRow.boxCount = pcsPerBox > 0 ? pcs / pcsPerBox : 0;
+                    updatedRow.quantity = pcs;
+                    updatedRow.stockQty = pcs;
                     updatedRow.stockUnit = 'pieces';
-                } else if (billingUnit === 'sqft' && updatedRow.totalSqFt > 0) {
-                    updatedRow.totalPcs = sqFtPerPc > 0 ? updatedRow.totalSqFt / sqFtPerPc : 0;
+                } else if (billingUnit === 'sqft') {
+                    const sqft = updatedRow.totalSqFt > 0 ? updatedRow.totalSqFt : (updatedRow.quantity || 1);
+                    updatedRow.totalSqFt = sqft;
+                    updatedRow.totalPcs = sqFtPerPc > 0 ? sqft / sqFtPerPc : 0;
                     updatedRow.boxCount = pcsPerBox > 0 ? updatedRow.totalPcs / pcsPerBox : 0;
-                    updatedRow.quantity = updatedRow.totalSqFt;
+                    updatedRow.quantity = sqft;
                 }
             }
             // CRITICAL: For tiles, total is ALWAYS totalSqFt × ratePerSqft
