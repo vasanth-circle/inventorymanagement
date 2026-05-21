@@ -120,12 +120,26 @@ const salesOrderSchema = new mongoose.Schema({
 });
 
 // Calculate line item totals before saving
-salesOrderSchema.pre('validate', function (next) {
+  salesOrderSchema.pre('validate', function (next) {
+    // Compute line item total based on billing unit
     this.items.forEach(item => {
-        item.total = item.quantity * item.price;
+      let lineTotal = 0;
+      // Determine which quantity field to use
+      switch ((item.billingUnit || 'pieces').toLowerCase()) {
+        case 'sqft':
+          lineTotal = (item.totalSqFt || 0) * (item.price || 0);
+          break;
+        case 'boxes':
+          lineTotal = (item.boxCount || 0) * (item.price || 0);
+          break;
+        default: // pieces or any other unit
+          lineTotal = (item.quantity || 0) * (item.price || 0);
+      }
+      item.total = lineTotal;
     });
-    
-    this.itemsTotal = this.items.reduce((sum, item) => sum + item.total, 0);
+
+    // Sum up all line totals
+    this.itemsTotal = this.items.reduce((sum, item) => sum + (item.total || 0), 0);
     
     // Final Amount = Items + Loading + Transport + Tax + OldBalance - Advance
     this.totalAmount = (
