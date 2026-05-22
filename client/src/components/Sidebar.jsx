@@ -175,23 +175,27 @@ const Sidebar = ({ isOpen, onClose }) => {
                 print:hidden
             `}>
                 <div className="p-6 border-b border-slate-700/50 flex items-center justify-between overflow-visible relative">
-                    <div className="relative">
-                        <div 
-                            className="flex items-center space-x-3 cursor-pointer hover:bg-slate-800 p-2 -ml-2 rounded-lg transition-colors group"
-                            onClick={() => setShowAppSwitcher(!showAppSwitcher)}
-                        >
-                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white text-xl shadow-inner overflow-hidden ${activeApp === 'assets' ? 'bg-blue-600' : 'bg-primary-600'}`}>
-                                {activeApp === 'assets' ? '🖥️' : '📦'}
-                            </div>
-                            <div className="flex flex-col">
-                                <h1 className="text-lg font-bold text-white tracking-tight leading-none group-hover:text-blue-400 transition-colors">
-                                    {activeApp === 'assets' ? 'Asset Management' : 'InventoryPro'}
-                                </h1>
-                                <span className="text-[10px] text-slate-400 font-semibold tracking-wide flex items-center mt-0.5">
-                                    CHANGE APP <span className="ml-1 opacity-50 text-[8px]">▼</span>
-                                </span>
-                            </div>
-                        </div>
+                    {companyLogo && (
+                        <img src={companyLogo} alt="Company Logo" className="h-8 w-auto mr-2" />
+                    )}
+<div className="relative">
+  <div
+    className="flex items-center space-x-3 cursor-pointer hover:bg-slate-800 p-2 -ml-2 rounded-lg transition-colors group"
+    onClick={() => setShowAppSwitcher(!showAppSwitcher)}
+  >
+    <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white text-xl shadow-inner overflow-hidden ${activeApp === 'assets' ? 'bg-blue-600' : 'bg-primary-600'}`}>
+      {activeApp === 'assets' ? '🖥️' : '📦'}
+    </div>
+    <div className="flex flex-col">
+      <h1 className="text-lg font-bold text-white tracking-tight leading-none group-hover:text-blue-400 transition-colors hidden lg:block">
+        {activeApp === 'assets' ? 'Asset Management' : 'InventoryPro'}
+      </h1>
+      <span className="text-[10px] text-slate-400 font-semibold tracking-wide flex items-center mt-0.5 hidden lg:block">
+        CHANGE APP <span className="ml-1 opacity-50 text-[8px]">▼</span>
+      </span>
+    </div>
+  </div>
+</div>
 
                         {showAppSwitcher && (
                             <>
@@ -229,7 +233,6 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 </div>
                             </>
                         )}
-                    </div>
                     {/* Close button for mobile */}
                     <button 
                         onClick={onClose}
