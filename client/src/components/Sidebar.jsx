@@ -175,10 +175,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 print:hidden
             `}>
                 <div className="p-4 lg:p-6 border-b border-slate-700/50 flex flex-col gap-3 overflow-visible relative">
-                    <div className={`flex items-center ${companyLogo ? 'justify-between' : 'justify-end lg:hidden'}`}>
-                        {companyLogo && (
-                            <img src={companyLogo} alt="Company Logo" className="h-8 w-auto max-w-[140px] object-contain" />
-                        )}
+                    <div className="flex items-center justify-end lg:hidden">
                         {/* Close button for mobile */}
                         <button 
                             onClick={onClose}
