@@ -174,28 +174,37 @@ const Sidebar = ({ isOpen, onClose }) => {
                 ${isOpen ? 'translate-x-0' : '-translate-x-full'}
                 print:hidden
             `}>
-                <div className="p-6 border-b border-slate-700/50 flex items-center justify-between overflow-visible relative">
-                    {companyLogo && (
-                        <img src={companyLogo} alt="Company Logo" className="h-8 w-auto mr-2" />
-                    )}
-<div className="relative">
-  <div
-    className="flex items-center space-x-3 cursor-pointer hover:bg-slate-800 p-2 -ml-2 rounded-lg transition-colors group"
-    onClick={() => setShowAppSwitcher(!showAppSwitcher)}
-  >
-    <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white text-xl shadow-inner overflow-hidden ${activeApp === 'assets' ? 'bg-blue-600' : 'bg-primary-600'}`}>
-      {activeApp === 'assets' ? '🖥️' : '📦'}
-    </div>
-    <div className="flex flex-col">
-      <h1 className="text-lg font-bold text-white tracking-tight leading-none group-hover:text-blue-400 transition-colors hidden lg:block">
-        {activeApp === 'assets' ? 'Asset Management' : 'InventoryPro'}
-      </h1>
-      <span className="text-[10px] text-slate-400 font-semibold tracking-wide flex items-center mt-0.5 hidden lg:block">
-        CHANGE APP <span className="ml-1 opacity-50 text-[8px]">▼</span>
-      </span>
-    </div>
-  </div>
-</div>
+                <div className="p-4 lg:p-6 border-b border-slate-700/50 flex flex-col gap-3 overflow-visible relative">
+                    <div className={`flex items-center ${companyLogo ? 'justify-between' : 'justify-end lg:hidden'}`}>
+                        {companyLogo && (
+                            <img src={companyLogo} alt="Company Logo" className="h-8 w-auto max-w-[140px] object-contain" />
+                        )}
+                        {/* Close button for mobile */}
+                        <button 
+                            onClick={onClose}
+                            className="lg:hidden p-2 -mr-2 text-slate-400 hover:text-white"
+                        >
+                            ✕
+                        </button>
+                    </div>
+
+                    <div className="relative">
+                        <div
+                            className="flex items-center space-x-3 cursor-pointer hover:bg-slate-800 p-2 -ml-2 rounded-lg transition-colors group"
+                            onClick={() => setShowAppSwitcher(!showAppSwitcher)}
+                        >
+                            <div className={`w-9 h-9 flex-shrink-0 rounded-lg flex items-center justify-center text-white text-xl shadow-inner overflow-hidden ${activeApp === 'assets' ? 'bg-blue-600' : 'bg-primary-600'}`}>
+                                {activeApp === 'assets' ? '🖥️' : '📦'}
+                            </div>
+                            <div className="flex flex-col flex-1 min-w-0">
+                                <h1 className="text-base lg:text-lg font-bold text-white tracking-tight leading-none group-hover:text-blue-400 transition-colors truncate">
+                                    {activeApp === 'assets' ? 'Asset Management' : 'InventoryPro'}
+                                </h1>
+                                <span className="text-[10px] text-slate-400 font-semibold tracking-wide flex items-center mt-0.5">
+                                    CHANGE APP <span className="ml-1 opacity-50 text-[8px]">▼</span>
+                                </span>
+                            </div>
+                        </div>
 
                         {showAppSwitcher && (
                             <>
@@ -233,13 +242,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 </div>
                             </>
                         )}
-                    {/* Close button for mobile */}
-                    <button 
-                        onClick={onClose}
-                        className="lg:hidden p-2 text-slate-400 hover:text-white"
-                    >
-                        ✕
-                    </button>
+
+                    </div>
                 </div>
 
             <nav className="flex-1 mt-4 overflow-y-auto custom-scrollbar">
