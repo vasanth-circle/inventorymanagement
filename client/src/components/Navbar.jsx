@@ -19,15 +19,18 @@ const Navbar = ({ toggleSidebar }) => {
                 >
                     <span className="text-xl">☰</span>
                 </button>
-                {billingSettings?.branding?.logoUrl && (
+                {billingSettings?.branding?.logoUrl ? (
                     <img src={billingSettings.branding.logoUrl} alt="Company Logo" className="h-6 w-auto mr-2" />
-                )}
-                <div className="flex items-center space-x-2">
-                    <div className={`w-7 h-7 rounded-md flex items-center justify-center text-white text-lg ${activeApp === 'assets' ? 'bg-blue-600' : 'bg-primary-600'}`}>
-                        {activeApp === 'assets' ? '🖥️' : '📦'}
+                ) : (
+                    <div className="flex items-center space-x-2">
+                        <div className={`w-7 h-7 rounded-md flex items-center justify-center text-white text-lg ${activeApp === 'assets' ? 'bg-blue-600' : 'bg-primary-600'}`}>
+                            {activeApp === 'assets' ? '🖥️' : '📦'}
+                        </div>
+                        <h1 className="text-lg font-bold truncate">
+                            {activeApp === 'assets' ? 'Asset Management' : 'InventoryPro'}
+                        </h1>
                     </div>
-                                        {/* App name hidden on mobile */}
-                </div>
+                )}
             </div>
             
             <div className="flex items-center space-x-3">
