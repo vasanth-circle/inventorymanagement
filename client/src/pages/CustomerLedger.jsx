@@ -4,7 +4,7 @@ import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { printAccountStatement } from '../utils/printTemplates';
 import { AuthContext } from '../context/AuthContext';
-
+import FullScreenModal from '../components/FullScreenModal';
 const api = (path, opts = {}) =>
     axios({ url: `/api${path}`, ...opts, headers: { Authorization: `Bearer ${localStorage.getItem('token')}`, ...opts.headers } });
 
@@ -229,7 +229,7 @@ const CustomerLedger = () => {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left">
+                        <table className="w-full text-left mobile-card-table">
                             <thead>
                                 <tr className="bg-gray-50 border-b border-gray-100">
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">#</th>
@@ -246,27 +246,27 @@ const CustomerLedger = () => {
                                     const ts = typeStyle(entry.type);
                                     return (
                                         <tr key={entry._id} className={`${ts.bg} hover:brightness-95 transition-all`}>
-                                            <td className="px-4 py-3 text-gray-400 text-sm">{i + 1}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                                            <td className="px-4 py-3 text-gray-400 text-sm" data-label="#">{i + 1}</td>
+                                            <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap" data-label="Date">
                                                 {new Date(entry.date).toLocaleDateString('en-IN')}
                                             </td>
-                                            <td className="px-4 py-3 text-sm font-mono font-semibold text-gray-800">
+                                            <td className="px-4 py-3 text-sm font-mono font-semibold text-gray-800" data-label="Ref No.">
                                                 {entry.refNumber || '-'}
                                             </td>
-                                            <td className="px-4 py-3">
+                                            <td className="px-4 py-3" data-label="Particulars">
                                                 <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mb-1 ${ts.badge}`}>
                                                     {ts.label}
                                                 </span>
                                                 <p className="text-sm text-gray-700">{entry.description}</p>
                                                 {entry.notes && <p className="text-xs text-gray-400 mt-0.5">{entry.notes}</p>}
                                             </td>
-                                            <td className="px-4 py-3 text-right font-semibold text-red-600 whitespace-nowrap">
+                                            <td className="px-4 py-3 text-right font-semibold text-red-600 whitespace-nowrap" data-label="Debit (Dr)">
                                                 {entry.debit > 0 ? `₹${fmt(entry.debit)}` : <span className="text-gray-300">—</span>}
                                             </td>
-                                            <td className="px-4 py-3 text-right font-semibold text-green-600 whitespace-nowrap">
+                                            <td className="px-4 py-3 text-right font-semibold text-green-600 whitespace-nowrap" data-label="Credit (Cr)">
                                                 {entry.credit > 0 ? `₹${fmt(entry.credit)}` : <span className="text-gray-300">—</span>}
                                             </td>
-                                            <td className={`px-4 py-3 text-right font-bold whitespace-nowrap ${entry.balance >= 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                                            <td className={`px-4 py-3 text-right font-bold whitespace-nowrap ${entry.balance >= 0 ? 'text-orange-600' : 'text-green-600'}`} data-label="Balance">
                                                 ₹{fmt(Math.abs(entry.balance))}
                                                 <span className="text-xs font-normal ml-1">{entry.balance >= 0 ? 'Dr' : 'Cr'}</span>
                                             </td>
@@ -295,8 +295,8 @@ const CustomerLedger = () => {
 
             {/* Payment Modal */}
             {payModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-200">
+                <FullScreenModal isOpen={payModal} onClose={() => setPayModal(false)}>
+                    <div className="modal-content">
                         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-green-50">
                             <div className="flex flex-col">
                                 <h2 className="text-xl font-bold text-green-800">💵 Receive Payment</h2>
@@ -354,7 +354,7 @@ const CustomerLedger = () => {
                             </div>
                         </form>
                     </div>
-                </div>
+                </FullScreenModal>
             )}
         </div>
     );

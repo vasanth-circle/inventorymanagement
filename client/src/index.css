@@ -1,6 +1,9 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@import './assets/mobile.css';
+@tailwind components;
+@tailwind utilities;
 
 :root {
   --primary-color: #e11d48; /* Zoho Red */
