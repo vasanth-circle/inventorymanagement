@@ -31,3 +31,18 @@ export const tenantQuery = (req) => {
     
     return { tenantId: { $in: ids } };
 };
+
+/**
+ * Returns a branch-scoping filter for transactions based on user's assigned branches.
+ * Users with branchIds = [] (admins) see all branches.
+ * Otherwise, scoped to their branches. `branchId` query param or X-Branch-Id header narrows further.
+ */
+export const branchFilter = (req) => {
+    const branchIds = req.user?.branchIds || [];
+    if (!branchIds.length) return {};
+    const activeBranch = req.query.branchId || req.headers['x-branch-id'];
+    if (activeBranch && branchIds.some(b => b.toString() === activeBranch)) {
+        return { branchId: activeBranch };
+    }
+    return { branchId: { $in: branchIds } };
+};

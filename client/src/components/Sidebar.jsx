@@ -5,13 +5,18 @@ import { ThemeContext } from '../context/ThemeContext';
 import { InventoryContext } from '../context/InventoryContext';
 
 const Sidebar = ({ isOpen, onClose }) => {
-    const { user, logout } = useContext(AuthContext);
-    const { activePreset, billingSettings } = useContext(InventoryContext);
+    const { user, logout, activeBranchId, setActiveBranch } = useContext(AuthContext);
+    const { activePreset, billingSettings, branches } = useContext(InventoryContext);
     const { theme, toggleTheme } = useContext(ThemeContext);
     const location = useLocation();
     const navigate = useNavigate();
     const [expandedGroup, setExpandedGroup] = useState(null);
     const [showAppSwitcher, setShowAppSwitcher] = useState(false);
+    const [showBranchMenu, setShowBranchMenu] = useState(false);
+
+    const isAdmin = !user?.branchIds?.length; // empty branchIds = admin/all-access
+    const viewableBranches = isAdmin ? branches : branches.filter(b => user?.branchIds?.some(id => id === b._id || id?.toString() === b._id?.toString()));
+    const activeBranch = branches.find(b => b._id === activeBranchId);
 
     const activeApp = localStorage.getItem('activeApp') || 'inventory';
     const companyLogo = billingSettings?.branding?.logoUrl;
@@ -85,6 +90,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                 id: 'settings',
                 icon: '⚙️',
                 items: [
+                    { name: 'Branches', path: '/branches', id: 'branches' },
+                    { name: 'Branch Transfer', path: '/branch-transfer', id: 'branch-transfer' },
                     { name: 'Users', path: '/users', id: 'users' },
                     { name: 'Billing Settings', path: '/settings', id: 'settings' }
                 ]
@@ -241,6 +248,57 @@ const Sidebar = ({ isOpen, onClose }) => {
                         )}
 
                     </div>
+
+                    {/* Branch Selector — visible to all users with branches */}
+                    {viewableBranches.length > 0 && (
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowBranchMenu(!showBranchMenu)}
+                                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-xs text-slate-300 transition-colors"
+                            >
+                                <span>{activeBranch?.isHeadOffice ? '🏛️' : '🏪'}</span>
+                                <span className="flex-1 text-left truncate font-medium">
+                                    {activeBranch?.name || (isAdmin ? 'All Branches' : viewableBranches[0]?.name)}
+                                </span>
+                                {activeBranch && (
+                                    <span className="font-mono text-[10px] text-slate-500 bg-slate-700 px-1.5 py-0.5 rounded">{activeBranch.code}</span>
+                                )}
+                                <span className="opacity-50 text-[8px]">▼</span>
+                            </button>
+
+                            {showBranchMenu && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setShowBranchMenu(false)} />
+                                    <div className="absolute top-full left-0 mt-1 w-full bg-white rounded-xl shadow-2xl border border-gray-100 z-50 py-1 overflow-hidden">
+                                        <div className="px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50">View Branch</div>
+                                        {isAdmin && (
+                                            <button
+                                                onClick={() => { setActiveBranch(null); setShowBranchMenu(false); }}
+                                                className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 ${!activeBranchId ? 'text-primary-600 font-semibold bg-primary-50' : 'text-gray-700'}`}
+                                            >
+                                                <span>🏢</span> All Branches
+                                                {!activeBranchId && <span className="ml-auto text-primary-500 text-xs">●</span>}
+                                            </button>
+                                        )}
+                                        {viewableBranches.map(b => (
+                                            <button
+                                                key={b._id}
+                                                onClick={() => { setActiveBranch(b._id); setShowBranchMenu(false); }}
+                                                className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 border-t border-gray-50 ${activeBranchId === b._id ? 'text-primary-600 font-semibold bg-primary-50' : 'text-gray-700'}`}
+                                            >
+                                                <span>{b.isHeadOffice ? '🏛️' : '🏪'}</span>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-sm leading-none truncate">{b.name}</div>
+                                                    <div className="text-[10px] text-gray-400 font-mono mt-0.5">{b.code}</div>
+                                                </div>
+                                                {activeBranchId === b._id && <span className="text-primary-500 text-xs">●</span>}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
                 </div>
 
             <nav className="flex-1 mt-4 overflow-y-auto custom-scrollbar">

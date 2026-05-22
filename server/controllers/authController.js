@@ -99,7 +99,7 @@ export const register = async (req, res, next) => {
 // @access  Private/Admin
 export const addUser = async (req, res, next) => {
     try {
-        const { name, email, password, role, inventoryRole, isActive, menuAccess, allowedMenus } = req.body;
+        const { name, email, password, role, inventoryRole, isActive, menuAccess, allowedMenus, branchIds } = req.body;
 
         // Check if user exists
         const userExists = await User.findOne({ email });
@@ -127,7 +127,8 @@ export const addUser = async (req, res, next) => {
                 inventory: inventoryRole || (['admin', 'manager', 'super_admin', 'tenant_admin', 'tenant_owner'].includes(role) ? "inventory_admin" : "inventory_user"),
                 billing: null,
                 whatsapp: null
-            }
+            },
+            branchIds: branchIds || [],
         });
 
         res.status(201).json({
@@ -139,6 +140,7 @@ export const addUser = async (req, res, next) => {
             appRoles: user.appRoles,
             menuAccess: user.menuAccess,
             allowedMenus: user.allowedMenus,
+            branchIds: user.branchIds,
         });
     } catch (error) {
         next(error);
@@ -256,6 +258,7 @@ export const login = async (req, res, next) => {
             tenantId: user.tenantId,
             menuAccess: user.menuAccess,
             allowedMenus: user.allowedMenus,
+            branchIds: user.branchIds || [],
             token: generateToken(user._id),
         });
     } catch (error) {
@@ -277,7 +280,7 @@ export const getMe = async (req, res, next) => {
 };
 
 // @desc    Get all users (admin only)
-// @route   GET /api/auth/users
+// @route   GET /api/auth/users?branchId=xxx
 // @access  Private/Admin
 export const getUsers = async (req, res, next) => {
     try {
@@ -292,19 +295,27 @@ export const getUsers = async (req, res, next) => {
             return res.status(403).json({ success: false, message: 'Tenant context missing' });
         }
 
-
         // Match both ObjectId and String formats for robustness during transition
-        const users = await User.find({ 
+        const query = {
             $or: [
                 { tenantId: req.user.tenantId },
                 { tenantId: req.user.tenantId.toString() }
             ]
-        }).select('-password');
-        console.log(`getUsers: Found ${users.length} users for tenant ${req.user.tenantId}`);
+        };
+
+        // If a specific branchId is requested, filter to only users assigned to that branch
+        const { branchId } = req.query;
+        if (branchId) {
+            query.branchIds = branchId; // MongoDB: checks if branchId is in the array
+        }
+
+        const users = await User.find(query).select('-password');
+        console.log(`getUsers: Found ${users.length} users for tenant ${req.user.tenantId}${branchId ? ` (branch: ${branchId})` : ''}`);
         res.json(users);
     } catch (error) {
         console.error('getUsers error:', error);
         next(error);
+
     }
 };
 
@@ -353,7 +364,7 @@ export const updateProfile = async (req, res, next) => {
 export const updateUser = async (req, res, next) => {
     console.log('UpdateUser Request Body:', JSON.stringify(req.body, null, 2));
     try {
-        const { name, email, role, inventoryRole, isActive, menuAccess, allowedMenus } = req.body;
+        const { name, email, role, inventoryRole, isActive, menuAccess, allowedMenus, branchIds } = req.body;
         const userId = req.params.id;
 
         const tenantId = req.user.tenantId ? req.user.tenantId.toString() : null;
@@ -392,12 +403,16 @@ export const updateUser = async (req, res, next) => {
                 user.appRoles = { inventory: inventoryRole };
             } else {
                 user.appRoles.inventory = inventoryRole;
-                user.markModified('appRoles'); // Important for Mixed type
+                user.markModified('appRoles');
             }
         } else if (role && !user.appRoles.inventory) {
-            // Default mapping if not set
             user.appRoles.inventory = (['admin', 'manager', 'super_admin', 'tenant_admin', 'tenant_owner'].includes(role) ? "inventory_admin" : "inventory_user");
             user.markModified('appRoles');
+        }
+
+        // Update branch assignments
+        if (branchIds !== undefined) {
+            user.branchIds = branchIds;
         }
 
         await user.save();
@@ -411,6 +426,7 @@ export const updateUser = async (req, res, next) => {
             appRoles: user.appRoles,
             menuAccess: user.menuAccess,
             allowedMenus: user.allowedMenus,
+            branchIds: user.branchIds,
         });
     } catch (error) {
         next(error);

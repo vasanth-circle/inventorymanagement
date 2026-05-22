@@ -1,9 +1,11 @@
 import { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import { InventoryContext } from '../context/InventoryContext';
 import toast from 'react-hot-toast';
 
 const Users = () => {
-    const { user: currentUser, fetchUsers, addUser, updateUserDetails, changeUserStatus, removeUser, confirmDelete } = useContext(AuthContext);
+    const { user: currentUser, fetchUsers, addUser, updateUserDetails, changeUserStatus, removeUser, confirmDelete, activeBranchId } = useContext(AuthContext);
+    const { branches } = useContext(InventoryContext);
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -16,7 +18,8 @@ const Users = () => {
         inventoryRole: 'inventory_user',
         isActive: true,
         menuAccess: 'all', 
-        allowedMenus: [] 
+        allowedMenus: [],
+        branchIds: [],
     });
     
     const availableMenus = [
@@ -43,13 +46,17 @@ const Users = () => {
         { id: 'assets', name: 'Asset Management' },
     ];
 
+    // Re-load users whenever the active branch changes
     useEffect(() => {
         loadUsers();
-    }, []);
+    }, [activeBranchId]);
+
+    const activeBranch = branches.find(b => b._id === activeBranchId) || null;
 
     const loadUsers = async () => {
         setLoading(true);
-        const result = await fetchUsers();
+        // Pass activeBranchId so only branch-assigned employees are returned
+        const result = await fetchUsers(activeBranchId || null);
         if (result.success) {
             setUsers(result.data);
         } else {
@@ -69,7 +76,8 @@ const Users = () => {
                 inventoryRole: user.appRoles?.inventory || 'inventory_user',
                 isActive: user.isActive !== undefined ? user.isActive : true,
                 menuAccess: user.menuAccess || 'all',
-                allowedMenus: user.allowedMenus || []
+                allowedMenus: user.allowedMenus || [],
+                branchIds: user.branchIds || [],
             });
         } else {
             setEditingUser(null);
@@ -81,7 +89,8 @@ const Users = () => {
                 inventoryRole: 'inventory_user',
                 isActive: true,
                 menuAccess: 'all', 
-                allowedMenus: [] 
+                allowedMenus: [],
+                branchIds: [],
             });
         }
         setIsModalOpen(true);
@@ -140,7 +149,19 @@ const Users = () => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">User Management</h1>
+                    {activeBranch ? (
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs font-medium text-primary-600 bg-primary-50 border border-primary-200 px-2.5 py-1 rounded-full">
+                                🏪 Showing employees for: <strong>{activeBranch.name}</strong> ({activeBranch.code})
+                            </span>
+                            <span className="text-xs text-gray-400">Switch branch in sidebar to see others</span>
+                        </div>
+                    ) : (
+                        <p className="text-xs text-gray-400 mt-1">Showing all employees across all branches</p>
+                    )}
+                </div>
                 <button
                     onClick={() => handleOpenModal()}
                     className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium flex items-center shadow-sm"
@@ -156,6 +177,7 @@ const Users = () => {
                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">User Details</th>
                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">System Role</th>
                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Inventory Role</th>
+                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Branch</th>
                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                             <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
@@ -198,6 +220,23 @@ const Users = () => {
                                             {u.appRoles?.inventory?.replace('_', ' ') || 'No Access'}
                                         </span>
                                     </td>
+                                    {/* Branch column */}
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        {u.branchIds?.length > 0 ? (
+                                            <div className="flex flex-wrap gap-1">
+                                                {u.branchIds.map(bid => {
+                                                    const b = branches.find(br => br._id === bid || br._id?.toString() === bid?.toString());
+                                                    return b ? (
+                                                        <span key={bid} className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[10px] font-mono font-semibold">
+                                                            🏪 {b.code}
+                                                        </span>
+                                                    ) : null;
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-gray-400 italic">All branches</span>
+                                        )}
+                                    </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                             u.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
@@ -217,11 +256,15 @@ const Users = () => {
                             ))
                         ) : (
                             <tr>
-                                <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
+                                <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
                                     <div className="flex flex-col items-center">
-                                        <span className="text-4xl mb-2">👥</span>
-                                        <p className="text-lg font-medium">No users found</p>
-                                        <p className="text-sm">Add your first team member to get started.</p>
+                                        <span className="text-4xl mb-2">{activeBranch ? '🏪' : '👥'}</span>
+                                        <p className="text-lg font-medium">
+                                            {activeBranch ? `No employees assigned to ${activeBranch.name}` : 'No users found'}
+                                        </p>
+                                        <p className="text-sm">
+                                            {activeBranch ? 'Edit a user and assign them to this branch.' : 'Add your first team member to get started.'}
+                                        </p>
                                     </div>
                                 </td>
                             </tr>
@@ -332,6 +375,32 @@ const Users = () => {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Branch Assignment */}
+                            {branches.length > 0 && (
+                                <div className="pt-2 border-t border-gray-100">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Branch Assignment <span className="text-xs text-gray-400 font-normal">(leave empty = access all branches)</span></label>
+                                    <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 grid grid-cols-2 gap-y-2 gap-x-4">
+                                        {branches.map(branch => (
+                                            <label key={branch._id} className="flex items-center space-x-2 text-sm cursor-pointer hover:bg-gray-100 p-1 rounded">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.branchIds.includes(branch._id)}
+                                                    onChange={e => {
+                                                        const updated = e.target.checked
+                                                            ? [...formData.branchIds, branch._id]
+                                                            : formData.branchIds.filter(id => id !== branch._id);
+                                                        setFormData({ ...formData, branchIds: updated });
+                                                    }}
+                                                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                                />
+                                                <span className="text-gray-700">{branch.name} <span className="text-xs text-gray-400">({branch.code})</span></span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-1">🔒 Users with a branch assigned can only view data for their assigned branches.</p>
+                                </div>
+                            )}
 
                             <div className="flex space-x-3 pt-4 border-t border-gray-100">
                                 <button type="submit" className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-bold shadow-md">

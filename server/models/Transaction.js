@@ -9,7 +9,7 @@ const transactionSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['inward', 'outward', 'transfer', 'adjustment', 'return'],
+        enum: ['inward', 'outward', 'transfer', 'adjustment', 'return', 'branch_transfer'],
         required: [true, 'Transaction type is required'],
     },
     quantity: {
@@ -82,6 +82,16 @@ const transactionSchema = new mongoose.Schema({
         ref: 'Tenant',
         required: [true, 'Tenant ID is required'],
         index: true,
+    },
+    // Branch tracking
+    branchId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Branch',
+        index: true,
+    },
+    toBranchId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Branch',
     },
 }, {
     timestamps: true,

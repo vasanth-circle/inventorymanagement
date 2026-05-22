@@ -17,6 +17,7 @@ export const InventoryProvider = ({ children }) => {
     const [sizes, setSizes] = useState([]);
     const [purchaseOrders, setPurchaseOrders] = useState([]);
     const [billingSettings, setBillingSettings] = useState(null);
+    const [branches, setBranches] = useState([]);
     const [activePreset, setActivePreset] = useState(getIndustryPreset('generic'));
     const [loading, setLoading] = useState(false);
 
@@ -122,6 +123,17 @@ export const InventoryProvider = ({ children }) => {
             return data.data;
         } catch (error) {
             console.error('Failed to fetch billing settings');
+        }
+    };
+
+    const fetchBranches = async () => {
+        try {
+            const { data } = await api.get('/branches');
+            setBranches(data.data || []);
+            return data.data || [];
+        } catch (error) {
+            console.error('Failed to fetch branches');
+            return [];
         }
     };
 
@@ -501,6 +513,7 @@ export const InventoryProvider = ({ children }) => {
             fetchBillingSettings();
             fetchHsnCodes();
             fetchSizes();
+            fetchBranches();
             fetchPurchaseOrders({ status: 'issued' });
         }
     }, [user]);
@@ -550,6 +563,8 @@ export const InventoryProvider = ({ children }) => {
                 calculateItemValues,
                 purchaseOrders,
                 fetchPurchaseOrders,
+                branches,
+                fetchBranches,
             }}
         >
             {children}

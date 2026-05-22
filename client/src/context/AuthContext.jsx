@@ -7,6 +7,10 @@ export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    // Active branch selected by the user (stored in localStorage for persistence)
+    const [activeBranchId, setActiveBranchIdState] = useState(
+        () => localStorage.getItem('activeBranchId') || null
+    );
 
     useEffect(() => {
         const verifyToken = async () => {
@@ -63,7 +67,19 @@ export const AuthProvider = ({ children }) => {
     const logout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('activeBranchId');
         setUser(null);
+        setActiveBranchIdState(null);
+    };
+
+    // Set the active branch (called from branch selector or login page)
+    const setActiveBranch = (branchId) => {
+        if (branchId) {
+            localStorage.setItem('activeBranchId', branchId);
+        } else {
+            localStorage.removeItem('activeBranchId');
+        }
+        setActiveBranchIdState(branchId || null);
     };
 
     // User Management (Admin only)
@@ -79,9 +95,10 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const fetchUsers = async () => {
+    const fetchUsers = async (branchId = null) => {
         try {
-            const { data } = await api.get('/auth/users');
+            const url = branchId ? `/auth/users?branchId=${branchId}` : '/auth/users';
+            const { data } = await api.get(url);
             return { success: true, data };
         } catch (error) {
             return { success: false, message: error.response?.data?.message || 'Failed to fetch users' };
@@ -129,6 +146,8 @@ export const AuthProvider = ({ children }) => {
         <AuthContext.Provider value={{
             user,
             loading,
+            activeBranchId,
+            setActiveBranch,
             login,
             register,
             logout,

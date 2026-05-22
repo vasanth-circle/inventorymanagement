@@ -63,6 +63,13 @@ const userSchema = new mongoose.Schema({
         ref: 'Tenant',
         index: true,
     },
+    // Multi-branch support: array of branch ObjectIds the user is assigned to.
+    // Empty array = access to all branches (admin default).
+    branchIds: {
+        type: [mongoose.Schema.Types.ObjectId],
+        ref: 'Branch',
+        default: [],
+    },
 }, {
     timestamps: true,
 });

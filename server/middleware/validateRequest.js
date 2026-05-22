@@ -51,6 +51,7 @@ export const schemas = {
         menuAccess: Joi.string().valid('all', 'specific', null).optional(),
         allowedMenus: Joi.array().items(Joi.string().allow('')).optional(),
         isActive: Joi.boolean().optional(),
+        branchIds: Joi.array().items(Joi.string().allow('')).optional().default([]),
     }),
 
     addUser: Joi.object({
@@ -62,6 +63,7 @@ export const schemas = {
         isActive: Joi.boolean().optional().default(true),
         menuAccess: Joi.string().valid('all', 'specific', null).optional().default('all'),
         allowedMenus: Joi.array().items(Joi.string().allow('')).optional().default([]),
+        branchIds: Joi.array().items(Joi.string().allow('')).optional().default([]),
     }),
 
     createItem: Joi.object({

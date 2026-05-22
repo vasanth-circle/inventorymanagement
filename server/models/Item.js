@@ -95,6 +95,13 @@ const itemSchema = new mongoose.Schema({
         of: mongoose.Schema.Types.Mixed,
         default: {},
     },
+    // Per-branch stock tracking
+    branchStock: [
+        {
+            branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
+            quantity: { type: Number, default: 0, min: 0 },
+        }
+    ],
     tenantId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Tenant',
