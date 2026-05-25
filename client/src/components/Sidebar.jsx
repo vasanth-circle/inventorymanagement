@@ -29,6 +29,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 { name: activePreset?.terminology?.items || 'Items', path: '/inventory', id: 'items' },
                 { name: 'HSN Codes', path: '/hsn-management', id: 'hsn' },
                 { name: 'Categories', path: '/categories', id: 'categories' },
+                { name: 'Brands', path: '/brands', id: 'brands' },
                 ...(billingSettings?.industry === 'tiles' ? [{ name: 'Manage Sizes', path: '/sizes', id: 'sizes' }] : []),
                 { name: 'Locations', path: '/locations', id: 'locations' },
                 { name: 'Bulk Import', path: '/bulk-import', id: 'bulk-import' },

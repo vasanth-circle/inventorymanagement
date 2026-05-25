@@ -15,6 +15,7 @@ export const InventoryProvider = ({ children }) => {
     const [transactions, setTransactions] = useState([]);
     const [hsnCodes, setHsnCodes] = useState([]);
     const [sizes, setSizes] = useState([]);
+    const [brands, setBrands] = useState([]);
     const [purchaseOrders, setPurchaseOrders] = useState([]);
     const [billingSettings, setBillingSettings] = useState(null);
     const [activePreset, setActivePreset] = useState(getIndustryPreset('generic'));
@@ -393,6 +394,50 @@ export const InventoryProvider = ({ children }) => {
         }
     };
 
+    // Brand CRUD functions
+    const fetchBrands = async () => {
+        try {
+            const { data } = await api.get('/brands');
+            setBrands(data.data || []);
+            return data.data || [];
+        } catch (error) {
+            console.error('Failed to fetch brands');
+        }
+    };
+
+    const addBrand = async (brandData) => {
+        try {
+            const { data } = await api.post('/brands', brandData);
+            setBrands([...brands, data.data]);
+            return { success: true, data: data.data };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to create brand');
+            return { success: false };
+        }
+    };
+
+    const editBrand = async (id, brandData) => {
+        try {
+            const { data } = await api.put(`/brands/${id}`, brandData);
+            setBrands(brands.map(b => b._id === id ? data.data : b));
+            return { success: true, data: data.data };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update brand');
+            return { success: false };
+        }
+    };
+
+    const removeBrand = async (id) => {
+        try {
+            await api.delete(`/brands/${id}`);
+            setBrands(brands.filter(b => b._id !== id));
+            return { success: true };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete brand');
+            return { success: false };
+        }
+    };
+
     // Fetch Purchase Orders
     const fetchPurchaseOrders = async (params = {}) => {
         try {
@@ -501,6 +546,7 @@ export const InventoryProvider = ({ children }) => {
             fetchBillingSettings();
             fetchHsnCodes();
             fetchSizes();
+            fetchBrands();
             fetchPurchaseOrders({ status: 'issued' });
         }
     }, [user]);
@@ -550,6 +596,11 @@ export const InventoryProvider = ({ children }) => {
                 calculateItemValues,
                 purchaseOrders,
                 fetchPurchaseOrders,
+                brands,
+                fetchBrands,
+                addBrand,
+                editBrand,
+                removeBrand,
             }}
         >
             {children}
