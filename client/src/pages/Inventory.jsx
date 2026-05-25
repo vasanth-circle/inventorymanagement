@@ -2,12 +2,13 @@ import { useState, useEffect, useContext } from 'react';
 import { InventoryContext } from '../context/InventoryContext';
 import { formatCurrency, formatDate, getStockStatusColor, exportToCSV, debounce } from '../utils/helpers';
 import toast from 'react-hot-toast';
+import SearchableSelect from '../components/SearchableSelect';
 
 const Inventory = () => {
     const {
         items, fetchItems, deleteItem, createItem, updateItem,
         categories, locations, fetchLocations, loading, confirmDelete,
-        billingSettings, activePreset, hsnCodes, fetchHsnCodes, sizes
+        billingSettings, activePreset, hsnCodes, fetchHsnCodes, sizes, brands
     } = useContext(InventoryContext);
     const [filters, setFilters] = useState({
         search: '',
@@ -215,7 +216,10 @@ const Inventory = () => {
     };
 
     const handleEditChange = (e) => {
-        setEditFormData({ ...editFormData, [e.target.name]: e.target.value });
+        const updated = { ...editFormData, [e.target.name]: e.target.value };
+        // Reset brand when category changes (brands are category-specific)
+        if (e.target.name === 'category') updated.brand = '';
+        setEditFormData(updated);
     };
 
     const handleUpdate = async (e) => {
@@ -271,7 +275,10 @@ const Inventory = () => {
     };
 
     const handleCreateChange = (e) => {
-        setCreateFormData({ ...createFormData, [e.target.name]: e.target.value });
+        const updated = { ...createFormData, [e.target.name]: e.target.value };
+        // Reset brand when category changes (brands are category-specific)
+        if (e.target.name === 'category') updated.brand = '';
+        setCreateFormData(updated);
     };
 
     const addCreateCustomField = () => {
@@ -675,18 +682,14 @@ const Inventory = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                                    <select
+                                    <SearchableSelect
                                         name="category"
-                                        required
                                         value={editFormData.category}
                                         onChange={handleEditChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    >
-                                        <option value="">Select Category</option>
-                                        {categories.map(cat => (
-                                            <option key={cat._id} value={cat._id}>{cat.name}</option>
-                                        ))}
-                                    </select>
+                                        placeholder="Select Category"
+                                        searchPlaceholder="Search categories..."
+                                        options={categories.map(cat => ({ value: cat._id, label: cat.name }))}
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Selling Price (₹) per {billingSettings?.unitConfig?.rateBasis?.replace('per_', '') || 'Unit'}</label>
@@ -713,42 +716,39 @@ const Inventory = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                                    <select
+                                    <SearchableSelect
                                         name="location"
                                         value={editFormData.location}
                                         onChange={handleEditChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    >
-                                        <option value="">Select Location</option>
-                                        {locations.map(loc => (
-                                            <option key={loc._id} value={loc.name}>{loc.name}</option>
-                                        ))}
-                                    </select>
+                                        placeholder="Select Location"
+                                        searchPlaceholder="Search locations..."
+                                        options={locations.map(loc => ({ value: loc.name, label: loc.name }))}
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
-                                    <input
-                                        type="text"
+                                    <SearchableSelect
                                         name="brand"
                                         value={editFormData.brand}
                                         onChange={handleEditChange}
-                                        placeholder="e.g. Kajaria"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                        placeholder="Select Brand"
+                                        searchPlaceholder="Search brands..."
+                                        options={brands
+                                            .filter(b => !editFormData.category || (b.categoryId?._id || b.categoryId) === editFormData.category)
+                                            .map(b => ({ value: b.name, label: b.name }))
+                                        }
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">HSN Code</label>
-                                    <select
+                                    <SearchableSelect
                                         name="hsn"
                                         value={editFormData.hsn}
                                         onChange={handleEditChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    >
-                                        <option value="">Select HSN</option>
-                                        {hsnCodes.map(hsn => (
-                                            <option key={hsn._id} value={hsn.code}>{hsn.code} - {hsn.description}</option>
-                                        ))}
-                                    </select>
+                                        placeholder="Select HSN"
+                                        searchPlaceholder="Search HSN code or description..."
+                                        options={hsnCodes.map(hsn => ({ value: hsn.code, label: `${hsn.code}${hsn.description ? ' - ' + hsn.description : ''}` }))}
+                                    />
                                 </div>
                                 {renderDynamicFields(editFormData, setEditFormData)}
                             </div>
@@ -861,18 +861,14 @@ const Inventory = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                                    <select
+                                    <SearchableSelect
                                         name="category"
-                                        required
                                         value={createFormData.category}
                                         onChange={handleCreateChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    >
-                                        <option value="">Select Category</option>
-                                        {categories.map(cat => (
-                                            <option key={cat._id} value={cat._id}>{cat.name}</option>
-                                        ))}
-                                    </select>
+                                        placeholder="Select Category"
+                                        searchPlaceholder="Search categories..."
+                                        options={categories.map(cat => ({ value: cat._id, label: cat.name }))}
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Selling Price (₹) per {billingSettings?.unitConfig?.rateBasis?.replace('per_', '') || 'Unit'}</label>
@@ -908,42 +904,39 @@ const Inventory = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                                    <select
+                                    <SearchableSelect
                                         name="location"
                                         value={createFormData.location}
                                         onChange={handleCreateChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    >
-                                        <option value="">Select Location</option>
-                                        {locations.map(loc => (
-                                            <option key={loc._id} value={loc.name}>{loc.name}</option>
-                                        ))}
-                                    </select>
+                                        placeholder="Select Location"
+                                        searchPlaceholder="Search locations..."
+                                        options={locations.map(loc => ({ value: loc.name, label: loc.name }))}
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
-                                    <input
-                                        type="text"
+                                    <SearchableSelect
                                         name="brand"
                                         value={createFormData.brand}
                                         onChange={handleCreateChange}
-                                        placeholder="e.g. Kajaria"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                        placeholder="Select Brand"
+                                        searchPlaceholder="Search brands..."
+                                        options={brands
+                                            .filter(b => !createFormData.category || (b.categoryId?._id || b.categoryId) === createFormData.category)
+                                            .map(b => ({ value: b.name, label: b.name }))
+                                        }
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">HSN Code</label>
-                                    <select
+                                    <SearchableSelect
                                         name="hsn"
                                         value={createFormData.hsn}
                                         onChange={handleCreateChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    >
-                                        <option value="">Select HSN</option>
-                                        {hsnCodes.map(hsn => (
-                                            <option key={hsn._id} value={hsn.code}>{hsn.code} - {hsn.description}</option>
-                                        ))}
-                                    </select>
+                                        placeholder="Select HSN"
+                                        searchPlaceholder="Search HSN code or description..."
+                                        options={hsnCodes.map(hsn => ({ value: hsn.code, label: `${hsn.code}${hsn.description ? ' - ' + hsn.description : ''}` }))}
+                                    />
                                 </div>
                                 {renderDynamicFields(createFormData, setCreateFormData)}
                             </div>
