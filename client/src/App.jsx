@@ -18,6 +18,7 @@ import StockAdjustment from './pages/StockAdjustment';
 import Reports from './pages/Reports';
 import Stocks from './pages/Stocks';
 import Categories from './pages/Categories';
+import Brands from './pages/Brands';
 import BulkImport from './pages/BulkImport';
 import Users from './pages/Users';
 import Customers from './pages/Customers';
@@ -102,6 +103,7 @@ function App() {
                                             <Route path="/ledger-reports" element={<LedgerReports />} />
                                             <Route path="/stocks" element={<Stocks />} />
                                             <Route path="/categories" element={<Categories />} />
+                                            <Route path="/brands" element={<Brands />} />
                                             <Route path="/bulk-import" element={<BulkImport />} />
                                             <Route path="/users" element={<Users />} />
                                             <Route path="/customers" element={<Customers />} />

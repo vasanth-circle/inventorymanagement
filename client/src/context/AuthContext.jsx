@@ -1,8 +1,10 @@
-import { createContext, useState, useEffect } from 'react';
+import { createContext, useState, useEffect, useRef, useCallback } from 'react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 
 export const AuthContext = createContext();
+
+const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
@@ -11,6 +13,48 @@ export const AuthProvider = ({ children }) => {
     const [activeBranchId, setActiveBranchIdState] = useState(
         () => localStorage.getItem('activeBranchId') || null
     );
+    const inactivityTimer = useRef(null);
+
+    const clearSession = useCallback(() => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('activeBranchId');
+        setUser(null);
+        setActiveBranchIdState(null);
+    }, []);
+
+    const resetInactivityTimer = useCallback(() => {
+        if (inactivityTimer.current) {
+            clearTimeout(inactivityTimer.current);
+        }
+        inactivityTimer.current = setTimeout(() => {
+            clearSession();
+            toast.error('Session expired due to inactivity. Please log in again.', { duration: 5000 });
+        }, INACTIVITY_TIMEOUT_MS);
+    }, [clearSession]);
+
+    // Attach activity listeners when user is logged in
+    useEffect(() => {
+        if (!user) {
+            if (inactivityTimer.current) {
+                clearTimeout(inactivityTimer.current);
+                inactivityTimer.current = null;
+            }
+            return;
+        }
+
+        const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+        resetInactivityTimer();
+
+        activityEvents.forEach(event => window.addEventListener(event, resetInactivityTimer));
+
+        return () => {
+            activityEvents.forEach(event => window.removeEventListener(event, resetInactivityTimer));
+            if (inactivityTimer.current) {
+                clearTimeout(inactivityTimer.current);
+            }
+        };
+    }, [user, resetInactivityTimer]);
 
     useEffect(() => {
         const verifyToken = async () => {
@@ -65,11 +109,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        localStorage.removeItem('activeBranchId');
-        setUser(null);
-        setActiveBranchIdState(null);
+        clearSession();
     };
 
     // Set the active branch (called from branch selector or login page)

@@ -31,6 +31,7 @@ import vendorLedgerRoutes from './routes/vendorLedgerRoutes.js';
 import hsnRoutes from './routes/hsnRoutes.js';
 import sizeRoutes from './routes/sizeRoutes.js';
 import branchRoutes from './routes/branchRoutes.js';
+import brandRoutes from './routes/brandRoutes.js';
 import fixLegacyIndexes from './utils/fixIndexes.js';
 // Ensure User model is registered on appConn for cross-connection populate
 import { AppUser } from './models/User.js';
@@ -98,6 +99,7 @@ app.use('/api/vendor-ledger', vendorLedgerRoutes);
 app.use('/api/hsn', hsnRoutes);
 app.use('/api/sizes', sizeRoutes);
 app.use('/api/branches', branchRoutes);
+app.use('/api/brands', brandRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

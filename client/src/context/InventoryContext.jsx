@@ -10,6 +10,7 @@ export const InventoryProvider = ({ children }) => {
     const { user } = useContext(AuthContext);
     const [items, setItems] = useState([]);
     const [categories, setCategories] = useState([]);
+    const [brands, setBrands] = useState([]);
     const [locations, setLocations] = useState([]);
     const [assetLocations, setAssetLocations] = useState([]);
     const [transactions, setTransactions] = useState([]);
@@ -35,6 +36,16 @@ export const InventoryProvider = ({ children }) => {
             setCategories(data);
         } catch (error) {
             toast.error('Failed to fetch categories');
+        }
+    };
+
+    // Fetch brands
+    const fetchBrands = async () => {
+        try {
+            const { data } = await api.get('/brands');
+            setBrands(data);
+        } catch (error) {
+            toast.error('Failed to fetch brands');
         }
     };
 
@@ -299,6 +310,42 @@ export const InventoryProvider = ({ children }) => {
         }
     };
 
+    // Create brand
+    const addBrand = async (brandData) => {
+        try {
+            const { data } = await api.post('/brands', brandData);
+            setBrands([...brands, data]);
+            return { success: true, data };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to create brand');
+            return { success: false };
+        }
+    };
+
+    // Update brand
+    const editBrand = async (id, brandData) => {
+        try {
+            const { data } = await api.put(`/brands/${id}`, brandData);
+            setBrands(brands.map(b => b._id === id ? data : b));
+            return { success: true, data };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update brand');
+            return { success: false };
+        }
+    };
+
+    // Delete brand
+    const removeBrand = async (id) => {
+        try {
+            await api.delete(`/brands/${id}`);
+            setBrands(brands.filter(b => b._id !== id));
+            return { success: true };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete brand');
+            return { success: false };
+        }
+    };
+
     // Fetch locations
     const fetchLocations = async (type = 'inventory') => {
         try {
@@ -508,6 +555,7 @@ export const InventoryProvider = ({ children }) => {
     useEffect(() => {
         if (user) {
             fetchCategories();
+            fetchBrands();
             fetchLocations();
             fetchAssetLocations();
             fetchBillingSettings();
@@ -535,6 +583,11 @@ export const InventoryProvider = ({ children }) => {
                 addCategory,
                 editCategory,
                 removeCategory,
+                brands,
+                fetchBrands,
+                addBrand,
+                editBrand,
+                removeBrand,
                 locations,
                 fetchLocations,
                 addLocation,

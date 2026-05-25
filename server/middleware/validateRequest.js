@@ -124,6 +124,10 @@ export const schemas = {
         name: Joi.string().required().trim(),
         description: Joi.string().optional().allow('').trim(),
     }),
+    createBrand: Joi.object({
+        name: Joi.string().required().trim(),
+        description: Joi.string().optional().allow('').trim(),
+    }),
     createLocation: Joi.object({
         name: Joi.string().required().trim(),
         description: Joi.string().optional().allow('').trim(),

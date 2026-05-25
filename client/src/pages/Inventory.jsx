@@ -7,7 +7,7 @@ const Inventory = () => {
     const {
         items, fetchItems, deleteItem, createItem, updateItem,
         categories, locations, fetchLocations, loading, confirmDelete,
-        billingSettings, activePreset, hsnCodes, fetchHsnCodes, sizes
+        billingSettings, activePreset, hsnCodes, fetchHsnCodes, sizes, brands
     } = useContext(InventoryContext);
     const [filters, setFilters] = useState({
         search: '',
@@ -727,14 +727,17 @@ const Inventory = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
-                                    <input
-                                        type="text"
+                                    <select
                                         name="brand"
                                         value={editFormData.brand}
-                                        onChange={handleEditChange}
-                                        placeholder="e.g. Kajaria"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    />
+                                        onChange={(e) => setEditFormData({ ...editFormData, brand: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                                    >
+                                        <option value="">Select Brand</option>
+                                        {brands.map(brand => (
+                                            <option key={brand._id} value={brand.name}>{brand.name}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">HSN Code</label>
@@ -922,14 +925,17 @@ const Inventory = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
-                                    <input
-                                        type="text"
+                                    <select
                                         name="brand"
                                         value={createFormData.brand}
-                                        onChange={handleCreateChange}
-                                        placeholder="e.g. Kajaria"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    />
+                                        onChange={(e) => setCreateFormData({ ...createFormData, brand: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                                    >
+                                        <option value="">Select Brand</option>
+                                        {brands.map(brand => (
+                                            <option key={brand._id} value={brand.name}>{brand.name}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">HSN Code</label>
