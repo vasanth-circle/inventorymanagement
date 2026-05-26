@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import SearchableSelect from '../components/SearchableSelect';
 
 const PurchaseOrders = () => {
     const [orders, setOrders] = useState([]);
@@ -51,7 +52,7 @@ const PurchaseOrders = () => {
         try {
             const [vendRes, itemRes] = await Promise.all([
                 axios.get('/api/vendors', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
-                axios.get('/api/items', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+                axios.get('/api/items', { params: { limit: 10000 }, headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
             ]);
             setVendors(vendRes.data.data.vendors);
             setItems(itemRes.data.items);
@@ -277,14 +278,14 @@ const PurchaseOrders = () => {
                                         {formData.items.map((row, index) => (
                                             <tr key={index}>
                                                 <td className="py-2">
-                                                    <select required value={row.item} onChange={(e) => handleItemChange(index, 'item', e.target.value)} className="w-full px-2 py-1 border rounded outline-none border-gray-200">
-                                                        <option value="">Select Item</option>
-                                                        {items.map(i => (
-                                                            <option key={i._id} value={i._id}>
-                                                                {i.name}{i.size ? ` - ${i.size}` : ''} ({i.sku || 'No SKU'})
-                                                            </option>
-                                                        ))}
-                                                    </select>
+                                                    <SearchableSelect
+                                                        value={row.item}
+                                                        onChange={(val) => handleItemChange(index, 'item', val)}
+                                                        options={items.map(i => ({ value: i._id, label: `${i.name}${i.size ? ` - ${i.size}` : ''} (${i.sku || 'No SKU'})` }))}
+                                                        placeholder="Select Item"
+                                                        searchPlaceholder="Search Item..."
+                                                        className="w-full"
+                                                    />
                                                 </td>
                                                 <td className="px-2 py-2">
                                                     <input required type="number" step="0.01" min="0" value={row.boxCount} onChange={(e) => handleItemChange(index, 'boxCount', e.target.value)} className="w-full px-2 py-1 border rounded border-gray-200 text-center font-bold" />
