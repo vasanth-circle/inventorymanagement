@@ -78,7 +78,7 @@ const SalesOrders = () => {
 
     const fetchCustomers = async () => {
         try {
-            const res = await axios.get(CUSTOMERS_API, {
+            const res = await axios.get(`${CUSTOMERS_API}?limit=5000`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
             setCustomers(res.data.data?.customers || res.data.customers || []);
@@ -89,7 +89,7 @@ const SalesOrders = () => {
 
     const fetchItems = async () => {
         try {
-            const res = await axios.get(ITEMS_API, {
+            const res = await axios.get(`${ITEMS_API}?limit=5000`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
             setItems(res.data.items || []);
@@ -500,6 +500,9 @@ const SalesOrders = () => {
                                         {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && !['dispatched', 'partially_dispatched'].includes(order.status) && (
                                             <button onClick={() => handleEdit(order)} className="w-9 h-9 bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Edit">✏️</button>
                                         )}
+                                        {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
+                                            <button onClick={() => handleDelete(order._id)} className="w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Delete">🗑️</button>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -780,7 +783,7 @@ const SalesOrders = () => {
                                                 <input type="number" value={formData.unloadingCharges === 0 ? '' : formData.unloadingCharges} onChange={(e) => setFormData({ ...formData, unloadingCharges: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none" />
                                             </div>
                                             <div>
-                                                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Transport / Auto</label>
+                                                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Transport Charges</label>
                                                 <input type="number" value={formData.transportCharges === 0 ? '' : formData.transportCharges} onChange={(e) => setFormData({ ...formData, transportCharges: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none" />
                                             </div>
                                             <div>

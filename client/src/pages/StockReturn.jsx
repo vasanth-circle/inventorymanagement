@@ -31,8 +31,8 @@ const StockReturn = () => {
     const fetchInitialData = async () => {
         try {
             const [itemsRes, custRes, vendRes] = await Promise.all([
-                api.get('/items?limit=1000'),
-                api.get('/customers?limit=1000'),
+                api.get('/items?limit=5000'),
+                api.get('/customers?limit=5000'),
                 api.get('/vendors?limit=1000')
             ]);
             

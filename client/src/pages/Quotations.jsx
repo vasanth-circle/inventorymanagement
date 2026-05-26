@@ -80,8 +80,8 @@ const Quotations = () => {
             setLoading(true);
             const [quotRes, custRes, itemsRes] = await Promise.all([
                 api.get('/quotations'),
-                api.get('/customers?limit=1000'),
-                api.get('/items?limit=1000'),
+                api.get('/customers?limit=5000'),
+                api.get('/items?limit=5000'),
             ]);
             setQuotations(quotRes.data.data?.quotations || []);
             setCustomers(custRes.data.data?.customers || []);
