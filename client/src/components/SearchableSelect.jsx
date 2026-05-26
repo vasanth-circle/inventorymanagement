@@ -51,7 +51,7 @@ const SearchableSelect = ({
         opt.label?.toLowerCase().includes(search.toLowerCase())
     );
 
-    const selectedLabel = options.find(o => o.value === value)?.label || '';
+    const selectedLabel = options.find(o => String(o.value) === String(value))?.label || value || '';
 
     const handleSelect = (val) => {
         setOpen(false);

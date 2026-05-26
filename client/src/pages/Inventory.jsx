@@ -753,6 +753,32 @@ const Inventory = () => {
                                     />
                                 </div>
                                 <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Unit Type</label>
+                                    <select
+                                        name="unitType"
+                                        value={editFormData.unitType}
+                                        onChange={handleEditChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                    >
+                                        <option value="box">Box</option>
+                                        <option value="bag">Bag</option>
+                                        <option value="pieces">Pieces</option>
+                                        <option value="kg">Kg</option>
+                                        <option value="sqft">SqFt</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Min Stock Threshold</label>
+                                    <input
+                                        type="number"
+                                        name="minStockThreshold"
+                                        value={editFormData.minStockThreshold}
+                                        onChange={handleEditChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                    />
+                                </div>
+
+                                <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
                                     <SearchableSelect
                                         name="location"
@@ -772,7 +798,7 @@ const Inventory = () => {
                                         placeholder="Select Brand"
                                         searchPlaceholder="Search brands..."
                                         options={brands
-                                            .filter(b => !editFormData.category || (b.categoryId?._id || b.categoryId) === editFormData.category)
+                                            .filter(b => !editFormData.category || String(b.categoryId?._id || b.categoryId) === String(editFormData.category))
                                             .map(b => ({ value: b.name, label: b.name }))
                                         }
                                     />
@@ -789,6 +815,17 @@ const Inventory = () => {
                                     />
                                 </div>
                                 {renderDynamicFields(editFormData, setEditFormData)}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                <textarea
+                                    name="description"
+                                    rows="3"
+                                    value={editFormData.description}
+                                    onChange={handleEditChange}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                ></textarea>
                             </div>
 
                             <div className="space-y-4">
@@ -960,7 +997,7 @@ const Inventory = () => {
                                         placeholder="Select Brand"
                                         searchPlaceholder="Search brands..."
                                         options={brands
-                                            .filter(b => !createFormData.category || (b.categoryId?._id || b.categoryId) === createFormData.category)
+                                            .filter(b => !createFormData.category || String(b.categoryId?._id || b.categoryId) === String(createFormData.category))
                                             .map(b => ({ value: b.name, label: b.name }))
                                         }
                                     />

@@ -5,6 +5,7 @@ import Brand from '../models/Brand.js';
 import Size from '../models/Size.js';
 import Transaction from '../models/Transaction.js';
 import Location from '../models/Location.js';
+import HSN from '../models/HSN.js';
 import { appConn } from '../config/db.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
 
@@ -480,6 +481,21 @@ export const importBulkMapped = async (req, res, next) => {
             }
             sizeCache[key] = true;
         };
+
+        // Helper: resolve or create a HSN (cached)
+        const hsnCache = {};
+        const resolveHsn = async (hsnCode) => {
+            const key = String(hsnCode).toLowerCase().trim();
+            if (hsnCache[key] !== undefined) return;
+            const existing = await HSN.findOne({
+                code: { $regex: new RegExp(`^${hsnCode}$`, 'i') },
+                ...tenantQuery(req)
+            });
+            if (!existing) {
+                await HSN.create({ code: String(hsnCode), tenantId: req.tenantId });
+            }
+            hsnCache[key] = true;
+        };
         // ───────────────────────────────────────────────────────────────────
 
         for (const row of dataRows) {
@@ -525,6 +541,10 @@ export const importBulkMapped = async (req, res, next) => {
                 // --- Resolve / auto-create Size (uses cache) ---
                 const sizeName = itemData.size || '';
                 if (sizeName) await resolveSize(sizeName);
+
+                // --- Resolve / auto-create HSN (uses cache) ---
+                const hsnCode = itemData.hsn || '';
+                if (hsnCode) await resolveHsn(hsnCode);
 
                 // --- Check for existing item by SKU or name ---
                 let item = null;
