@@ -166,7 +166,6 @@ const DispatchManagement = () => {
                     <style>
                         @page { size: A4; margin: 15mm; }
                         body { font-family: 'Segoe UI', sans-serif; font-size: 11px; line-height: 1.4; color: #333; }
-                        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
                         .header h1 { margin: 0; font-size: 20px; text-transform: uppercase; }
                         .summary-title { text-align: center; font-weight: bold; font-size: 14px; text-decoration: underline; margin-bottom: 20px; }
                         
@@ -183,10 +182,13 @@ const DispatchManagement = () => {
                     </style>
                 </head>
                 <body>
-                    <div class="header">
-                        <h1>${billingSettings?.companyName || 'INVENTORY SYSTEM'}</h1>
-                        <p>${billingSettings?.address || ''}</p>
-                        <p>Phone: ${billingSettings?.phone1 || ''}</p>
+                    <div style="display:flex; justify-content:center; align-items:center; gap:20px; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
+                        ${billingSettings?.branding?.logoUrl ? `<img src="${billingSettings.branding.logoUrl.startsWith('http') ? billingSettings.branding.logoUrl : window.location.origin + billingSettings.branding.logoUrl}" style="max-height: 60px; max-width: 150px; object-fit: contain;" />` : ''}
+                        <div style="text-align: center;">
+                            <h1 style="margin: 0; font-size: 20px; text-transform: uppercase;">${billingSettings?.companyName || 'INVENTORY SYSTEM'}</h1>
+                            <p style="margin: 2px 0;">${billingSettings?.address || ''}</p>
+                            <p style="margin: 2px 0;">Phone: ${billingSettings?.phone1 || ''}</p>
+                        </div>
                     </div>
                     
                     <div class="summary-title">CUSTOMER DISPATCH SUMMARY REPORT</div>
@@ -218,7 +220,10 @@ const DispatchManagement = () => {
                                     <td>${new Date(d.createdAt).toLocaleDateString()}</td>
                                     <td>${d.vehicleNumber || 'N/A'}</td>
                                     <td>
-                                        ${d.items.map(i => `<div>- ${i.item.name}</div>`).join('')}
+                                        ${d.items.map(i => {
+                                            const itemDoc = order.items.find(oi => String(oi.item._id || oi.item) === String(i.item?._id || i.item));
+                                            return `<div>- ${i.item?.name || itemDoc?.name || 'Unknown Item'}</div>`;
+                                        }).join('')}
                                     </td>
                                     <td>
                                         ${d.items.map(i => `<div>${i.quantity} Units</div>`).join('')}
@@ -248,7 +253,7 @@ const DispatchManagement = () => {
                                 }, 0);
                                 return `
                                     <tr>
-                                        <td>${oi.name}</td>
+                                        <td>${oi.name || oi.item?.name || 'Unknown Item'}</td>
                                         <td>${targetedStockLimit} ${oi.stockUnit || (oi.sqFtPerPc > 0 ? 'Boxes' : 'Units')}</td>
                                         <td>${totalDisp}</td>
                                         <td style="font-weight:bold; color:${targetedStockLimit - totalDisp > 0 ? 'red' : 'green'}">${(targetedStockLimit - totalDisp).toFixed(2)}</td>

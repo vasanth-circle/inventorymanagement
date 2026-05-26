@@ -103,7 +103,7 @@ export const updateQuotation = async (req, res, next) => {
     }
 };
 
-// @desc    Delete/Reject quotation
+// @desc    Delete quotation
 // @route   DELETE /api/quotations/:id
 // @access  Private
 export const deleteQuotation = async (req, res, next) => {
@@ -111,10 +111,9 @@ export const deleteQuotation = async (req, res, next) => {
         const quotation = await Quotation.findOne({ _id: req.params.id, ...tenantQuery(req) });
         if (!quotation) return sendError(res, 404, 'Quotation not found');
 
-        quotation.status = 'rejected';
-        await quotation.save();
+        await Quotation.deleteOne({ _id: quotation._id });
 
-        sendResponse(res, 200, null, 'Quotation marked as rejected');
+        sendResponse(res, 200, null, 'Quotation deleted successfully');
     } catch (error) {
         next(error);
     }

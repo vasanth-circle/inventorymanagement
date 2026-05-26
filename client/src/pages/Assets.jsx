@@ -1,6 +1,7 @@
 import { useState, useEffect, useContext } from 'react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import { confirmDelete } from '../utils/confirmHelper.jsx';
 import { AuthContext } from '../context/AuthContext';
 import { InventoryContext } from '../context/InventoryContext';
 
@@ -138,7 +139,8 @@ const Assets = () => {
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this asset?')) {
+        const confirmed = await confirmDelete('Are you sure you want to delete this asset?');
+        if (confirmed) {
             try {
                 await api.delete(`/assets/${id}`);
                 toast.success('Asset deleted successfully');

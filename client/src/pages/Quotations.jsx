@@ -4,8 +4,10 @@ import { InventoryContext } from '../context/InventoryContext';
 import { AuthContext } from '../context/AuthContext';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import { confirmDelete } from '../utils/confirmHelper.jsx';
 import { printDocument } from '../utils/printTemplates';
 import { shareViaWhatsApp, shareViaEmail } from '../utils/shareUtils';
+import SearchableSelect from '../components/SearchableSelect';
 
 const STATUS_COLORS = {
     draft:     'bg-gray-100 text-gray-600',
@@ -236,10 +238,11 @@ const Quotations = () => {
     };
 
     const handleDelete = async (quotation) => {
-        if (!window.confirm(`Reject Quotation ${quotation.quotationNumber}?`)) return;
+        const confirmed = await confirmDelete(`Delete Quotation ${quotation.quotationNumber}? This cannot be undone.`);
+        if (!confirmed) return;
         try {
             await api.delete(`/quotations/${quotation._id}`);
-            toast.success('Quotation rejected');
+            toast.success('Quotation deleted');
             fetchAll();
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed');
@@ -488,7 +491,9 @@ const Quotations = () => {
                                                             >
                                                                 {convertingId === q._id ? '...' : '✅ Invoice'}
                                                             </button>
-                                                            <button onClick={() => handleDelete(q)} title="Reject" className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded text-xs font-bold">✕</button>
+                                                            {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
+                                                                <button onClick={() => handleDelete(q)} title="Delete" className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded text-xs font-bold">🗑️</button>
+                                                            )}
                                                         </>
                                                     )}
                                                 </div>
@@ -609,11 +614,14 @@ const Quotations = () => {
                                                 <div key={idx} className="grid grid-cols-12 gap-2 items-start bg-gray-50 p-3 rounded-lg">
                                                     {/* Item select — col-span-4 */}
                                                     <div className="col-span-4">
-                                                        <select value={row.item} onChange={e => handleItemChange(idx, 'item', e.target.value)}
-                                                            className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold focus:ring-2 focus:ring-rose-500">
-                                                            <option value="">-- Item --</option>
-                                                            {allItems.map(i => <option key={i._id} value={i._id}>{i.name}{i.size ? ` [${i.size}]` : ''}</option>)}
-                                                        </select>
+                                                        <SearchableSelect 
+                                                            value={row.item} 
+                                                            onChange={e => handleItemChange(idx, 'item', e.target.value)}
+                                                            options={allItems.map(i => ({ value: i._id, label: `${i.name}${i.size ? ` [${i.size}]` : ''}` }))}
+                                                            placeholder="-- Item --"
+                                                            searchPlaceholder="Search items..."
+                                                            className="w-full text-xs font-bold"
+                                                        />
                                                         <div className="flex justify-between items-center mt-1 px-1">
                                                             {row.size && <span className="text-[8px] font-black text-amber-600 bg-amber-50 px-1 rounded">{row.size}</span>}
                                                             <span className={`text-[9px] font-black uppercase ${row.physicalStock > 0 ? 'text-green-500' : 'text-red-500'}`}>
@@ -641,7 +649,7 @@ const Quotations = () => {
                                                                 ))}
                                                             </div>
                                                             <input type="number" min="0" step={row.billingUnit === 'boxes' ? '0.5' : '1'}
-                                                                value={row.quantity}
+                                                                value={row.quantity === 0 ? '' : row.quantity}
                                                                 onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
                                                                 placeholder={qtyLabel}
                                                                 className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold text-center focus:ring-2 focus:ring-rose-500" />
@@ -665,7 +673,7 @@ const Quotations = () => {
                                                         <label className="text-[9px] text-gray-400 font-bold uppercase">
                                                             {isTile ? 'Rate / SqFt' : (billingSettings?.unitConfig?.rateLabel || 'Rate')}
                                                         </label>
-                                                        <input type="number" min="0" step="0.01" value={row.price}
+                                                        <input type="number" min="0" step="0.01" value={row.price === 0 ? '' : row.price}
                                                             onChange={e => handleItemChange(idx, 'price', e.target.value)}
                                                             className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold text-right focus:ring-2 focus:ring-rose-500" />
                                                     </div>
@@ -702,10 +710,14 @@ const Quotations = () => {
                                                     return (<>
                                                         <div className="space-y-1">
                                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Item</label>
-                                                            <select value={row.item} onChange={e => handleItemChange(idx, 'item', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 outline-none font-bold text-sm">
-                                                                <option value="">-- Item --</option>
-                                                                {allItems.map(i => <option key={i._id} value={i._id}>{i.name}{i.size ? ` [${i.size}]` : ''}</option>)}
-                                                            </select>
+                                                            <SearchableSelect 
+                                                                value={row.item} 
+                                                                onChange={e => handleItemChange(idx, 'item', e.target.value)}
+                                                                options={allItems.map(i => ({ value: i._id, label: `${i.name}${i.size ? ` [${i.size}]` : ''}` }))}
+                                                                placeholder="-- Item --"
+                                                                searchPlaceholder="Search items..."
+                                                                className="w-full font-bold text-sm"
+                                                            />
                                                             <div className="flex justify-between items-center px-1">
                                                                 {row.size && <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-1.5 rounded">{row.size}</span>}
                                                                 <span className={`text-[10px] font-black uppercase ${row.physicalStock > 0 ? 'text-green-500' : 'text-red-500'}`}>Stock: {row.physicalStock || 0}</span>
@@ -742,14 +754,14 @@ const Quotations = () => {
                                                                     {isTile ? (row.billingUnit === 'boxes' ? 'Boxes (0.5 ok)' : row.billingUnit === 'qty' ? 'Pieces' : 'Sq.Ft') : 'Qty'}
                                                                 </label>
                                                                 <input type="number" min="0" step={isTile && row.billingUnit === 'boxes' ? '0.5' : '1'}
-                                                                    value={row.quantity} onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
+                                                                    value={row.quantity === 0 ? '' : row.quantity} onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
                                                                     className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none text-center font-bold" />
                                                             </div>
                                                             <div className="space-y-1">
                                                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                                                     {isTile ? 'Rate / SqFt' : 'Rate'}
                                                                 </label>
-                                                                <input type="number" min="0" step="0.01" value={row.price}
+                                                                <input type="number" min="0" step="0.01" value={row.price === 0 ? '' : row.price}
                                                                     onChange={e => handleItemChange(idx, 'price', e.target.value)}
                                                                     className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none font-bold text-right" />
                                                             </div>
@@ -780,7 +792,7 @@ const Quotations = () => {
                             <div className="grid grid-cols-2 md:grid-cols-7 gap-4 bg-gray-50 p-4 rounded-xl">
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Tax Rate (%)</label>
-                                    <input type="number" min="0" step="0.1" value={formData.taxRate}
+                                    <input type="number" min="0" step="0.1" value={formData.taxRate === 0 ? '' : formData.taxRate}
                                         onChange={e => setFormData(p => ({ ...p, taxRate: e.target.value }))}
                                         className="w-full h-10 px-3 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-rose-500" placeholder="e.g. 18" />
                                 </div>
@@ -793,19 +805,19 @@ const Quotations = () => {
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Loading</label>
-                                    <input type="number" min="0" step="0.01" value={formData.loadingCharges}
+                                    <input type="number" min="0" step="0.01" value={formData.loadingCharges === 0 ? '' : formData.loadingCharges}
                                         onChange={e => setFormData(p => ({ ...p, loadingCharges: e.target.value }))}
                                         className="w-full h-10 px-3 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-rose-500" />
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Unloading</label>
-                                    <input type="number" min="0" step="0.01" value={formData.unloadingCharges}
+                                    <input type="number" min="0" step="0.01" value={formData.unloadingCharges === 0 ? '' : formData.unloadingCharges}
                                         onChange={e => setFormData(p => ({ ...p, unloadingCharges: e.target.value }))}
                                         className="w-full h-10 px-3 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-rose-500" />
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Transport</label>
-                                    <input type="number" min="0" step="0.01" value={formData.transportCharges}
+                                    <input type="number" min="0" step="0.01" value={formData.transportCharges === 0 ? '' : formData.transportCharges}
                                         onChange={e => setFormData(p => ({ ...p, transportCharges: e.target.value }))}
                                         className="w-full h-10 px-3 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-rose-500" />
                                 </div>
@@ -813,13 +825,13 @@ const Quotations = () => {
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                         Old Bal {fetchingBalance && <span className="animate-pulse">⏳</span>}
                                     </label>
-                                    <input type="number" value={formData.oldBalance}
+                                    <input type="number" value={formData.oldBalance === 0 ? '' : formData.oldBalance}
                                         onChange={e => setFormData(p => ({ ...p, oldBalance: e.target.value }))}
                                         className="w-full h-10 px-3 bg-white border border-gray-200 rounded-lg text-sm font-bold text-red-600 focus:ring-2 focus:ring-rose-500" />
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Discount</label>
-                                    <input type="number" min="0" step="0.01" value={formData.discountAmount}
+                                    <input type="number" min="0" step="0.01" value={formData.discountAmount === 0 ? '' : formData.discountAmount}
                                         onChange={e => setFormData(p => ({ ...p, discountAmount: e.target.value }))}
                                         className="w-full h-10 px-3 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-rose-500" />
                                 </div>

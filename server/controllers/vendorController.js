@@ -55,7 +55,11 @@ export const getVendor = async (req, res, next) => {
 // @access  Private
 export const createVendor = async (req, res, next) => {
     try {
-        const vendor = await Vendor.create({ ...req.body, tenantId: req.tenantId });
+        const payload = { ...req.body, tenantId: req.tenantId };
+        if (payload.openingBalance !== undefined) {
+            payload.currentBalance = payload.openingBalance;
+        }
+        const vendor = await Vendor.create(payload);
         sendResponse(res, 201, vendor, 'Vendor created successfully');
     } catch (error) {
         next(error);
@@ -67,9 +71,20 @@ export const createVendor = async (req, res, next) => {
 // @access  Private
 export const updateVendor = async (req, res, next) => {
     try {
+        const payload = { ...req.body };
+        if (payload.openingBalance !== undefined) {
+            const existing = await Vendor.findOne({ _id: req.params.id, ...tenantQuery(req) });
+            if (existing) {
+                const diff = Number(payload.openingBalance) - (existing.openingBalance || 0);
+                if (diff !== 0) {
+                    payload.currentBalance = (existing.currentBalance || 0) + diff;
+                }
+            }
+        }
+
         const vendor = await Vendor.findOneAndUpdate(
             { _id: req.params.id, ...tenantQuery(req) },
-            req.body,
+            payload,
             {
                 new: true,
                 runValidators: true

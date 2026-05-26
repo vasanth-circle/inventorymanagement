@@ -2,6 +2,7 @@ import { createContext, useState, useEffect, useContext } from 'react';
 import api from '../utils/api';
 import { AuthContext } from './AuthContext';
 import toast from 'react-hot-toast';
+import { confirmDelete as customConfirmDelete } from '../utils/confirmHelper.jsx';
 import { getIndustryPreset } from '../config/industryPresets';
 
 export const InventoryContext = createContext();
@@ -530,13 +531,7 @@ export const InventoryProvider = ({ children }) => {
     };
 
     const confirmDelete = async (message, callback) => {
-        if (window.confirm(message)) {
-            if (callback && typeof callback === 'function') {
-                await callback();
-            }
-            return true;
-        }
-        return false;
+        return await customConfirmDelete(message, callback);
     };
 
     useEffect(() => {

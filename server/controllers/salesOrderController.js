@@ -168,6 +168,7 @@ export const getSalesOrders = async (req, res, next) => {
         const orders = await SalesOrder.find(query)
             .populate('customer', 'name companyName')
             .populate({ path: 'user', model: User, select: 'name' })
+            .populate('items.item', 'name brand size hsn sku barcode')
             .sort({ createdAt: -1 })
             .limit(limit * 1)
             .skip((page - 1) * limit);
@@ -406,6 +407,81 @@ export const updateSalesOrder = async (req, res, next) => {
         }
 
         sendResponse(res, 200, order, 'Sales order updated successfully');
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Delete sales order
+// @route   DELETE /api/sales-orders/:id
+// @access  Private (Admin only)
+export const deleteSalesOrder = async (req, res, next) => {
+    try {
+        const orderId = req.params.id;
+        const tenantId = req.tenantId;
+
+        const order = await SalesOrder.findOne({ _id: orderId, tenantId });
+        if (!order) {
+            return sendError(res, 404, 'Sales order not found');
+        }
+
+        // 1. Handle Dispatches & Revert Stock
+        const dispatches = await Dispatch.find({ order: orderId, tenantId });
+        for (const dispatch of dispatches) {
+            for (const dispatchItem of dispatch.items) {
+                const itemDoc = await Item.findOne({ _id: dispatchItem.item, tenantId });
+                if (itemDoc) {
+                    const revertQty = Number(dispatchItem.quantity);
+                    const previousQuantity = itemDoc.quantity;
+                    
+                    // Revert batch quantity if applicable
+                    let usedBatchNumber = null;
+                    const orderItem = order.items.find(oi => oi.item.toString() === dispatchItem.item.toString());
+                    const batchId = orderItem?.batchId;
+                    
+                    if (batchId && itemDoc.batches) {
+                        const batch = itemDoc.batches.id(batchId);
+                        if (batch) {
+                            batch.quantity += revertQty;
+                            usedBatchNumber = batch.batchNumber;
+                        }
+                    }
+
+                    // Revert main physical stock
+                    itemDoc.quantity += revertQty;
+                    await itemDoc.save();
+
+                    // Create reversing transaction
+                    await Transaction.create({
+                        item: dispatchItem.item,
+                        type: 'adjustment', // reverting outward
+                        quantity: revertQty,
+                        reason: `Reversed Dispatch for Deleted Order ${order.orderNumber}`,
+                        notes: `Stock reverted from deleted Sales Order (Dispatch: ${dispatch.dispatchNumber})`,
+                        user: req.user._id,
+                        previousQuantity,
+                        newQuantity: itemDoc.quantity,
+                        fromLocation: itemDoc.location,
+                        batchId: batchId || null,
+                        batchNumber: usedBatchNumber,
+                        tenantId
+                    });
+                }
+            }
+            // Delete the dispatch record
+            await Dispatch.deleteOne({ _id: dispatch._id });
+        }
+
+        // 2. Remove Customer Ledger Entries
+        if (order.customer) {
+            await CustomerLedger.deleteMany({ refId: order._id, tenantId });
+            await recalculateCustomerBalance(order.customer, tenantId);
+        }
+
+        // 3. Delete the Sales Order
+        await SalesOrder.deleteOne({ _id: order._id });
+
+        sendResponse(res, 200, null, 'Sales order deleted and stock reverted successfully');
     } catch (error) {
         next(error);
     }

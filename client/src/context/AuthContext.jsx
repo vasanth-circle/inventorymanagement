@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect } from 'react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import { confirmDelete as customConfirmDelete } from '../utils/confirmHelper.jsx';
 
 export const AuthContext = createContext();
 
@@ -116,13 +117,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const confirmDelete = async (message, callback) => {
-        if (window.confirm(message)) {
-            if (callback && typeof callback === 'function') {
-                await callback();
-            }
-            return true;
-        }
-        return false;
+        return await customConfirmDelete(message, callback);
     };
 
     return (

@@ -5,6 +5,8 @@ import { AuthContext } from '../context/AuthContext';
 import { InventoryContext } from '../context/InventoryContext';
 import { printDocument } from '../utils/printTemplates';
 import { shareViaWhatsApp, shareViaEmail } from '../utils/shareUtils';
+import SearchableSelect from '../components/SearchableSelect';
+import { confirmDelete as confirmAction } from '../utils/confirmHelper.jsx';
 
 const API_URL = '/api/sales-orders';
 const CUSTOMERS_API = '/api/customers';
@@ -150,6 +152,7 @@ const SalesOrders = () => {
             const selectedItem = items.find(i => i._id === value);
             if (selectedItem) {
                 row.item = value;
+                row.name = selectedItem.name;
                 row.price = selectedItem.price || 0;
                 row.brand = selectedItem.brand;
                 row.size = selectedItem.size;
@@ -245,6 +248,7 @@ const SalesOrders = () => {
             const submissionData = { ...formData, totalAmount: netTotal };
 
             // Frontend Pricing & Stock Validation
+            let hasNegativeStock = false;
             for (const row of formData.items) {
                 if (billingSettings?.pricingConfig?.preventSellingBelowPurchase && !formData.isEstimation) {
                     if (row.price < (row.purchasePrice || 0)) {
@@ -253,13 +257,22 @@ const SalesOrders = () => {
                     }
                 }
                 // Stock Validation
-                if (!formData.isEstimation && billingSettings?.workflowConfig?.allowNegativeStock === false) {
+                if (!formData.isEstimation) {
                     const required = row.stockQty || row.quantity;
                     if (required > row.physicalStock) {
-                        toast.error(`Insufficient stock for ${row.name || 'item'}. Available: ${row.physicalStock}`);
-                        return;
+                        if (billingSettings?.workflowConfig?.allowNegativeStock === false) {
+                            toast.error(`Insufficient stock for ${row.name || 'item'}. Available: ${row.physicalStock}`);
+                            return;
+                        } else {
+                            hasNegativeStock = true;
+                        }
                     }
                 }
+            }
+
+            if (hasNegativeStock) {
+                const proceed = await confirmAction("You are billing one or more items with insufficient stock (Negative Billing). Do you want to proceed?");
+                if (!proceed) return;
             }
             
             if (editingOrder) {
@@ -277,6 +290,21 @@ const SalesOrders = () => {
             fetchOrders();
         } catch (error) {
             toast.error(error.response?.data?.message || 'Error saving order');
+        }
+    };
+
+    const handleDelete = async (orderId) => {
+        const proceed = await confirmAction("Are you sure you want to completely delete this record? This will revert any dispatched stock back to inventory and permanently delete related data.");
+        if (!proceed) return;
+
+        try {
+            await axios.delete(`${API_URL}/${orderId}`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            toast.success('Deleted successfully and stock reverted');
+            fetchOrders();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Error deleting order');
         }
     };
 
@@ -394,6 +422,14 @@ const SalesOrders = () => {
                                                 <button onClick={() => handlePrint(order)} className="text-primary-600 hover:text-primary-800 text-sm font-bold border-2 border-primary-100 px-3 py-1.5 rounded-lg bg-primary-50 transition-all flex items-center inline-flex">
                                                     <span className="mr-1">📄</span> Bill
                                                 </button>
+                                                {order.isEstimation && ['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
+                                                    <button 
+                                                        onClick={() => handleStatusUpdate(order._id, 'confirmed')} 
+                                                        className="text-green-600 hover:text-green-800 text-sm font-bold border-2 border-green-100 px-3 py-1.5 rounded-lg bg-green-50 transition-all flex items-center inline-flex"
+                                                    >
+                                                        <span className="mr-1">🔄</span> Convert
+                                                    </button>
+                                                )}
                                                 
                                                 {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && !['dispatched', 'partially_dispatched'].includes(order.status) && (
                                                     <button 
@@ -401,6 +437,15 @@ const SalesOrders = () => {
                                                         className="text-amber-600 hover:text-amber-800 text-sm font-bold border-2 border-amber-100 px-3 py-1.5 rounded-lg bg-amber-50 transition-all flex items-center inline-flex"
                                                     >
                                                         <span className="mr-1">✏️</span> Edit
+                                                    </button>
+                                                )}
+                                                {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
+                                                    <button 
+                                                        onClick={() => handleDelete(order._id)} 
+                                                        className="text-red-600 hover:text-red-800 text-sm font-bold border-2 border-red-100 px-3 py-1.5 rounded-lg bg-red-50 transition-all flex items-center inline-flex"
+                                                        title="Delete & Revert Stock"
+                                                    >
+                                                        <span className="mr-1">🗑️</span> Delete
                                                     </button>
                                                 )}
                                             </div>
@@ -449,6 +494,9 @@ const SalesOrders = () => {
                                         <button onClick={() => handlePrint(order)} className="w-9 h-9 bg-primary-800 hover:bg-primary-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Print/PDF Bill">📄</button>
                                         <button onClick={() => shareViaWhatsApp(order, billingSettings, 'invoice')} className="w-9 h-9 bg-green-600 hover:bg-green-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="WhatsApp Share">💬</button>
                                         <button onClick={() => shareViaEmail(order, billingSettings, 'invoice')} className="w-9 h-9 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Email Share">✉️</button>
+                                        {order.isEstimation && ['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
+                                            <button onClick={() => handleStatusUpdate(order._id, 'confirmed')} className="w-9 h-9 bg-green-500 hover:bg-green-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Convert to Bill">🔄</button>
+                                        )}
                                         {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && !['dispatched', 'partially_dispatched'].includes(order.status) && (
                                             <button onClick={() => handleEdit(order)} className="w-9 h-9 bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Edit">✏️</button>
                                         )}
@@ -517,7 +565,7 @@ const SalesOrders = () => {
                                         </h3>
                                     </div>
                                     {/* Items List - Desktop Table */}
-                                    <div className="hidden md:block overflow-x-auto border rounded-xl shadow-sm">
+                                    <div className="hidden md:block overflow-visible border rounded-xl shadow-sm">
                                         <table className="w-full text-left min-w-[800px]">
                                             <thead>
                                                 <tr className="bg-gray-50 border-b border-gray-100">
@@ -544,10 +592,14 @@ const SalesOrders = () => {
                                                                 <div className="flex items-center gap-2">
                                                                     <button type="button" onClick={() => handleRemoveItem(index)} className="text-red-400 hover:text-red-600 font-bold text-lg">&times;</button>
                                                                     <div className="flex-1">
-                                                                        <select required value={row.item} onChange={(e) => handleItemChange(index, 'item', e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-400 outline-none border-gray-200 font-medium text-sm">
-                                                                            <option value="">Select Item</option>
-                                                                            {items.map(i => <option key={i._id} value={i._id}>{i.name} ({i.brand} - {i.size})</option>)}
-                                                                        </select>
+                                                                        <SearchableSelect 
+                                                                            value={row.item} 
+                                                                            onChange={(e) => handleItemChange(index, 'item', e.target.value)}
+                                                                            options={items.map(i => ({ value: i._id, label: `${i.name} (${i.brand} - ${i.size})` }))}
+                                                                            placeholder="Select Item"
+                                                                            searchPlaceholder="Search items..."
+                                                                            className="w-full font-medium text-sm"
+                                                                        />
                                                                         <div className="flex justify-between items-center mt-1 px-1">
                                                                             <span className={`text-[10px] font-black uppercase ${row.physicalStock > 0 ? 'text-green-500' : 'text-red-500'}`}>
                                                                                 Stock: {row.physicalStock || 0}
@@ -602,7 +654,7 @@ const SalesOrders = () => {
                                                                 {isTile && <div className="text-[9px] text-gray-400 text-center mt-1 uppercase font-bold">{row.billingUnit === 'sqft' ? (billingSettings?.unitConfig?.quantityLabel || 'SqFt') : 'Boxes'}</div>}
                                                             </td>
                                                             <td className="px-4 py-3">
-                                                                <input required type="number" step="0.01" value={row.price} onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value))} className="w-full px-3 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 font-bold text-right" />
+                                                                <input required type="number" step="0.01" value={row.price === 0 ? '' : row.price} onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value))} className="w-full px-3 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 font-bold text-right" />
                                                                 <div className="text-[9px] text-gray-400 text-right mt-1 uppercase font-bold">Per {isTile ? row.billingUnit : 'Piece'}</div>
                                                             </td>
                                                             <td className="px-4 py-3">
@@ -638,10 +690,14 @@ const SalesOrders = () => {
                                                     
                                                     <div className="space-y-1">
                                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Item</label>
-                                                        <select required value={row.item} onChange={(e) => handleItemChange(index, 'item', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-bold text-sm">
-                                                            <option value="">Select Item</option>
-                                                            {items.map(i => <option key={i._id} value={i._id}>{i.name} ({i.brand} - {i.size})</option>)}
-                                                        </select>
+                                                        <SearchableSelect 
+                                                            value={row.item} 
+                                                            onChange={(e) => handleItemChange(index, 'item', e.target.value)}
+                                                            options={items.map(i => ({ value: i._id, label: `${i.name} (${i.brand} - ${i.size})` }))}
+                                                            placeholder="Select Item"
+                                                            searchPlaceholder="Search items..."
+                                                            className="w-full font-bold text-sm"
+                                                        />
                                                         <div className="flex justify-between items-center px-1">
                                                             <span className={`text-[10px] font-black uppercase ${row.physicalStock > 0 ? 'text-green-500' : 'text-red-500'}`}>
                                                                 Stock: {row.physicalStock || 0}
@@ -678,7 +734,7 @@ const SalesOrders = () => {
                                                     <div className="grid grid-cols-2 gap-4">
                                                         <div className="space-y-1">
                                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Rate (Per {isTile ? row.billingUnit : 'Piece'})</label>
-                                                            <input required type="number" step="0.01" value={row.price} onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value))} className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none font-bold text-right" />
+                                                            <input required type="number" step="0.01" value={row.price === 0 ? '' : row.price} onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value))} className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none font-bold text-right" />
                                                         </div>
                                                         <div className="space-y-1">
                                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Row Total</label>
@@ -717,29 +773,29 @@ const SalesOrders = () => {
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Loading Charges</label>
-                                                <input type="number" value={formData.loadingCharges} onChange={(e) => setFormData({ ...formData, loadingCharges: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none" />
+                                                <input type="number" value={formData.loadingCharges === 0 ? '' : formData.loadingCharges} onChange={(e) => setFormData({ ...formData, loadingCharges: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none" />
                                             </div>
                                             <div>
                                                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Unloading Charges</label>
-                                                <input type="number" value={formData.unloadingCharges} onChange={(e) => setFormData({ ...formData, unloadingCharges: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none" />
+                                                <input type="number" value={formData.unloadingCharges === 0 ? '' : formData.unloadingCharges} onChange={(e) => setFormData({ ...formData, unloadingCharges: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none" />
                                             </div>
                                             <div>
                                                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Transport / Auto</label>
-                                                <input type="number" value={formData.transportCharges} onChange={(e) => setFormData({ ...formData, transportCharges: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none" />
+                                                <input type="number" value={formData.transportCharges === 0 ? '' : formData.transportCharges} onChange={(e) => setFormData({ ...formData, transportCharges: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none" />
                                             </div>
                                             <div>
                                                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Tax Amount</label>
-                                                <input type="number" value={formData.taxAmount} onChange={(e) => setFormData({ ...formData, taxAmount: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none" />
+                                                <input type="number" value={formData.taxAmount === 0 ? '' : formData.taxAmount} onChange={(e) => setFormData({ ...formData, taxAmount: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none" />
                                             </div>
                                             <div>
                                                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
                                                     Old Balance (Add) {fetchingBalance && <span className="text-blue-400 animate-pulse">⏳ loading...</span>}
                                                 </label>
-                                                <input type="number" value={formData.oldBalance} onChange={(e) => setFormData({ ...formData, oldBalance: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none text-red-600 font-bold" />
+                                                <input type="number" value={formData.oldBalance === 0 ? '' : formData.oldBalance} onChange={(e) => setFormData({ ...formData, oldBalance: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none text-red-600 font-bold" />
                                             </div>
                                             <div className="col-span-2">
                                                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Advance Amount (Subtract)</label>
-                                                <input type="number" value={formData.advanceAmount} onChange={(e) => setFormData({ ...formData, advanceAmount: e.target.value })} className="w-full px-3 py-2 border rounded-lg border-primary-300 outline-none text-green-600 font-bold" />
+                                                <input type="number" value={formData.advanceAmount === 0 ? '' : formData.advanceAmount} onChange={(e) => setFormData({ ...formData, advanceAmount: e.target.value })} className="w-full px-3 py-2 border rounded-lg border-primary-300 outline-none text-green-600 font-bold" />
                                             </div>
                                         </div>
                                         <div className="pt-6 border-t mt-6 space-y-3">

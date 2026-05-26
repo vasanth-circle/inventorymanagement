@@ -2,6 +2,7 @@ import { useState, useEffect, useContext, useMemo } from 'react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { InventoryContext } from '../context/InventoryContext';
+import { confirmDelete } from '../utils/confirmHelper';
 
 const HSNManagement = () => {
     const { fetchHsnCodes } = useContext(InventoryContext);
@@ -64,7 +65,8 @@ const HSNManagement = () => {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this HSN code?')) return;
+        const confirmed = await confirmDelete('Are you sure you want to delete this HSN code?');
+        if (!confirmed) return;
         try {
             await api.delete(`/hsn/${id}`);
             toast.success('HSN code deleted successfully');

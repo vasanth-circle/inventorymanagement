@@ -5,9 +5,10 @@ import {
     createSalesOrder,
     updateSOStatus,
     updateSalesOrder,
+    deleteSalesOrder,
 } from '../controllers/salesOrderController.js';
-// import { protect } from '../middleware/authMiddleware.js';
 import { checkMenuAccess } from '../middleware/accessMiddleware.js';
+import { authorize } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -20,7 +21,8 @@ router.route('/')
 
 router.route('/:id')
     .get(getSalesOrder)
-    .put(updateSalesOrder);
+    .put(updateSalesOrder)
+    .delete(authorize('admin', 'super_admin', 'tenant_owner', 'tenant_admin'), deleteSalesOrder);
 
 router.route('/:id/status')
     .patch(updateSOStatus);

@@ -30,31 +30,30 @@ export const numberToWords = (num) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared item rows builder
 // ─────────────────────────────────────────────────────────────────────────────
-const buildItemRows = (items, settings, taxPct) =>
-    items.map((item, i) => {
+const buildItemRows = (items, settings, taxPct, isQuotation) => {
+    return items.map((item, i) => {
         const total = item.total || item.quantity * item.price;
         const taxAmt = (total * taxPct / 100);
         const withTax = total + taxAmt;
-        return `<tr>
+        return `<tr style="height:10px">
             <td style="text-align:center">${i + 1}</td>
             <td><strong>${(item.name || '').toUpperCase()}</strong><br/>
-                <span style="font-size:7.5px;color:#666">${item.brand || ''} ${item.size || ''}</span>
+                <span style="font-size:8.5px;color:#666">${item.brand || ''} ${item.size || ''}</span>
             </td>
-            <td style="text-align:center">${item.hsn || ''}</td>
+            ${!isQuotation ? `<td style="text-align:center">${item.hsn || ''}</td>` : ''}
             <td style="text-align:center;font-weight:bold">
                 ${item.totalSqFt ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}
             </td>
             <td style="text-align:center">${item.boxCount ? item.boxCount + ' (' + (item.pcsPerBox || '') + ' pcs/box)' : (item.secondaryQty ? item.secondaryQty : '')}</td>
             <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
-            <td style="text-align:right">${formatIndianNumber(total, 2)}</td>
+            ${!isQuotation ? `<td style="text-align:right">${formatIndianNumber(total, 2)}</td>
             <td style="text-align:center">${taxPct}%</td>
-            <td style="text-align:right">${formatIndianNumber(taxAmt, 2)}</td>
+            <td style="text-align:right">${formatIndianNumber(taxAmt, 2)}</td>` : ''}
             <td style="text-align:right;font-weight:bold">${formatIndianNumber(withTax, 2)}</td>
         </tr>`;
     }).join('') +
-    Array(Math.max(0, 15 - items.length)).fill(0).map(() =>
-        `<tr style="height:18px"><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`
-    ).join('');
+    `<tr style="height:100%"><td></td><td></td>${!isQuotation ? '<td></td>' : ''}<td></td><td></td><td></td>${!isQuotation ? '<td></td><td></td><td></td>' : ''}<td></td></tr>`;
+};
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -95,10 +94,10 @@ const template1 = (order, settings, docType = 'invoice') => {
   .meta-label { width: 110px; font-weight: bold; }
   .items-table { border-bottom: 1.5px solid #000; height: 165mm; }
   table { width: 100%; height: 100%; border-collapse: collapse; }
-  th, td { padding: 4px 5px; font-size: 8.5px; border-right: 1.5px solid #000; }
+  th, td { padding: 5px; font-size: 9.5px; border-right: 1.5px solid #000; }
   th:last-child, td:last-child { border-right: none; }
-  th { border-bottom: 1.5px solid #000; background: #fff; font-weight: bold; text-transform: uppercase; font-size: 7.5px; }
-  td { vertical-align: top; border-bottom: none; }
+  th { border-bottom: 1.5px solid #000; background: #fff; font-weight: bold; text-transform: uppercase; font-size: 8.5px; }
+  td { vertical-align: middle; border-bottom: none; }
   .summary-section { display: flex; border-bottom: 1.5px solid #000; min-height: 100px; }
   .summary-left { flex: 1.8; padding: 0; display: flex; flex-direction: column; border-right: 1.5px solid #000; }
   .summary-right { flex: 1; padding: 0; }
@@ -133,18 +132,18 @@ const template1 = (order, settings, docType = 'invoice') => {
   <div class="items-table">
     <table>
       <thead><tr>
-        <th width="5%">S.No</th>
-        <th width="35%">Description of Goods</th>
-        <th width="8%">HSN Code</th>
-        <th width="10%">${qtyLabel}</th>
-        <th width="8%">Box Qty</th>
-        <th width="9%">${rateLabel}</th>
-        <th width="9%">Amount</th>
-        <th width="7%">Tax %</th>
-        <th width="8%">Tax Amt</th>
-        <th width="9%">Total</th>
+        <th width="4%">S.No</th>
+        <th width="${isQuotation ? '48%' : '32%'}">Description of Goods</th>
+        ${!isQuotation ? `<th width="7%">HSN Code</th>` : ''}
+        <th width="9%">${qtyLabel}</th>
+        <th width="${isQuotation ? '15%' : '11%'}">Box Qty</th>
+        <th width="${isQuotation ? '11%' : '8%'}">${rateLabel}</th>
+        ${!isQuotation ? `<th width="9%">Amount</th>
+        <th width="5%">Tax %</th>
+        <th width="6%">Tax Amt</th>` : ''}
+        <th width="${isQuotation ? '13%' : '9%'}">Total</th>
       </tr></thead>
-      <tbody>${buildItemRows(order.items, settings, taxPct)}</tbody>
+      <tbody>${buildItemRows(order.items, settings, taxPct, isQuotation)}</tbody>
     </table>
   </div>
   <div class="summary-section">
@@ -282,15 +281,15 @@ const template2 = (order, settings, docType = 'invoice') => {
   <div class="items-section">
     <table class="item-table">
       <thead><tr>
-        <th width="5%">No.</th>
-        <th width="38%">Description</th>
-        <th width="9%">HSN</th>
-        <th width="10%">${qtyLabel}</th>
-        <th width="9%">Box Qty</th>
-        <th width="9%">${rateLabel}</th>
-        <th width="9%">Amount</th>
-        <th width="7%">Tax</th>
-        <th width="11%">Total</th>
+        <th width="4%">No.</th>
+        <th width="${isQuotation ? '50%' : '35%'}">Description</th>
+        ${!isQuotation ? `<th width="8%">HSN</th>` : ''}
+        <th width="9%">${qtyLabel}</th>
+        <th width="${isQuotation ? '14%' : '11%'}">Box Qty</th>
+        <th width="${isQuotation ? '11%' : '8%'}">${rateLabel}</th>
+        ${!isQuotation ? `<th width="9%">Amount</th>
+        <th width="5%">Tax</th>` : ''}
+        <th width="${isQuotation ? '12%' : '11%'}">Total</th>
       </tr></thead>
       <tbody>
       ${order.items.map((item, i) => {
@@ -298,17 +297,17 @@ const template2 = (order, settings, docType = 'invoice') => {
           const withTax = total + (total * taxPct / 100);
           return `<tr>
             <td style="text-align:center">${i + 1}</td>
-            <td><strong>${(item.name || '').toUpperCase()}</strong><span style="display:block;font-size:7px;color:#888">${item.brand || ''} ${item.size || ''}</span></td>
-            <td style="text-align:center">${item.hsn || ''}</td>
+            <td><strong>${(item.name || '').toUpperCase()}</strong><span style="display:block;font-size:8.5px;color:#888">${item.brand || ''} ${item.size || ''}</span></td>
+            ${!isQuotation ? `<td style="text-align:center">${item.hsn || ''}</td>` : ''}
             <td style="text-align:center;font-weight:bold">${item.totalSqFt ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}</td>
             <td style="text-align:center">${item.boxCount ? `${item.boxCount} (${item.pcsPerBox || ''} pcs/box)` : (item.secondaryQty ? `${item.secondaryQty}` : '')}</td>
             <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
-            <td style="text-align:right">${formatIndianNumber(total, 2)}</td>
-            <td style="text-align:center;color:#555">${taxPct}%</td>
+            ${!isQuotation ? `<td style="text-align:right">${formatIndianNumber(total, 2)}</td>
+            <td style="text-align:center;color:#555">${taxPct}%</td>` : ''}
             <td style="text-align:right;font-weight:bold">${formatIndianNumber(withTax, 2)}</td>
           </tr>`;
       }).join('')}
-      ${Array(Math.max(0, 13 - order.items.length)).fill(0).map(() => `<tr style="height:18px"><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('')}
+      <tr style="height:100%"><td style="border:none"></td><td style="border:none"></td>${!isQuotation ? '<td style="border:none"></td>' : ''}<td style="border:none"></td><td style="border:none"></td><td style="border:none"></td>${!isQuotation ? '<td style="border:none"></td><td style="border:none"></td>' : ''}<td style="border:none"></td></tr>
       </tbody>
     </table>
   </div>
@@ -434,14 +433,15 @@ const template3 = (order, settings, docType = 'invoice') => {
 
   <table class="item-table">
     <thead><tr>
-      <th width="5%">No</th>
-      <th width="38%">Description</th>
-      <th width="9%">HSN</th>
-      <th width="10%">${qtyLabel}</th>
-      <th width="9%">${rateLabel}</th>
-      <th width="9%">Amount</th>
-      <th width="7%">Tax</th>
-      <th width="11%">Total</th>
+      <th width="4%">No</th>
+      <th width="${isQuotation ? '50%' : '35%'}">Description</th>
+      ${!isQuotation ? `<th width="8%">HSN</th>` : ''}
+      <th width="9%">${qtyLabel}</th>
+      <th width="${isQuotation ? '14%' : '11%'}">Box Qty</th>
+      <th width="${isQuotation ? '11%' : '8%'}">${rateLabel}</th>
+      ${!isQuotation ? `<th width="9%">Amount</th>
+      <th width="5%">Tax</th>` : ''}
+      <th width="${isQuotation ? '12%' : '11%'}">Total</th>
     </tr></thead>
     <tbody>
     ${order.items.map((item, i) => {
@@ -449,19 +449,19 @@ const template3 = (order, settings, docType = 'invoice') => {
         const withTax = total + (total * taxPct / 100);
         return `<tr>
           <td style="color:#aaa">${i + 1}</td>
-          <td><strong style="color:#111">${(item.name || '').toUpperCase()}</strong><br/><span style="color:#aaa;font-size:7.5px">${item.brand || ''} ${item.size || ''}</span></td>
-          <td style="color:#999;text-align:center">${item.hsn || ''}</td>
+          <td><strong style="color:#111">${(item.name || '').toUpperCase()}</strong><br/><span style="color:#aaa;font-size:8.5px">${item.brand || ''} ${item.size || ''}</span></td>
+          ${!isQuotation ? `<td style="color:#999;text-align:center">${item.hsn || ''}</td>` : ''}
           <td style="text-align:center;font-weight:700">
             ${item.totalSqFt ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}
           </td>
           <td style="text-align:center">${item.boxCount ? `${item.boxCount}-${item.pcsPerBox || ''} pcs/box` : (item.secondaryQty ? `${item.secondaryQty}` : '')}</td>
           <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
-          <td style="text-align:right">${formatIndianNumber(total, 2)}</td>
-          <td style="text-align:center;color:#aaa">${taxPct}%</td>
+          ${!isQuotation ? `<td style="text-align:right">${formatIndianNumber(total, 2)}</td>
+          <td style="text-align:center;color:#aaa">${taxPct}%</td>` : ''}
           <td style="text-align:right;font-weight:700">${formatIndianNumber(withTax, 2)}</td>
         </tr>`;
     }).join('')}
-    ${Array(Math.max(0, 12 - order.items.length)).fill(0).map(() => `<tr style="height:18px"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('')}
+    <tr style="height:100%"><td style="border:none"></td><td style="border:none"></td>${!isQuotation ? '<td style="border:none"></td>' : ''}<td style="border:none"></td><td style="border:none"></td>${!isQuotation ? '<td style="border:none"></td><td style="border:none"></td>' : ''}<td style="border:none"></td></tr>
     </tbody>
   </table>
 

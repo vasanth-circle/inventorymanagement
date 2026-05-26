@@ -13,6 +13,7 @@ const Vendors = () => {
         email: '',
         phone: '',
         gstin: '',
+        openingBalance: 0,
         address: { street: '', city: '', state: '', zipCode: '', country: '' },
     });
 
@@ -45,6 +46,7 @@ const Vendors = () => {
                 email: vendor.email || '',
                 phone: vendor.phone || '',
                 gstin: vendor.gstin || '',
+                openingBalance: vendor.openingBalance || 0,
                 address: vendor.address || { street: '', city: '', state: '', zipCode: '', country: '' },
             });
         } else {
@@ -55,6 +57,7 @@ const Vendors = () => {
                 email: '',
                 phone: '',
                 gstin: '',
+                openingBalance: 0,
                 address: { street: '', city: '', state: '', zipCode: '', country: '' },
             });
         }
@@ -164,6 +167,11 @@ const Vendors = () => {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">GSTIN</label>
                                     <input type="text" value={formData.gstin} onChange={(e) => setFormData({ ...formData, gstin: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Opening Balance (₹)</label>
+                                    <input type="number" step="0.01" value={formData.openingBalance} onChange={(e) => setFormData({ ...formData, openingBalance: parseFloat(e.target.value) || 0 })} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500" placeholder="e.g. 5000 (You owe them) or -100 (Advance paid)" />
+                                    <p className="text-[10px] text-gray-500 mt-1">Positive = You owe vendor. Negative = Advance paid.</p>
                                 </div>
                             </div>
 

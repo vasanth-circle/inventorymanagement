@@ -45,7 +45,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             items: [
                 { name: activePreset?.terminology?.customers || 'Customers', path: '/customers', id: 'customers' },
                 { name: 'Customer Ledgers', path: '/customer-ledger', id: 'customer-ledger' },
-                { name: 'Quotations', path: '/quotations', id: 'quotations' },
+                // { name: 'Quotations', path: '/quotations', id: 'quotations' },
                 { name: 'Sales Orders', path: '/sales-orders', id: 'sales-orders' },
                 { name: activePreset?.terminology?.outward || 'Dispatch Management', path: '/dispatch-management', id: 'dispatch-management' },
             ]
@@ -130,7 +130,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
         // 1. Apply restrictive roles first (Top Priority)
         if (effectiveRole === 'sales_person' || effectiveRole === 'sales person' || effectiveRole === 'sales user' || effectiveRole === 'sales_user') {
-            const salesAllowed = ['dashboard', 'items', 'stocks', 'quotations', 'sales-orders', 'dispatch-management', 'customers', 'customer-ledger'];
+            const salesAllowed = ['dashboard', 'items', 'stocks', 'sales-orders', 'dispatch-management', 'customers', 'customer-ledger'];
             return salesAllowed.includes(itemId);
         }
 

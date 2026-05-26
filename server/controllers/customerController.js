@@ -55,7 +55,11 @@ export const getCustomer = async (req, res, next) => {
 // @access  Private
 export const createCustomer = async (req, res, next) => {
     try {
-        const customer = await Customer.create({ ...req.body, tenantId: req.tenantId });
+        const payload = { ...req.body, tenantId: req.tenantId };
+        if (payload.openingBalance !== undefined) {
+            payload.currentBalance = payload.openingBalance;
+        }
+        const customer = await Customer.create(payload);
 
         sendResponse(res, 201, customer, 'Customer created successfully');
     } catch (error) {
@@ -68,9 +72,20 @@ export const createCustomer = async (req, res, next) => {
 // @access  Private
 export const updateCustomer = async (req, res, next) => {
     try {
+        const payload = { ...req.body };
+        if (payload.openingBalance !== undefined) {
+            const existing = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
+            if (existing) {
+                const diff = Number(payload.openingBalance) - (existing.openingBalance || 0);
+                if (diff !== 0) {
+                    payload.currentBalance = (existing.currentBalance || 0) + diff;
+                }
+            }
+        }
+
         const customer = await Customer.findOneAndUpdate(
             { _id: req.params.id, ...tenantQuery(req) },
-            req.body,
+            payload,
             {
                 new: true,
                 runValidators: true

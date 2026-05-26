@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 const Customers = () => {
     const navigate = useNavigate();
     const [customers, setCustomers] = useState([]);
+    const [searchQuery, setSearchQuery] = useState('');
     const [balances, setBalances] = useState({}); // { customerId: balance }
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -17,6 +18,7 @@ const Customers = () => {
         phone: '',
         companyName: '',
         gstin: '',
+        openingBalance: 0,
         billingAddress: { street: '', city: '', state: '', zipCode: '', country: '' },
     });
 
@@ -63,6 +65,7 @@ const Customers = () => {
                 phone: customer.phone || '',
                 companyName: customer.companyName || '',
                 gstin: customer.gstin || '',
+                openingBalance: customer.openingBalance || 0,
                 billingAddress: customer.address?.billing || { street: '', city: '', state: '', zipCode: '', country: '' },
             });
         } else {
@@ -73,6 +76,7 @@ const Customers = () => {
                 phone: '',
                 companyName: '',
                 gstin: '',
+                openingBalance: 0,
                 billingAddress: { street: '', city: '', state: '', zipCode: '', country: '' },
             });
         }
@@ -109,12 +113,24 @@ const Customers = () => {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-800">Customers</h1>
-                <button
-                    onClick={() => handleOpenModal()}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                >
-                    Add Customer
-                </button>
+                <div className="flex gap-3">
+                    <div className="relative">
+                        <input 
+                            type="text" 
+                            placeholder="Search customers..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none w-64"
+                        />
+                        <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
+                    </div>
+                    <button
+                        onClick={() => handleOpenModal()}
+                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shrink-0"
+                    >
+                        Add Customer
+                    </button>
+                </div>
             </div>
 
             {loading ? (
@@ -135,7 +151,11 @@ const Customers = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {customers.map((customer) => {
+                            {customers.filter(c => 
+                                c.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                c.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                c.phone?.includes(searchQuery)
+                            ).map((customer) => {
                                 const bal = balances[customer._id] ?? customer.currentBalance ?? 0;
                                 return (
                                 <tr key={customer._id} className="hover:bg-gray-50 transition-colors">
@@ -202,6 +222,11 @@ const Customers = () => {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">GSTIN</label>
                                     <input type="text" value={formData.gstin} onChange={(e) => setFormData({ ...formData, gstin: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Opening Balance (₹)</label>
+                                    <input type="number" step="0.01" value={formData.openingBalance} onChange={(e) => setFormData({ ...formData, openingBalance: parseFloat(e.target.value) || 0 })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" placeholder="e.g. 5000 (Owed by customer) or -100 (Advance paid)" />
+                                    <p className="text-[10px] text-gray-500 mt-1">Positive = Owed to you. Negative = Advance paid.</p>
                                 </div>
                             </div>
 
