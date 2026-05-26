@@ -21,16 +21,24 @@ const BulkImport = () => {
     const [updateMode, setUpdateMode] = useState('add'); // 'add' or 'overwrite'
 
     const fullFields = [
-        { key: 'name', label: 'Item Name', required: true, synonyms: ['item', 'product', 'name', 'title'] },
+        { key: 'name', label: 'Item Name', required: true, synonyms: ['item name', 'item', 'product', 'name', 'title'] },
         { key: 'sku', label: 'SKU / Item Code', required: false, synonyms: ['sku', 'code', 'article', 'id'] },
+        { key: 'partNumber', label: 'Part Number', required: false, synonyms: ['part number', 'part no', 'partno', 'part#'] },
         { key: 'category', label: 'Category', required: false, synonyms: ['category', 'type', 'group'] },
-        { key: 'quantity', label: 'Quantity', required: false, synonyms: ['qty', 'quantity', 'stock', 'count'] },
-        { key: 'price', label: 'Price / Unit Cost', required: false, synonyms: ['price', 'cost', 'rate', 'mrp'] },
+        { key: 'brand', label: 'Brand', required: false, synonyms: ['brand', 'make', 'manufacturer'] },
+        { key: 'size', label: 'Size', required: false, synonyms: ['size', 'dimension'] },
+        { key: 'quantity', label: 'Quantity', required: false, synonyms: ['qty', 'quantity', 'stock', 'count', 'no.of.pcs/box'] },
+        { key: 'sqFtPerPc', label: 'SQFT / Tile (per pc)', required: false, synonyms: ['sqft/tile', 'sqft/pc', 'sqfttile', 'sqft per tile'] },
+        { key: 'sqFtPerBox', label: 'SQFT / Box', required: false, synonyms: ['sqft/box', 'sqftbox', 'sqft per box'] },
+        { key: 'pcsPerBox', label: 'No. of Pcs / Box', required: false, synonyms: ['no.of.pcs/box', 'pcs/box', 'pcsperbox', 'pieces per box', 'pcs per box'] },
+        { key: 'unitType', label: 'Unit', required: false, synonyms: ['unit', 'uom', 'units'] },
+        { key: 'price', label: 'Selling Price (per sqft)', required: false, synonyms: ['price', 'selling price', 'cost', 'rate', 'mrp'] },
+        { key: 'purchasePrice', label: 'Purchase Price', required: false, synonyms: ['purchase price', 'buy price', 'purchase cost', 'cost price'] },
         { key: 'barcode', label: 'Barcode', required: false, synonyms: ['barcode', 'upc', 'ean'] },
+        { key: 'hsn', label: 'HSN Code', required: false, synonyms: ['hsn', 'hsn code', 'sac', 'tax code'] },
         { key: 'location', label: 'Storage Location', required: false, synonyms: ['location', 'warehouse', 'rack', 'shelf'] },
         { key: 'minStockThreshold', label: 'Min Stock Level', required: false, synonyms: ['min', 'threshold', 'alert', 'reorder'] },
         { key: 'description', label: 'Description', required: false, synonyms: ['description', 'desc', 'notes', 'info'] },
-        { key: 'hsn', label: 'HSN Code', required: false, synonyms: ['hsn', 'hsn code', 'sac', 'tax code'] },
     ];
 
     const stockFields = [
@@ -65,11 +73,11 @@ const BulkImport = () => {
             const { headers } = result.data;
             setMappingData(result.data);
             
-            // Auto-match logic
+            // Auto-match logic — compare header names against field synonyms
             const initialMapping = {};
             appFields.forEach(field => {
                 const match = headers.find(h => 
-                    field.synonyms.includes(h.toLowerCase().trim()) || 
+                    field.synonyms.some(syn => h.toLowerCase().trim() === syn) ||
                     h.toLowerCase().includes(field.key.toLowerCase())
                 );
                 if (match) initialMapping[field.key] = match;
@@ -120,7 +128,13 @@ const BulkImport = () => {
             }
 
             setLoading(true);
-            const result = await importMappedData(file, mapping, { updateMode, importType });
+            // Pass the headerRowIdx so the server reads the right rows
+            const result = await importMappedData(
+                file,
+                mapping,
+                { updateMode, importType },
+                mappingData?.headerRowIdx ?? 0
+            );
             setLoading(false);
             if (result.success) resetAll();
         }

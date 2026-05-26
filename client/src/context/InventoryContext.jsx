@@ -509,12 +509,13 @@ export const InventoryProvider = ({ children }) => {
     };
 
     // Import mapped data (Additive)
-    const importMappedData = async (file, mapping, options = {}) => {
+    const importMappedData = async (file, mapping, options = {}, headerRowIdx = 0) => {
         try {
             const formData = new FormData();
             formData.append('file', file);
             formData.append('mapping', JSON.stringify(mapping));
             formData.append('options', JSON.stringify(options));
+            formData.append('headerRowIdx', String(headerRowIdx));
             
             const { data } = await api.post('/excel/import-mapped', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },

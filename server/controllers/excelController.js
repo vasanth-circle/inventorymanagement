@@ -1,6 +1,8 @@
 import xlsx from 'xlsx';
 import Item from '../models/Item.js';
 import Category from '../models/Category.js';
+import Brand from '../models/Brand.js';
+import Size from '../models/Size.js';
 import Transaction from '../models/Transaction.js';
 import Location from '../models/Location.js';
 import { appConn } from '../config/db.js';
@@ -336,6 +338,7 @@ export const downloadTemplate = async (req, res, next) => {
     }
 };
 // Get headers and preview from Excel file
+// Auto-detects the actual header row (skips blank or purely numeric rows at top)
 export const getExcelHeaders = async (req, res, next) => {
     try {
         if (!req.file) {
@@ -346,23 +349,44 @@ export const getExcelHeaders = async (req, res, next) => {
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
 
-        // Get headers (first row)
+        // Read all rows as raw arrays
+        const allRows = xlsx.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+
+        // Find the first row that has mostly text (non-numeric) values — that's our header row
+        const isGoodHeaderRow = (row) => {
+            const nonEmpty = row.filter(v => v !== '' && v !== null && v !== undefined);
+            if (nonEmpty.length === 0) return false;
+            // A header row should have at least some string values
+            const textCells = nonEmpty.filter(v => typeof v === 'string');
+            return textCells.length >= Math.ceil(nonEmpty.length * 0.5);
+        };
+
+        let headerRowIdx = 0;
+        for (let i = 0; i < Math.min(5, allRows.length); i++) {
+            if (isGoodHeaderRow(allRows[i])) {
+                headerRowIdx = i;
+                break;
+            }
+        }
+
+        // Build headers from the detected header row, fall back to 'Column N' for blank cells
+        const rawHeaders = allRows[headerRowIdx] || [];
         const range = xlsx.utils.decode_range(worksheet['!ref']);
         const headers = [];
         for (let C = range.s.c; C <= range.e.c; ++C) {
-            const address = xlsx.utils.encode_col(C) + '1';
-            const cell = worksheet[address];
-            headers.push(cell ? cell.v : `Column ${C + 1}`);
+            const val = rawHeaders[C];
+            headers.push((val !== undefined && val !== '') ? String(val).trim() : `Column ${C + 1}`);
         }
 
-        // Get first 5 rows for preview
-        const data = xlsx.utils.sheet_to_json(worksheet, { range: 0, header: 1 });
-        const previewRows = data.slice(1, 6); // Skip header, take next 5
+        // Data rows start after the header row
+        const dataRows = allRows.slice(headerRowIdx + 1);
+        const previewRows = dataRows.slice(0, 5);
 
         res.json({
             headers,
             previewRows,
-            totalRows: data.length - 1
+            totalRows: dataRows.length,
+            headerRowIdx,
         });
     } catch (error) {
         console.error('Error extracting headers:', error);
@@ -370,7 +394,7 @@ export const getExcelHeaders = async (req, res, next) => {
     }
 };
 
-// Bulk import with custom mapping
+// Bulk import with custom mapping — supports brand, size, sqFtPerPc, pcsPerBox, hsn
 export const importBulkMapped = async (req, res, next) => {
     try {
         if (!req.file) {
@@ -380,135 +404,242 @@ export const importBulkMapped = async (req, res, next) => {
         const options = JSON.parse(req.body.options || '{}');
         const updateMode = options.updateMode || 'add'; // 'add' or 'overwrite'
         const mapping = JSON.parse(req.body.mapping || '{}');
+        const headerRowIdx = parseInt(req.body.headerRowIdx || '0', 10);
+
         const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const rawData = xlsx.utils.sheet_to_json(worksheet);
 
-        if (rawData.length === 0) {
-            return res.status(400).json({ message: 'Excel file is empty' });
+        // Read all raw rows, then slice from headerRowIdx+1 to get data rows
+        const allRows = xlsx.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+        const headerRow = allRows[headerRowIdx] || [];
+        const dataRows = allRows.slice(headerRowIdx + 1).filter(row =>
+            row.some(cell => cell !== '' && cell !== null && cell !== undefined)
+        );
+
+        if (dataRows.length === 0) {
+            return res.status(400).json({ message: 'Excel file is empty or has no data rows' });
         }
 
-        const results = {
-            success: [],
-            failed: [],
-            updated: [],
+        // Build a helper to get a value from a row by header name
+        const getCell = (row, headerName) => {
+            if (!headerName) return undefined;
+            const colIdx = headerRow.findIndex(h => String(h).trim() === String(headerName).trim());
+            return colIdx >= 0 ? row[colIdx] : undefined;
         };
 
-        // Standard fields mapping: { appField: excelHeader }
-        for (const row of rawData) {
+        const results = { success: [], failed: [], updated: [] };
+
+
+        // ─── In-memory caches (per import batch) ───────────────────────────
+        // Keys are lower-cased name strings; values are resolved DB documents
+        const categoryCache = {};  // { 'tiles': Category }
+        const brandCache    = {};  // { 'tiles::solorex': Brand }
+        const sizeCache     = {};  // { '4x2': true }
+
+        // Helper: resolve or create a Category (cached)
+        const resolveCategory = async (name) => {
+            const key = name.toLowerCase().trim();
+            if (categoryCache[key]) return categoryCache[key];
+            let cat = await Category.findOne({
+                name: { $regex: new RegExp(`^${name}$`, 'i') },
+                ...tenantQuery(req)
+            });
+            if (!cat) cat = await Category.create({ name, tenantId: req.tenantId });
+            categoryCache[key] = cat;
+            return cat;
+        };
+
+        // Helper: resolve or create a Brand (cached per category)
+        const resolveBrand = async (brandName, categoryId) => {
+            const key = `${categoryId}::${brandName.toLowerCase().trim()}`;
+            if (brandCache[key]) return brandCache[key];
+            let brand = await Brand.findOne({
+                name: { $regex: new RegExp(`^${brandName}$`, 'i') },
+                categoryId,
+                ...tenantQuery(req)
+            });
+            if (!brand) brand = await Brand.create({ name: brandName, categoryId, tenantId: req.tenantId });
+            brandCache[key] = brand;
+            return brand;
+        };
+
+        // Helper: resolve or create a Size (cached)
+        const resolveSize = async (sizeName) => {
+            const key = sizeName.toLowerCase().trim();
+            if (sizeCache[key] !== undefined) return; // already handled
+            const existing = await Size.findOne({
+                name: { $regex: new RegExp(`^${sizeName}$`, 'i') },
+                ...tenantQuery(req)
+            });
+            if (!existing) {
+                const dimMatch = sizeName.match(/(\d+(?:\.\d+)?)[xX×](\d+(?:\.\d+)?)/);
+                const width  = dimMatch ? parseFloat(dimMatch[1]) : 0;
+                const height = dimMatch ? parseFloat(dimMatch[2]) : 0;
+                await Size.create({ name: sizeName, width, height, unit: 'inches', tenantId: req.tenantId });
+            }
+            sizeCache[key] = true;
+        };
+        // ───────────────────────────────────────────────────────────────────
+
+        for (const row of dataRows) {
             try {
-                // Transform row based on mapping
+                const rawName = getCell(row, mapping.name);
+                if (!rawName) continue; // skip empty rows
+
                 const itemData = {
-                    name: row[mapping.name]?.toString().trim(),
-                    sku: row[mapping.sku]?.toString().trim() || row[mapping.barcode]?.toString().trim(),
-                    barcode: row[mapping.barcode]?.toString().trim(),
-                    category: row[mapping.category]?.toString().trim(),
-                    quantity: parseFloat(row[mapping.quantity]) || 0,
-                    price: parseFloat(row[mapping.price]) || 0,
-                    location: row[mapping.location]?.toString().trim(),
-                    minStockThreshold: parseFloat(row[mapping.minStockThreshold]) || 10,
-                    description: row[mapping.description]?.toString().trim(),
+                    name: String(rawName).trim(),
+                    sku: mapping.sku ? String(getCell(row, mapping.sku) || '').trim() : '',
+                    barcode: mapping.barcode ? String(getCell(row, mapping.barcode) || '').trim() : '',
+                    partNumber: mapping.partNumber ? String(getCell(row, mapping.partNumber) || '').trim() : '',
+                    category: mapping.category ? String(getCell(row, mapping.category) || '').trim() : '',
+                    brand: mapping.brand ? String(getCell(row, mapping.brand) || '').trim() : '',
+                    size: mapping.size ? String(getCell(row, mapping.size) || '').trim() : '',
+                    hsn: mapping.hsn ? String(getCell(row, mapping.hsn) || '').trim() : '',
+                    quantity: parseFloat(getCell(row, mapping.quantity)) || 0,
+                    price: parseFloat(getCell(row, mapping.price)) || 0,
+                    purchasePrice: parseFloat(getCell(row, mapping.purchasePrice)) || 0,
+                    sqFtPerPc: parseFloat(getCell(row, mapping.sqFtPerPc)) || 0,
+                    sqFtPerBox: parseFloat(getCell(row, mapping.sqFtPerBox)) || 0,
+                    pcsPerBox: parseFloat(getCell(row, mapping.pcsPerBox)) || 1,
+                    unitType: mapping.unitType ? String(getCell(row, mapping.unitType) || 'box').trim().toLowerCase() : 'box',
+                    location: mapping.location ? String(getCell(row, mapping.location) || '').trim() : '',
+                    minStockThreshold: parseFloat(getCell(row, mapping.minStockThreshold)) || 10,
+                    description: mapping.description ? String(getCell(row, mapping.description) || '').trim() : '',
                 };
 
-                // Ensure required fields
-                if (!itemData.name) throw new Error('Item name is missing or mapped to empty column');
-                
-                // Resolve Category
-                let categoryId;
+                // Sanitize empty strings
+                if (!itemData.sku) delete itemData.sku;
+                if (!itemData.barcode) delete itemData.barcode;
+                if (!itemData.partNumber) delete itemData.partNumber;
+
+                // --- Resolve / auto-create Category (uses cache) ---
                 const categoryName = itemData.category || 'Uncategorized';
-                const category = await Category.findOne({ 
-                    name: { $regex: new RegExp(`^${categoryName}$`, 'i') },
-                    ...tenantQuery(req)
-                });
+                const category = await resolveCategory(categoryName);
+                const categoryId = category._id;
 
-                if (category) {
-                    categoryId = category._id;
-                } else {
-                    const newCategory = await Category.create({ 
-                        name: categoryName,
-                        tenantId: req.tenantId
-                    });
-                    categoryId = newCategory._id;
-                }
+                // --- Resolve / auto-create Brand (uses cache) ---
+                const brandName = itemData.brand || '';
+                if (brandName) await resolveBrand(brandName, categoryId);
 
-                // Check for existing item
+                // --- Resolve / auto-create Size (uses cache) ---
+                const sizeName = itemData.size || '';
+                if (sizeName) await resolveSize(sizeName);
+
+                // --- Check for existing item by SKU or name ---
                 let item = null;
                 if (itemData.sku) {
                     item = await Item.findOne({ sku: itemData.sku, ...tenantQuery(req) });
                 }
-                
                 if (!item) {
                     item = await Item.findOne({ name: itemData.name, ...tenantQuery(req) });
                 }
 
+                // Whether the user actually mapped a quantity column
+                const hasQuantityMapping = !!mapping.quantity;
+                const stockQty = hasQuantityMapping ? (parseFloat(getCell(row, mapping.quantity)) || 0) : null;
+
                 if (item) {
-                    // Update existing
-                    const previousQuantity = item.quantity;
-                    if (updateMode === 'overwrite') {
-                        item.quantity = itemData.quantity;
-                    } else {
-                        item.quantity += itemData.quantity;
+                    // --- Update existing item ---
+                    // Only touch quantity if the user mapped a quantity column
+                    if (hasQuantityMapping && stockQty !== null) {
+                        const previousQuantity = item.quantity;
+                        if (updateMode === 'overwrite') {
+                            item.quantity = stockQty;
+                        } else {
+                            item.quantity += stockQty;
+                        }
+
+                        await item.save();
+
+                        // Only create a transaction if there was actual stock movement
+                        if (stockQty > 0) {
+                            await Transaction.create({
+                                item: item._id,
+                                type: 'inward',
+                                quantity: stockQty,
+                                previousQuantity,
+                                newQuantity: item.quantity,
+                                reason: 'Bulk Mapping Import',
+                                location: itemData.location || item.location,
+                                user: req.user._id,
+                                ...tenantQuery(req)
+                            });
+                        }
                     }
-                    item.price = itemData.price || item.price;
+
+                    // Always update item master fields (no stock touched)
+                    if (itemData.price) item.price = itemData.price;
+                    if (itemData.purchasePrice) item.purchasePrice = itemData.purchasePrice;
                     if (itemData.location) item.location = itemData.location;
                     if (itemData.description) item.description = itemData.description;
                     if (itemData.barcode) item.barcode = itemData.barcode;
-                    
-                    await item.save();
+                    if (itemData.partNumber) item.partNumber = itemData.partNumber;
+                    if (brandName) item.brand = brandName;
+                    if (sizeName) item.size = sizeName;
+                    if (itemData.hsn) item.hsn = itemData.hsn;
+                    if (itemData.sqFtPerPc > 0) item.sqFtPerPc = itemData.sqFtPerPc;
+                    if (itemData.sqFtPerBox > 0) item.sqFtPerBox = itemData.sqFtPerBox;
+                    if (itemData.pcsPerBox >= 1) item.pcsPerBox = itemData.pcsPerBox;
+                    if (itemData.unitType) item.unitType = itemData.unitType;
+                    if (categoryId) item.category = categoryId;
 
-                    // Log transaction
-                    await Transaction.create({
-                        item: item._id,
-                        type: 'inward',
-                        quantity: itemData.quantity,
-                        previousQuantity: previousQuantity,
-                        newQuantity: item.quantity,
-                        reason: 'Bulk Mapping Import',
-                        location: itemData.location || item.location,
-                        user: req.user._id,
-                        ...tenantQuery(req)
-                    });
+                    await item.save();
 
                     results.updated.push({ name: item.name, sku: item.sku });
                 } else {
-                    // Create new
-                    item = await Item.create({
+                    // --- Create new item (mirrors item create controller) ---
+                    const newItemPayload = {
                         name: itemData.name,
-                        sku: itemData.sku || `SKU-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-                        barcode: itemData.barcode,
                         category: categoryId,
-                        quantity: itemData.quantity,
+                        quantity: hasQuantityMapping ? (stockQty || 0) : 0, // 0 if no qty column
                         price: itemData.price,
-                        location: itemData.location,
                         minStockThreshold: itemData.minStockThreshold,
-                        description: itemData.description,
-                        ...tenantQuery(req)
-                    });
+                        pcsPerBox: itemData.pcsPerBox,
+                        sqFtPerPc: itemData.sqFtPerPc,
+                        sqFtPerBox: itemData.sqFtPerBox,
+                        unitType: itemData.unitType,
+                        tenantId: req.tenantId,
+                    };
 
-                    // Log transaction
-                    await Transaction.create({
-                        item: item._id,
-                        type: 'inward',
-                        quantity: itemData.quantity,
-                        previousQuantity: 0,
-                        newQuantity: item.quantity,
-                        reason: 'Bulk Mapping Import',
-                        location: itemData.location || item.location,
-                        user: req.user._id,
-                        ...tenantQuery(req)
-                    });
+                    if (itemData.sku) newItemPayload.sku = itemData.sku;
+                    if (itemData.barcode) newItemPayload.barcode = itemData.barcode;
+                    if (itemData.partNumber) newItemPayload.partNumber = itemData.partNumber;
+                    if (itemData.purchasePrice) newItemPayload.purchasePrice = itemData.purchasePrice;
+                    if (itemData.location) newItemPayload.location = itemData.location;
+                    if (itemData.description) newItemPayload.description = itemData.description;
+                    if (brandName) newItemPayload.brand = brandName;
+                    if (sizeName) newItemPayload.size = sizeName;
+                    if (itemData.hsn) newItemPayload.hsn = itemData.hsn;
+
+                    item = await Item.create(newItemPayload);
+
+                    // Only create an inward transaction if there's actual stock to record
+                    if (hasQuantityMapping && stockQty > 0) {
+                        await Transaction.create({
+                            item: item._id,
+                            type: 'inward',
+                            quantity: stockQty,
+                            previousQuantity: 0,
+                            newQuantity: item.quantity,
+                            reason: 'Bulk Mapping Import',
+                            location: itemData.location || '',
+                            user: req.user._id,
+                            ...tenantQuery(req)
+                        });
+                    }
 
                     results.success.push({ name: item.name, sku: item.sku });
                 }
             } catch (error) {
-                results.failed.push({ name: row[mapping.name] || 'Unknown', error: error.message });
+                const rowName = mapping.name ? String(getCell(row, mapping.name) || 'Unknown').trim() : 'Unknown';
+                results.failed.push({ name: rowName, error: error.message });
             }
         }
 
         res.json({
             message: 'Bulk import completed',
-            totalProcessed: rawData.length,
+            totalProcessed: dataRows.length,
             successCount: results.success.length,
             updatedCount: results.updated.length,
             failedCount: results.failed.length,

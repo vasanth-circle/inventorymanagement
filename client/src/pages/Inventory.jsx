@@ -471,7 +471,11 @@ const Inventory = () => {
                                 <tbody className="bg-white divide-y divide-gray-100">
                                     {items.length > 0 ? (
                                         items.map((item) => (
-                                            <tr key={item._id} className="hover:bg-gray-50/50 transition-colors">
+                                            <tr 
+                                                key={item._id} 
+                                                className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                                                onClick={() => handleEdit(item)}
+                                            >
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     {item.image ? (
                                                         <img src={item.image} alt={item.name} className="h-12 w-12 object-cover rounded-lg border border-gray-100 shadow-sm" />
@@ -484,15 +488,31 @@ const Inventory = () => {
                                                 <td className="px-6 py-4">
                                                     <div className="font-bold text-gray-900 leading-tight">{item.name}</div>
                                                     <div className="text-[10px] text-gray-400 font-mono mt-0.5">{item.unitType?.toUpperCase() || 'BOX'}</div>
-                                                    {item.customFields && Object.keys(item.customFields).length > 0 && (
-                                                        <div className="flex flex-wrap gap-1 mt-1.5">
-                                                            {Object.entries(item.customFields).slice(0, 3).map(([key, value]) => (
+                                                    {/* Show brand, size, hsn if present */}
+                                                    <div className="flex flex-wrap gap-1 mt-1.5">
+                                                        {item.brand && (
+                                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-100 uppercase tracking-tighter">
+                                                                {item.brand}
+                                                            </span>
+                                                        )}
+                                                        {item.size && (
+                                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-50 text-purple-600 border border-purple-100 uppercase tracking-tighter">
+                                                                {item.size}
+                                                            </span>
+                                                        )}
+                                                        {item.hsn && (
+                                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-600 border border-amber-100 uppercase tracking-tighter">
+                                                                HSN: {item.hsn}
+                                                            </span>
+                                                        )}
+                                                        {item.customFields && Object.keys(item.customFields).length > 0 && (
+                                                            Object.entries(item.customFields).slice(0, 2).map(([key, value]) => (
                                                                 <span key={key} className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-tighter">
                                                                     {key}: {value}
                                                                 </span>
-                                                            ))}
-                                                        </div>
-                                                    )}
+                                                            ))
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <span className="px-2 py-1 bg-gray-100 text-gray-600 text-[10px] font-bold rounded-md border border-gray-200">
@@ -501,7 +521,7 @@ const Inventory = () => {
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-center">
                                                     <div className="text-sm font-black text-gray-900">{item.quantity}</div>
-                                                    <div className="text-[10px] text-gray-400 uppercase font-bold">Qty</div>
+                                                    <div className="text-[10px] text-gray-400 uppercase font-bold">{item.unitType?.toUpperCase() || 'BOX'}</div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="text-sm font-black text-rose-600">{formatCurrency(item.price)}</div>
@@ -514,10 +534,18 @@ const Inventory = () => {
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                     <div className="flex space-x-3">
-                                                        <button onClick={() => handleEdit(item)} className="text-slate-400 hover:text-blue-600 transition-colors" title="Edit">
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); handleEdit(item); }} 
+                                                            className="text-slate-400 hover:text-blue-600 transition-colors" 
+                                                            title="Edit"
+                                                        >
                                                             <span className="text-lg">✏️</span>
                                                         </button>
-                                                        <button onClick={() => handleDelete(item._id)} className="text-slate-400 hover:text-red-600 transition-colors" title="Delete">
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); handleDelete(item._id); }} 
+                                                            className="text-slate-400 hover:text-red-600 transition-colors" 
+                                                            title="Delete"
+                                                        >
                                                             <span className="text-lg">🗑️</span>
                                                         </button>
                                                     </div>
@@ -540,7 +568,11 @@ const Inventory = () => {
                         <div className="lg:hidden grid grid-cols-1 gap-4 p-4 pb-24">
                             {items.length > 0 ? (
                                 items.map((item) => (
-                                    <div key={item._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden relative group">
+                                    <div 
+                                        key={item._id} 
+                                        className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden relative group cursor-pointer hover:border-gray-300 transition-colors"
+                                        onClick={() => handleEdit(item)}
+                                    >
                                         <div className="flex items-start p-4 gap-4">
                                             {/* Image/Icon Section */}
                                             <div className="flex-shrink-0">
@@ -585,12 +617,18 @@ const Inventory = () => {
                                         </div>
 
                                         {/* Action Bar */}
-                                        <div className="bg-gray-50 border-t border-gray-100 px-4 py-3 flex gap-2">
-                                            <button onClick={() => handleEdit(item)} className="flex-1 bg-white border border-gray-200 text-blue-600 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-sm">
-                                                <span>✏️</span> Edit Item
+                                        <div className="mt-4 flex gap-2 border-t border-gray-50 pt-3 px-4 pb-4">
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleEdit(item); }} 
+                                                className="flex-1 py-1.5 flex justify-center items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-gray-100"
+                                            >
+                                                <span className="text-sm">✏️</span> Edit
                                             </button>
-                                            <button onClick={() => handleDelete(item._id)} className="px-4 bg-white border border-gray-200 text-red-500 py-2 rounded-lg text-sm shadow-sm">
-                                                🗑️
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleDelete(item._id); }} 
+                                                className="flex-1 py-1.5 flex justify-center items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-gray-100"
+                                            >
+                                                <span className="text-sm">🗑️</span> Delete
                                             </button>
                                         </div>
                                     </div>
