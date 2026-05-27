@@ -528,10 +528,15 @@ const SalesOrders = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                                     <div className="md:col-span-1">
                                         <label className="block text-sm font-bold text-gray-700 mb-2">Select Customer *</label>
-                                        <select required value={formData.customer} onChange={(e) => handleCustomerChange(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none shadow-sm transition-all">
-                                            <option value="">Select Customer</option>
-                                            {customers.map(c => <option key={c._id} value={c._id}>{c.companyName || c.name}</option>)}
-                                        </select>
+                                        <SearchableSelect
+                                            required
+                                            value={formData.customer}
+                                            onChange={(e) => handleCustomerChange(e.target.value)}
+                                            options={customers.map(c => ({ value: c._id, label: c.companyName || c.name }))}
+                                            placeholder="Select Customer"
+                                            searchPlaceholder="Search customer..."
+                                            className="w-full"
+                                        />
                                     </div>
                                     <div className="flex items-center space-x-6 pb-3">
                                         <label className="flex items-center cursor-pointer group">
@@ -629,7 +634,7 @@ const SalesOrders = () => {
                                                             <td className="px-4 py-3">
                                                                 <input 
                                                                     type="number" 
-                                                                    step="0.01" 
+                                                                    step={isTile ? "0.5" : "1"} 
                                                                     min="0" 
                                                                     value={isTile ? (row.boxCount || '') : (row.quantity || '')} 
                                                                     onChange={(e) => handleItemChange(index, isTile ? 'boxCount' : 'quantity', e.target.value)} 
@@ -724,7 +729,7 @@ const SalesOrders = () => {
                                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                                                 {isTile ? 'Boxes' : (billingSettings?.unitConfig?.quantityLabel || 'Qty')}
                                                             </label>
-                                                            <input type="number" step="0.01" min="0" value={isTile ? (row.boxCount || '') : (row.quantity || '')} onChange={(e) => handleItemChange(index, isTile ? 'boxCount' : 'quantity', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none text-center font-bold" />
+                                                            <input type="number" step={isTile ? "0.5" : "1"} min="0" value={isTile ? (row.boxCount || '') : (row.quantity || '')} onChange={(e) => handleItemChange(index, isTile ? 'boxCount' : 'quantity', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none text-center font-bold" />
                                                         </div>
                                                         <div className="space-y-1">
                                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">

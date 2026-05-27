@@ -206,8 +206,15 @@ export const InventoryProvider = ({ children }) => {
                 }
             } else if (field === 'item' || field === 'price' || field === 'batchId') {
                 // Recalculate totals when item or price changes
-                if (billingUnit === 'boxes') {
-                    const boxes = updatedRow.boxCount > 0 ? updatedRow.boxCount : (updatedRow.quantity || 1);
+                // For 'item' field, do NOT auto-fill quantity — keep as 0 (empty) so user must enter
+                if (field === 'item') {
+                    updatedRow.boxCount = 0;
+                    updatedRow.totalPcs = 0;
+                    updatedRow.totalSqFt = 0;
+                    updatedRow.quantity = 0;
+                    updatedRow.stockQty = 0;
+                } else if (billingUnit === 'boxes') {
+                    const boxes = updatedRow.boxCount > 0 ? updatedRow.boxCount : updatedRow.quantity;
                     updatedRow.boxCount = boxes;
                     updatedRow.totalPcs = boxes * pcsPerBox;
                     updatedRow.totalSqFt = Number((updatedRow.totalPcs * sqFtPerPc).toFixed(4));
@@ -215,7 +222,7 @@ export const InventoryProvider = ({ children }) => {
                     updatedRow.stockQty = boxes;
                     updatedRow.stockUnit = 'boxes';
                 } else if (billingUnit === 'qty') {
-                    const pcs = updatedRow.totalPcs > 0 ? updatedRow.totalPcs : (updatedRow.quantity || 1);
+                    const pcs = updatedRow.totalPcs > 0 ? updatedRow.totalPcs : updatedRow.quantity;
                     updatedRow.totalPcs = pcs;
                     updatedRow.totalSqFt = Number((pcs * sqFtPerPc).toFixed(4));
                     updatedRow.boxCount = pcsPerBox > 0 ? pcs / pcsPerBox : 0;
@@ -223,7 +230,7 @@ export const InventoryProvider = ({ children }) => {
                     updatedRow.stockQty = pcs;
                     updatedRow.stockUnit = 'pieces';
                 } else if (billingUnit === 'sqft') {
-                    const sqft = updatedRow.totalSqFt > 0 ? updatedRow.totalSqFt : (updatedRow.quantity || 1);
+                    const sqft = updatedRow.totalSqFt > 0 ? updatedRow.totalSqFt : updatedRow.quantity;
                     updatedRow.totalSqFt = sqft;
                     updatedRow.totalPcs = sqFtPerPc > 0 ? sqft / sqFtPerPc : 0;
                     updatedRow.boxCount = pcsPerBox > 0 ? updatedRow.totalPcs / pcsPerBox : 0;

@@ -18,7 +18,7 @@ const Customers = () => {
         phone: '',
         companyName: '',
         gstin: '',
-        openingBalance: 0,
+        openingBalance: '',
         billingAddress: { street: '', city: '', state: '', zipCode: '', country: '' },
     });
 
@@ -76,7 +76,7 @@ const Customers = () => {
                 phone: '',
                 companyName: '',
                 gstin: '',
-                openingBalance: 0,
+                openingBalance: '',
                 billingAddress: { street: '', city: '', state: '', zipCode: '', country: '' },
             });
         }
@@ -225,7 +225,7 @@ const Customers = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Opening Balance (₹)</label>
-                                    <input type="number" step="0.01" value={formData.openingBalance} onChange={(e) => setFormData({ ...formData, openingBalance: parseFloat(e.target.value) || 0 })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" placeholder="e.g. 5000 (Owed by customer) or -100 (Advance paid)" />
+                                    <input type="number" step="0.01" value={formData.openingBalance} onChange={(e) => setFormData({ ...formData, openingBalance: e.target.value === '' ? '' : parseFloat(e.target.value) })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" placeholder="e.g. 5000 (Owed by customer) or -100 (Advance paid)" />
                                     <p className="text-[10px] text-gray-500 mt-1">Positive = Owed to you. Negative = Advance paid.</p>
                                 </div>
                             </div>
