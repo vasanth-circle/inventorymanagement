@@ -115,6 +115,9 @@ const salesOrderSchema = new mongoose.Schema({
         default: null,
     },
     quotationNumber: { type: String, default: null },
+    // Site/Project tracking — for builder customers with multiple construction sites
+    siteName: { type: String, default: '', trim: true },
+    siteAddress: { type: String, default: '', trim: true },
 }, {
     timestamps: true,
 });

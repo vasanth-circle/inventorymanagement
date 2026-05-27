@@ -40,19 +40,15 @@ const buildItemRows = (items, settings, taxPct, isQuotation) => {
             <td><strong>${(item.name || '').toUpperCase()}</strong><br/>
                 <span style="font-size:8.5px;color:#666">${item.brand || ''} ${item.size || ''}</span>
             </td>
-            ${!isQuotation ? `<td style="text-align:center">${item.hsn || ''}</td>` : ''}
             <td style="text-align:center;font-weight:bold">
                 ${item.totalSqFt ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}
             </td>
             <td style="text-align:center">${item.boxCount ? item.boxCount + ' (' + (item.pcsPerBox || '') + ' pcs/box)' : (item.secondaryQty ? item.secondaryQty : '')}</td>
             <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
-            ${!isQuotation ? `<td style="text-align:right">${formatIndianNumber(total, 2)}</td>
-            <td style="text-align:center">${taxPct}%</td>
-            <td style="text-align:right">${formatIndianNumber(taxAmt, 2)}</td>` : ''}
             <td style="text-align:right;font-weight:bold">${formatIndianNumber(withTax, 2)}</td>
         </tr>`;
     }).join('') +
-    `<tr style="height:100%"><td></td><td></td>${!isQuotation ? '<td></td>' : ''}<td></td><td></td><td></td>${!isQuotation ? '<td></td><td></td><td></td>' : ''}<td></td></tr>`;
+    `<tr style="height:100%"><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
 };
 
 
@@ -121,6 +117,8 @@ const template1 = (order, settings, docType = 'invoice') => {
   <div class="meta-grid">
     <div class="meta-box">
       <div class="meta-row"><span class="meta-label">To:</span><strong>${(order.customer?.companyName || order.customer?.name || 'Cash Sales').toUpperCase()}</strong></div>
+      ${order.siteName ? `<div class="meta-row"><span class="meta-label"></span><span style="font-weight:bold;color:#333">🏗️ ${order.siteName}</span></div>` : ''}
+      ${order.siteAddress ? `<div class="meta-row"><span class="meta-label"></span><span style="color:#555;font-size:9px">${order.siteAddress}</span></div>` : ''}
       <div class="meta-row"><span class="meta-label"></span>${order.customer?.address || ''}</div>
     </div>
     <div class="meta-box">
@@ -133,15 +131,11 @@ const template1 = (order, settings, docType = 'invoice') => {
     <table>
       <thead><tr>
         <th width="4%">S.No</th>
-        <th width="${isQuotation ? '48%' : '32%'}">Description of Goods</th>
-        ${!isQuotation ? `<th width="7%">HSN Code</th>` : ''}
-        <th width="9%">${qtyLabel}</th>
-        <th width="${isQuotation ? '15%' : '11%'}">Box Qty</th>
-        <th width="${isQuotation ? '11%' : '8%'}">${rateLabel}</th>
-        ${!isQuotation ? `<th width="9%">Amount</th>
-        <th width="5%">Tax %</th>
-        <th width="6%">Tax Amt</th>` : ''}
-        <th width="${isQuotation ? '13%' : '9%'}">Total</th>
+        <th width="50%">Description of Goods</th>
+        <th width="12%">${qtyLabel}</th>
+        <th width="13%">Box Qty</th>
+        <th width="10%">${rateLabel}</th>
+        <th width="11%">Total</th>
       </tr></thead>
       <tbody>${buildItemRows(order.items, settings, taxPct, isQuotation)}</tbody>
     </table>
@@ -269,6 +263,8 @@ const template2 = (order, settings, docType = 'invoice') => {
     <div class="meta-left">
       <div class="meta-title">Bill To</div>
       <div class="meta-value">${(order.customer?.companyName || order.customer?.name || 'Cash Sales').toUpperCase()}</div>
+      ${order.siteName ? `<div style="font-size:9px;font-weight:bold;color:#e84393;margin-top:2px">🏗️ ${order.siteName}</div>` : ''}
+      ${order.siteAddress ? `<div style="font-size:8.5px;color:#555;margin-top:1px">📍 ${order.siteAddress}</div>` : ''}
       <div style="font-size:8.5px;color:#555;margin-top:3px">${order.customer?.address || ''}</div>
       ${order.customer?.phone ? `<div style="font-size:8px;color:#888">📞 ${order.customer.phone}</div>` : ''}
     </div>
@@ -282,14 +278,11 @@ const template2 = (order, settings, docType = 'invoice') => {
     <table class="item-table">
       <thead><tr>
         <th width="4%">No.</th>
-        <th width="${isQuotation ? '50%' : '35%'}">Description</th>
-        ${!isQuotation ? `<th width="8%">HSN</th>` : ''}
-        <th width="9%">${qtyLabel}</th>
-        <th width="${isQuotation ? '14%' : '11%'}">Box Qty</th>
-        <th width="${isQuotation ? '11%' : '8%'}">${rateLabel}</th>
-        ${!isQuotation ? `<th width="9%">Amount</th>
-        <th width="5%">Tax</th>` : ''}
-        <th width="${isQuotation ? '12%' : '11%'}">Total</th>
+        <th width="52%">Description</th>
+        <th width="11%">${qtyLabel}</th>
+        <th width="13%">Box Qty</th>
+        <th width="9%">${rateLabel}</th>
+        <th width="11%">Total</th>
       </tr></thead>
       <tbody>
       ${order.items.map((item, i) => {
@@ -298,16 +291,13 @@ const template2 = (order, settings, docType = 'invoice') => {
           return `<tr>
             <td style="text-align:center">${i + 1}</td>
             <td><strong>${(item.name || '').toUpperCase()}</strong><span style="display:block;font-size:8.5px;color:#888">${item.brand || ''} ${item.size || ''}</span></td>
-            ${!isQuotation ? `<td style="text-align:center">${item.hsn || ''}</td>` : ''}
             <td style="text-align:center;font-weight:bold">${item.totalSqFt ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}</td>
             <td style="text-align:center">${item.boxCount ? `${item.boxCount} (${item.pcsPerBox || ''} pcs/box)` : (item.secondaryQty ? `${item.secondaryQty}` : '')}</td>
             <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
-            ${!isQuotation ? `<td style="text-align:right">${formatIndianNumber(total, 2)}</td>
-            <td style="text-align:center;color:#555">${taxPct}%</td>` : ''}
             <td style="text-align:right;font-weight:bold">${formatIndianNumber(withTax, 2)}</td>
           </tr>`;
       }).join('')}
-      <tr style="height:100%"><td style="border:none"></td><td style="border:none"></td>${!isQuotation ? '<td style="border:none"></td>' : ''}<td style="border:none"></td><td style="border:none"></td><td style="border:none"></td>${!isQuotation ? '<td style="border:none"></td><td style="border:none"></td>' : ''}<td style="border:none"></td></tr>
+      <tr style="height:100%"><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td></tr>
       </tbody>
     </table>
   </div>
@@ -423,6 +413,8 @@ const template3 = (order, settings, docType = 'invoice') => {
     <div class="bill-to">
       <div class="bill-to-label">Bill To</div>
       <div class="bill-to-name">${(order.customer?.companyName || order.customer?.name || 'Cash Sales').toUpperCase()}</div>
+      ${order.siteName ? `<div style="font-size:9px;font-weight:800;color:#555;margin-top:2px">🏗️ ${order.siteName}</div>` : ''}
+      ${order.siteAddress ? `<div class="bill-to-detail">📍 ${order.siteAddress}</div>` : ''}
       <div class="bill-to-detail">${order.customer?.address || ''}</div>
       ${order.customer?.phone ? `<div class="bill-to-detail">Tel: ${order.customer.phone}</div>` : ''}
     </div>
@@ -434,14 +426,11 @@ const template3 = (order, settings, docType = 'invoice') => {
   <table class="item-table">
     <thead><tr>
       <th width="4%">No</th>
-      <th width="${isQuotation ? '50%' : '35%'}">Description</th>
-      ${!isQuotation ? `<th width="8%">HSN</th>` : ''}
-      <th width="9%">${qtyLabel}</th>
-      <th width="${isQuotation ? '14%' : '11%'}">Box Qty</th>
-      <th width="${isQuotation ? '11%' : '8%'}">${rateLabel}</th>
-      ${!isQuotation ? `<th width="9%">Amount</th>
-      <th width="5%">Tax</th>` : ''}
-      <th width="${isQuotation ? '12%' : '11%'}">Total</th>
+      <th width="52%">Description</th>
+      <th width="11%">${qtyLabel}</th>
+      <th width="13%">Box Qty</th>
+      <th width="9%">${rateLabel}</th>
+      <th width="11%">Total</th>
     </tr></thead>
     <tbody>
     ${order.items.map((item, i) => {
@@ -450,18 +439,15 @@ const template3 = (order, settings, docType = 'invoice') => {
         return `<tr>
           <td style="color:#aaa">${i + 1}</td>
           <td><strong style="color:#111">${(item.name || '').toUpperCase()}</strong><br/><span style="color:#aaa;font-size:8.5px">${item.brand || ''} ${item.size || ''}</span></td>
-          ${!isQuotation ? `<td style="color:#999;text-align:center">${item.hsn || ''}</td>` : ''}
           <td style="text-align:center;font-weight:700">
             ${item.totalSqFt ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}
           </td>
           <td style="text-align:center">${item.boxCount ? `${item.boxCount}-${item.pcsPerBox || ''} pcs/box` : (item.secondaryQty ? `${item.secondaryQty}` : '')}</td>
           <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
-          ${!isQuotation ? `<td style="text-align:right">${formatIndianNumber(total, 2)}</td>
-          <td style="text-align:center;color:#aaa">${taxPct}%</td>` : ''}
           <td style="text-align:right;font-weight:700">${formatIndianNumber(withTax, 2)}</td>
         </tr>`;
     }).join('')}
-    <tr style="height:100%"><td style="border:none"></td><td style="border:none"></td>${!isQuotation ? '<td style="border:none"></td>' : ''}<td style="border:none"></td><td style="border:none"></td>${!isQuotation ? '<td style="border:none"></td><td style="border:none"></td>' : ''}<td style="border:none"></td></tr>
+    <tr style="height:100%"><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td></tr>
     </tbody>
   </table>
 

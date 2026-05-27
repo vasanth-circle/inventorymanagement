@@ -213,7 +213,8 @@ export const createSalesOrder = async (req, res, next) => {
         const { 
             customer, items, orderDate, expectedShipmentDate, 
             notes, terms, isEstimation, status,
-            loadingCharges, transportCharges, oldBalance, advanceAmount, taxAmount
+            loadingCharges, transportCharges, oldBalance, advanceAmount, taxAmount,
+            siteName, siteAddress
         } = req.body;
 
         // ── Pricing & Stock Validation ──
@@ -268,6 +269,8 @@ export const createSalesOrder = async (req, res, next) => {
                     oldBalance: oldBalance || 0,
                     advanceAmount: advanceAmount || 0,
                     taxAmount: taxAmount || 0,
+                    siteName: siteName || '',
+                    siteAddress: siteAddress || '',
                     user: req.user._id,
                     tenantId: req.tenantId,
                 });
@@ -346,7 +349,8 @@ export const updateSalesOrder = async (req, res, next) => {
         const { 
             customer, items, orderDate, expectedShipmentDate, 
             notes, terms, isEstimation, status,
-            loadingCharges, transportCharges, oldBalance, advanceAmount, taxAmount
+            loadingCharges, transportCharges, oldBalance, advanceAmount, taxAmount,
+            siteName, siteAddress
         } = req.body;
 
         const settings = await Setting.findOne({ tenantId: req.tenantId });
@@ -388,6 +392,8 @@ export const updateSalesOrder = async (req, res, next) => {
         if (oldBalance !== undefined) order.oldBalance = oldBalance;
         if (advanceAmount !== undefined) order.advanceAmount = advanceAmount;
         if (taxAmount !== undefined) order.taxAmount = taxAmount;
+        if (siteName !== undefined) order.siteName = siteName;
+        if (siteAddress !== undefined) order.siteAddress = siteAddress;
 
         // totalAmount calculation
         const itemsTotal = order.items.reduce((sum, item) => sum + (item.total || 0), 0);

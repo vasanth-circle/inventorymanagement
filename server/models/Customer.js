@@ -49,6 +49,12 @@ const customerSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
+    // Project sites — useful for builder customers who have multiple construction sites
+    sites: [{
+        name: { type: String, required: true, trim: true },
+        address: { type: String, trim: true, default: '' },
+        isActive: { type: Boolean, default: true },
+    }],
     isActive: {
         type: Boolean,
         default: true,

@@ -24,6 +24,8 @@ const SalesOrders = () => {
     const [fetchingBalance, setFetchingBalance] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [userFilter, setUserFilter] = useState('');
+    // Sites for the currently selected customer
+    const [selectedCustomerSites, setSelectedCustomerSites] = useState([]);
 
     const [formData, setFormData] = useState({
         customer: '',
@@ -54,7 +56,9 @@ const SalesOrders = () => {
         transportCharges: '',
         taxAmount: '',
         oldBalance: '',
-        advanceAmount: ''
+        advanceAmount: '',
+        siteName: '',
+        siteAddress: ''
     });
 
     useEffect(() => {
@@ -126,18 +130,26 @@ const SalesOrders = () => {
     };
 
     const handleCustomerChange = async (customerId) => {
-        setFormData(prev => ({ ...prev, customer: customerId }));
+        setFormData(prev => ({ ...prev, customer: customerId, siteName: '', siteAddress: '' }));
+        setSelectedCustomerSites([]);
         if (customerId) {
             setFetchingBalance(true);
             try {
+                // Load balance
                 const res = await axios.get(`${CUSTOMERS_API}/${customerId}/balance`, {
                     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
                 });
-                // balance API returns { success, data: { balance, customer } } based on standardResponse
                 const bal = res.data.data?.balance ?? 0;
                 setFormData(prev => ({ ...prev, oldBalance: bal }));
+
+                // Load customer sites
+                const custRes = await axios.get(`${CUSTOMERS_API}/${customerId}`, {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                });
+                const sites = (custRes.data.data?.sites || []).filter(s => s.isActive !== false);
+                setSelectedCustomerSites(sites);
             } catch (error) {
-                console.error('Error fetching customer balance');
+                console.error('Error fetching customer balance/sites');
             } finally {
                 setFetchingBalance(false);
             }
@@ -190,6 +202,9 @@ const SalesOrders = () => {
 
     const handleEdit = (order) => {
         setEditingOrder(order);
+        // Restore customer sites for the picker
+        const custObj = order.customer;
+        setSelectedCustomerSites((custObj?.sites || []).filter(s => s.isActive !== false));
         setFormData({
             customer: order.customer?._id || order.customer,
             orderNumber: order.orderNumber,
@@ -211,7 +226,9 @@ const SalesOrders = () => {
             transportCharges: order.transportCharges || 0,
             taxAmount: order.taxAmount || 0,
             oldBalance: order.oldBalance || 0,
-            advanceAmount: order.advanceAmount || 0
+            advanceAmount: order.advanceAmount || 0,
+            siteName: order.siteName || '',
+            siteAddress: order.siteAddress || ''
         });
         setIsModalOpen(true);
     };
@@ -219,6 +236,7 @@ const SalesOrders = () => {
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setEditingOrder(null);
+        setSelectedCustomerSites([]);
         setFormData({
             customer: '',
             orderNumber: '',
@@ -237,7 +255,9 @@ const SalesOrders = () => {
             transportCharges: '',
             taxAmount: '',
             oldBalance: '',
-            advanceAmount: ''
+            advanceAmount: '',
+            siteName: '',
+            siteAddress: ''
         });
     };
 
@@ -537,6 +557,48 @@ const SalesOrders = () => {
                                             searchPlaceholder="Search customer..."
                                             className="w-full"
                                         />
+                                        {/* Site Picker - shown only when selected customer has saved sites */}
+                                        {selectedCustomerSites.length > 0 && (
+                                            <div className="mt-2 p-3 bg-blue-50 border border-blue-100 rounded-xl space-y-2">
+                                                <label className="block text-[10px] font-black text-blue-600 uppercase tracking-widest">
+                                                    🏗️ Select Site / Project
+                                                </label>
+                                                <select
+                                                    value={formData.siteName}
+                                                    onChange={(e) => {
+                                                        const site = selectedCustomerSites.find(s => s.name === e.target.value);
+                                                        setFormData(prev => ({
+                                                            ...prev,
+                                                            siteName: e.target.value,
+                                                            siteAddress: site?.address || ''
+                                                        }));
+                                                    }}
+                                                    className="w-full px-3 py-2 border border-blue-200 rounded-lg bg-white text-sm font-bold text-blue-900 outline-none focus:ring-2 focus:ring-blue-400"
+                                                >
+                                                    <option value="">— No specific site —</option>
+                                                    {selectedCustomerSites.map((s, i) => (
+                                                        <option key={i} value={s.name}>{s.name}{s.address ? ` (${s.address})` : ''}</option>
+                                                    ))}
+                                                </select>
+                                                {formData.siteName && (
+                                                    <div className="text-[10px] font-bold text-blue-600">
+                                                        📍 {formData.siteName}{formData.siteAddress ? ` — ${formData.siteAddress}` : ''}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                        {/* Free-text site for customers without pre-saved sites */}
+                                        {formData.customer && selectedCustomerSites.length === 0 && (
+                                            <div className="mt-2">
+                                                <input
+                                                    type="text"
+                                                    value={formData.siteName}
+                                                    onChange={e => setFormData(prev => ({ ...prev, siteName: e.target.value }))}
+                                                    placeholder="Site / Project name (optional)"
+                                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-primary-400 text-gray-600"
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex items-center space-x-6 pb-3">
                                         <label className="flex items-center cursor-pointer group">

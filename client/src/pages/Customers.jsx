@@ -12,6 +12,12 @@ const Customers = () => {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState(null);
+
+    // New-site inline form state
+    const [newSiteName, setNewSiteName] = useState('');
+    const [newSiteAddress, setNewSiteAddress] = useState('');
+    const [showAddSite, setShowAddSite] = useState(false);
+
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -20,6 +26,7 @@ const Customers = () => {
         gstin: '',
         openingBalance: '',
         billingAddress: { street: '', city: '', state: '', zipCode: '', country: '' },
+        sites: [],
     });
 
     const API_URL = '/api/customers';
@@ -57,6 +64,9 @@ const Customers = () => {
 
 
     const handleOpenModal = (customer = null) => {
+        setNewSiteName('');
+        setNewSiteAddress('');
+        setShowAddSite(false);
         if (customer) {
             setEditingCustomer(customer);
             setFormData({
@@ -67,6 +77,7 @@ const Customers = () => {
                 gstin: customer.gstin || '',
                 openingBalance: customer.openingBalance || 0,
                 billingAddress: customer.address?.billing || { street: '', city: '', state: '', zipCode: '', country: '' },
+                sites: (customer.sites || []).filter(s => s.isActive !== false),
             });
         } else {
             setEditingCustomer(null);
@@ -78,9 +89,30 @@ const Customers = () => {
                 gstin: '',
                 openingBalance: '',
                 billingAddress: { street: '', city: '', state: '', zipCode: '', country: '' },
+                sites: [],
             });
         }
         setIsModalOpen(true);
+    };
+
+    // Add a site to the local list (not yet saved to DB)
+    const handleAddSite = () => {
+        if (!newSiteName.trim()) return toast.error('Site name is required');
+        setFormData(prev => ({
+            ...prev,
+            sites: [...prev.sites, { name: newSiteName.trim(), address: newSiteAddress.trim(), isActive: true }]
+        }));
+        setNewSiteName('');
+        setNewSiteAddress('');
+        setShowAddSite(false);
+    };
+
+    // Remove a site from the local list
+    const handleRemoveSite = (idx) => {
+        setFormData(prev => ({
+            ...prev,
+            sites: prev.sites.filter((_, i) => i !== idx)
+        }));
     };
 
     const handleSubmit = async (e) => {
@@ -146,6 +178,7 @@ const Customers = () => {
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">Email</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">Phone</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">GSTIN</th>
+                                <th className="px-6 py-4 text-sm font-semibold text-gray-600">Sites</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-right">Balance</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-right">Actions</th>
                             </tr>
@@ -157,6 +190,7 @@ const Customers = () => {
                                 c.phone?.includes(searchQuery)
                             ).map((customer) => {
                                 const bal = balances[customer._id] ?? customer.currentBalance ?? 0;
+                                const activeSites = (customer.sites || []).filter(s => s.isActive !== false);
                                 return (
                                 <tr key={customer._id} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4">
@@ -166,6 +200,24 @@ const Customers = () => {
                                     <td className="px-6 py-4 text-gray-600">{customer.email}</td>
                                     <td className="px-6 py-4 text-gray-600">{customer.phone}</td>
                                     <td className="px-6 py-4 text-gray-600">{customer.gstin || '-'}</td>
+                                    <td className="px-6 py-4">
+                                        {activeSites.length > 0 ? (
+                                            <div className="flex flex-wrap gap-1">
+                                                {activeSites.slice(0, 2).map((s, i) => (
+                                                    <span key={i} className="inline-block bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-100">
+                                                        🏗️ {s.name}
+                                                    </span>
+                                                ))}
+                                                {activeSites.length > 2 && (
+                                                    <span className="inline-block bg-gray-100 text-gray-500 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                                        +{activeSites.length - 2}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <span className="text-gray-300 text-xs">—</span>
+                                        )}
+                                    </td>
                                     <td className="px-6 py-4 text-right">
                                         <span className={`inline-block px-2.5 py-1 rounded-lg text-sm font-bold ${bal > 0 ? 'bg-orange-100 text-orange-700' : bal < 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                                             {bal !== 0 ? `₹${Math.abs(bal).toLocaleString('en-IN')} ${bal > 0 ? 'Dr' : 'Cr'}` : '—'}
@@ -201,7 +253,8 @@ const Customers = () => {
                             <h2 className="text-xl font-bold text-gray-800">{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</h2>
                             <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
                         </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                            {/* ── Basic Info ── */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Display Name *</label>
@@ -230,6 +283,7 @@ const Customers = () => {
                                 </div>
                             </div>
 
+                            {/* ── Billing Address ── */}
                             <h3 className="font-semibold text-gray-700 border-b pb-1">Billing Address</h3>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="col-span-2">
@@ -246,7 +300,101 @@ const Customers = () => {
                                 </div>
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-4">
+                            {/* ── Sites / Projects ── */}
+                            <div className="border-t pt-4">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div>
+                                        <h3 className="font-semibold text-gray-700 flex items-center gap-2">
+                                            🏗️ Project Sites
+                                            <span className="text-[10px] font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                                                Optional — for builders with multiple sites
+                                            </span>
+                                        </h3>
+                                    </div>
+                                    {!showAddSite && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAddSite(true)}
+                                            className="text-sm font-bold text-primary-600 hover:text-primary-700 bg-primary-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                                        >
+                                            + Add Site
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Existing sites list */}
+                                {formData.sites.length > 0 && (
+                                    <div className="space-y-2 mb-3">
+                                        {formData.sites.map((site, idx) => (
+                                            <div key={idx} className="flex items-start justify-between bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 group">
+                                                <div>
+                                                    <div className="font-bold text-blue-800 text-sm">🏗️ {site.name}</div>
+                                                    {site.address && <div className="text-xs text-blue-600 mt-0.5">{site.address}</div>}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveSite(idx)}
+                                                    className="text-red-400 hover:text-red-600 text-lg font-bold ml-3 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    title="Remove site"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {formData.sites.length === 0 && !showAddSite && (
+                                    <p className="text-xs text-gray-400 italic mb-2">No sites added yet. Click "Add Site" to add construction sites for this customer.</p>
+                                )}
+
+                                {/* Inline add-site form */}
+                                {showAddSite && (
+                                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Site Name *</label>
+                                            <input
+                                                type="text"
+                                                value={newSiteName}
+                                                onChange={e => setNewSiteName(e.target.value)}
+                                                placeholder="e.g. Raja Street Site, Phase 2 Building"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm"
+                                                autoFocus
+                                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddSite(); } }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Site Address (Optional)</label>
+                                            <input
+                                                type="text"
+                                                value={newSiteAddress}
+                                                onChange={e => setNewSiteAddress(e.target.value)}
+                                                placeholder="e.g. 12 Raja St, Chennai"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm"
+                                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddSite(); } }}
+                                            />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={handleAddSite}
+                                                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-bold"
+                                            >
+                                                ✓ Save Site
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setShowAddSite(false); setNewSiteName(''); setNewSiteAddress(''); }}
+                                                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-4 border-t">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
                                 <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium">
                                     {editingCustomer ? 'Update Customer' : 'Add Customer'}
