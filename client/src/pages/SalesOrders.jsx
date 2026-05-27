@@ -359,9 +359,11 @@ const SalesOrders = () => {
     const { itemsTotal, netTotal } = calculateTotals();
 
     const filteredOrders = orders.filter(order => {
-        const matchSearch = !searchTerm || order.orderNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        const matchSearch = !searchTerm || 
+            order.orderNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (order.customer?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (order.customer?.companyName || '').toLowerCase().includes(searchTerm.toLowerCase());
+            (order.customer?.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (order.customer?.phone || '').includes(searchTerm);
         const matchUser = !userFilter || order.user?._id === userFilter;
         return matchSearch && matchUser;
     });
@@ -386,7 +388,7 @@ const SalesOrders = () => {
             <div className="flex gap-3 flex-wrap">
                 <input
                     type="text"
-                    placeholder="Search by order # or customer..."
+                    placeholder="Search by order #, name or phone..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                     className="flex-1 min-w-[200px] h-10 px-4 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none shadow-sm"
@@ -450,8 +452,7 @@ const SalesOrders = () => {
                                                         <span className="mr-1">🔄</span> Convert
                                                     </button>
                                                 )}
-                                                
-                                                {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && !['dispatched', 'partially_dispatched'].includes(order.status) && (
+                                                {!['dispatched', 'partially_dispatched'].includes(order.status) && (
                                                     <button 
                                                         onClick={() => handleEdit(order)} 
                                                         className="text-amber-600 hover:text-amber-800 text-sm font-bold border-2 border-amber-100 px-3 py-1.5 rounded-lg bg-amber-50 transition-all flex items-center inline-flex"
@@ -510,14 +511,28 @@ const SalesOrders = () => {
                                         <span className="text-xl font-black text-white">₹{order.totalAmount?.toLocaleString() || 0}</span>
                                     </div>
                                     
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-2 flex-wrap justify-end">
                                         <button onClick={() => handlePrint(order)} className="w-9 h-9 bg-primary-800 hover:bg-primary-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Print/PDF Bill">📄</button>
-                                        <button onClick={() => shareViaWhatsApp(order, billingSettings, 'invoice')} className="w-9 h-9 bg-green-600 hover:bg-green-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="WhatsApp Share">💬</button>
-                                        <button onClick={() => shareViaEmail(order, billingSettings, 'invoice')} className="w-9 h-9 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Email Share">✉️</button>
+                                        <button 
+                                            onClick={() => {
+                                                const docType = order.isEstimation ? 'quotation' : 'invoice';
+                                                const { generateInvoiceHtml } = require('../utils/printTemplates') || {};
+                                                // Use native share if available (mobile), else fallback to WhatsApp
+                                                if (navigator.share) {
+                                                    const msg = `*${order.isEstimation ? 'Quotation' : 'Invoice'} #${order.orderNumber}*\nCustomer: ${order.customer?.companyName || order.customer?.name}\nAmount: ₹${order.totalAmount?.toLocaleString()}\n\nPlease open the app to view the full bill.`;
+                                                    navigator.share({ title: `Bill #${order.orderNumber}`, text: msg }).catch(() => {});
+                                                } else {
+                                                    shareViaWhatsApp(order, billingSettings, docType);
+                                                }
+                                            }}
+                                            className="w-9 h-9 bg-green-600 hover:bg-green-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" 
+                                            title="Share Invoice"
+                                        >📤</button>
+                                        <button onClick={() => shareViaWhatsApp(order, billingSettings, order.isEstimation ? 'quotation' : 'invoice')} className="w-9 h-9 bg-green-500 hover:bg-green-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="WhatsApp">💬</button>
                                         {order.isEstimation && ['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
-                                            <button onClick={() => handleStatusUpdate(order._id, 'confirmed')} className="w-9 h-9 bg-green-500 hover:bg-green-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Convert to Bill">🔄</button>
+                                            <button onClick={() => handleStatusUpdate(order._id, 'confirmed')} className="w-9 h-9 bg-teal-500 hover:bg-teal-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Convert to Bill">🔄</button>
                                         )}
-                                        {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && !['dispatched', 'partially_dispatched'].includes(order.status) && (
+                                        {!['dispatched', 'partially_dispatched'].includes(order.status) && (
                                             <button onClick={() => handleEdit(order)} className="w-9 h-9 bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Edit">✏️</button>
                                         )}
                                         {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
@@ -552,9 +567,12 @@ const SalesOrders = () => {
                                             required
                                             value={formData.customer}
                                             onChange={(e) => handleCustomerChange(e.target.value)}
-                                            options={customers.map(c => ({ value: c._id, label: c.companyName || c.name }))}
+                                            options={customers.map(c => ({ 
+                                                value: c._id, 
+                                                label: `${c.companyName || c.name}${c.phone ? ` - ${c.phone}` : ''}` 
+                                            }))}
                                             placeholder="Select Customer"
-                                            searchPlaceholder="Search customer..."
+                                            searchPlaceholder="Search customer or phone..."
                                             className="w-full"
                                         />
                                         {/* Site Picker - shown only when selected customer has saved sites */}

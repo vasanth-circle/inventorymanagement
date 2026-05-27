@@ -76,7 +76,7 @@ const template1 = (order, settings, docType = 'invoice') => {
     return `<html><head><title>${title} - ${docNo}</title>
 <style>
   @page { size: A4; margin: 5mm; }
-  body { font-family: 'Arial', sans-serif; font-size: 10px; color: #000; margin: 0; }
+  body { font-family: 'Arial', sans-serif; font-size: 10px; color: #000; margin: 0; display: flex; justify-content: center; }
   .container { border: 1.5px solid #000; width: 190mm; margin: 0 auto; }
   .company-header { text-align: center; padding: 10px; border-bottom: 1.5px solid #000; position: relative; }
   .contact-info { position: absolute; top: 8px; right: 10px; font-size: 8px; font-weight: bold; text-align: right; }
@@ -207,7 +207,7 @@ const template2 = (order, settings, docType = 'invoice') => {
     return `<html><head><title>${title} - ${docNo}</title>
 <style>
   @page { size: A4; margin: 5mm; }
-  body { font-family: 'Arial', sans-serif; font-size: 10px; color: #1a1a2e; margin: 0; background: #fff; }
+  body { font-family: 'Arial', sans-serif; font-size: 10px; color: #1a1a2e; margin: 0; background: #fff; display: flex; justify-content: center; }
   .container { width: 190mm; margin: 0 auto; }
   .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; }
   .company-name { font-size: 20px; font-weight: 900; letter-spacing: 1px; }
@@ -356,8 +356,8 @@ const template3 = (order, settings, docType = 'invoice') => {
     return `<html><head><title>${title} - ${docNo}</title>
 <style>
   @page { size: A4; margin: 10mm; }
-  body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; color: #333; margin: 0; background: #fff; }
-  .top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; color: #333; margin: 0; background: #fff; display: flex; justify-content: center; }
+  .top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; width: 190mm; }
   .company-name { font-size: 24px; font-weight: 900; color: #111; letter-spacing: -0.5px; }
   .company-detail { font-size: 8.5px; color: #888; margin-top: 4px; line-height: 1.7; }
   .doc-info { text-align: right; }
