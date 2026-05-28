@@ -3,8 +3,8 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
 import { InventoryContext } from '../context/InventoryContext';
-import { printDocument } from '../utils/printTemplates';
-import { shareViaWhatsApp, shareViaEmail } from '../utils/shareUtils';
+import { printDocument, generateInvoiceHtml } from '../utils/printTemplates';
+import { shareViaWhatsApp, shareViaEmail, shareInvoiceAsPdf } from '../utils/shareUtils';
 import SearchableSelect from '../components/SearchableSelect';
 import { confirmDelete as confirmAction } from '../utils/confirmHelper.jsx';
 
@@ -514,20 +514,16 @@ const SalesOrders = () => {
                                     <div className="flex gap-2 flex-wrap justify-end">
                                         <button onClick={() => handlePrint(order)} className="w-9 h-9 bg-primary-800 hover:bg-primary-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Print/PDF Bill">📄</button>
                                         <button 
-                                            onClick={() => {
-                                                const docType = order.isEstimation ? 'quotation' : 'invoice';
-                                                const { generateInvoiceHtml } = require('../utils/printTemplates') || {};
-                                                // Use native share if available (mobile), else fallback to WhatsApp
-                                                if (navigator.share) {
-                                                    const msg = `*${order.isEstimation ? 'Quotation' : 'Invoice'} #${order.orderNumber}*\nCustomer: ${order.customer?.companyName || order.customer?.name}\nAmount: ₹${order.totalAmount?.toLocaleString()}\n\nPlease open the app to view the full bill.`;
-                                                    navigator.share({ title: `Bill #${order.orderNumber}`, text: msg }).catch(() => {});
-                                                } else {
-                                                    shareViaWhatsApp(order, billingSettings, docType);
-                                                }
-                                            }}
-                                            className="w-9 h-9 bg-green-600 hover:bg-green-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" 
-                                            title="Share Invoice"
-                                        >📤</button>
+                                            onClick={() => shareInvoiceAsPdf(order, billingSettings, order.isEstimation ? 'quotation' : 'invoice', generateInvoiceHtml)}
+                                            className="w-9 h-9 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center shadow-md transition-colors" 
+                                            title="Share PDF"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/>
+                                                <polyline points="16 6 12 2 8 6"/>
+                                                <line x1="12" y1="2" x2="12" y2="15"/>
+                                            </svg>
+                                        </button>
                                         <button onClick={() => shareViaWhatsApp(order, billingSettings, order.isEstimation ? 'quotation' : 'invoice')} className="w-9 h-9 bg-green-500 hover:bg-green-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="WhatsApp">💬</button>
                                         {order.isEstimation && ['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
                                             <button onClick={() => handleStatusUpdate(order._id, 'confirmed')} className="w-9 h-9 bg-teal-500 hover:bg-teal-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Convert to Bill">🔄</button>

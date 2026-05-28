@@ -482,6 +482,19 @@ const template3 = (order, settings, docType = 'invoice') => {
 
 
 // ─────────────────────────────────────────────────────────────────────────────
+// HTML generator (returns string, no window opened) — used for share/export
+// ─────────────────────────────────────────────────────────────────────────────
+export const generateInvoiceHtml = (order, settings, docType = 'invoice') => {
+    const templateNo = docType === 'quotation'
+        ? (settings?.documentConfig?.quotationTemplate || 1)
+        : (settings?.documentConfig?.invoiceTemplate || 1);
+
+    if (templateNo === 2) return template2(order, settings, docType);
+    if (templateNo === 3) return template3(order, settings, docType);
+    return template1(order, settings, docType);
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main print dispatcher
 // ─────────────────────────────────────────────────────────────────────────────
 export const printDocument = (order, settings, docType = 'invoice') => {
