@@ -170,6 +170,7 @@ const SalesOrders = () => {
                 row.price = selectedItem.price || 0;
                 row.brand = selectedItem.brand;
                 row.size = selectedItem.size;
+                row.unitType = selectedItem.unitType || 'pieces';
                 row.sqFtPerPc = selectedItem.sqFtPerPc || 0;
                 row.pcsPerBox = selectedItem.pcsPerBox || 1;
                 row.purchasePrice = selectedItem.purchasePrice || 0;
@@ -214,6 +215,7 @@ const SalesOrders = () => {
             items: order.items.map(item => ({
                 ...item,
                 item: item.item?._id || item.item,
+                unitType: item.item?.unitType || 'pieces',
                 sqFtPerPc: item.item?.sqFtPerPc || 0,
                 pcsPerBox: item.item?.pcsPerBox || 1,
                 availableBatches: item.item?.batches || [],
@@ -860,7 +862,7 @@ const SalesOrders = () => {
                                                             <td className="px-4 py-3">
                                                                 <input 
                                                                     type="number" 
-                                                                    step={isTile ? "0.5" : (billingSettings?.unitConfig?.quantityBasis === 'sqft' ? "0.01" : "1")}
+                                                                    step={isTile ? "0.5" : (row.unitType === 'box' ? "0.5" : (['sqft', 'kg'].includes(row.unitType) ? "0.01" : "1"))}
                                                                     min="0" 
                                                                     value={isTile ? (row.boxCount || '') : (row.quantity || '')} 
                                                                     onChange={(e) => handleItemChange(index, isTile ? 'boxCount' : 'quantity', e.target.value)} 
@@ -955,7 +957,7 @@ const SalesOrders = () => {
                                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                                                 {isTile ? 'Boxes' : (billingSettings?.unitConfig?.quantityLabel || 'Qty')}
                                                             </label>
-                                                            <input type="number" step={isTile ? "0.5" : (billingSettings?.unitConfig?.quantityBasis === 'sqft' ? "0.01" : "1")} min="0" value={isTile ? (row.boxCount || '') : (row.quantity || '')} onChange={(e) => handleItemChange(index, isTile ? 'boxCount' : 'quantity', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none text-center font-bold" />
+                                                            <input type="number" step={isTile ? "0.5" : (row.unitType === 'box' ? "0.5" : (['sqft', 'kg'].includes(row.unitType) ? "0.01" : "1"))} min="0" value={isTile ? (row.boxCount || '') : (row.quantity || '')} onChange={(e) => handleItemChange(index, isTile ? 'boxCount' : 'quantity', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none text-center font-bold" />
                                                         </div>
                                                         <div className="space-y-1">
                                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">

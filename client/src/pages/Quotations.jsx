@@ -123,6 +123,7 @@ const Quotations = () => {
                 row.hsn = found.hsn || '';
                 row.pcsPerBox = Number(found.pcsPerBox) || 1;
                 row.sqFtPerPc = Number(found.sqFtPerPc) || 0;
+                row.unitType = found.unitType || 'pieces';
                 row.physicalStock = Number(found.quantity) || 0;
                 row.availableBatches = found.batches || [];
                 row.price = found.batches?.length ? (Number(found.batches[0].price) || 0) : (Number(found.price) || 0);
@@ -266,6 +267,7 @@ const Quotations = () => {
                     availableBatches: foundItem?.batches || [],
                     pcsPerBox: foundItem?.pcsPerBox || 1,
                     sqFtPerPc: sqFtPerPc,
+                    unitType: foundItem?.unitType || 'pieces',
                     physicalStock: foundItem?.quantity || 0
                 };
             }),
@@ -662,7 +664,7 @@ const Quotations = () => {
                                                     ) : (
                                                         <div className="col-span-2">
                                                             <label className="text-[9px] text-gray-400 font-bold uppercase">{qtyLabel}</label>
-                                                            <input type="number" min="0" step="1" value={row.quantity}
+                                                            <input type="number" min="0" step={row.unitType === 'box' ? "0.5" : (['sqft', 'kg'].includes(row.unitType) ? "0.01" : "1")} value={row.quantity}
                                                                 onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
                                                                 className="w-full h-9 px-2 bg-white border border-gray-100 rounded-lg text-xs font-bold text-center focus:ring-2 focus:ring-rose-500" />
                                                         </div>
@@ -753,7 +755,7 @@ const Quotations = () => {
                                                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                                                     {isTile ? (row.billingUnit === 'boxes' ? 'Boxes (0.5 ok)' : row.billingUnit === 'qty' ? 'Pieces' : 'Sq.Ft') : 'Qty'}
                                                                 </label>
-                                                                <input type="number" min="0" step={isTile && row.billingUnit === 'boxes' ? '0.5' : '1'}
+                                                                <input type="number" min="0" step={isTile ? (row.billingUnit === 'boxes' ? '0.5' : (row.billingUnit === 'sqft' ? '0.01' : '1')) : (row.unitType === 'box' ? "0.5" : (['sqft', 'kg'].includes(row.unitType) ? "0.01" : "1"))}
                                                                     value={row.quantity === 0 ? '' : row.quantity} onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
                                                                     className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none text-center font-bold" />
                                                             </div>
