@@ -13,6 +13,7 @@ const settingSchema = new mongoose.Schema({
     phone1: { type: String, default: '', trim: true },
     phone2: { type: String, default: '', trim: true },
     gstNumber: { type: String, default: '', trim: true },
+    panNumber: { type: String, default: '', trim: true },
     invoicePrefix: { type: String, default: 'INV' },
     estimatePrefix: { type: String, default: 'EST' },
     industry: {
@@ -81,6 +82,7 @@ const settingSchema = new mongoose.Schema({
         bankName: { type: String, default: '' },
         accountNumber: { type: String, default: '' },
         ifscCode: { type: String, default: '' },
+        branchName: { type: String, default: '' },
         termsAndConditions: { type: String, default: '1. Goods once sold will not be taken back.\n2. No responsibility for breakages after leaving premises.\n3. E. & O.E.' },
     },
 }, { timestamps: true });

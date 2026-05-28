@@ -26,6 +26,8 @@ const SalesOrders = () => {
     const [userFilter, setUserFilter] = useState('');
     // Sites for the currently selected customer
     const [selectedCustomerSites, setSelectedCustomerSites] = useState([]);
+    // Mobile share bottom sheet
+    const [shareMenuOrder, setShareMenuOrder] = useState(null);
 
     const [formData, setFormData] = useState({
         customer: '',
@@ -505,34 +507,44 @@ const SalesOrders = () => {
                                     </div>
                                 </div>
 
-                                <div className="bg-primary-900 -mx-5 -mb-5 px-5 py-4 flex justify-between items-center mt-auto">
-                                    <div className="flex flex-col">
-                                        <span className="text-[9px] font-black text-primary-300 uppercase tracking-tighter">Amount Due</span>
-                                        <span className="text-xl font-black text-white">₹{order.totalAmount?.toLocaleString() || 0}</span>
+                                <div className="bg-primary-900 -mx-5 -mb-5 px-5 pt-3 pb-4 mt-auto">
+                                    {/* Amount row */}
+                                    <div className="flex justify-between items-center mb-3">
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] font-black text-primary-300 uppercase tracking-tighter">Amount Due</span>
+                                            <span className="text-xl font-black text-white">₹{order.totalAmount?.toLocaleString() || 0}</span>
+                                        </div>
+                                        {/* Print button always visible */}
+                                        <button onClick={() => handlePrint(order)} className="w-9 h-9 bg-primary-800 hover:bg-primary-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors flex-shrink-0" title="Print/PDF Bill">📄</button>
                                     </div>
-                                    
-                                    <div className="flex gap-2 flex-wrap justify-end">
-                                        <button onClick={() => handlePrint(order)} className="w-9 h-9 bg-primary-800 hover:bg-primary-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Print/PDF Bill">📄</button>
-                                        <button 
-                                            onClick={() => shareInvoiceAsPdf(order, billingSettings, order.isEstimation ? 'quotation' : 'invoice', generateInvoiceHtml)}
-                                            className="w-9 h-9 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center shadow-md transition-colors" 
-                                            title="Share PDF"
+                                    {/* Scrollable action buttons row */}
+                                    <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
+                                        {/* Share PDF */}
+                                        <button
+                                            onClick={() => setShareMenuOrder(order)}
+                                            className="flex-shrink-0 flex items-center gap-1.5 h-9 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md transition-colors"
+                                            title="Share Invoice"
                                         >
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                                 <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/>
                                                 <polyline points="16 6 12 2 8 6"/>
                                                 <line x1="12" y1="2" x2="12" y2="15"/>
                                             </svg>
+                                            Share
                                         </button>
-                                        <button onClick={() => shareViaWhatsApp(order, billingSettings, order.isEstimation ? 'quotation' : 'invoice')} className="w-9 h-9 bg-green-500 hover:bg-green-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="WhatsApp">💬</button>
+                                        {/* WhatsApp */}
+                                        <button onClick={() => shareViaWhatsApp(order, billingSettings, order.isEstimation ? 'quotation' : 'invoice')} className="flex-shrink-0 w-9 h-9 bg-green-500 hover:bg-green-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="WhatsApp">💬</button>
+                                        {/* Convert */}
                                         {order.isEstimation && ['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
-                                            <button onClick={() => handleStatusUpdate(order._id, 'confirmed')} className="w-9 h-9 bg-teal-500 hover:bg-teal-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Convert to Bill">🔄</button>
+                                            <button onClick={() => handleStatusUpdate(order._id, 'confirmed')} className="flex-shrink-0 w-9 h-9 bg-teal-500 hover:bg-teal-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Convert to Bill">🔄</button>
                                         )}
+                                        {/* Edit */}
                                         {!['dispatched', 'partially_dispatched'].includes(order.status) && (
-                                            <button onClick={() => handleEdit(order)} className="w-9 h-9 bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Edit">✏️</button>
+                                            <button onClick={() => handleEdit(order)} className="flex-shrink-0 w-9 h-9 bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Edit">✏️</button>
                                         )}
+                                        {/* Delete */}
                                         {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
-                                            <button onClick={() => handleDelete(order._id)} className="w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Delete">🗑️</button>
+                                            <button onClick={() => handleDelete(order._id)} className="flex-shrink-0 w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Delete">🗑️</button>
                                         )}
                                     </div>
                                 </div>
@@ -541,6 +553,144 @@ const SalesOrders = () => {
                     </div>
                 </div>
             )}
+
+            {/* ── Share Invoice Bottom Sheet (Mobile) ── */}
+            {shareMenuOrder && (() => {
+                const order = shareMenuOrder;
+                const docType = order.isEstimation ? 'quotation' : 'invoice';
+                const docLabel = order.isEstimation ? 'Quotation' : 'Invoice';
+
+                const handleShareFile = async () => {
+                    try {
+                        const html = generateInvoiceHtml(order, billingSettings, docType);
+                        const blob = new Blob([html], { type: 'text/html' });
+                        const fileName = `${docLabel}-${order.orderNumber}.html`;
+                        const file = new File([blob], fileName, { type: 'text/html' });
+
+                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                            await navigator.share({
+                                title: `${docLabel} #${order.orderNumber}`,
+                                text: `${docLabel} from ${billingSettings?.companyName || ''} — ₹${(order.totalAmount || 0).toLocaleString('en-IN')}`,
+                                files: [file],
+                            });
+                            setShareMenuOrder(null);
+                        } else {
+                            // Desktop fallback: open in new tab → user can print/save as PDF
+                            const w = window.open('', '_blank', 'width=950,height=750');
+                            if (w) { w.document.write(html); w.document.close(); setTimeout(() => { w.focus(); w.print(); }, 600); }
+                            setShareMenuOrder(null);
+                        }
+                    } catch (err) {
+                        if (err?.name !== 'AbortError') {
+                            toast.error('Could not share. Try Download instead.');
+                        }
+                    }
+                };
+
+                const handleDownload = () => {
+                    const html = generateInvoiceHtml(order, billingSettings, docType);
+                    const blob = new Blob([html], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${docLabel}-${order.orderNumber}.html`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    toast.success('Downloaded! Open in browser → Print → Save as PDF');
+                    setShareMenuOrder(null);
+                };
+
+                return (
+                    <div className="fixed inset-0 z-50 flex items-end" onClick={() => setShareMenuOrder(null)}>
+                        {/* Backdrop */}
+                        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+                        {/* Sheet */}
+                        <div
+                            className="relative w-full bg-white rounded-t-3xl shadow-2xl animate-[slideUp_0.25s_ease-out]"
+                            onClick={e => e.stopPropagation()}
+                            style={{ animation: 'slideUp 0.25s ease-out' }}
+                        >
+                            {/* Handle bar */}
+                            <div className="flex justify-center pt-3 pb-1">
+                                <div className="w-10 h-1 bg-gray-300 rounded-full" />
+                            </div>
+                            <div className="px-5 pt-2 pb-6">
+                                {/* Header */}
+                                <div className="flex justify-between items-start mb-4">
+                                    <div>
+                                        <p className="text-[10px] font-black text-primary-600 uppercase tracking-widest">{order.orderNumber}</p>
+                                        <h3 className="text-base font-extrabold text-gray-900">{order.customer?.companyName || order.customer?.name}</h3>
+                                        <p className="text-xs text-gray-500 mt-0.5">₹{(order.totalAmount || 0).toLocaleString('en-IN')} · {docLabel}</p>
+                                    </div>
+                                    <button onClick={() => setShareMenuOrder(null)} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200">✕</button>
+                                </div>
+
+                                <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider mb-3">Share Options</p>
+
+                                <div className="space-y-2.5">
+                                    {/* Share File (native OS share → WhatsApp, Drive, etc.) */}
+                                    <button
+                                        onClick={handleShareFile}
+                                        className="w-full flex items-center gap-3 p-3.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-2xl shadow-md active:scale-95 transition-all"
+                                    >
+                                        <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+                                            </svg>
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="text-sm font-black">Share Invoice File</p>
+                                            <p className="text-[10px] text-blue-200">Send via WhatsApp, Gmail, Drive…</p>
+                                        </div>
+                                    </button>
+
+                                    {/* Download */}
+                                    <button
+                                        onClick={handleDownload}
+                                        className="w-full flex items-center gap-3 p-3.5 bg-gray-50 border border-gray-200 text-gray-800 rounded-2xl active:scale-95 transition-all"
+                                    >
+                                        <div className="w-9 h-9 bg-gray-200 rounded-xl flex items-center justify-center flex-shrink-0">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                                            </svg>
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="text-sm font-bold">Download Invoice</p>
+                                            <p className="text-[10px] text-gray-400">Save HTML → Open → Print as PDF</p>
+                                        </div>
+                                    </button>
+
+                                    {/* WhatsApp text */}
+                                    <button
+                                        onClick={() => { shareViaWhatsApp(order, billingSettings, docType); setShareMenuOrder(null); }}
+                                        className="w-full flex items-center gap-3 p-3.5 bg-green-50 border border-green-200 text-gray-800 rounded-2xl active:scale-95 transition-all"
+                                    >
+                                        <div className="w-9 h-9 bg-green-500 rounded-xl flex items-center justify-center flex-shrink-0 text-white text-lg">💬</div>
+                                        <div className="text-left">
+                                            <p className="text-sm font-bold text-green-800">WhatsApp Message</p>
+                                            <p className="text-[10px] text-gray-400">Send order summary as text</p>
+                                        </div>
+                                    </button>
+
+                                    {/* Print */}
+                                    <button
+                                        onClick={() => { handlePrint(order); setShareMenuOrder(null); }}
+                                        className="w-full flex items-center gap-3 p-3.5 bg-gray-50 border border-gray-200 text-gray-800 rounded-2xl active:scale-95 transition-all"
+                                    >
+                                        <div className="w-9 h-9 bg-gray-200 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">🖨️</div>
+                                        <div className="text-left">
+                                            <p className="text-sm font-bold">Print / Save as PDF</p>
+                                            <p className="text-[10px] text-gray-400">Open print dialog</p>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm overflow-hidden">
@@ -710,7 +860,7 @@ const SalesOrders = () => {
                                                             <td className="px-4 py-3">
                                                                 <input 
                                                                     type="number" 
-                                                                    step={isTile ? "0.5" : "1"} 
+                                                                    step={isTile ? "0.5" : (billingSettings?.unitConfig?.quantityBasis === 'sqft' ? "0.01" : "1")}
                                                                     min="0" 
                                                                     value={isTile ? (row.boxCount || '') : (row.quantity || '')} 
                                                                     onChange={(e) => handleItemChange(index, isTile ? 'boxCount' : 'quantity', e.target.value)} 
@@ -732,13 +882,13 @@ const SalesOrders = () => {
                                                                     step="0.01" 
                                                                     readOnly={isTile}
                                                                     value={row.quantity || ''} 
-                                                                    onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value))} 
+                                                                    onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} 
                                                                     className={`w-full px-3 py-2 border rounded-lg border-gray-200 outline-none font-medium text-center ${isTile ? 'bg-gray-50' : ''}`} 
                                                                 />
                                                                 {isTile && <div className="text-[9px] text-gray-400 text-center mt-1 uppercase font-bold">{row.billingUnit === 'sqft' ? (billingSettings?.unitConfig?.quantityLabel || 'SqFt') : 'Boxes'}</div>}
                                                             </td>
                                                             <td className="px-4 py-3">
-                                                                <input required type="number" step="0.01" value={row.price === 0 ? '' : row.price} onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value))} className="w-full px-3 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 font-bold text-right" />
+                                                                <input required type="number" step="0.01" value={row.price === 0 ? '' : row.price} onChange={(e) => handleItemChange(index, 'price', e.target.value)} className="w-full px-3 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 font-bold text-right" />
                                                                 <div className="text-[9px] text-gray-400 text-right mt-1 uppercase font-bold">Per {isTile ? row.billingUnit : 'Piece'}</div>
                                                             </td>
                                                             <td className="px-4 py-3">
@@ -805,20 +955,20 @@ const SalesOrders = () => {
                                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                                                 {isTile ? 'Boxes' : (billingSettings?.unitConfig?.quantityLabel || 'Qty')}
                                                             </label>
-                                                            <input type="number" step={isTile ? "0.5" : "1"} min="0" value={isTile ? (row.boxCount || '') : (row.quantity || '')} onChange={(e) => handleItemChange(index, isTile ? 'boxCount' : 'quantity', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none text-center font-bold" />
+                                                            <input type="number" step={isTile ? "0.5" : (billingSettings?.unitConfig?.quantityBasis === 'sqft' ? "0.01" : "1")} min="0" value={isTile ? (row.boxCount || '') : (row.quantity || '')} onChange={(e) => handleItemChange(index, isTile ? 'boxCount' : 'quantity', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none text-center font-bold" />
                                                         </div>
                                                         <div className="space-y-1">
                                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                                                 {isTile ? row.billingUnit.toUpperCase() : 'Billed Qty'}
                                                             </label>
-                                                            <input required type="number" step="0.01" readOnly={isTile} value={row.quantity || ''} onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value))} className={`w-full px-4 py-3 border border-gray-200 rounded-xl outline-none font-bold text-center ${isTile ? 'bg-gray-50' : ''}`} />
+                                                            <input required type="number" step="0.01" readOnly={isTile} value={row.quantity || ''} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} className={`w-full px-4 py-3 border border-gray-200 rounded-xl outline-none font-bold text-center ${isTile ? 'bg-gray-50' : ''}`} />
                                                         </div>
                                                     </div>
 
                                                     <div className="grid grid-cols-2 gap-4">
                                                         <div className="space-y-1">
                                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Rate (Per {isTile ? row.billingUnit : 'Piece'})</label>
-                                                            <input required type="number" step="0.01" value={row.price === 0 ? '' : row.price} onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value))} className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none font-bold text-right" />
+                                                            <input required type="number" step="0.01" value={row.price === 0 ? '' : row.price} onChange={(e) => handleItemChange(index, 'price', e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none font-bold text-right" />
                                                         </div>
                                                         <div className="space-y-1">
                                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Row Total</label>

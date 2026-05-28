@@ -14,9 +14,9 @@ import Setting from '../models/Setting.js';
 export const getQuotations = async (req, res, next) => {
     try {
         const quotations = await Quotation.find({ ...tenantQuery(req) })
-            .populate('customer', 'name companyName phone')
+            .populate('customer', 'name companyName phone gstin address')
             .populate('items.item', 'name brand size')
-            .populate('user', 'name')
+            .populate('user', 'name phone')
             .sort({ createdAt: -1 });
 
         sendResponse(res, 200, { quotations });
@@ -31,8 +31,9 @@ export const getQuotations = async (req, res, next) => {
 export const getQuotation = async (req, res, next) => {
     try {
         const quotation = await Quotation.findOne({ _id: req.params.id, ...tenantQuery(req) })
-            .populate('customer', 'name companyName phone address')
-            .populate('items.item');
+            .populate('customer', 'name companyName phone address gstin')
+            .populate('items.item')
+            .populate('user', 'name phone');
 
         if (!quotation) return sendError(res, 404, 'Quotation not found');
         sendResponse(res, 200, { quotation });

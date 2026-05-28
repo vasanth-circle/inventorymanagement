@@ -19,6 +19,7 @@ const BulkImport = () => {
     const [mode, setMode] = useState('template'); // 'template' or 'mapping'
     const [importType, setImportType] = useState('full'); // 'full' or 'stock'
     const [updateMode, setUpdateMode] = useState('add'); // 'add' or 'overwrite'
+    const [resetStock, setResetStock] = useState(false); // force qty=0 on overwrite when no qty column
 
     const fullFields = [
         { key: 'name', label: 'Item Name', required: true, synonyms: ['item name', 'item', 'product', 'name', 'title'] },
@@ -27,7 +28,7 @@ const BulkImport = () => {
         { key: 'category', label: 'Category', required: false, synonyms: ['category', 'type', 'group'] },
         { key: 'brand', label: 'Brand', required: false, synonyms: ['brand', 'make', 'manufacturer'] },
         { key: 'size', label: 'Size', required: false, synonyms: ['size', 'dimension'] },
-        { key: 'quantity', label: 'Quantity', required: false, synonyms: ['qty', 'quantity', 'stock', 'count', 'no.of.pcs/box'] },
+        { key: 'quantity', label: 'Quantity (Stock)', required: false, synonyms: ['qty', 'quantity', 'stock qty', 'opening stock', 'stock quantity', 'available stock'] },
         { key: 'sqFtPerPc', label: 'SQFT / Tile (per pc)', required: false, synonyms: ['sqft/tile', 'sqft/pc', 'sqfttile', 'sqft per tile'] },
         { key: 'sqFtPerBox', label: 'SQFT / Box', required: false, synonyms: ['sqft/box', 'sqftbox', 'sqft per box'] },
         { key: 'pcsPerBox', label: 'No. of Pcs / Box', required: false, synonyms: ['no.of.pcs/box', 'pcs/box', 'pcsperbox', 'pieces per box', 'pcs per box'] },
@@ -132,7 +133,7 @@ const BulkImport = () => {
             const result = await importMappedData(
                 file,
                 mapping,
-                { updateMode, importType },
+                { updateMode, importType, resetStock },
                 mappingData?.headerRowIdx ?? 0
             );
             setLoading(false);
@@ -229,6 +230,27 @@ const BulkImport = () => {
                             <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 text-xl font-bold">1</div>
                             <h2 className="text-xl font-bold text-gray-900">Upload Excel File</h2>
                         </div>
+
+                {/* Reset Stock Option — shown when overwrite mode + quantity not mapped */}
+                {updateMode === 'overwrite' && !mapping['quantity'] && mappingData && (
+                    <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
+                        <label className="flex items-start gap-3 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={resetStock}
+                                onChange={e => setResetStock(e.target.checked)}
+                                className="mt-0.5 w-4 h-4 accent-red-600 flex-shrink-0"
+                            />
+                            <div>
+                                <p className="text-sm font-black text-red-800">Reset matched items' stock to 0</p>
+                                <p className="text-[11px] text-red-600 mt-0.5">
+                                    Since no Quantity column is mapped, tick this to <strong>force stock = 0</strong> for every item
+                                    found in this file. Use this to clean up items that were accidentally imported with wrong stock.
+                                </p>
+                            </div>
+                        </label>
+                    </div>
+                )}
                         
                         <div className="border-2 border-dashed border-gray-200 rounded-2xl p-6 md:p-10 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100/50 transition-colors cursor-pointer group relative text-center" onClick={() => document.getElementById('excel-upload').click()}>
                             <div className="w-16 h-16 bg-white rounded-2xl shadow-md flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -266,9 +288,18 @@ const BulkImport = () => {
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
                                 <div className="space-y-4">
-                                    <p className="text-xs text-gray-600 mb-6 bg-blue-50 p-4 rounded-xl border border-blue-100">
-                                        Match the system fields with your Excel columns.
+                                    <p className="text-xs text-gray-600 mb-3 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                        Match the system fields with your Excel columns. Columns set to <strong>-- Ignored --</strong> will be skipped.
                                     </p>
+                                    {importType === 'full' && !mapping['quantity'] && (
+                                        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2">
+                                            <span className="text-amber-500 text-base mt-0.5 flex-shrink-0">⚠️</span>
+                                            <p className="text-[11px] text-amber-800 font-semibold">
+                                                <strong>Quantity (Stock)</strong> is not mapped — items will be imported with <strong>0 stock</strong>. 
+                                                If your Excel has no stock column, this is correct and intentional (item master only).
+                                            </p>
+                                        </div>
+                                    )}
                                     <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
                                         {appFields.map((field) => (
                                             <div key={field.key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-100 group">
@@ -320,15 +351,36 @@ const BulkImport = () => {
                                 </div>
                             </div>
 
-                            <div className="mt-12 flex flex-col sm:flex-row justify-between items-center bg-gray-50 -m-6 md:-m-8 p-6 md:p-8 rounded-b-2xl border-t border-gray-100 gap-4">
-                                <button onClick={resetAll} className="text-gray-500 hover:text-gray-700 font-bold flex items-center gap-2 text-sm">↺ Start Over</button>
-                                <button
-                                    onClick={handleFinalImport}
-                                    disabled={loading}
-                                    className="w-full sm:w-auto px-10 py-4 bg-green-600 text-white rounded-xl shadow-xl hover:bg-green-700 transition-all disabled:opacity-50 font-bold flex items-center justify-center gap-2 text-lg"
-                                >
-                                    {loading ? 'Importing...' : '🚀 Launch Bulk Import'}
-                                </button>
+                            <div className="mt-12 bg-gray-50 -m-6 md:-m-8 p-6 md:p-8 rounded-b-2xl border-t border-gray-100">
+                                {/* Reset stock to 0 option — only relevant on overwrite + no qty column */}
+                                {updateMode === 'overwrite' && !mapping['quantity'] && (
+                                    <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                                        <input
+                                            type="checkbox"
+                                            id="resetStockCheck"
+                                            checked={resetStock}
+                                            onChange={e => setResetStock(e.target.checked)}
+                                            className="mt-0.5 w-4 h-4 accent-red-600 flex-shrink-0 cursor-pointer"
+                                        />
+                                        <label htmlFor="resetStockCheck" className="cursor-pointer">
+                                            <p className="text-sm font-black text-red-800">⚠️ Reset matched items' stock to 0</p>
+                                            <p className="text-[11px] text-red-600 mt-0.5">
+                                                No Quantity column mapped. Tick this to <strong>force stock = 0</strong> for all matched items.
+                                                Use this to fix items that were accidentally imported with wrong stock quantities.
+                                            </p>
+                                        </label>
+                                    </div>
+                                )}
+                                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                                    <button onClick={resetAll} className="text-gray-500 hover:text-gray-700 font-bold flex items-center gap-2 text-sm">↺ Start Over</button>
+                                    <button
+                                        onClick={handleFinalImport}
+                                        disabled={loading}
+                                        className={`w-full sm:w-auto px-10 py-4 ${resetStock ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white rounded-xl shadow-xl transition-all disabled:opacity-50 font-bold flex items-center justify-center gap-2 text-lg`}
+                                    >
+                                        {loading ? 'Importing...' : resetStock ? '⚠️ Reset Stock & Import' : '🚀 Launch Bulk Import'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

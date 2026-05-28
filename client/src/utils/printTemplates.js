@@ -35,11 +35,15 @@ const buildItemRows = (items, settings, taxPct, isQuotation) => {
         const total = item.total || item.quantity * item.price;
         const taxAmt = (total * taxPct / 100);
         const withTax = total + taxAmt;
+        // Single-line description: NAME-BRAND SIZE
+        const brand = (item.brand || '').trim();
+        const size  = (item.size  || '').trim();
+        const namePart = (item.name || '').toUpperCase();
+        const subPart  = [brand, size].filter(Boolean).join(' ');
+        const fullDesc = subPart ? `${namePart}-${subPart}` : namePart;
         return `<tr style="height:10px">
             <td style="text-align:center">${i + 1}</td>
-            <td><strong>${(item.name || '').toUpperCase()}</strong><br/>
-                <span style="font-size:8.5px;color:#666">${item.brand || ''} ${item.size || ''}</span>
-            </td>
+            <td><strong>${fullDesc}</strong></td>
             <td style="text-align:center;font-weight:bold">
                 ${item.totalSqFt ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}
             </td>
@@ -73,7 +77,7 @@ const template1 = (order, settings, docType = 'invoice') => {
         ? (s.branding.logoUrl.startsWith('http') ? s.branding.logoUrl : `${window.location.origin}${s.branding.logoUrl}`)
         : '';
 
-    return `<html><head><title>${title} - ${docNo}</title>
+    return `<html><head><meta charset="UTF-8"><title>${title} - ${docNo}</title>
 <style>
   @page { size: A4; margin: 5mm; }
   body { font-family: 'Arial', sans-serif; font-size: 10px; color: #000; margin: 0; display: flex; justify-content: center; }
@@ -111,15 +115,19 @@ const template1 = (order, settings, docType = 'invoice') => {
         <h1>${s.companyName || 'YOUR COMPANY'}</h1>
         <p>${s.address || ''}</p>
         ${s.gstNumber ? `<p><strong>GSTIN: ${s.gstNumber}</strong></p>` : ''}
+        ${s.panNumber ? `<p><strong>PAN: ${s.panNumber}</strong></p>` : ''}
     </div>
   </div>
   <div class="doc-title">${title}</div>
   <div class="meta-grid">
     <div class="meta-box">
       <div class="meta-row"><span class="meta-label">To:</span><strong>${(order.customer?.companyName || order.customer?.name || 'Cash Sales').toUpperCase()}</strong></div>
+      ${order.customer?.name && order.customer?.companyName ? `<div class="meta-row"><span class="meta-label"></span>${order.customer.name}</div>` : ''}
+      ${order.customer?.phone ? `<div class="meta-row"><span class="meta-label">Phone:</span>${order.customer.phone}</div>` : ''}
+      ${order.customer?.gstin ? `<div class="meta-row"><span class="meta-label">GSTIN:</span>${order.customer.gstin}</div>` : ''}
       ${order.siteName ? `<div class="meta-row"><span class="meta-label"></span><span style="font-weight:bold;color:#333">🏗️ ${order.siteName}</span></div>` : ''}
       ${order.siteAddress ? `<div class="meta-row"><span class="meta-label"></span><span style="color:#555;font-size:9px">${order.siteAddress}</span></div>` : ''}
-      <div class="meta-row"><span class="meta-label"></span>${order.customer?.address || ''}</div>
+      ${(() => { const a = order.customer?.address?.billing || {}; const parts = [a.street, a.city, a.state, a.zipCode].filter(Boolean); return parts.length ? `<div class="meta-row"><span class="meta-label">Address:</span><span style="font-size:9px">${parts.join(', ')}</span></div>` : ''; })()}
     </div>
     <div class="meta-box">
       <div class="meta-row"><span class="meta-label">No:</span><strong style="font-size:14px">${docNo}</strong></div>
@@ -131,9 +139,9 @@ const template1 = (order, settings, docType = 'invoice') => {
     <table>
       <thead><tr>
         <th width="4%">S.No</th>
-        <th width="50%">Description of Goods</th>
+        <th width="54%">Description of Goods</th>
         <th width="12%">${qtyLabel}</th>
-        <th width="13%">Box Qty</th>
+        <th width="9%">Box Qty</th>
         <th width="10%">${rateLabel}</th>
         <th width="11%">Total</th>
       </tr></thead>
@@ -174,10 +182,15 @@ const template1 = (order, settings, docType = 'invoice') => {
     </div>
   </div>
   <div class="footer">
+    <div style="font-size:8px">
+      ${order.user?.name ? `<div style="font-weight:bold">Created By: ${order.user.name}</div>` : ''}
+      ${order.user?.phone ? `<div style="color:#555">${order.user.phone}</div>` : ''}
+    </div>
     <div style="text-align:center;border-top:1px solid #000;width:150px;padding-top:4px">RECEIVER'S SIGNATURE</div>
     <div style="text-align:center;width:200px">
+      ${s.branding?.bankName ? `<div style="font-size:7px;margin-bottom:6px"><b>Bank:</b> ${s.branding.bankName}${s.branding.branchName ? ', ' + s.branding.branchName : ''} | <b>A/C:</b> ${s.branding.accountNumber || ''} | <b>IFSC:</b> ${s.branding.ifscCode || ''}</div>` : ''}
       <div style="font-weight:bold;margin-bottom:35px;font-size:8.5px">For ${s.companyName || 'COMPANY'}</div>
-      <div style="border-top:1px solid #000;padding-top:4px">AUTHORIZED SIGNATORY</div>
+      <div style="border-top:1px solid #000;padding-top:4px">AUTHORISED SIGNATORY</div>
     </div>
   </div>
 </div></body></html>`;
@@ -204,7 +217,7 @@ const template2 = (order, settings, docType = 'invoice') => {
         ? (s.branding.logoUrl.startsWith('http') ? s.branding.logoUrl : `${window.location.origin}${s.branding.logoUrl}`)
         : '';
 
-    return `<html><head><title>${title} - ${docNo}</title>
+    return `<html><head><meta charset="UTF-8"><title>${title} - ${docNo}</title>
 <style>
   @page { size: A4; margin: 5mm; }
   body { font-family: 'Arial', sans-serif; font-size: 10px; color: #1a1a2e; margin: 0; background: #fff; display: flex; justify-content: center; }
@@ -248,6 +261,7 @@ const template2 = (order, settings, docType = 'invoice') => {
       <div class="company-name">${s.companyName || 'YOUR COMPANY'}</div>
       <div class="company-sub">${s.address || ''}</div>
       ${s.gstNumber ? `<div class="company-sub">GSTIN: ${s.gstNumber}</div>` : ''}
+      ${s.panNumber ? `<div class="company-sub">PAN: ${s.panNumber}</div>` : ''}
     </div>
     <div class="company-contact">
       ${s.phone1 ? `📞 ${s.phone1}` : ''}${s.phone2 ? `<br/>📞 ${s.phone2}` : ''}
@@ -263,10 +277,12 @@ const template2 = (order, settings, docType = 'invoice') => {
     <div class="meta-left">
       <div class="meta-title">Bill To</div>
       <div class="meta-value">${(order.customer?.companyName || order.customer?.name || 'Cash Sales').toUpperCase()}</div>
+      ${order.customer?.name && order.customer?.companyName ? `<div style="font-size:9px;color:#555;margin-top:1px">${order.customer.name}</div>` : ''}
+      ${order.customer?.phone ? `<div style="font-size:8.5px;color:#555;margin-top:2px">📞 ${order.customer.phone}</div>` : ''}
+      ${order.customer?.gstin ? `<div style="font-size:8px;color:#777">GSTIN: ${order.customer.gstin}</div>` : ''}
       ${order.siteName ? `<div style="font-size:9px;font-weight:bold;color:#e84393;margin-top:2px">🏗️ ${order.siteName}</div>` : ''}
       ${order.siteAddress ? `<div style="font-size:8.5px;color:#555;margin-top:1px">📍 ${order.siteAddress}</div>` : ''}
-      <div style="font-size:8.5px;color:#555;margin-top:3px">${order.customer?.address || ''}</div>
-      ${order.customer?.phone ? `<div style="font-size:8px;color:#888">📞 ${order.customer.phone}</div>` : ''}
+      ${(() => { const a = order.customer?.address?.billing || {}; const parts = [a.street, a.city, a.state, a.zipCode].filter(Boolean); return parts.length ? `<div style="font-size:8.5px;color:#555;margin-top:2px">${parts.join(', ')}</div>` : ''; })()}
     </div>
     <div class="meta-right">
       <div class="meta-row2"><span style="color:#999">Date:</span><strong>${new Date(docDate).toLocaleDateString()}</strong></div>
@@ -278,11 +294,11 @@ const template2 = (order, settings, docType = 'invoice') => {
     <table class="item-table">
       <thead><tr>
         <th width="4%">No.</th>
-        <th width="52%">Description</th>
+        <th width="54%">Description</th>
         <th width="11%">${qtyLabel}</th>
-        <th width="13%">Box Qty</th>
+        <th width="9%">Box Qty</th>
         <th width="9%">${rateLabel}</th>
-        <th width="11%">Total</th>
+        <th width="13%">Total</th>
       </tr></thead>
       <tbody>
       ${order.items.map((item, i) => {
@@ -290,7 +306,7 @@ const template2 = (order, settings, docType = 'invoice') => {
           const withTax = total + (total * taxPct / 100);
           return `<tr>
             <td style="text-align:center">${i + 1}</td>
-            <td><strong>${(item.name || '').toUpperCase()}</strong><span style="display:block;font-size:8.5px;color:#888">${item.brand || ''} ${item.size || ''}</span></td>
+            <td><strong>${(() => { const b=(item.brand||'').trim(); const sz=(item.size||'').trim(); const n=(item.name||'').toUpperCase(); const sub=[b,sz].filter(Boolean).join(' '); return sub ? n+'-'+sub : n; })()}</strong></td>
             <td style="text-align:center;font-weight:bold">${item.totalSqFt ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}</td>
             <td style="text-align:center">${item.boxCount ? `${item.boxCount} (${item.pcsPerBox || ''} pcs/box)` : (item.secondaryQty ? `${item.secondaryQty}` : '')}</td>
             <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
@@ -324,8 +340,9 @@ const template2 = (order, settings, docType = 'invoice') => {
   </div>
   <div class="footer">
     <div class="sig"><div class="sig-label">CUSTOMER SIGNATURE</div></div>
-    <div>
-      ${s.branding?.bankName ? `<div style="font-size:7.5px;color:#888;text-align:right"><b>Bank:</b> ${s.branding.bankName} | <b>A/C:</b> ${s.branding.accountNumber || ''} | <b>IFSC:</b> ${s.branding.ifscCode || ''}</div>` : ''}
+    <div style="text-align:center">
+      ${s.branding?.bankName ? `<div style="font-size:7.5px;color:#888"><b>Bank:</b> ${s.branding.bankName}${s.branding.branchName ? ', ' + s.branding.branchName : ''} | <b>A/C:</b> ${s.branding.accountNumber || ''} | <b>IFSC:</b> ${s.branding.ifscCode || ''}</div>` : ''}
+      ${order.user?.name ? `<div style="font-size:7.5px;color:#888;margin-top:3px"><b>Created By:</b> ${order.user.name}${order.user?.phone ? ' · ' + order.user.phone : ''}</div>` : ''}
     </div>
     <div class="sig"><div style="font-size:7.5px;color:#777;margin-bottom:0">For ${s.companyName || 'COMPANY'}</div><div class="sig-label">AUTHORISED SIGNATORY</div></div>
   </div>
@@ -353,7 +370,7 @@ const template3 = (order, settings, docType = 'invoice') => {
         ? (s.branding.logoUrl.startsWith('http') ? s.branding.logoUrl : `${window.location.origin}${s.branding.logoUrl}`)
         : '';
 
-    return `<html><head><title>${title} - ${docNo}</title>
+    return `<html><head><meta charset="UTF-8"><title>${title} - ${docNo}</title>
 <style>
   @page { size: A4; margin: 10mm; }
   body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; color: #333; margin: 0; background: #fff; display: flex; justify-content: center; }
@@ -397,6 +414,7 @@ const template3 = (order, settings, docType = 'invoice') => {
         ${s.address || ''}<br/>
         ${s.phone1 ? `Tel: ${s.phone1}` : ''}${s.phone2 ? ` / ${s.phone2}` : ''}<br/>
         ${s.gstNumber ? `GSTIN: ${s.gstNumber}` : ''}
+        ${s.panNumber ? `<br/>PAN: ${s.panNumber}` : ''}
       </div>
     </div>
     <div class="doc-info">
@@ -413,10 +431,12 @@ const template3 = (order, settings, docType = 'invoice') => {
     <div class="bill-to">
       <div class="bill-to-label">Bill To</div>
       <div class="bill-to-name">${(order.customer?.companyName || order.customer?.name || 'Cash Sales').toUpperCase()}</div>
+      ${order.customer?.name && order.customer?.companyName ? `<div class="bill-to-detail" style="font-weight:700">${order.customer.name}</div>` : ''}
+      ${order.customer?.phone ? `<div class="bill-to-detail">Tel: ${order.customer.phone}</div>` : ''}
+      ${order.customer?.gstin ? `<div class="bill-to-detail">GSTIN: ${order.customer.gstin}</div>` : ''}
       ${order.siteName ? `<div style="font-size:9px;font-weight:800;color:#555;margin-top:2px">🏗️ ${order.siteName}</div>` : ''}
       ${order.siteAddress ? `<div class="bill-to-detail">📍 ${order.siteAddress}</div>` : ''}
-      <div class="bill-to-detail">${order.customer?.address || ''}</div>
-      ${order.customer?.phone ? `<div class="bill-to-detail">Tel: ${order.customer.phone}</div>` : ''}
+      ${(() => { const a = order.customer?.address?.billing || {}; const parts = [a.street, a.city, a.state, a.zipCode].filter(Boolean); return parts.length ? `<div class="bill-to-detail">${parts.join(', ')}</div>` : ''; })()}
     </div>
     <div class="bill-meta">
       ${order.terms ? `<div class="bill-meta-row"><span class="bill-meta-label">Terms:</span><span>${order.terms}</span></div>` : ''}
@@ -426,11 +446,11 @@ const template3 = (order, settings, docType = 'invoice') => {
   <table class="item-table">
     <thead><tr>
       <th width="4%">No</th>
-      <th width="52%">Description</th>
+      <th width="54%">Description</th>
       <th width="11%">${qtyLabel}</th>
-      <th width="13%">Box Qty</th>
+      <th width="9%">Box Qty</th>
       <th width="9%">${rateLabel}</th>
-      <th width="11%">Total</th>
+      <th width="13%">Total</th>
     </tr></thead>
     <tbody>
     ${order.items.map((item, i) => {
@@ -438,7 +458,7 @@ const template3 = (order, settings, docType = 'invoice') => {
         const withTax = total + (total * taxPct / 100);
         return `<tr>
           <td style="color:#aaa">${i + 1}</td>
-          <td><strong style="color:#111">${(item.name || '').toUpperCase()}</strong><br/><span style="color:#aaa;font-size:8.5px">${item.brand || ''} ${item.size || ''}</span></td>
+          <td><strong style="color:#111">${(() => { const b=(item.brand||'').trim(); const sz=(item.size||'').trim(); const n=(item.name||'').toUpperCase(); const sub=[b,sz].filter(Boolean).join(' '); return sub ? n+'-'+sub : n; })()}</strong></td>
           <td style="text-align:center;font-weight:700">
             ${item.totalSqFt ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}
           </td>
@@ -474,7 +494,10 @@ const template3 = (order, settings, docType = 'invoice') => {
 
   <div class="footer">
     <div class="sig-block"><div class="sig-line">CUSTOMER SIGNATURE</div></div>
-    ${s.branding?.bankName ? `<div style="font-size:7.5px;color:#aaa;text-align:center">Bank: ${s.branding.bankName}<br/>A/C: ${s.branding.accountNumber} | IFSC: ${s.branding.ifscCode}</div>` : '<div></div>'}
+    <div style="text-align:center">
+      ${s.branding?.bankName ? `<div style="font-size:7.5px;color:#aaa">Bank: ${s.branding.bankName}${s.branding.branchName ? ', ' + s.branding.branchName : ''}<br/>A/C: ${s.branding.accountNumber || ''} | IFSC: ${s.branding.ifscCode || ''}</div>` : '<div></div>'}
+      ${order.user?.name ? `<div style="font-size:7.5px;color:#999;margin-top:3px"><b>Created By:</b> ${order.user.name}${order.user?.phone ? ' · ' + order.user.phone : ''}</div>` : ''}
+    </div>
     <div class="sig-block"><div style="font-size:7.5px;color:#aaa">For ${s.companyName || ''}</div><div class="sig-line">AUTHORISED SIGNATORY</div></div>
   </div>
 </body></html>`;

@@ -149,16 +149,13 @@ export const InventoryProvider = ({ children }) => {
 
         const pcsPerBox = Math.max(1, Number(updatedRow.pcsPerBox) || 1);
         const sqFtPerPc = Math.max(0, Number(updatedRow.sqFtPerPc) || 0);
+        // Preserve raw value for display, convert for math
         const price = Math.max(0, Number(updatedRow.price) || 0);
         const billingUnit = updatedRow.billingUnit || 'boxes';
 
-        updatedRow.totalPcs = Number(updatedRow.totalPcs) || 0;
-        updatedRow.totalSqFt = Number(updatedRow.totalSqFt) || 0;
-        updatedRow.boxCount = Number(updatedRow.boxCount) || 0;
-        updatedRow.quantity = Number(updatedRow.quantity) || 0;
-
         if (industry === 'tiles' && sqFtPerPc > 0) {
             if (field === 'quantity') {
+                updatedRow.quantity = value === '' ? '' : value;
                 const qty = Number(value || 0);
                 if (billingUnit === 'sqft') {
                     updatedRow.totalSqFt = qty;
@@ -179,8 +176,8 @@ export const InventoryProvider = ({ children }) => {
                     updatedRow.stockUnit = 'pieces';
                 }
             } else if (field === 'boxCount') {
+                updatedRow.boxCount = value === '' ? '' : value;
                 const boxes = Number(value || 0);
-                updatedRow.boxCount = boxes;
                 updatedRow.totalPcs = boxes * pcsPerBox;
                 updatedRow.totalSqFt = Number((updatedRow.totalPcs * sqFtPerPc).toFixed(4));
                 
@@ -241,10 +238,13 @@ export const InventoryProvider = ({ children }) => {
             updatedRow.total = Number((updatedRow.totalSqFt * price).toFixed(2));
         } else {
             // Standard Logic: Qty * Price
-            updatedRow.quantity = field === 'quantity' ? Number(value || 0) : Number(updatedRow.quantity || 0);
-            updatedRow.stockQty = updatedRow.quantity;
+            if (field === 'quantity') {
+                updatedRow.quantity = value === '' ? '' : value;
+            }
+            const qtyNum = Number(updatedRow.quantity) || 0;
+            updatedRow.stockQty = qtyNum;
             updatedRow.stockUnit = 'units';
-            updatedRow.total = Number((updatedRow.quantity * price).toFixed(2));
+            updatedRow.total = Number((qtyNum * price).toFixed(2));
         }
 
         return updatedRow;

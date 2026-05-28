@@ -1,5 +1,5 @@
-
 import { printDocument } from './printTemplates';
+import html2pdf from 'html2pdf.js';
 
 export const generateShareMessage = (order, settings, docType = 'quotation') => {
     const isQuotation = docType === 'quotation';
@@ -51,13 +51,31 @@ export const shareViaWhatsApp = (order, settings, docType = 'quotation') => {
 export const shareInvoiceAsPdf = async (order, settings, docType = 'quotation', generateHtmlFn) => {
     const docNo = order.orderNumber;
     const docTitle = docType === 'quotation' ? 'Quotation' : 'Invoice';
-    const fileName = `${docTitle}-${docNo}.html`;
+    const fileName = `${docTitle}-${docNo}.pdf`;
 
     try {
         // Generate the invoice HTML
         const html = generateHtmlFn(order, settings, docType);
-        const blob = new Blob([html], { type: 'text/html' });
-        const file = new File([blob], fileName, { type: 'text/html' });
+        
+        // Create a temporary container for html2pdf
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        document.body.appendChild(tempDiv);
+        
+        // Configuration for html2pdf
+        const opt = {
+            margin:       0,
+            filename:     fileName,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
+
+        // Generate the PDF blob
+        const pdfBlob = await html2pdf().set(opt).from(tempDiv).output('blob');
+        document.body.removeChild(tempDiv);
+        
+        const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
         // Try Web Share API with file support (Android Chrome, iOS Safari 15+)
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -69,13 +87,16 @@ export const shareInvoiceAsPdf = async (order, settings, docType = 'quotation', 
             return;
         }
 
-        // Fallback: open in new window and trigger print (user can Save as PDF)
-        const w = window.open('', '_blank', 'width=950,height=750');
-        if (w) {
-            w.document.write(html);
-            w.document.close();
-            setTimeout(() => { w.focus(); w.print(); }, 600);
-        }
+        // Fallback: If native share is not supported, just download the PDF
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        const link = document.createElement('a');
+        link.href = pdfUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(pdfUrl);
+
     } catch (err) {
         if (err?.name !== 'AbortError') {
             console.error('Share PDF error:', err);

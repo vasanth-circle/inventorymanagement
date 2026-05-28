@@ -404,6 +404,7 @@ export const importBulkMapped = async (req, res, next) => {
 
         const options = JSON.parse(req.body.options || '{}');
         const updateMode = options.updateMode || 'add'; // 'add' or 'overwrite'
+        const resetStock = options.resetStock === true; // force qty=0 on overwrite even if no qty column
         const mapping = JSON.parse(req.body.mapping || '{}');
         const headerRowIdx = parseInt(req.body.headerRowIdx || '0', 10);
 
@@ -561,18 +562,15 @@ export const importBulkMapped = async (req, res, next) => {
 
                 if (item) {
                     // --- Update existing item ---
-                    // Only touch quantity if the user mapped a quantity column
                     if (hasQuantityMapping && stockQty !== null) {
+                        // User mapped a quantity column — apply it
                         const previousQuantity = item.quantity;
                         if (updateMode === 'overwrite') {
                             item.quantity = stockQty;
                         } else {
                             item.quantity += stockQty;
                         }
-
                         await item.save();
-
-                        // Only create a transaction if there was actual stock movement
                         if (stockQty > 0) {
                             await Transaction.create({
                                 item: item._id,
@@ -586,6 +584,22 @@ export const importBulkMapped = async (req, res, next) => {
                                 ...tenantQuery(req)
                             });
                         }
+                    } else if (!hasQuantityMapping && updateMode === 'overwrite' && resetStock && item.quantity > 0) {
+                        // No quantity column mapped, but user explicitly asked to reset stock to 0
+                        const previousQuantity = item.quantity;
+                        item.quantity = 0;
+                        await item.save();
+                        await Transaction.create({
+                            item: item._id,
+                            type: 'adjustment',
+                            quantity: previousQuantity,
+                            previousQuantity,
+                            newQuantity: 0,
+                            reason: 'Stock Reset via Bulk Import (Overwrite)',
+                            location: itemData.location || item.location,
+                            user: req.user._id,
+                            ...tenantQuery(req)
+                        });
                     }
 
                     // Always update item master fields (no stock touched)

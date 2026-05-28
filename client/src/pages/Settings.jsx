@@ -64,6 +64,7 @@ const Settings = () => {
         phone1: '',
         phone2: '',
         gstNumber: '',
+        panNumber: '',
         invoicePrefix: 'INV',
         estimatePrefix: 'EST',
         industry: 'generic',
@@ -101,6 +102,7 @@ const Settings = () => {
             bankName: '',
             accountNumber: '',
             ifscCode: '',
+            branchName: '',
             termsAndConditions: '1. Goods once sold will not be taken back.\n2. No responsibility for breakages after leaving premises.\n3. E. & O.E.',
         },
         // Workflow config
@@ -127,6 +129,7 @@ const Settings = () => {
                 phone1: billingSettings.phone1 || '',
                 phone2: billingSettings.phone2 || '',
                 gstNumber: billingSettings.gstNumber || '',
+                panNumber: billingSettings.panNumber || '',
                 invoicePrefix: billingSettings.invoicePrefix || 'INV',
                 estimatePrefix: billingSettings.estimatePrefix || 'EST',
                 industry: billingSettings.industry || 'generic',
@@ -161,6 +164,7 @@ const Settings = () => {
                     bankName: billingSettings.branding?.bankName || '',
                     accountNumber: billingSettings.branding?.accountNumber || '',
                     ifscCode: billingSettings.branding?.ifscCode || '',
+                    branchName: billingSettings.branding?.branchName || '',
                     termsAndConditions: billingSettings.branding?.termsAndConditions || '1. Goods once sold will not be taken back.\n2. No responsibility for breakages after leaving premises.\n3. E. & O.E.',
                 },
                 workflowConfig: {
@@ -367,6 +371,7 @@ const Settings = () => {
                                     <InputField label="Primary Phone" name="phone1" value={formData.phone1} onChange={handleChange} placeholder="e.g. 98765 43210" />
                                     <InputField label="Secondary Phone" name="phone2" value={formData.phone2} onChange={handleChange} placeholder="Secondary contact" />
                                     <InputField label="GST / Tax Number" name="gstNumber" value={formData.gstNumber} onChange={handleChange} placeholder="Optional GSTIN" />
+                                    <InputField label="PAN Number" name="panNumber" value={formData.panNumber} onChange={handleChange} placeholder="e.g. ABCDE1234F" />
                                 </div>
 
                                 <div className="pt-4 border-t border-gray-100">
@@ -833,6 +838,12 @@ const Settings = () => {
                                                 value={formData.branding.bankName}
                                                 onChange={e => handleNested('branding', 'bankName', e.target.value)}
                                                 placeholder="e.g. State Bank of India" />
+                                        </div>
+                                        <div className="md:col-span-3">
+                                            <InputField label="Branch Name" name="branchName"
+                                                value={formData.branding.branchName}
+                                                onChange={e => handleNested('branding', 'branchName', e.target.value)}
+                                                placeholder="e.g. Coimbatore Main Branch" />
                                         </div>
                                         <div className="md:col-span-2">
                                             <InputField label="Account Number" name="accountNumber"
