@@ -20,6 +20,11 @@ export const createCategory = async (req, res, next) => {
     try {
         const { name, description } = req.body;
 
+        const exists = await Category.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') }, ...tenantQuery(req) });
+        if (exists) {
+            return res.status(400).json({ message: 'Category already exists' });
+        }
+
         const category = await Category.create({ 
             name, 
             description,

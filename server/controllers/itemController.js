@@ -147,6 +147,11 @@ export const createItem = async (req, res, next) => {
 
         itemData.tenantId = req.tenantId;
 
+        const exists = await Item.findOne({ name: { $regex: new RegExp(`^${itemData.name}$`, 'i') }, ...tenantQuery(req) });
+        if (exists) {
+            return sendError(res, 400, 'Item with this name already exists');
+        }
+
         const item = await Item.create(itemData);
         const populatedItem = await Item.findOne({ _id: item._id, ...tenantQuery(req) }).populate('category', 'name');
 

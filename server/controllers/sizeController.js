@@ -13,6 +13,11 @@ export const getSizes = async (req, res, next) => {
 
 export const createSize = async (req, res, next) => {
     try {
+        const exists = await Size.findOne({ name: { $regex: new RegExp(`^${req.body.name}$`, 'i') }, ...tenantQuery(req) });
+        if (exists) {
+            return sendError(res, 400, 'Size already exists');
+        }
+
         const sizeData = { ...req.body, tenantId: req.tenantId };
         const size = await Size.create(sizeData);
         res.status(201).json(size);

@@ -6,6 +6,7 @@ import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import CustomerLedger from '../models/CustomerLedger.js';
 import Customer from '../models/Customer.js';
+import ActionLog from '../models/ActionLog.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { getNextSequenceValue } from '../utils/sequence.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
@@ -154,7 +155,7 @@ export const createBillLedgerEntry = async ({ orderId, tenantId, userId }) => {
 // @access  Private
 export const getSalesOrders = async (req, res, next) => {
     try {
-        const { status = '', customer = '', page = 1, limit = 10 } = req.query;
+        const { status = '', customer = '', type = '', search = '', page = 1, limit = 10 } = req.query;
         const query = { ...tenantQuery(req) };
 
         if (status) {
@@ -163,6 +164,25 @@ export const getSalesOrders = async (req, res, next) => {
 
         if (customer) {
             query.customer = customer;
+        }
+        
+        if (type === 'quote') {
+            query.isEstimation = true;
+        } else if (type === 'invoice') {
+            query.isEstimation = false;
+        }
+
+        if (search) {
+            const matchingCustomers = await Customer.find({ 
+                name: { $regex: search, $options: 'i' },
+                ...tenantQuery(req)
+            }).select('_id');
+            const customerIds = matchingCustomers.map(c => c._id);
+            
+            query.$or = [
+                { orderNumber: { $regex: search, $options: 'i' } },
+                { customer: { $in: customerIds } }
+            ];
         }
 
         const orders = await SalesOrder.find(query)
@@ -326,10 +346,26 @@ export const updateSOStatus = async (req, res, next) => {
                 }
             }
             order.isEstimation = false;
+            
+            let retries = 0;
+            let assigned = false;
+            while (!assigned && retries < 10) {
+                try {
+                    const seq = await getNextSequenceValue('INV', req.tenantId);
+                    order.orderNumber = `${seq}`;
+                    order.status = status;
+                    await order.save();
+                    assigned = true;
+                } catch (err) {
+                    if (err.code === 11000) retries++;
+                    else throw err;
+                }
+            }
+            if (!assigned) return sendError(res, 500, 'Failed to generate a unique invoice number');
+        } else {
+            order.status = status;
+            await order.save();
         }
-
-        order.status = status;
-        await order.save();
 
         if (order.customer) {
             await syncSalesOrderLedger(order._id, req.tenantId, req.user._id);
@@ -371,10 +407,10 @@ export const updateSalesOrder = async (req, res, next) => {
             return sendError(res, 404, 'Sales order not found');
         }
 
-        // Only allow editing if user is admin or higher
-        const isAdmin = ['super_admin', 'admin', 'tenant_owner', 'tenant_admin', 'manager'].includes(req.user.role);
+        // Only allow editing if user is admin, manager, or sales person
+        const isAdmin = ['super_admin', 'admin', 'tenant_owner', 'tenant_admin', 'manager', 'sales_person', 'sales person', 'sales user', 'sales_user'].includes(req.user.role);
         if (!isAdmin) {
-            return sendError(res, 403, 'Permission denied: Only administrators can edit bills');
+            return sendError(res, 403, 'Permission denied: Only administrators and sales persons can edit bills');
         }
 
         // Update fields
@@ -411,6 +447,17 @@ export const updateSalesOrder = async (req, res, next) => {
         if (order.customer) {
             await syncSalesOrderLedger(order._id, req.tenantId, req.user._id);
         }
+
+        // Log the edit action
+        await ActionLog.create({
+            tenantId: req.tenantId,
+            user: req.user._id,
+            action: 'EDIT_INVOICE',
+            entityType: 'SalesOrder',
+            entityId: order._id,
+            entityNumber: order.orderNumber,
+            description: `Edited invoice/estimation ${order.orderNumber}`
+        });
 
         sendResponse(res, 200, order, 'Sales order updated successfully');
     } catch (error) {

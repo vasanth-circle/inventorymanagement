@@ -43,6 +43,7 @@ import LedgerReports from './pages/LedgerReports';
 import Onboarding from './pages/Onboarding';
 import Sizes from './pages/Sizes';
 import Brands from './pages/Brands';
+import ActionLogs from './pages/ActionLogs';
 
 function AppLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -115,6 +116,7 @@ function App() {
                                             <Route path="/vendor-ledger/:id" element={<VendorLedger />} />
                                             <Route path="/sizes" element={<Sizes />} />
                                             <Route path="/brands" element={<Brands />} />
+                                            <Route path="/action-logs" element={<ActionLogs />} />
                                             <Route path="/locations" element={<Locations />} />
                                             <Route path="/dispatch-management" element={<DispatchManagement />} />
                                             <Route path="/settings" element={<Settings />} />

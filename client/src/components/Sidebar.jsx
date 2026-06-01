@@ -87,7 +87,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                 icon: '⚙️',
                 items: [
                     { name: 'Users', path: '/users', id: 'users' },
-                    { name: 'Billing Settings', path: '/settings', id: 'settings' }
+                    { name: 'Billing Settings', path: '/settings', id: 'settings' },
+                    { name: 'Action Logs', path: '/action-logs', id: 'action-logs' }
                 ]
             });
         }
@@ -119,7 +120,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                 icon: '⚙️',
                 items: [
                     { name: 'Locations & Branches', path: '/locations', id: 'locations' },
-                    { name: 'Users', path: '/users', id: 'users' }
+                    { name: 'Users', path: '/users', id: 'users' },
+                    { name: 'Action Logs', path: '/action-logs', id: 'action-logs' }
                 ]
             });
         }

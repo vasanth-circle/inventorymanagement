@@ -24,6 +24,7 @@ const SalesOrders = () => {
     const [fetchingBalance, setFetchingBalance] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [userFilter, setUserFilter] = useState('');
+    const [typeFilter, setTypeFilter] = useState('');
     // Sites for the currently selected customer
     const [selectedCustomerSites, setSelectedCustomerSites] = useState([]);
     // Mobile share bottom sheet
@@ -369,7 +370,10 @@ const SalesOrders = () => {
             (order.customer?.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (order.customer?.phone || '').includes(searchTerm);
         const matchUser = !userFilter || order.user?._id === userFilter;
-        return matchSearch && matchUser;
+        const matchType = !typeFilter || 
+            (typeFilter === 'quote' && order.isEstimation) || 
+            (typeFilter === 'invoice' && !order.isEstimation);
+        return matchSearch && matchUser && matchType;
     });
 
     const uniqueUsers = Array.from(new Set(orders.filter(o => o.user).map(o => JSON.stringify({ id: o.user._id, name: o.user.name })))).map(u => JSON.parse(u));
@@ -397,6 +401,15 @@ const SalesOrders = () => {
                     onChange={e => setSearchTerm(e.target.value)}
                     className="flex-1 min-w-[200px] h-10 px-4 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none shadow-sm"
                 />
+                <select
+                    value={typeFilter}
+                    onChange={e => setTypeFilter(e.target.value)}
+                    className="h-10 px-4 bg-white border border-gray-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none shadow-sm"
+                >
+                    <option value="">All Types</option>
+                    <option value="invoice">Invoices</option>
+                    <option value="quote">Quotations</option>
+                </select>
                 <select
                     value={userFilter}
                     onChange={e => setUserFilter(e.target.value)}

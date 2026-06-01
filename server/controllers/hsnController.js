@@ -15,7 +15,7 @@ export const createHSNCode = async (req, res, next) => {
     try {
         const { code, description, gstRate } = req.body;
         
-        const exists = await HSN.findOne({ code, ...tenantQuery(req) });
+        const exists = await HSN.findOne({ code: { $regex: new RegExp(`^${code}$`, 'i') }, ...tenantQuery(req) });
         if (exists) {
             return sendError(res, 400, 'HSN code already exists');
         }

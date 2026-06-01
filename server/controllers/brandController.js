@@ -27,7 +27,7 @@ export const createBrand = async (req, res, next) => {
     try {
         const { name, description, categoryId } = req.body;
 
-        const exists = await Brand.findOne({ name, categoryId, ...tenantQuery(req) });
+        const exists = await Brand.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') }, categoryId, ...tenantQuery(req) });
         if (exists) {
             return sendError(res, 400, 'Brand with this name already exists in the selected category');
         }
