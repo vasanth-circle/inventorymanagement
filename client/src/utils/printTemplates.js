@@ -556,8 +556,8 @@ const template4 = (order, settings, docType = 'invoice') => {
 </style>
 </head><body>
 <div class="container">
-  <div class="company-header">
-    ${logoSrc ? `<img src="${logoSrc}" style="max-height:40px; position:absolute; left:10px; top:10px;" />` : ''}
+  <div class="company-header" style="min-height: 75px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+    ${logoSrc ? `<div style="position:absolute; left:10px; top:50%; transform:translateY(-50%);"><img src="${logoSrc}" style="max-height:65px; max-width:180px; object-fit:contain;" /></div>` : ''}
     <h1>${s.companyName || 'COMPANY NAME'}</h1>
     <p>${s.address || ''}</p>
     <p style="margin-top:2px;">
