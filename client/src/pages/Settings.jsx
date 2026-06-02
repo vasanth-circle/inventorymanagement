@@ -653,10 +653,13 @@ const Settings = () => {
                                         <span className="w-7 h-7 bg-gray-100 text-gray-600 rounded-lg flex items-center justify-center text-sm">🖨️</span>
                                         Print Template Preview
                                     </h2>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        {[1, 2, 3].map(t => (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                        {[1, 2, 3, 4].map(t => (
                                             <button key={t} type="button"
-                                                onClick={() => handleNested('documentConfig', 'invoiceTemplate', t)}
+                                                onClick={() => {
+                                                    handleNested('documentConfig', 'invoiceTemplate', t);
+                                                    handleNested('documentConfig', 'quotationTemplate', t);
+                                                }}
                                                 className={`group border-2 rounded-xl p-4 text-center transition-all relative ${
                                                     formData.documentConfig.invoiceTemplate === t
                                                         ? 'border-rose-500 bg-rose-50 text-rose-700 shadow-sm transform scale-[1.02]'
@@ -733,13 +736,35 @@ const Settings = () => {
                                                             </div>
                                                         </div>
                                                     )}
+                                                    {t === 4 && (
+                                                        <div className="h-full border border-gray-400 p-1 flex flex-col relative w-full bg-white">
+                                                            <div className="w-full border-b-[1.5px] border-gray-900 pb-1 flex flex-col items-center pt-1">
+                                                                <div className="w-3/4 h-2 bg-gray-900 rounded-sm mb-1"></div>
+                                                                <div className="w-1/2 h-1 bg-gray-500 rounded-sm"></div>
+                                                            </div>
+                                                            <div className="w-full border-b-[1.5px] border-gray-900 py-1 flex justify-between">
+                                                                <div className="w-1/3 h-1.5 bg-gray-400 rounded-sm"></div>
+                                                                <div className="w-1/3 h-1.5 bg-gray-400 rounded-sm flex flex-col items-end gap-1"><div className="w-full h-1 bg-gray-300"></div></div>
+                                                            </div>
+                                                            <div className="w-full flex-1 border-b-[1.5px] border-gray-900 my-1 flex flex-col gap-0.5">
+                                                                <div className="w-full h-2 bg-gray-200 border-b border-gray-800"></div>
+                                                                <div className="w-full h-1 bg-gray-100"></div>
+                                                                <div className="w-full h-1 bg-gray-100"></div>
+                                                                <div className="w-full h-1 bg-gray-100"></div>
+                                                            </div>
+                                                            <div className="mt-auto flex justify-between pt-1 h-8">
+                                                                <div className="w-[45%] h-full flex flex-col gap-1"><div className="w-full h-1 bg-gray-300"></div><div className="w-3/4 h-1 bg-gray-300"></div></div>
+                                                                <div className="w-[40%] flex flex-col items-end justify-between"><div className="w-full h-0.5 bg-gray-400"></div><div className="w-full h-1.5 bg-gray-900"></div></div>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <div className="absolute inset-0 bg-gray-900/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl pointer-events-auto cursor-pointer" onClick={(e) => { e.stopPropagation(); setPreviewTemplate(t); }}>
-                                                    <span className="bg-white text-gray-900 text-[10px] font-black px-3 py-2 rounded-lg shadow border border-gray-200 hover:bg-gray-50 flex items-center gap-1 transform transition hover:scale-105">👁️ VIEW SAMPLE</span>
+                                                <div className="absolute inset-0 bg-gray-900/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl pointer-events-none">
+                                                    <span className="bg-white text-gray-900 text-[10px] font-black px-3 py-2 rounded-lg shadow border border-gray-200 hover:bg-gray-50 flex items-center gap-1 transform transition hover:scale-105 pointer-events-auto cursor-pointer" onClick={(e) => { e.stopPropagation(); setPreviewTemplate(t); }}>👁️ VIEW SAMPLE</span>
                                                 </div>
                                                 <div className="text-sm font-black text-gray-800">Template {t}</div>
                                                 <div className="text-[10px] mt-1 font-bold text-gray-500 uppercase tracking-widest">
-                                                    {t === 1 ? 'Standard' : t === 2 ? 'Minimal' : 'Classic'}
+                                                    {t === 1 ? 'Standard' : t === 2 ? 'Minimal' : t === 3 ? 'Classic' : 'Compact No-Tax'}
                                                 </div>
                                                 {formData.documentConfig.invoiceTemplate === t && (
                                                     <div className="text-[10px] mt-2 text-rose-600 font-extrabold flex items-center justify-center gap-1">

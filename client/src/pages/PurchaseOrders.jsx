@@ -83,36 +83,41 @@ const PurchaseOrders = () => {
     };
 
     const handleItemChange = (index, field, value) => {
-        const newItems = [...formData.items];
-        
-        // Handle item selection correctly since SearchableSelect sends an event object
-        if (field === 'item') {
-            const selectedItemId = value.target ? value.target.value : value;
-            const selectedItem = items.find(i => i._id === selectedItemId);
-            if (selectedItem) {
-                newItems[index] = {
-                    ...newItems[index],
-                    item: selectedItemId,
-                    name: selectedItem.name,
-                    price: selectedItem.purchasePrice || selectedItem.price,
-                    brand: selectedItem.brand,
-                    size: selectedItem.size,
-                    unitType: selectedItem.unitType || 'pieces',
-                    sqFtPerPc: selectedItem.sqFtPerPc || 0,
-                    pcsPerBox: selectedItem.pcsPerBox || 1,
-                    billingUnit: (billingSettings?.industry === 'tiles' && selectedItem.sqFtPerPc > 0) ? 'sqft' : 'pieces'
-                };
-                
-                // Recalculate totals with the new defaults
-                newItems[index] = calculateItemValues(newItems[index], 'price', newItems[index].price, billingSettings?.industry);
+        try {
+            const newItems = [...formData.items];
+            
+            // Handle item selection correctly since SearchableSelect sends an event object
+            if (field === 'item') {
+                const selectedItemId = (value && value.target) ? value.target.value : value;
+                const selectedItem = items.find(i => i._id === selectedItemId);
+                if (selectedItem) {
+                    newItems[index] = {
+                        ...newItems[index],
+                        item: selectedItemId,
+                        name: selectedItem.name || 'Unknown',
+                        price: Number(selectedItem.purchasePrice || selectedItem.price) || 0,
+                        brand: selectedItem.brand || '',
+                        size: selectedItem.size || '',
+                        unitType: selectedItem.unitType || 'pieces',
+                        sqFtPerPc: Number(selectedItem.sqFtPerPc) || 0,
+                        pcsPerBox: Math.max(1, Number(selectedItem.pcsPerBox) || 1),
+                        billingUnit: (billingSettings?.industry === 'tiles' && Number(selectedItem.sqFtPerPc) > 0) ? 'sqft' : 'pieces'
+                    };
+                    
+                    // Recalculate totals with the new defaults
+                    newItems[index] = calculateItemValues(newItems[index], 'price', newItems[index].price, billingSettings?.industry);
+                }
+            } else {
+                // Apply standard calculations using central utility
+                const row = newItems[index];
+                newItems[index] = calculateItemValues(row, field, value, billingSettings?.industry);
             }
-        } else {
-            // Apply standard calculations using central utility
-            const row = newItems[index];
-            newItems[index] = calculateItemValues(row, field, value, billingSettings?.industry);
-        }
 
-        setFormData({ ...formData, items: newItems });
+            setFormData({ ...formData, items: newItems });
+        } catch (err) {
+            console.error("handleItemChange error:", err);
+            toast.error("Error updating item: " + err.message);
+        }
     };
 
     const handleSubmit = async (e) => {

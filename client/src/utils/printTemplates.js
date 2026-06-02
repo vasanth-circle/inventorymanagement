@@ -505,6 +505,158 @@ const template3 = (order, settings, docType = 'invoice') => {
 
 
 // ─────────────────────────────────────────────────────────────────────────────
+// TEMPLATE 4 — Clean No-Tax, Interchanged Columns, Dense Items, Bank Details
+// ─────────────────────────────────────────────────────────────────────────────
+const template4 = (order, settings, docType = 'invoice') => {
+    const s = settings || {};
+    const taxPct = 0; // No tax calculation needed for this template
+    const isQuotation = docType === 'quotation';
+    const title = isQuotation ? (s.documentConfig?.quotationTitle || 'QUOTATION') : (s.documentConfig?.invoiceTitle || 'INVOICE');
+    const docNo = isQuotation ? (order.quotationNumber || order.orderNumber) : order.orderNumber;
+    const docDate = isQuotation ? (order.quotationDate || order.orderDate || order.createdAt) : order.orderDate;
+    
+    const secondaryLabel = s.unitConfig?.secondaryLabel || 'Box';
+    const qtyLabel = s.unitConfig?.quantityLabel || 'SqFt';
+    const rateLabel = s.unitConfig?.rateLabel || 'Rate';
+    const terms = order.terms || s.branding?.termsAndConditions || 'E. & O.E.';
+    const sym = s.documentConfig?.currencySymbol || '₹';
+    const logoSrc = s.branding?.logoUrl
+        ? (s.branding.logoUrl.startsWith('http') ? s.branding.logoUrl : `${window.location.origin}${s.branding.logoUrl}`)
+        : '';
+
+    return `<html><head><meta charset="UTF-8"><title>${title} - ${docNo}</title>
+<style>
+  @page { size: A4; margin: 5mm; }
+  body { font-family: 'Arial', sans-serif; font-size: 10px; color: #000; margin: 0; display: flex; justify-content: center; }
+  .container { border: 1px solid #999; width: 190mm; margin: 0 auto; display: flex; flex-direction: column; min-height: 285mm; }
+  .company-header { text-align: center; padding: 5px; border-bottom: 1px solid #999; position: relative; }
+  .contact-info { position: absolute; top: 5px; right: 5px; font-size: 8px; font-weight: bold; text-align: right; }
+  .company-header h1 { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: 0.5px; }
+  .company-header p { margin: 2px 0; font-size: 9px; font-weight: bold; }
+  .doc-title { text-align: center; font-size: 12px; font-weight: bold; letter-spacing: 3px; padding: 3px; border-bottom: 1px solid #999; }
+  .meta-grid { display: grid; grid-template-columns: 1.5fr 1fr; border-bottom: 1px solid #999; }
+  .meta-box { padding: 4px 6px; }
+  .meta-box:first-child { border-right: 1px solid #999; }
+  .meta-row { display: flex; margin-bottom: 1px; font-size: 9.5px; }
+  .meta-label { width: 90px; font-weight: bold; }
+  .items-table { border-bottom: 1px solid #999; flex: 1; }
+  table { width: 100%; height: 100%; border-collapse: collapse; }
+  th, td { padding: 4px; font-size: 10px; border-right: 1px solid #999; }
+  th:last-child, td:last-child { border-right: none; }
+  th { border-bottom: 1px solid #999; background: #fff; font-weight: bold; text-transform: uppercase; font-size: 9px; }
+  td { vertical-align: top; border-bottom: none; font-weight: bold; } 
+  .totals-section { display: flex; padding: 4px; border-bottom: 1px solid #999; font-size: 9.5px; }
+  .totals-left { flex: 1.5; padding-right: 10px; border-right: 1px solid #999; display: flex; flex-direction: column; justify-content: space-between; }
+  .totals-right { flex: 1; padding-left: 10px; }
+  .total-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+  .net-total { display: flex; justify-content: space-between; font-size: 12px; font-weight: 900; margin-top: 2px; padding-top: 4px; border-top: 1px solid #999; }
+  .footer { padding: 4px 10px; display: flex; justify-content: space-between; font-size: 8px; font-weight: bold; align-items: flex-end; height: 35px; }
+  .sig { text-align: center; }
+  .sig-line { margin-top: 15px; border-top: 1px solid #999; padding-top: 2px; }
+</style>
+</head><body>
+<div class="container">
+  <div class="company-header">
+    ${logoSrc ? `<img src="${logoSrc}" style="max-height:40px; position:absolute; left:10px; top:10px;" />` : ''}
+    <h1>${s.companyName || 'COMPANY NAME'}</h1>
+    <p>${s.address || ''}</p>
+    <p style="margin-top:2px;">
+      ${s.phone1 ? `Ph: ${s.phone1}` : ''}${s.phone2 ? `, ${s.phone2}` : ''}
+      ${s.gstNumber ? ` | GSTIN: ${s.gstNumber}` : ''}
+    </p>
+  </div>
+  <div class="doc-title">${title}</div>
+  <div class="meta-grid">
+    <div class="meta-box">
+      <div class="meta-row" style="margin-bottom: 2px;"><strong>To:</strong></div>
+      <div class="meta-row" style="font-size: 11px; font-weight: 900;">${order.customer?.companyName || order.customer?.name || 'Cash Sale'}</div>
+      ${(() => {
+          let addr = order.customer?.address;
+          if (typeof addr === 'object' && addr !== null) {
+              const a = addr.billing || addr;
+              addr = [a.street, a.city, a.state, a.zipCode].filter(Boolean).join(', ');
+          }
+          return addr ? `<div class="meta-row" style="margin-top: 0px;">${addr}</div>` : '';
+      })()}
+      ${order.customer?.phone ? `<div class="meta-row" style="margin-top: 0px;">Ph: ${order.customer.phone}</div>` : ''}
+      ${order.customer?.gstin ? `<div class="meta-row" style="margin-top: 0px;">GSTIN: ${order.customer.gstin}</div>` : ''}
+    </div>
+    <div class="meta-box">
+      <div class="meta-row"><span class="meta-label">No:</span> <span><b>${docNo}</b></span></div>
+      <div class="meta-row"><span class="meta-label">Date:</span> <span><b>${new Date(docDate).toLocaleDateString('en-IN')}</b></span></div>
+      ${order.user?.name ? `<div class="meta-row"><span class="meta-label">Created By:</span> <span><b>${order.user.name}</b></span></div>` : ''}
+    </div>
+  </div>
+  <div class="items-table">
+    <table>
+      <thead><tr>
+        <th width="5%">S.No</th>
+        <th width="45%" style="text-align:left">Description</th>
+        <th width="10%">${secondaryLabel}</th>
+        <th width="12%">${qtyLabel}</th>
+        <th width="12%">${rateLabel}</th>
+        <th width="16%">Amount</th>
+      </tr></thead>
+      <tbody>
+      ${order.items.map((item, i) => {
+          const total = item.total || item.quantity * item.price;
+          const brand = (item.brand || '').trim();
+          const size  = (item.size || '').trim();
+          const namePart = (item.name || '').toUpperCase();
+          const subPart  = [brand, size].filter(Boolean).join(' ');
+          const fullDesc = subPart ? `${namePart}-${subPart}` : namePart;
+          
+          return `<tr style="height:12px">
+            <td style="text-align:center">${i + 1}</td>
+            <td>${fullDesc}</td>
+            <td style="text-align:center">${item.boxCount ? item.boxCount : (item.secondaryQty || '')}</td>
+            <td style="text-align:center">${item.totalSqFt ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}</td>
+            <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
+            <td style="text-align:right">${formatIndianNumber(total, 2)}</td>
+          </tr>`;
+      }).join('')}
+      <tr style="height:100%"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="totals-section">
+    <div class="totals-left">
+      <div>
+        <strong style="font-size:10px">Amount in Words:</strong><br/>
+        <span style="font-size:10px;font-weight:bold">${numberToWords(Math.round(order.totalAmount || 0))}</span>
+      </div>
+      <div style="margin-top: 6px;">
+        <strong style="font-size:10px;text-decoration:underline;">Bank Details:</strong><br/>
+        <div style="font-size:10px;font-weight:bold;margin-top:2px;">
+            A/C:No: ${s.branding?.accountNumber || ''}<br/>
+            IFSC: ${s.branding?.ifscCode || ''}<br/>
+            BRANCH: ${s.branding?.branchName || ''}<br/>
+            BANK: ${s.branding?.bankName || ''}
+        </div>
+      </div>
+      <div style="font-size:7px;margin-top:4px;color:#555;">${terms.replace(/\n/g, ' | ')}</div>
+    </div>
+    <div class="totals-right">
+      <div class="total-row"><span>Subtotal:</span><span><b>${sym}${formatIndianNumber(order.itemsTotal || 0, 2)}</b></span></div>
+      ${order.loadingCharges > 0 ? `<div class="total-row"><span>Loading:</span><span><b>${sym}${formatIndianNumber(order.loadingCharges, 2)}</b></span></div>` : ''}
+      ${order.unloadingCharges > 0 ? `<div class="total-row"><span>Unloading:</span><span><b>${sym}${formatIndianNumber(order.unloadingCharges, 2)}</b></span></div>` : ''}
+      ${order.transportCharges > 0 ? `<div class="total-row"><span>Transport:</span><span><b>${sym}${formatIndianNumber(order.transportCharges, 2)}</b></span></div>` : ''}
+      ${(order.discountAmount || 0) > 0 ? `<div class="total-row"><span>Discount:</span><span><b>- ${sym}${formatIndianNumber(order.discountAmount, 2)}</b></span></div>` : ''}
+      ${order.advanceAmount > 0 ? `<div class="total-row"><span>Advance:</span><span><b>- ${sym}${formatIndianNumber(order.advanceAmount, 2)}</b></span></div>` : ''}
+      <div class="net-total"><span>TOTAL:</span><span>${sym}${formatIndianNumber(order.totalAmount || 0, 2)}</span></div>
+    </div>
+  </div>
+  <div class="footer">
+    <div class="sig"><div class="sig-line">CUSTOMER SIGNATURE</div></div>
+    <div class="sig"><div style="font-size:9px;">For ${s.companyName || 'COMPANY'}</div><div class="sig-line">AUTHORISED SIGNATORY</div></div>
+  </div>
+</div></body></html>`;
+};
+
+
+
+
+// ─────────────────────────────────────────────────────────────────────────────
 // HTML generator (returns string, no window opened) — used for share/export
 // ─────────────────────────────────────────────────────────────────────────────
 export const generateInvoiceHtml = (order, settings, docType = 'invoice') => {
@@ -514,6 +666,7 @@ export const generateInvoiceHtml = (order, settings, docType = 'invoice') => {
 
     if (templateNo === 2) return template2(order, settings, docType);
     if (templateNo === 3) return template3(order, settings, docType);
+    if (templateNo === 4) return template4(order, settings, docType);
     return template1(order, settings, docType);
 };
 
@@ -528,6 +681,7 @@ export const printDocument = (order, settings, docType = 'invoice') => {
     let html;
     if (templateNo === 2) html = template2(order, settings, docType);
     else if (templateNo === 3) html = template3(order, settings, docType);
+    else if (templateNo === 4) html = template4(order, settings, docType);
     else html = template1(order, settings, docType);
 
     const w = window.open('', '_blank', 'width=950,height=750');
@@ -544,6 +698,7 @@ export const generatePreviewHtml = (templateNo, settings) => {
         orderNumber: 'INV-0001',
         orderDate: new Date().toISOString(),
         customer: { name: 'Acme Corporation', companyName: 'Acme Corp', address: '123 Main St, Tech City', phone: '+91 9876543210' },
+        user: { name: 'Admin User' },
         terms: 'Payment within 7 days. Subject to local jurisdiction.',
         items: [
             { name: 'Premium Ceramic Tile', brand: 'Kajaria', size: '2x2', hsn: '6907', quantity: 15, primaryQty: 15, totalSqFt: 60, boxCount: 15, price: 50, total: 3000 },
@@ -564,6 +719,7 @@ export const generatePreviewHtml = (templateNo, settings) => {
     let html;
     if (templateNo === 2) html = template2(dummyOrder, settings, 'invoice');
     else if (templateNo === 3) html = template3(dummyOrder, settings, 'invoice');
+    else if (templateNo === 4) html = template4(dummyOrder, settings, 'invoice');
     else html = template1(dummyOrder, settings, 'invoice');
     
     return html;
