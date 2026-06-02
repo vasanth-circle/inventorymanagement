@@ -13,6 +13,15 @@ const actionLogSchema = new mongoose.Schema({
         ref: 'User',
         required: true,
     },
+    userName: {
+        type: String,
+        trim: true,
+        default: 'Unknown',
+    },
+    userRole: {
+        type: String,
+        trim: true,
+    },
     action: {
         type: String,
         required: true,

@@ -26,10 +26,23 @@ export const getLogs = async (req, res, next) => {
             .limit(limit * 1)
             .skip((page - 1) * limit);
 
+        // Normalise: if populate didn't resolve (cross-db), fall back to stored fields
+        const normalisedLogs = logs.map(log => {
+            const obj = log.toObject();
+            if (!obj.user || typeof obj.user === 'string' || (typeof obj.user === 'object' && !obj.user.name)) {
+                obj.user = {
+                    _id: obj.user,
+                    name: obj.userName || 'Unknown',
+                    role: obj.userRole || ''
+                };
+            }
+            return obj;
+        });
+
         const total = await ActionLog.countDocuments(query);
 
         sendResponse(res, 200, {
-            logs,
+            logs: normalisedLogs,
             totalPages: Math.ceil(total / limit),
             currentPage: Number(page),
             totalLogs: total

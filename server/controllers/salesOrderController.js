@@ -541,6 +541,8 @@ export const updateSalesOrder = async (req, res, next) => {
         await ActionLog.create({
             tenantId: req.tenantId,
             user: req.user._id,
+            userName: req.user.name || req.user.email || 'Unknown',
+            userRole: req.user.role,
             action: 'EDIT_INVOICE',
             entityType: 'SalesOrder',
             entityId: order._id,

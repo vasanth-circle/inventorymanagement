@@ -11,6 +11,7 @@ const Users = () => {
     const [formData, setFormData] = useState({ 
         name: '', 
         email: '', 
+        phone: '',
         password: '', 
         role: 'staff', 
         inventoryRole: 'inventory_user',
@@ -64,6 +65,7 @@ const Users = () => {
             setFormData({
                 name: user.name,
                 email: user.email,
+                phone: user.phone || '',
                 password: '',
                 role: user.role,
                 inventoryRole: user.appRoles?.inventory || 'inventory_user',
@@ -76,6 +78,7 @@ const Users = () => {
             setFormData({ 
                 name: '', 
                 email: '', 
+                phone: '',
                 password: '', 
                 role: 'staff', 
                 inventoryRole: 'inventory_user',
@@ -177,6 +180,7 @@ const Users = () => {
                                         <div className="flex flex-col">
                                             <span className="text-sm font-bold text-gray-900">{u.name}</span>
                                             <span className="text-xs text-gray-500">{u.email}</span>
+                                            {u.phone && <span className="text-xs text-blue-600 font-medium mt-0.5">📞 {u.phone}</span>}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
@@ -249,6 +253,10 @@ const Users = () => {
                                 <div className="col-span-2 sm:col-span-1">
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">Email Address</label>
                                     <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white transition-all" required placeholder="john@example.com" />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Phone Number</label>
+                                    <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white transition-all" placeholder="e.g. +91 98765 43210" />
                                 </div>
                             </div>
 
