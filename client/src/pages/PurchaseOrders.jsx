@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import SearchableSelect from '../components/SearchableSelect';
+import { InventoryContext } from '../context/InventoryContext';
 
 const PurchaseOrders = () => {
+    const { billingSettings, calculateItemValues } = useContext(InventoryContext);
     const [orders, setOrders] = useState([]);
     const [vendors, setVendors] = useState([]);
     const [items, setItems] = useState([]);
@@ -17,12 +19,14 @@ const PurchaseOrders = () => {
         vendor: '',
         items: [{ 
             item: '', 
-            quantity: 1, 
-            price: 0, 
-            boxCount: 0, 
-            pcsPerBox: 1, 
-            sqFtPerPc: 0, 
-            totalSqFt: 0 
+            quantity: '', 
+            price: '', 
+            boxCount: '', 
+            totalPcs: '', 
+            totalSqFt: '',
+            brand: '',
+            size: '',
+            billingUnit: billingSettings?.unitConfig?.quantityBasis === 'sqft' ? 'sqft' : 'pieces'
         }],
         notes: '',
     });
@@ -66,45 +70,46 @@ const PurchaseOrders = () => {
             ...formData,
             items: [...formData.items, { 
                 item: '', 
-                quantity: 1, 
-                price: 0, 
-                boxCount: 0, 
-                pcsPerBox: 1, 
-                sqFtPerPc: 0, 
-                totalSqFt: 0 
+                quantity: '', 
+                price: '', 
+                boxCount: '', 
+                totalPcs: '', 
+                totalSqFt: '',
+                brand: '',
+                size: '',
+                billingUnit: billingSettings?.unitConfig?.quantityBasis === 'sqft' ? 'sqft' : 'pieces'
             }]
         });
     };
 
     const handleItemChange = (index, field, value) => {
         const newItems = [...formData.items];
-        newItems[index][field] = value;
-
+        
+        // Handle item selection correctly since SearchableSelect sends an event object
         if (field === 'item') {
-            const selectedItem = items.find(i => i._id === value);
+            const selectedItemId = value.target ? value.target.value : value;
+            const selectedItem = items.find(i => i._id === selectedItemId);
             if (selectedItem) {
-                newItems[index].name = selectedItem.name;
-                newItems[index].price = selectedItem.price; 
-                newItems[index].pcsPerBox = selectedItem.pcsPerBox || 1;
-                newItems[index].sqFtPerPc = selectedItem.sqFtPerPc || 0;
+                newItems[index] = {
+                    ...newItems[index],
+                    item: selectedItemId,
+                    name: selectedItem.name,
+                    price: selectedItem.purchasePrice || selectedItem.price,
+                    brand: selectedItem.brand,
+                    size: selectedItem.size,
+                    unitType: selectedItem.unitType || 'pieces',
+                    sqFtPerPc: selectedItem.sqFtPerPc || 0,
+                    pcsPerBox: selectedItem.pcsPerBox || 1,
+                    billingUnit: (billingSettings?.industry === 'tiles' && selectedItem.sqFtPerPc > 0) ? 'sqft' : 'pieces'
+                };
+                
+                // Recalculate totals with the new defaults
+                newItems[index] = calculateItemValues(newItems[index], 'price', newItems[index].price, billingSettings?.industry);
             }
-        }
-
-        // Auto-calculations
-        const row = newItems[index];
-        if (field === 'boxCount' || field === 'item' || field === 'price') {
-            const boxes = parseFloat(row.boxCount) || 0;
-            const pcb = parseFloat(row.pcsPerBox) || 1;
-            const sfp = parseFloat(row.sqFtPerPc) || 0;
-            
-            if (sfp > 0) {
-                row.totalSqFt = parseFloat((boxes * pcb * sfp).toFixed(2));
-                row.quantity = row.totalSqFt; // Total SqFt is the main unit for inventory
-            } else {
-                row.totalSqFt = 0;
-                row.quantity = boxes; // Fallback to boxes if not a SqFt item
-            }
-            row.total = row.quantity * (parseFloat(row.price) || 0);
+        } else {
+            // Apply standard calculations using central utility
+            const row = newItems[index];
+            newItems[index] = calculateItemValues(row, field, value, billingSettings?.industry);
         }
 
         setFormData({ ...formData, items: newItems });
@@ -267,20 +272,22 @@ const PurchaseOrders = () => {
                                 <table className="w-full text-left">
                                     <thead className="bg-gray-50">
                                         <tr>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Item</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-center">Boxes</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32 text-center">Total SqFt</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32">Rate (SqFt)</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-48">Item</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-center">Qty / Boxes</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32">Rate</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24">Unit</th>
                                             <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32 text-right">Amount</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
-                                        {formData.items.map((row, index) => (
+                                        {formData.items.map((row, index) => {
+                                            const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0;
+                                            return (
                                             <tr key={index}>
-                                                <td className="py-2">
+                                                <td className="py-2 pr-2">
                                                     <SearchableSelect
                                                         value={row.item}
-                                                        onChange={(val) => handleItemChange(index, 'item', val)}
+                                                        onChange={(e) => handleItemChange(index, 'item', e.target.value)}
                                                         options={items.map(i => ({ value: i._id, label: `${i.name}${i.size ? ` - ${i.size}` : ''} (${i.sku || 'No SKU'})` }))}
                                                         placeholder="Select Item"
                                                         searchPlaceholder="Search Item..."
@@ -288,20 +295,45 @@ const PurchaseOrders = () => {
                                                     />
                                                 </td>
                                                 <td className="px-2 py-2">
-                                                    <input required type="number" step="0.01" min="0" value={row.boxCount} onChange={(e) => handleItemChange(index, 'boxCount', e.target.value)} className="w-full px-2 py-1 border rounded border-gray-200 text-center font-bold" />
-                                                </td>
-                                                <td className="px-2 py-2 text-center">
-                                                    <div className="font-bold text-primary-700">{row.totalSqFt || '-'}</div>
-                                                    {row.sqFtPerPc > 0 && <div className="text-[9px] text-gray-400">{row.sqFtPerPc} / pc</div>}
+                                                    <input 
+                                                        required 
+                                                        type="number" 
+                                                        step={isTile ? "0.5" : "0.01"}
+                                                        min="0" 
+                                                        value={isTile ? (row.boxCount || '') : (row.quantity || '')} 
+                                                        onChange={(e) => handleItemChange(index, isTile ? 'boxCount' : 'quantity', e.target.value)} 
+                                                        placeholder={isTile ? "Boxes" : "Qty"}
+                                                        className="w-full px-2 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 text-center font-bold" 
+                                                    />
+                                                    {isTile && (
+                                                        <div className="mt-1 flex flex-col items-center gap-0.5">
+                                                            <div className="text-[9px] font-black text-primary-600">
+                                                                {row.totalSqFt || 0} SqFt
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="px-2 py-2">
-                                                    <input required type="number" step="0.01" value={row.price} onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value))} className="w-full px-2 py-1 border rounded border-gray-200" />
+                                                    <input required type="number" step="0.01" value={row.price === 0 ? '' : row.price} onChange={(e) => handleItemChange(index, 'price', e.target.value)} className="w-full px-2 py-2 border rounded-lg border-gray-200 text-right font-bold focus:ring-1 focus:ring-primary-400 outline-none" placeholder="Rate" />
+                                                </td>
+                                                <td className="px-2 py-2">
+                                                    {billingSettings?.industry === 'tiles' && isTile ? (
+                                                        <select value={row.billingUnit} onChange={(e) => handleItemChange(index, 'billingUnit', e.target.value)} className="w-full px-2 py-2 border rounded-lg border-gray-200 text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none">
+                                                            <option value="sqft">SqFt</option>
+                                                            <option value="boxes">Box</option>
+                                                        </select>
+                                                    ) : (
+                                                        <div className="text-xs font-bold text-gray-400 text-center uppercase py-2">
+                                                            {billingSettings?.unitConfig?.quantityBasis || 'Pieces'}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="px-2 py-2 font-bold text-gray-800 text-right">
                                                     ₹{(row.total || 0).toLocaleString()}
                                                 </td>
                                             </tr>
-                                        ))}
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                                 <button type="button" onClick={handleAddItem} className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center">

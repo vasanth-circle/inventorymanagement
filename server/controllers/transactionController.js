@@ -467,14 +467,14 @@ export const stockReturn = async (req, res, next) => {
                 tenantId: req.tenantId,
                 customer,
                 date: Date.now(),
-                type: 'adjustment',
+                type: 'payment',
                 refType: 'Manual',
                 refNumber: referenceOrder || `RET-${Date.now()}`,
-                description: `Stock Return from Customer: ${itemDoc.name} (${qty} qty)`,
+                description: `Refunded Amt: ${itemDoc.name} (${qty} qty returned)`,
                 credit: totalAmount,
                 balance: newBalance,
                 createdBy: req.user._id,
-                notes: notes || 'Automated entry from stock return'
+                notes: notes || 'Automated refund entry from stock return'
             });
         }
 

@@ -1,7 +1,8 @@
 import Vendor from '../models/Vendor.js';
+import VendorLedger from '../models/VendorLedger.js';
+import PurchaseOrder from '../models/PurchaseOrder.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
-
 // @desc    Get all vendors
 // @route   GET /api/vendors
 // @access  Private
@@ -60,6 +61,22 @@ export const createVendor = async (req, res, next) => {
             payload.currentBalance = payload.openingBalance;
         }
         const vendor = await Vendor.create(payload);
+
+        // Record opening balance in ledger if it's not zero
+        if (payload.openingBalance && Number(payload.openingBalance) > 0) {
+            await VendorLedger.create({
+                tenantId: req.tenantId,
+                vendor: vendor._id,
+                date: new Date(),
+                type: 'adjustment',
+                debit: 0,
+                credit: Number(payload.openingBalance),
+                balance: Number(payload.openingBalance),
+                description: 'Opening Balance',
+                createdBy: req.user._id,
+            });
+        }
+
         sendResponse(res, 201, vendor, 'Vendor created successfully');
     } catch (error) {
         next(error);
@@ -104,6 +121,18 @@ export const updateVendor = async (req, res, next) => {
 // @access  Private/Admin
 export const deleteVendor = async (req, res, next) => {
     try {
+        // Prevent deletion if vendor has ledger entries
+        const hasLedger = await VendorLedger.findOne({ vendor: req.params.id, ...tenantQuery(req) });
+        if (hasLedger) {
+            return sendError(res, 400, 'Cannot delete vendor with existing ledger entries.');
+        }
+
+        // Prevent deletion if vendor has purchase orders
+        const hasPO = await PurchaseOrder.findOne({ vendor: req.params.id, ...tenantQuery(req) });
+        if (hasPO) {
+            return sendError(res, 400, 'Cannot delete vendor with existing purchase orders.');
+        }
+
         const vendor = await Vendor.findOneAndUpdate(
             { _id: req.params.id, ...tenantQuery(req) },
             { isActive: false },

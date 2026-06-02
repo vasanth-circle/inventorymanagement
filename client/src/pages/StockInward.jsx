@@ -1,5 +1,6 @@
 import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import SearchableSelect from '../components/SearchableSelect';
 import { InventoryContext } from '../context/InventoryContext';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
@@ -13,6 +14,7 @@ const StockInward = () => {
     } = useContext(InventoryContext);
     const navigate = useNavigate();
     const [isNewItem, setIsNewItem] = useState(true);
+    const [isOpeningStock, setIsOpeningStock] = useState(false);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -61,7 +63,7 @@ const StockInward = () => {
     };
 
     const handleItemSelect = (e) => {
-        const itemId = e.target.value;
+        const itemId = e.target ? e.target.value : e;
         setSelectedItem(itemId);
         if (itemId) {
             const item = items.find(i => i._id === itemId);
@@ -157,6 +159,20 @@ const StockInward = () => {
         setLoading(true);
 
         try {
+            // Calculate actual submission quantity (e.g. for tiles, convert boxes to sqft)
+            let actualQuantity = parseFloat(formData.quantity) || 0;
+            let actualDamaged = parseFloat(formData.damagedQuantity) || 0;
+            const isTile = activePreset?.id === 'tiles';
+            
+            if (isTile) {
+                const pcsPerBox = parseFloat(formData.pcsPerBox) || 1;
+                const sqFtPerPc = parseFloat(formData.sqFtPerPc) || 0;
+                if (sqFtPerPc > 0) {
+                    actualQuantity = actualQuantity * pcsPerBox * sqFtPerPc;
+                    actualDamaged = actualDamaged * pcsPerBox * sqFtPerPc;
+                }
+            }
+
             if (isNewItem) {
                 // Create new item logic
                 const itemFormData = new FormData();
@@ -202,9 +218,9 @@ const StockInward = () => {
                     await createTransaction({
                         item: result.data._id,
                         type: 'inward',
-                        quantity: parseFloat(formData.quantity),
-                        damagedQuantity: parseFloat(formData.damagedQuantity) || 0,
-                        reason: formData.reason || 'Initial stock',
+                        quantity: actualQuantity,
+                        damagedQuantity: actualDamaged,
+                        reason: isOpeningStock ? 'Opening Stock' : (formData.reason || 'Initial stock'),
                         notes: formData.notes,
                         expiryDate: formData.expiryDate,
                     });
@@ -222,9 +238,9 @@ const StockInward = () => {
                 const result = await createTransaction({
                     item: selectedItem,
                     type: 'inward',
-                    quantity: parseFloat(formData.quantity),
-                    damagedQuantity: parseFloat(formData.damagedQuantity) || 0,
-                    reason: formData.reason || 'Restocking',
+                    quantity: actualQuantity,
+                    damagedQuantity: actualDamaged,
+                    reason: isOpeningStock ? 'Opening Stock' : (formData.reason || 'Restocking'),
                     notes: formData.notes,
                     batchNumber: formData.batchNumber,
                     price: formData.price,
@@ -387,6 +403,18 @@ const StockInward = () => {
                         >
                             Existing Item
                         </button>
+                    </div>
+                    <div className="mt-4 flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            id="openingStock"
+                            checked={isOpeningStock}
+                            onChange={(e) => setIsOpeningStock(e.target.checked)}
+                            className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                        />
+                        <label htmlFor="openingStock" className="text-sm font-semibold text-gray-700">
+                            Godown Stock / Opening Stock (No Vendor required)
+                        </label>
                     </div>
                 </div>
 
@@ -647,55 +675,56 @@ const StockInward = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Select Existing Item <span className="text-red-500">*</span>
                             </label>
-                            <select
+                            <SearchableSelect
                                 value={selectedItem}
                                 onChange={handleItemSelect}
                                 required={!isNewItem}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                            >
-                                <option value="">-- Choose an item --</option>
-                                {items.map(item => (
-                                    <option key={item._id} value={item._id}>
-                                        {item.name} {item.barcode ? `(${item.barcode})` : ''} - Current: {item.quantity}
-                                    </option>
-                                ))}
-                            </select>
+                                options={items.map(item => ({
+                                    value: item._id,
+                                    label: `${item.name} ${item.barcode ? `(${item.barcode})` : ''} - Current: ${item.quantity}`
+                                }))}
+                                placeholder="-- Choose an item --"
+                                searchPlaceholder="Search items..."
+                                className="w-full"
+                            />
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Vendor <span className="text-red-500">*</span>
-                            </label>
-                            <select
-                                name="vendor"
-                                value={formData.vendor}
-                                onChange={handleChange}
-                                required
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                            >
-                                <option value="">-- Select Vendor --</option>
-                                {vendors.map(v => (
-                                    <option key={v._id} value={v._id}>{v.name}</option>
-                                ))}
-                            </select>
+                    {!isOpeningStock && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Vendor <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                    name="vendor"
+                                    value={formData.vendor}
+                                    onChange={handleChange}
+                                    required={!isOpeningStock}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                >
+                                    <option value="">-- Select Vendor --</option>
+                                    {vendors.map(v => (
+                                        <option key={v._id} value={v._id}>{v.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Vendor Bill / Invoice Number <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    name="billNumber"
+                                    value={formData.billNumber}
+                                    onChange={handleChange}
+                                    required={!isOpeningStock}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                    placeholder="Enter Bill Number"
+                                />
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Vendor Bill / Invoice Number <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                name="billNumber"
-                                value={formData.billNumber}
-                                onChange={handleChange}
-                                required
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                placeholder="Enter Bill Number"
-                            />
-                        </div>
-                    </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>

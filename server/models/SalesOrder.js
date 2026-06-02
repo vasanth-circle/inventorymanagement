@@ -83,6 +83,10 @@ const salesOrderSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
+    discountAmount: {
+        type: Number,
+        default: 0,
+    },
     advanceAmount: {
         type: Number,
         default: 0,
@@ -144,14 +148,15 @@ const salesOrderSchema = new mongoose.Schema({
     // Sum up all line totals
     this.itemsTotal = this.items.reduce((sum, item) => sum + (item.total || 0), 0);
     
-    // Final Amount = Items + Loading + Transport + Tax + OldBalance - Advance
+    // Final Amount = Items + Loading + Transport + Tax + OldBalance - Discount - Advance
     this.totalAmount = (
         this.itemsTotal + 
         (Number(this.loadingCharges) || 0) + 
         (Number(this.unloadingCharges) || 0) + 
         (Number(this.transportCharges) || 0) + 
         (Number(this.taxAmount) || 0) + 
-        (Number(this.oldBalance) || 0) - 
+        (Number(this.oldBalance) || 0) -
+        (Number(this.discountAmount) || 0) -
         (Number(this.advanceAmount) || 0)
     );
     

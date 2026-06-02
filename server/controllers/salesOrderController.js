@@ -233,8 +233,8 @@ export const createSalesOrder = async (req, res, next) => {
         const { 
             customer, items, orderDate, expectedShipmentDate, 
             notes, terms, isEstimation, status,
-            loadingCharges, transportCharges, oldBalance, advanceAmount, taxAmount,
-            siteName, siteAddress
+            loadingCharges, transportCharges, unloadingCharges, oldBalance, advanceAmount, taxAmount,
+            siteName, siteAddress, discountAmount
         } = req.body;
 
         // ── Pricing & Stock Validation ──
@@ -286,9 +286,11 @@ export const createSalesOrder = async (req, res, next) => {
                     status: status || (isEstimation ? 'quotation' : 'confirmed'),
                     loadingCharges: loadingCharges || 0,
                     transportCharges: transportCharges || 0,
+                    unloadingCharges: unloadingCharges || 0,
                     oldBalance: oldBalance || 0,
                     advanceAmount: advanceAmount || 0,
                     taxAmount: taxAmount || 0,
+                    discountAmount: discountAmount || 0,
                     siteName: siteName || '',
                     siteAddress: siteAddress || '',
                     user: req.user._id,
@@ -385,8 +387,8 @@ export const updateSalesOrder = async (req, res, next) => {
         const { 
             customer, items, orderDate, expectedShipmentDate, 
             notes, terms, isEstimation, status,
-            loadingCharges, transportCharges, oldBalance, advanceAmount, taxAmount,
-            siteName, siteAddress
+            loadingCharges, transportCharges, unloadingCharges, oldBalance, advanceAmount, taxAmount,
+            siteName, siteAddress, discountAmount
         } = req.body;
 
         const settings = await Setting.findOne({ tenantId: req.tenantId });
@@ -424,10 +426,12 @@ export const updateSalesOrder = async (req, res, next) => {
         if (status) order.status = status;
         
         if (loadingCharges !== undefined) order.loadingCharges = loadingCharges;
+        if (unloadingCharges !== undefined) order.unloadingCharges = unloadingCharges;
         if (transportCharges !== undefined) order.transportCharges = transportCharges;
         if (oldBalance !== undefined) order.oldBalance = oldBalance;
         if (advanceAmount !== undefined) order.advanceAmount = advanceAmount;
         if (taxAmount !== undefined) order.taxAmount = taxAmount;
+        if (discountAmount !== undefined) order.discountAmount = discountAmount;
         if (siteName !== undefined) order.siteName = siteName;
         if (siteAddress !== undefined) order.siteAddress = siteAddress;
 
@@ -436,9 +440,11 @@ export const updateSalesOrder = async (req, res, next) => {
         order.totalAmount = (
             itemsTotal + 
             Number(order.loadingCharges) + 
+            Number(order.unloadingCharges || 0) +
             Number(order.transportCharges) + 
             Number(order.taxAmount) + 
-            Number(order.oldBalance) - 
+            Number(order.oldBalance) -
+            Number(order.discountAmount || 0) -
             Number(order.advanceAmount)
         );
 

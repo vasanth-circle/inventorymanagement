@@ -60,6 +60,7 @@ const SalesOrders = () => {
         taxAmount: '',
         oldBalance: '',
         advanceAmount: '',
+        discountAmount: '',
         siteName: '',
         siteAddress: ''
     });
@@ -200,6 +201,7 @@ const SalesOrders = () => {
             parseFloat(formData.transportCharges || 0) + 
             parseFloat(formData.taxAmount || 0) + 
             parseFloat(formData.oldBalance || 0) - 
+            parseFloat(formData.discountAmount || 0) -
             parseFloat(formData.advanceAmount || 0);
         return { itemsTotal, netTotal };
     };
@@ -232,6 +234,7 @@ const SalesOrders = () => {
             taxAmount: order.taxAmount || 0,
             oldBalance: order.oldBalance || 0,
             advanceAmount: order.advanceAmount || 0,
+            discountAmount: order.discountAmount || 0,
             siteName: order.siteName || '',
             siteAddress: order.siteAddress || ''
         });
@@ -261,6 +264,7 @@ const SalesOrders = () => {
             taxAmount: '',
             oldBalance: '',
             advanceAmount: '',
+            discountAmount: '',
             siteName: '',
             siteAddress: ''
         });
@@ -1046,12 +1050,22 @@ const SalesOrders = () => {
                                                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Advance Amount (Subtract)</label>
                                                 <input type="number" value={formData.advanceAmount === 0 ? '' : formData.advanceAmount} onChange={(e) => setFormData({ ...formData, advanceAmount: e.target.value })} className="w-full px-3 py-2 border rounded-lg border-primary-300 outline-none text-green-600 font-bold" />
                                             </div>
+                                            <div className="col-span-2">
+                                                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">🏷️ Discount Amount (Subtract)</label>
+                                                <input type="number" min="0" step="0.01" value={formData.discountAmount === 0 ? '' : formData.discountAmount} onChange={(e) => setFormData({ ...formData, discountAmount: e.target.value })} className="w-full px-3 py-2 border border-amber-300 rounded-lg outline-none text-amber-700 font-bold" placeholder="0.00" />
+                                            </div>
                                         </div>
                                         <div className="pt-6 border-t mt-6 space-y-3">
                                             <div className="flex justify-between text-gray-600 font-medium">
                                                 <span>Subtotal Items:</span>
                                                 <span>₹{itemsTotal.toLocaleString()}</span>
                                             </div>
+                                            {parseFloat(formData.discountAmount || 0) > 0 && (
+                                                <div className="flex justify-between text-amber-700 font-semibold text-sm">
+                                                    <span>🏷️ Discount:</span>
+                                                    <span>- ₹{parseFloat(formData.discountAmount || 0).toLocaleString()}</span>
+                                                </div>
+                                            )}
                                             <div className="flex justify-between text-2xl font-black text-gray-900 pt-2 border-t border-dashed">
                                                 <span>NET TOTAL:</span>
                                                 <span className="text-primary-700">₹{netTotal.toLocaleString()}</span>
