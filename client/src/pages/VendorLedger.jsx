@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { toast } from 'react-hot-toast';
@@ -12,6 +12,76 @@ const PAYMENT_MODES = [
     { value: 'bank_transfer', label: '🏛️ Bank Transfer' },
     { value: 'other', label: '⚙️ Other' },
 ];
+
+const SearchableDropdown = ({ options = [], value, onChange, placeholder = 'Search...', disabled = false }) => {
+    const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState('');
+    const ref = useRef(null);
+
+    const selected = options.find(o => o.value === value);
+
+    const filtered = options.filter(o =>
+        o.label.toLowerCase().includes(search.toLowerCase())
+    );
+
+    useEffect(() => {
+        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    const handleSelect = (val) => {
+        onChange({ target: { value: val } });
+        setSearch('');
+        setOpen(false);
+    };
+
+    return (
+        <div ref={ref} className="relative w-full">
+            <button
+                type="button"
+                disabled={disabled}
+                onClick={() => setOpen(o => !o)}
+                className={`w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-800 focus:ring-2 focus:ring-primary-500 transition-all flex items-center justify-between shadow-sm ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+            >
+                <span className={selected ? 'text-gray-800' : 'text-gray-400'}>
+                    {selected ? selected.label : placeholder}
+                </span>
+                <span className="text-gray-400 text-xs">{open ? '▲' : '▼'}</span>
+            </button>
+            {open && (
+                <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+                    <div className="p-2 border-b border-gray-100">
+                        <input
+                            autoFocus
+                            type="text"
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            placeholder="Type to search..."
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
+                        />
+                    </div>
+                    <div className="max-h-52 overflow-y-auto">
+                        {filtered.length === 0 ? (
+                            <div className="px-4 py-3 text-xs text-gray-400 text-center">No results found</div>
+                        ) : (
+                            filtered.map(o => (
+                                <button
+                                    key={o.value}
+                                    type="button"
+                                    onClick={() => handleSelect(o.value)}
+                                    className={`w-full text-left px-4 py-2.5 text-sm hover:bg-primary-50 hover:text-primary-700 transition-colors ${o.value === value ? 'bg-primary-50 text-primary-700 font-bold' : 'text-gray-700'}`}
+                                >
+                                    {o.label}
+                                </button>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const VendorLedger = () => {
     const { id } = useParams();
@@ -108,16 +178,12 @@ const VendorLedger = () => {
             <div className="flex flex-wrap gap-3 items-start justify-between">
                 <div className="flex items-center gap-3 w-full md:w-auto flex-1 max-w-md">
                     <button onClick={() => navigate('/vendors')} className="text-gray-500 hover:text-gray-800 text-xl font-bold">←</button>
-                    <select 
+                    <SearchableDropdown 
                         value={selectedVendorId}
                         onChange={handleVendorChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none font-bold text-gray-800 shadow-sm"
-                    >
-                        <option value="">-- Select Vendor Account --</option>
-                        {vendors.map(v => (
-                            <option key={v._id} value={v._id}>{v.companyName || v.name}</option>
-                        ))}
-                    </select>
+                        placeholder="-- Select Vendor Account --"
+                        options={vendors.map(v => ({ value: v._id, label: v.companyName || v.name }))}
+                    />
                 </div>
                 <div className="flex gap-2">
                     <button

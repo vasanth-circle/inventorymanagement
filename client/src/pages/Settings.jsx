@@ -110,6 +110,12 @@ const Settings = () => {
             enforcePO: false,
             allowNegativeStock: true,
         },
+        // Credit & Locking Config
+        creditConfig: {
+            enableAutoLock: false,
+            customerCreditLimit: 0,
+            customerCreditDays: 0,
+        },
     });
 
     // Fetch current counter value when Documents tab is active
@@ -170,6 +176,11 @@ const Settings = () => {
                 workflowConfig: {
                     enforcePO: billingSettings.workflowConfig?.enforcePO || false,
                     allowNegativeStock: billingSettings.workflowConfig?.allowNegativeStock ?? true,
+                },
+                creditConfig: {
+                    enableAutoLock: billingSettings.creditConfig?.enableAutoLock || false,
+                    customerCreditLimit: billingSettings.creditConfig?.customerCreditLimit || 0,
+                    customerCreditDays: billingSettings.creditConfig?.customerCreditDays || 0,
                 },
             });
             // Sync logo preview from saved settings
@@ -244,6 +255,13 @@ const Settings = () => {
         setFormData(prev => ({
             ...prev,
             [section]: { ...prev[section], [key]: value },
+        }));
+    };
+
+    const handleNestedChange = (category, field, value) => {
+        setFormData(prev => ({
+            ...prev,
+            [category]: { ...prev[category], [field]: value }
         }));
     };
 
@@ -903,10 +921,6 @@ const Settings = () => {
                         {/* ── TAB: WORKFLOW ───────────────────────────────────────────────── */}
                         {activeTab === 'workflow' && (
                             <>
-                                <h2 className="text-sm font-black text-gray-700 flex items-center gap-2 mb-4">
-                                    <span className="w-7 h-7 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center text-sm">🔄</span>
-                                    Inventory Workflows
-                                </h2>
                                 
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl hover:border-amber-200 transition-all cursor-pointer"
@@ -931,8 +945,47 @@ const Settings = () => {
                                         </div>
                                     </div>
 
-                                    <div className="p-4 border border-dashed border-gray-200 rounded-xl">
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest text-center">More workflow options coming soon</p>
+                                    <div className="pt-4 border-t border-gray-100">
+                                        <h2 className="text-sm font-black text-gray-700 flex items-center gap-2 mb-4">
+                                            <span className="w-7 h-7 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center text-sm">🔒</span>
+                                            Customer Credit & Auto-Locking
+                                        </h2>
+
+                                        <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl hover:border-purple-200 transition-all cursor-pointer mb-4"
+                                             onClick={() => handleNestedChange('creditConfig', 'enableAutoLock', !formData.creditConfig.enableAutoLock)}>
+                                            <div className="space-y-1 pr-4">
+                                                <h3 className="text-sm font-bold text-gray-800">Enable Customer Auto-Lock</h3>
+                                                <p className="text-[10px] text-gray-500 font-medium">Automatically prevent generating new tax invoices if the customer exceeds their credit limit or time pending limits.</p>
+                                            </div>
+                                            <div className={`w-12 h-6 rounded-full transition-all relative flex-shrink-0 ${formData.creditConfig.enableAutoLock ? 'bg-purple-500' : 'bg-gray-300'}`}>
+                                                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${formData.creditConfig.enableAutoLock ? 'left-7' : 'left-1'}`} />
+                                            </div>
+                                        </div>
+
+                                        {formData.creditConfig.enableAutoLock && (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-4 border border-purple-100 bg-purple-50/30 rounded-xl">
+                                                <div>
+                                                    <InputField 
+                                                        label="Global Credit Limit (₹)" 
+                                                        type="number"
+                                                        value={formData.creditConfig.customerCreditLimit}
+                                                        onChange={e => handleNestedChange('creditConfig', 'customerCreditLimit', Number(e.target.value))}
+                                                        placeholder="e.g. 50000"
+                                                    />
+                                                    <p className="text-[10px] text-gray-500 mt-1 px-1">Set to 0 to disable amount limit.</p>
+                                                </div>
+                                                <div>
+                                                    <InputField 
+                                                        label="Max Pending Days (Time)" 
+                                                        type="number"
+                                                        value={formData.creditConfig.customerCreditDays}
+                                                        onChange={e => handleNestedChange('creditConfig', 'customerCreditDays', Number(e.target.value))}
+                                                        placeholder="e.g. 30"
+                                                    />
+                                                    <p className="text-[10px] text-gray-500 mt-1 px-1">E.g. 30 means block if unpaid invoice &gt; 30 days old. Set 0 to disable.</p>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </>

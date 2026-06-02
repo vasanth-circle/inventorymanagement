@@ -73,6 +73,13 @@ const settingSchema = new mongoose.Schema({
         allowNegativeStock: { type: Boolean, default: true }, // If false, prevent billing if stock is insufficient
     },
 
+    // ── Credit & Locking Configuration ──────────────────────────────────
+    creditConfig: {
+        enableAutoLock: { type: Boolean, default: false },
+        customerCreditLimit: { type: Number, default: 0 }, // Global limit, 0 = no limit
+        customerCreditDays: { type: Number, default: 0 }, // Global max days pending, 0 = no limit
+    },
+
     // ── Branding & Bank Details ──────────────────────────────────────────
     branding: {
         logoUrl: { type: String, default: '' },

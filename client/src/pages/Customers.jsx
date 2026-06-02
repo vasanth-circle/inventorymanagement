@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { AuthContext } from '../context/AuthContext';
 
 
 const Customers = () => {
@@ -12,6 +13,12 @@ const Customers = () => {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState(null);
+    const { user } = useContext(AuthContext);
+
+    // Unlock Feature State
+    const [unlockModalOpen, setUnlockModalOpen] = useState(false);
+    const [unlockCustomerData, setUnlockCustomerData] = useState(null);
+    const [unlockComment, setUnlockComment] = useState('');
 
     // New-site inline form state
     const [newSiteName, setNewSiteName] = useState('');
@@ -141,6 +148,23 @@ const Customers = () => {
         }
     };
 
+    const handleUnlockSubmit = async (e) => {
+        e.preventDefault();
+        if (!unlockComment.trim()) return toast.error('Unlock comment is required');
+        
+        try {
+            await axios.post(`${API_URL}/${unlockCustomerData._id}/unlock`, { unlockComment }, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            toast.success(`${unlockCustomerData.companyName || unlockCustomerData.name} has been unlocked for 24 hours.`);
+            setUnlockModalOpen(false);
+            setUnlockComment('');
+            fetchCustomers();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to unlock customer');
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -194,7 +218,14 @@ const Customers = () => {
                                 return (
                                 <tr key={customer._id} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4">
-                                        <div className="font-medium text-gray-900">{customer.companyName || customer.name}</div>
+                                        <div className="font-medium text-gray-900 flex items-center gap-2">
+                                            {customer.companyName || customer.name}
+                                            {customer.unlockedUntil && new Date(customer.unlockedUntil) > new Date() && (
+                                                <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full" title={`Unlocked until ${new Date(customer.unlockedUntil).toLocaleString()}`}>
+                                                    🔓 Unlocked
+                                                </span>
+                                            )}
+                                        </div>
                                         {customer.companyName && <div className="text-xs text-gray-500">{customer.name}</div>}
                                     </td>
                                     <td className="px-6 py-4 text-gray-600">{customer.email}</td>
@@ -224,6 +255,15 @@ const Customers = () => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right space-x-2">
+                                        {['admin', 'manager', 'tenant_admin', 'tenant_owner'].includes(user?.role) && (
+                                            <button
+                                                onClick={() => { setUnlockCustomerData(customer); setUnlockModalOpen(true); }}
+                                                className="text-purple-600 hover:text-purple-900 font-semibold text-sm"
+                                                title="Temporarily unlock billing for this customer"
+                                            >
+                                                Unlock
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => navigate(`/customer-ledger/${customer._id}`)}
                                             className="text-indigo-600 hover:text-indigo-900 font-semibold text-sm"
@@ -247,7 +287,7 @@ const Customers = () => {
 
 
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60] overflow-y-auto">
                     <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl my-8">
                         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                             <h2 className="text-xl font-bold text-gray-800">{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</h2>
@@ -269,8 +309,8 @@ const Customers = () => {
                                     <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                                    <input type="text" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" />
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
+                                    <input required type="text" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">GSTIN</label>
@@ -398,6 +438,45 @@ const Customers = () => {
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
                                 <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium">
                                     {editingCustomer ? 'Update Customer' : 'Add Customer'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Unlock Customer Modal */}
+            {unlockModalOpen && unlockCustomerData && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[70]">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                🔓 Unlock Customer
+                            </h2>
+                            <button onClick={() => setUnlockModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                        </div>
+                        
+                        <p className="text-sm text-gray-600 mb-4">
+                            You are temporarily unlocking <strong>{unlockCustomerData.companyName || unlockCustomerData.name}</strong> for billing for the next 24 hours.
+                        </p>
+                        
+                        <form onSubmit={handleUnlockSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Reason for Unlock (Required) *</label>
+                                <textarea 
+                                    required
+                                    rows="3"
+                                    value={unlockComment}
+                                    onChange={(e) => setUnlockComment(e.target.value)}
+                                    placeholder="e.g., Payment expected tomorrow, Manager approved."
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm"
+                                ></textarea>
+                            </div>
+                            
+                            <div className="flex justify-end gap-3 pt-2">
+                                <button type="button" onClick={() => setUnlockModalOpen(false)} className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">Cancel</button>
+                                <button type="submit" className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium text-sm">
+                                    Unlock Account
                                 </button>
                             </div>
                         </form>

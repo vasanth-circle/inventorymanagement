@@ -335,3 +335,34 @@ export const getCustomerOverallStatement = async (req, res, next) => {
         next(error);
     }
 };
+
+// @desc    Manually unlock a customer for billing
+// @route   POST /api/customers/:id/unlock
+// @access  Private (Admin/Manager)
+export const unlockCustomer = async (req, res, next) => {
+    try {
+        const { unlockComment } = req.body;
+        if (!unlockComment) {
+            return sendError(res, 400, 'Unlock comment/reason is required');
+        }
+
+        const customer = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
+        if (!customer) {
+            return sendError(res, 404, 'Customer not found');
+        }
+
+        // Unlock for 24 hours from now
+        const unlockedUntil = new Date();
+        unlockedUntil.setHours(unlockedUntil.getHours() + 24);
+
+        customer.unlockedUntil = unlockedUntil;
+        customer.unlockComment = unlockComment;
+        customer.unlockedBy = req.user.id;
+        
+        await customer.save();
+
+        sendResponse(res, 200, customer, 'Customer temporarily unlocked for 24 hours');
+    } catch (error) {
+        next(error);
+    }
+};

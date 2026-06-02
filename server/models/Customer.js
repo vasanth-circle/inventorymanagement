@@ -14,6 +14,7 @@ const customerSchema = new mongoose.Schema({
     },
     phone: {
         type: String,
+        required: [true, 'Customer phone number is required'],
         trim: true,
     },
     companyName: {
@@ -58,6 +59,21 @@ const customerSchema = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default: true,
+    },
+    // Locking Feature Overrides
+    unlockedUntil: {
+        type: Date,
+        default: null,
+    },
+    unlockComment: {
+        type: String,
+        trim: true,
+        default: '',
+    },
+    unlockedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null,
     },
     tenantId: {
         type: mongoose.Schema.Types.ObjectId,

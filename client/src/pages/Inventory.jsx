@@ -391,7 +391,7 @@ const Inventory = () => {
 
             {/* Filters */}
             <div className="bg-white rounded-lg shadow-md p-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
                         <input
@@ -427,6 +427,21 @@ const Inventory = () => {
                             <option value="in-stock">In Stock</option>
                             <option value="low-stock">Low Stock</option>
                             <option value="out-of-stock">Out of Stock</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                        <select
+                            value={filters.location || ''}
+                            onChange={(e) => setFilters({ ...filters, location: e.target.value, page: 1 })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        >
+                            <option value="">All Locations</option>
+                            <option value="empty_location">Empty (No Location)</option>
+                            {locations.map(loc => (
+                                <option key={loc._id} value={loc.name}>{loc.name}</option>
+                            ))}
                         </select>
                     </div>
 

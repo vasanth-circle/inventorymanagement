@@ -10,6 +10,7 @@ import {
     recordPayment,
     getCustomerStatement,
     getCustomerOverallStatement,
+    unlockCustomer,
 } from '../controllers/customerController.js';
 import { authorize } from '../middleware/authMiddleware.js';
 import { checkMenuAccess } from '../middleware/accessMiddleware.js';
@@ -35,5 +36,6 @@ router.get('/:id/balance', getCustomerBalance);
 router.get('/:id/ledger', getCustomerLedger);
 router.get('/:id/statement', getCustomerStatement);
 router.post('/:id/payment', recordPayment);
+router.post('/:id/unlock', authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), unlockCustomer);
 
 export default router;

@@ -11,6 +11,66 @@ import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { getNextSequenceValue } from '../utils/sequence.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
 
+// Helper for validating customer credit lock
+export const validateCustomerCreditLock = async (req, res, customerId, newInvoiceAmount) => {
+    const settings = await Setting.findOne({ tenantId: req.tenantId });
+    if (!settings?.creditConfig?.enableAutoLock) return true; // Passed
+
+    const customerDoc = await Customer.findOne({ _id: customerId, ...tenantQuery(req) });
+    if (!customerDoc) return true; // Passed (or error handled elsewhere)
+
+    let isManuallyUnlocked = false;
+    if (customerDoc.unlockedUntil && new Date(customerDoc.unlockedUntil) > new Date()) {
+        isManuallyUnlocked = true;
+    }
+
+    if (!isManuallyUnlocked) {
+        const creditLimit = settings.creditConfig.customerCreditLimit || 0;
+        const creditDays = settings.creditConfig.customerCreditDays || 0;
+        const currentBalance = customerDoc.currentBalance || 0;
+
+        // 1. Check Credit Limit
+        if (creditLimit > 0 && (currentBalance + newInvoiceAmount) > creditLimit) {
+            sendError(res, 400, `Cannot create bill: Customer Credit Limit (₹${creditLimit}) exceeded. Pending balance: ₹${currentBalance}. New Bill: ₹${newInvoiceAmount}. Contact Admin to unlock.`);
+            return false;
+        }
+
+        // 2. Check Credit Days (FIFO calculation)
+        if (creditDays > 0 && currentBalance > 0) {
+            const allLedgerEntries = await CustomerLedger.find({ customer: customerId, tenantId: req.tenantId }).sort({ date: 1, createdAt: 1 });
+            
+            let totalPayments = 0;
+            const bills = [];
+
+            allLedgerEntries.forEach(entry => {
+                if (entry.debit > 0) bills.push({ date: entry.date, amount: entry.debit });
+                if (entry.credit > 0) totalPayments += entry.credit;
+            });
+
+            let oldestUnpaidBillDate = null;
+            for (const bill of bills) {
+                if (totalPayments >= bill.amount) {
+                    totalPayments -= bill.amount;
+                } else {
+                    oldestUnpaidBillDate = bill.date;
+                    break;
+                }
+            }
+
+            if (oldestUnpaidBillDate) {
+                const diffTime = Math.abs(new Date() - new Date(oldestUnpaidBillDate));
+                const daysPending = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                if (daysPending > creditDays) {
+                    sendError(res, 400, `Cannot create bill: Customer has an unpaid balance pending for ${daysPending} days (Limit: ${creditDays} days). Contact Admin to unlock.`);
+                    return false;
+                }
+            }
+        }
+    }
+    return true; // Passed
+};
+
 // Recalculate customer running ledger balance chronologically
 export const recalculateCustomerBalance = async (customerId, tenantId) => {
     try {
@@ -264,6 +324,24 @@ export const createSalesOrder = async (req, res, next) => {
             }
         }
 
+        // ── Customer Credit & Lock Validation ──
+        if (!isEstimation) {
+            let itemsTotal = 0;
+            items.forEach(item => {
+                let lineTotal = 0;
+                switch ((item.billingUnit || 'pieces').toLowerCase()) {
+                    case 'sqft': lineTotal = (item.totalSqFt || 0) * (item.price || 0); break;
+                    case 'boxes': lineTotal = (item.boxCount || 0) * (item.price || 0); break;
+                    default: lineTotal = (item.quantity || 0) * (item.price || 0);
+                }
+                itemsTotal += lineTotal;
+            });
+            const newInvoiceAmount = itemsTotal + (Number(loadingCharges) || 0) + (Number(unloadingCharges) || 0) + (Number(transportCharges) || 0) + (Number(taxAmount) || 0) + (Number(oldBalance) || 0) - (Number(discountAmount) || 0) - (Number(advanceAmount) || 0);
+            
+            const passed = await validateCustomerCreditLock(req, res, customer, newInvoiceAmount);
+            if (!passed) return; // Error already sent inside helper
+        }
+
         // Generate Order Number
         let order;
         let retries = 0;
@@ -335,6 +413,11 @@ export const updateSOStatus = async (req, res, next) => {
 
         const wasEstimation = order.isEstimation;
         if (order.isEstimation && ['confirmed', 'dispatched', 'partially_dispatched'].includes(status)) {
+            
+            // ── Customer Credit & Lock Validation when converting to Invoice ──
+            const passed = await validateCustomerCreditLock(req, res, order.customer, order.totalAmount);
+            if (!passed) return; // Error already sent inside helper
+
             const settings = await Setting.findOne({ tenantId: req.tenantId });
             if (settings?.workflowConfig?.allowNegativeStock === false) {
                 for (const lineItem of order.items) {

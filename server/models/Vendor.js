@@ -14,6 +14,7 @@ const vendorSchema = new mongoose.Schema({
     },
     phone: {
         type: String,
+        required: [true, 'Vendor phone number is required'],
         trim: true,
     },
     companyName: {

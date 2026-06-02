@@ -51,23 +51,42 @@ export const getItems = async (req, res, next) => {
             search = '',
             category = '',
             status = '',
+            location = '',
             sortBy = 'createdAt',
             sortOrder = 'desc'
         } = req.query;
 
         const query = { ...tenantQuery(req) };
+        const andConditions = [];
 
         // Search by name or barcode
         if (search) {
-            query.$or = [
-                { name: { $regex: search, $options: 'i' } },
-                { barcode: { $regex: search, $options: 'i' } }
-            ];
+            andConditions.push({
+                $or: [
+                    { name: { $regex: search, $options: 'i' } },
+                    { barcode: { $regex: search, $options: 'i' } }
+                ]
+            });
         }
 
         // Filter by category
         if (category) {
             query.category = category;
+        }
+
+        // Filter by location
+        if (location) {
+            if (location === 'empty_location') {
+                andConditions.push({
+                    $or: [{ location: null }, { location: '' }, { location: { $exists: false } }]
+                });
+            } else {
+                query.location = location;
+            }
+        }
+
+        if (andConditions.length > 0) {
+            query.$and = andConditions;
         }
 
         // Filter by stock status
