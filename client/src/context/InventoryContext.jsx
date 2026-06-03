@@ -254,7 +254,7 @@ export const InventoryProvider = ({ children }) => {
     const fetchSalesOrders = async (params = {}) => {
         try {
             const { data } = await api.get('/sales-orders', { params });
-            return data;
+            return data.data || data;
         } catch (error) {
             toast.error('Failed to fetch sales orders');
         }

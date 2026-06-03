@@ -841,3 +841,446 @@ export const printAccountStatement = (customer, entries, summary, period, settin
     setTimeout(() => { w.focus(); w.print(); }, 600);
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// NEW TEMPLATES for Dot-Matrix / Tally Style Ledgers
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const printTallyLedger = (customer, entries, summary) => {
+    const formatAmt = (num) => {
+        if (!num) return '';
+        return Number(num).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    const openingBal = customer.openingBalance || 0;
+
+    let rows = '';
+    let totalDr = 0;
+    let totalCr = 0;
+
+    entries.forEach(entry => {
+        totalDr += (entry.debit || 0);
+        totalCr += (entry.credit || 0);
+        const drStr = entry.debit ? formatAmt(entry.debit) : '';
+        const crStr = entry.credit ? formatAmt(entry.credit) : '';
+        const dateStr = new Date(entry.date).toLocaleDateString('en-IN');
+        const particulars = (entry.description || '').substring(0, 25);
+        const typeStr = entry.type === 'bill' ? 'Sales' : (entry.type === 'payment' ? 'Receipt' : 'Journal');
+        
+        rows += `<tr style="vertical-align:top;">
+            <td style="width:12%">${dateStr}</td>
+            <td style="width:25%">${particulars}</td>
+            <td style="width:15%"></td>
+            <td style="width:12%">${typeStr}</td>
+            <td style="width:10%">${entry.refNumber || ''}</td>
+            <td style="width:13%;text-align:right">${drStr}</td>
+            <td style="width:13%;text-align:right">${crStr}</td>
+        </tr>`;
+    });
+
+    const closeBal = summary?.closingBalance || 0;
+
+    const html = `<html><head><meta charset="UTF-8"><title>Ledger - ${customer.name}</title>
+<style>
+  @page { size: A4; margin: 15mm; }
+  body { font-family: 'Courier New', Courier, monospace; font-size: 11px; color: #000; font-weight: bold; }
+  .header-table { width: 100%; border: none; margin-bottom: 10px; }
+  .header-table td { padding: 0; }
+  .line { border-bottom: 1px dashed #000; margin: 4px 0; }
+  .line-double { border-bottom: 1px dashed #000; border-top: 1px dashed #000; margin: 4px 0; height: 1px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 4px 0; font-weight: bold; }
+  td { padding: 4px 0; }
+</style></head><body>
+
+<table class="header-table">
+  <tr>
+    <td>Ledger of: <b>${customer.companyName || customer.name}</b></td>
+    <td style="text-align:right">Page No: 1</td>
+  </tr>
+  <tr>
+    <td>${[customer.address?.billing?.street, customer.address?.billing?.city].filter(Boolean).join(', ')}</td>
+    <td></td>
+  </tr>
+</table>
+
+<div class="line"></div>
+<table>
+  <tr>
+    <th style="width:12%">Date</th>
+    <th style="width:25%">Particulars</th>
+    <th style="width:15%">Remarks</th>
+    <th style="width:12%">Vch Type</th>
+    <th style="width:10%">Vch No</th>
+    <th style="width:13%;text-align:right">Debit</th>
+    <th style="width:13%;text-align:right">Credit</th>
+  </tr>
+</table>
+<div class="line"></div>
+
+<table style="margin-bottom: 10px;">
+  <tr>
+    <td style="width:12%"></td>
+    <td style="width:25%"><b>Opening Balance :</b></td>
+    <td style="width:15%"></td>
+    <td style="width:12%"></td>
+    <td style="width:10%"></td>
+    <td style="width:13%;text-align:right"><b>${openingBal >= 0 ? formatAmt(openingBal) : ''}</b></td>
+    <td style="width:13%;text-align:right"><b>${openingBal < 0 ? formatAmt(Math.abs(openingBal)) : ''}</b></td>
+  </tr>
+</table>
+
+<table>
+  ${rows}
+</table>
+
+<div class="line" style="margin-top:20px;"></div>
+<table>
+  <tr>
+    <td style="width:12%"></td>
+    <td style="width:25%"><b>Closing Balance :</b></td>
+    <td style="width:15%"></td>
+    <td style="width:12%"></td>
+    <td style="width:10%"></td>
+    <td style="width:13%;text-align:right"><b>${closeBal < 0 ? formatAmt(Math.abs(closeBal)) : ''}</b></td>
+    <td style="width:13%;text-align:right"><b>${closeBal >= 0 ? formatAmt(closeBal) : ''}</b></td>
+  </tr>
+</table>
+<div class="line"></div>
+<table>
+  <tr>
+    <td style="width:12%"></td>
+    <td style="width:25%"></td>
+    <td style="width:15%"></td>
+    <td style="width:12%"></td>
+    <td style="width:10%"></td>
+    <td style="width:13%;text-align:right"><b>${formatAmt(totalDr + (openingBal > 0 ? openingBal : 0) + (closeBal < 0 ? Math.abs(closeBal) : 0))}</b></td>
+    <td style="width:13%;text-align:right"><b>${formatAmt(totalCr + (openingBal < 0 ? Math.abs(openingBal) : 0) + (closeBal > 0 ? closeBal : 0))}</b></td>
+  </tr>
+</table>
+<div class="line"></div>
+
+</body></html>`;
+
+    const w = window.open('', '_blank', 'width=900,height=700');
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => { w.focus(); w.print(); }, 600);
+};
+
+export const printTallyReceivables = (receivablesData) => {
+    const formatAmt = (num) => Number(num).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    let content = '';
+
+    receivablesData.forEach(cust => {
+        let rows = '';
+        cust.pendingBills.forEach(bill => {
+            const dateStr = new Date(bill.date).toLocaleDateString('en-GB'); // DD/MM/YYYY like Tally
+            rows += `<tr style="vertical-align:top;">
+                <td style="width:20%">${bill.refNumber}</td>
+                <td style="width:20%;text-align:right">${formatAmt(bill.pendingAmount)}</td>
+                <td style="width:20%;text-align:center">${dateStr}</td>
+                <td style="width:15%;text-align:right">${bill.osDays}</td>
+                <td style="width:25%"></td>
+            </tr>`;
+        });
+
+        const addressHtml = (cust.address && Array.isArray(cust.address) && cust.address.length > 0) 
+            ? cust.address.map(line => `<tr><td>${line}</td></tr>`).join('')
+            : '';
+
+        content += `
+<table class="header-table" style="margin-top:20px;">
+  <tr>
+    <td>Name : <b>${cust.name}</b></td>
+  </tr>
+  ${addressHtml}
+</table>
+<div class="line"></div>
+<table>
+  <tr>
+    <th style="width:20%">Ref No</th>
+    <th style="width:20%;text-align:right">Pending Amt</th>
+    <th style="width:20%;text-align:center">Due Date</th>
+    <th style="width:15%;text-align:right">OS Days</th>
+    <th style="width:25%"></th>
+  </tr>
+</table>
+<div class="line"></div>
+<div style="margin: 8px 0;"><b>Customer</b></div>
+<table>
+  ${rows}
+</table>
+<div style="text-align:right;width:40%;font-weight:bold;margin-top:5px;border-top:1px dashed #000;border-bottom:1px dashed #000;padding:4px 0;">
+  ${formatAmt(cust.totalPending)}
+</div>
+<div class="line" style="margin-top:20px;"></div>
+<div style="text-align:right;width:40%;font-weight:bold;">
+  ${formatAmt(cust.totalPending)}
+</div>
+<div class="line"></div>
+<br/>
+`;
+    });
+
+    const html = `<html><head><meta charset="UTF-8"><title>Receivables Report</title>
+<style>
+  @page { size: A4; margin: 15mm; }
+  body { font-family: 'Courier New', Courier, monospace; font-size: 11px; color: #000; font-weight: bold; line-height: 1.2; }
+  .header-table { width: 100%; border: none; margin-bottom: 5px; }
+  .header-table td { padding: 0; }
+  .line { border-bottom: 1px dashed #000; margin: 4px 0; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 4px 0; font-weight: bold; }
+  td { padding: 4px 0; }
+</style></head><body>
+
+<div style="display:flex; justify-content:space-between;">
+    <div><b>Receivables</b></div>
+    <div>Page No: 1</div>
+</div>
+
+${content}
+
+</body></html>`;
+
+    const w = window.open('', '_blank', 'width=900,height=700');
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => { w.focus(); w.print(); }, 600);
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHIPPING LABEL PRINTING
+// ─────────────────────────────────────────────────────────────────────────────
+export const printShippingLabels = (dispatch, fullOrder, settings) => {
+    const s = settings || {};
+    const company = s.companyName || 'Our Company';
+    const address = s.address || '';
+    const phone = s.phone1 || '';
+    
+    const custName = fullOrder.customer?.companyName || fullOrder.customer?.name || 'Walk-in Customer';
+    
+    // Fix object Object issue
+    const custBilling = fullOrder.customer?.address?.billing || {};
+    const custShipping = fullOrder.customer?.address?.shipping || custBilling;
+    const street = custShipping.street || custBilling.street || '';
+    const city = custShipping.city || custBilling.city || '';
+    const state = custShipping.state || custBilling.state || '';
+    const zipCode = custShipping.zipCode || custBilling.zipCode || '';
+    
+    const fullCustAddress = [street, city, state, zipCode].filter(Boolean).join(', ');
+    const custPhone = fullOrder.customer?.contactNumber || fullOrder.customer?.phone || '';
+
+    const orderNo = fullOrder.orderNumber;
+    const date = new Date(dispatch.createdAt || dispatch.date).toLocaleDateString();
+    
+    // Calculate total boxes
+    let totalBoxes = 0;
+    dispatch.items.forEach(di => { totalBoxes += Number(di.quantity) || 0; });
+    
+    let itemsRows = dispatch.items.map(di => `
+        <tr>
+            <td style="padding:6px 4px; border-bottom:1px solid #000; font-size:11px; font-weight:bold;">${di.item?.name || 'Item'}</td>
+            <td style="padding:6px 4px; border-bottom:1px solid #000; font-size:11px; text-align:right; font-weight:bold;">${di.quantity} Box</td>
+        </tr>
+    `).join('');
+
+    const html = `<html><head><meta charset="UTF-8"><title>Shipping Label - ${orderNo}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Libre+Barcode+39&family=Inter:wght@400;700;900&display=swap');
+  
+  @page { size: 100mm 150mm; margin: 0; }
+  body { 
+    font-family: 'Inter', sans-serif; 
+    color: #000; 
+    margin: 0; 
+    padding: 0; 
+    background: #fff; 
+    width: 100mm; 
+    height: 150mm; 
+    box-sizing: border-box;
+  }
+  
+  .label-container { 
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box; 
+    display: flex; 
+    flex-direction: column; 
+    border: 3px solid #000;
+    padding: 2mm;
+  }
+  
+  .inner-border {
+    border: 2px solid #000;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .header-banner {
+    background: #000;
+    color: #fff;
+    text-align: center;
+    padding: 6px;
+    font-size: 14px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+
+  .from-section {
+    padding: 8px;
+    border-bottom: 2px solid #000;
+    font-size: 9px;
+    line-height: 1.3;
+  }
+  .from-section strong { font-size: 11px; }
+
+  .to-section {
+    padding: 12px 10px;
+    border-bottom: 2px solid #000;
+    flex: 1;
+  }
+  .to-badge {
+    font-size: 12px;
+    font-weight: 900;
+    margin-bottom: 5px;
+  }
+  .to-name {
+    font-size: 20px;
+    font-weight: 900;
+    text-transform: uppercase;
+    line-height: 1.1;
+    margin-bottom: 5px;
+  }
+  .to-address {
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 8px;
+  }
+  .to-phone {
+    font-size: 12px;
+    font-weight: bold;
+    border: 1px solid #000;
+    display: inline-block;
+    padding: 3px 6px;
+  }
+
+  .barcode-section {
+    padding: 10px;
+    text-align: center;
+    border-bottom: 2px solid #000;
+  }
+  .barcode {
+    font-family: 'Libre Barcode 39', cursive;
+    font-size: 42px;
+    line-height: 1;
+    margin: 0;
+  }
+  .barcode-text {
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 2px;
+  }
+
+  .meta-grid {
+    display: flex;
+    border-bottom: 2px solid #000;
+  }
+  .meta-box {
+    flex: 1;
+    padding: 6px;
+    text-align: center;
+  }
+  .meta-box:first-child {
+    border-right: 2px solid #000;
+  }
+  .meta-label {
+    font-size: 8px;
+    text-transform: uppercase;
+    font-weight: 900;
+  }
+  .meta-val {
+    font-size: 14px;
+    font-weight: 900;
+  }
+
+  .items-section {
+    padding: 8px;
+  }
+  .items-title {
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th {
+    text-align: left;
+    border-bottom: 2px solid #000;
+    font-size: 9px;
+    padding: 2px 4px;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+    <div class="label-container">
+      <div class="inner-border">
+        <div class="header-banner">PRIORITY DISPATCH</div>
+        
+        <div class="from-section">
+            <strong>FROM: ${company}</strong><br>
+            ${address}<br>
+            ${phone ? 'Ph: ' + phone : ''}
+        </div>
+        
+        <div class="to-section">
+            <div class="to-badge">SHIP TO:</div>
+            <div class="to-name">${custName}</div>
+            <div class="to-address">${fullCustAddress || 'Address Not Provided'}</div>
+            ${custPhone ? '<div class="to-phone">📞 ' + custPhone + '</div>' : ''}
+        </div>
+        
+        <div class="barcode-section">
+            <div class="barcode">*${orderNo}*</div>
+            <div class="barcode-text">${orderNo}</div>
+        </div>
+
+        <div class="meta-grid">
+            <div class="meta-box">
+                <div class="meta-label">Total Boxes</div>
+                <div class="meta-val">${totalBoxes}</div>
+            </div>
+            <div class="meta-box">
+                <div class="meta-label">Dispatch Date</div>
+                <div class="meta-val">${date}</div>
+            </div>
+        </div>
+
+        <div class="items-section">
+            <div class="items-title">Contents / Description</div>
+            <table>
+                <tr>
+                    <th>Item</th>
+                    <th style="text-align:right">Qty</th>
+                </tr>
+                ${itemsRows}
+            </table>
+        </div>
+      </div>
+    </div>
+</body></html>`;
+
+    const w = window.open('', '_blank', 'width=450,height=650');
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => { w.focus(); w.print(); }, 600);
+};
+

@@ -67,7 +67,8 @@ const Sidebar = ({ isOpen, onClose }) => {
             icon: '📈',
             items: [
                 { name: 'Analytics Dashboard', path: '/reports', id: 'reports' },
-                { name: 'Financial Ledgers', path: '/ledger-reports', id: 'ledger-reports' }
+                { name: 'Financial Ledgers', path: '/ledger-reports', id: 'ledger-reports' },
+                { name: 'Profit Tracking', path: '/profit-tracking', id: 'profit-tracking' }
             ]
         },
         {
@@ -137,7 +138,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         }
 
         if (effectiveRole === 'accounts') {
-            const accountsAllowed = ['dashboard', 'items', 'customers', 'vendors', 'customer-ledger', 'vendor-ledger', 'reports', 'ledger-reports'];
+            const accountsAllowed = ['dashboard', 'items', 'customers', 'vendors', 'customer-ledger', 'vendor-ledger', 'reports', 'ledger-reports', 'profit-tracking'];
             return accountsAllowed.includes(itemId);
         }
 

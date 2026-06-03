@@ -42,6 +42,13 @@ export const validateCustomerCreditLock = async (req, res, customerId, newInvoic
             let totalPayments = 0;
             const bills = [];
 
+            // Account for opening balance in FIFO calculation
+            if (customerDoc.openingBalance > 0) {
+                bills.push({ date: customerDoc.createdAt || new Date(0), amount: customerDoc.openingBalance });
+            } else if (customerDoc.openingBalance < 0) {
+                totalPayments += Math.abs(customerDoc.openingBalance);
+            }
+
             allLedgerEntries.forEach(entry => {
                 if (entry.debit > 0) bills.push({ date: entry.date, amount: entry.debit });
                 if (entry.credit > 0) totalPayments += entry.credit;

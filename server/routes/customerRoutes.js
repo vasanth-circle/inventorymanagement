@@ -11,6 +11,7 @@ import {
     getCustomerStatement,
     getCustomerOverallStatement,
     unlockCustomer,
+    getCustomerReceivables,
 } from '../controllers/customerController.js';
 import { authorize } from '../middleware/authMiddleware.js';
 import { checkMenuAccess } from '../middleware/accessMiddleware.js';
@@ -25,6 +26,7 @@ router.route('/')
     .post(createCustomer);
 
 router.get('/statements/overall', getCustomerOverallStatement);
+router.get('/reports/receivables', getCustomerReceivables);
 
 router.route('/:id')
     .get(getCustomer)

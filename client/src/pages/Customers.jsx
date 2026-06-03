@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
-
+import { LockOpenIcon, BookOpenIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 
 const Customers = () => {
     const navigate = useNavigate();
@@ -254,27 +254,20 @@ const Customers = () => {
                                             {bal !== 0 ? `₹${Math.abs(bal).toLocaleString('en-IN')} ${bal > 0 ? 'Dr' : 'Cr'}` : '—'}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-right space-x-2">
-                                        {['admin', 'manager', 'tenant_admin', 'tenant_owner'].includes(user?.role) && (
-                                            <button
-                                                onClick={() => { setUnlockCustomerData(customer); setUnlockModalOpen(true); }}
-                                                className="text-purple-600 hover:text-purple-900 font-semibold text-sm"
-                                                title="Temporarily unlock billing for this customer"
-                                            >
-                                                Unlock
-                                            </button>
-                                        )}
+                                    <td className="px-6 py-4 text-right space-x-3">
                                         <button
                                             onClick={() => navigate(`/customer-ledger/${customer._id}`)}
-                                            className="text-indigo-600 hover:text-indigo-900 font-semibold text-sm"
+                                            className="text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 p-1.5 rounded-lg transition-colors inline-flex items-center justify-center"
+                                            title="View Customer Ledger"
                                         >
-                                            Ledger
+                                            <BookOpenIcon className="w-5 h-5" />
                                         </button>
                                         <button
                                             onClick={() => handleOpenModal(customer)}
-                                            className="text-primary-600 hover:text-primary-900 font-semibold text-sm"
+                                            className="text-primary-500 hover:text-primary-700 hover:bg-primary-50 p-1.5 rounded-lg transition-colors inline-flex items-center justify-center"
+                                            title="Edit Customer"
                                         >
-                                            Edit
+                                            <PencilSquareIcon className="w-5 h-5" />
                                         </button>
                                     </td>
                                 </tr>

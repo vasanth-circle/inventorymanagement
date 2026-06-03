@@ -44,6 +44,7 @@ import Onboarding from './pages/Onboarding';
 import Sizes from './pages/Sizes';
 import Brands from './pages/Brands';
 import ActionLogs from './pages/ActionLogs';
+import ProfitTracking from './pages/ProfitTracking';
 
 function AppLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -100,6 +101,7 @@ function App() {
                                             <Route path="/stock-adjustment" element={<StockAdjustment />} />
                                             <Route path="/reports" element={<Reports />} />
                                             <Route path="/ledger-reports" element={<LedgerReports />} />
+                                            <Route path="/profit-tracking" element={<ProfitTracking />} />
                                             <Route path="/stocks" element={<Stocks />} />
                                             <Route path="/categories" element={<Categories />} />
                                             <Route path="/bulk-import" element={<BulkImport />} />

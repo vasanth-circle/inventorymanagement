@@ -129,8 +129,8 @@ const CustomerLedger = () => {
     }, [selectedCustomerId, from, to]);
 
     useEffect(() => {
-        // Fetch customers list for dropdown
-        api('/customers').then(res => {
+        // Fetch customers list for dropdown (fetch all for local search)
+        api('/customers?limit=1000').then(res => {
             setCustomers(res.data.data.customers);
         }).catch(() => {});
         fetchLedger(); 

@@ -366,3 +366,108 @@ export const unlockCustomer = async (req, res, next) => {
         next(error);
     }
 };
+
+// @desc    Get daywise outstanding/receivables report (pending bills)
+// @route   GET /api/customers/reports/receivables
+// @access  Private
+export const getCustomerReceivables = async (req, res, next) => {
+    try {
+        const query = { ...tenantQuery(req), isActive: true };
+        if (req.query.customer) {
+            query._id = req.query.customer;
+        }
+        const customers = await Customer.find(query).sort({ name: 1 });
+        const currentDate = new Date();
+        const fromDate = req.query.from ? new Date(req.query.from) : null;
+        if (fromDate) fromDate.setHours(0, 0, 0, 0);
+        const toDate = req.query.to ? new Date(req.query.to) : null;
+        if (toDate) toDate.setHours(23, 59, 59, 999);
+
+        const receivablesData = [];
+
+        await Promise.all(customers.map(async (customer) => {
+            const entries = await CustomerLedger.find({ customer: customer._id, ...tenantQuery(req) })
+                .sort({ date: 1, createdAt: 1 });
+
+            let totalCredits = entries.reduce((sum, entry) => sum + (entry.credit || 0), 0);
+            const allPendingBills = [];
+            
+            if (customer.openingBalance > 0) {
+                const billDate = new Date(customer.createdAt);
+                if (totalCredits >= customer.openingBalance) {
+                    totalCredits -= customer.openingBalance;
+                } else if (totalCredits > 0) {
+                    allPendingBills.push({
+                        refNumber: 'Opening Balance',
+                        pendingAmount: customer.openingBalance - totalCredits,
+                        date: customer.createdAt,
+                        osDays: Math.floor((currentDate - billDate) / (1000 * 60 * 60 * 24))
+                    });
+                    totalCredits = 0;
+                } else {
+                    allPendingBills.push({
+                        refNumber: 'Opening Balance',
+                        pendingAmount: customer.openingBalance,
+                        date: customer.createdAt,
+                        osDays: Math.floor((currentDate - billDate) / (1000 * 60 * 60 * 24))
+                    });
+                }
+            }
+
+            for (const entry of entries) {
+                if (entry.debit > 0) {
+                    const billDate = new Date(entry.date);
+                    if (totalCredits >= entry.debit) {
+                        totalCredits -= entry.debit;
+                    } else if (totalCredits > 0) {
+                        const pendingAmt = entry.debit - totalCredits;
+                        totalCredits = 0;
+                        allPendingBills.push({
+                            refNumber: entry.refNumber || 'Bill',
+                            pendingAmount: pendingAmt,
+                            date: entry.date,
+                            osDays: Math.floor((currentDate - billDate) / (1000 * 60 * 60 * 24))
+                        });
+                    } else {
+                        allPendingBills.push({
+                            refNumber: entry.refNumber || 'Bill',
+                            pendingAmount: entry.debit,
+                            date: entry.date,
+                            osDays: Math.floor((currentDate - billDate) / (1000 * 60 * 60 * 24))
+                        });
+                    }
+                }
+            }
+
+            // Filter pending bills by date range if provided
+            const pendingBills = allPendingBills.filter(bill => {
+                const bDate = new Date(bill.date);
+                if (fromDate && bDate < fromDate) return false;
+                if (toDate && bDate > toDate) return false;
+                return true;
+            });
+
+            if (pendingBills.length > 0) {
+                receivablesData.push({
+                    customerId: customer._id,
+                    name: customer.companyName || customer.name,
+                    contact: customer.phone,
+                    address: [
+                        customer.address?.billing?.street, 
+                        customer.address?.billing?.city,
+                        customer.address?.billing?.state
+                    ].filter(Boolean) || [],
+                    totalPending: pendingBills.reduce((s, b) => s + b.pendingAmount, 0),
+                    pendingBills
+                });
+            }
+        }));
+
+        receivablesData.sort((a, b) => a.name.localeCompare(b.name));
+
+        sendResponse(res, 200, receivablesData, 'Receivables report fetched');
+    } catch (error) {
+        next(error);
+    }
+};
+

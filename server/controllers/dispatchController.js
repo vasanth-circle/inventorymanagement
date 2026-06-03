@@ -11,16 +11,19 @@ import { tenantQuery } from '../utils/tenantQuery.js';
 // @access  Private
 export const createDispatch = async (req, res, next) => {
     try {
-        const { order: orderId, vehicleNumber, driverPhone, items, notes } = req.body;
+        const { order: orderId, items, notes } = req.body;
 
         const order = await SalesOrder.findOne({ _id: orderId, ...tenantQuery(req) });
         if (!order) {
             return sendError(res, 404, 'Sales order not found');
         }
 
-        // Validate over-dispatch
-        const pastDispatches = await Dispatch.find({ order: orderId, ...tenantQuery(req) });
-        let fullyDispatchedItemsCount = 0;
+        if (order.isEstimation) {
+            return sendError(res, 400, 'Estimations/Quotations cannot be dispatched. Please convert it to a real invoice first.');
+        }
+
+        // Validate over-dispatch (including pending requests)
+        const pastDispatches = await Dispatch.find({ order: orderId, status: { $ne: 'cancelled' }, ...tenantQuery(req) });
 
         for (const dispatchItem of items) {
             const orderItem = order.items.find(oi => oi.item.toString() === dispatchItem.item.toString());
@@ -31,16 +34,11 @@ export const createDispatch = async (req, res, next) => {
                 return sum + (match ? match.quantity : 0);
             }, 0);
 
-            // Use stockQty if available, fallback to quantity (for legacy orders)
             const targetedStockLimit = orderItem.stockQty || orderItem.quantity;
             const pendingQty = targetedStockLimit - pastDispatchedQty;
             
             if (dispatchItem.quantity > pendingQty) {
-                return sendError(res, 400, `Cannot dispatch ${dispatchItem.quantity} units. Only ${pendingQty} pending physically for this item.`);
-            }
-
-            if (dispatchItem.quantity + pastDispatchedQty >= targetedStockLimit) {
-                fullyDispatchedItemsCount++;
+                return sendError(res, 400, `Cannot request dispatch of ${dispatchItem.quantity} units. Only ${pendingQty} pending for this item.`);
             }
         }
 
@@ -48,22 +46,40 @@ export const createDispatch = async (req, res, next) => {
         const date = new Date();
         const dateStr = `${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
         const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
-        const dispatchNumber = `DSP-${dateStr}-${randomStr}`;
+        const dispatchNumber = `REQ-${dateStr}-${randomStr}`;
 
-        // Create the dispatch
+        // Create the pending dispatch request
         const dispatch = await Dispatch.create({
             order: orderId,
             dispatchNumber,
             tenantId: req.tenantId,
-            vehicleNumber,
-            driverPhone,
             items,
             notes,
+            status: 'pending_loading', // 2-step process: wait for godown
             createdBy: req.user._id,
         });
 
+        sendResponse(res, 201, dispatch, 'Dispatch request submitted to Godown');
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Fulfill a pending dispatch request
+// @route   PUT /api/dispatches/:id/fulfill
+// @access  Private
+export const fulfillDispatch = async (req, res, next) => {
+    try {
+        const { vehicleNumber, driverPhone, notes } = req.body;
+        const dispatch = await Dispatch.findOne({ _id: req.params.id, status: 'pending_loading', ...tenantQuery(req) });
+        
+        if (!dispatch) return sendError(res, 404, 'Pending dispatch request not found');
+
+        const order = await SalesOrder.findOne({ _id: dispatch.order, ...tenantQuery(req) });
+        if (!order) return sendError(res, 404, 'Sales order not found');
+
         // Update inventory and create transactions
-        for (const dispatchItem of items) {
+        for (const dispatchItem of dispatch.items) {
             const itemDoc = await Item.findOne({ _id: dispatchItem.item, ...tenantQuery(req) });
             if (itemDoc) {
                 const previousQuantity = itemDoc.quantity;
@@ -71,10 +87,9 @@ export const createDispatch = async (req, res, next) => {
 
                 // PHYSICAL STOCK CHECK
                 if (previousQuantity < dispatchQty) {
-                    return sendError(res, 400, `Insufficient physical stock for ${itemDoc.name}. Available: ${previousQuantity}, Trying to dispatch: ${dispatchQty}`);
+                    return sendError(res, 400, `Insufficient physical stock for ${itemDoc.name}. Available: ${previousQuantity}, Trying to load: ${dispatchQty}`);
                 }
                 
-                // Find corresponding Sales Order item to get batchId
                 const orderItem = order.items.find(oi => oi.item.toString() === dispatchItem.item.toString());
                 const batchId = orderItem?.batchId;
                 let usedBatchNumber = '';
@@ -99,7 +114,7 @@ export const createDispatch = async (req, res, next) => {
                     type: 'outward',
                     quantity: dispatchQty,
                     reason: `Dispatch for Order ${order.orderNumber}`,
-                    notes: `Vehicle: ${vehicleNumber}, Dispatch: ${dispatchNumber}`,
+                    notes: `Vehicle: ${vehicleNumber}, Dispatch: ${dispatch.dispatchNumber}`,
                     user: req.user._id,
                     previousQuantity,
                     newQuantity: itemDoc.quantity,
@@ -111,12 +126,30 @@ export const createDispatch = async (req, res, next) => {
             }
         }
 
-        // Update Order status based on dispatch completion
-        const isFullyDispatched = fullyDispatchedItemsCount === order.items.length;
-        const wasEstimation = order.isEstimation;
-        if (wasEstimation) {
-            order.isEstimation = false;
+        dispatch.vehicleNumber = vehicleNumber;
+        dispatch.driverPhone = driverPhone;
+        if (notes) dispatch.notes = (dispatch.notes ? dispatch.notes + ' | ' : '') + notes;
+        dispatch.status = 'dispatched';
+        dispatch.dispatchDate = new Date();
+        await dispatch.save();
+
+        // Check if order is fully dispatched based on ALL dispatched logs
+        const pastDispatches = await Dispatch.find({ order: order._id, status: 'dispatched', ...tenantQuery(req) });
+        let fullyDispatchedItemsCount = 0;
+        
+        for (const orderItem of order.items) {
+            const targetedStockLimit = orderItem.stockQty || orderItem.quantity;
+            const pastDispatchedQty = pastDispatches.reduce((sum, d) => {
+                const match = d.items.find(di => di.item.toString() === orderItem.item.toString());
+                return sum + (match ? match.quantity : 0);
+            }, 0);
+            if (pastDispatchedQty >= targetedStockLimit) {
+                fullyDispatchedItemsCount++;
+            }
         }
+
+        const isFullyDispatched = fullyDispatchedItemsCount === order.items.length;
+        if (order.isEstimation) order.isEstimation = false;
         order.status = isFullyDispatched ? 'dispatched' : 'partially_dispatched'; 
         await order.save();
 
@@ -125,7 +158,7 @@ export const createDispatch = async (req, res, next) => {
             await syncSalesOrderLedger(order._id, req.tenantId, req.user._id);
         }
 
-        sendResponse(res, 201, dispatch, 'Dispatch recorded successfully');
+        sendResponse(res, 200, dispatch, 'Dispatch fulfilled successfully');
     } catch (error) {
         next(error);
     }

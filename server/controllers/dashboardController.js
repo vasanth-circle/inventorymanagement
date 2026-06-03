@@ -126,10 +126,34 @@ export const getDashboardStats = async (req, res, next) => {
             }
         ]);
 
-        // Total Sales and Purchase Amount
+        // Total Sales and Purchase Amount with period breakdown
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay());
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
         const salesStats = await SalesOrder.aggregate([
-            { $match: { ...tenantQuery, status: { $ne: 'void' } } },
-            { $group: { _id: null, totalSales: { $sum: '$totalAmount' } } }
+            { $match: { ...tenantQuery, status: { $ne: 'void' }, isEstimation: { $ne: true } } },
+            { 
+                $group: { 
+                    _id: null, 
+                    totalSales: { $sum: '$totalAmount' },
+                    todaySales: {
+                        $sum: {
+                            $cond: [{ $gte: [{ $ifNull: ['$orderDate', '$createdAt'] }, today] }, '$totalAmount', 0]
+                        }
+                    },
+                    weekSales: {
+                        $sum: {
+                            $cond: [{ $gte: [{ $ifNull: ['$orderDate', '$createdAt'] }, startOfWeek] }, '$totalAmount', 0]
+                        }
+                    },
+                    monthSales: {
+                        $sum: {
+                            $cond: [{ $gte: [{ $ifNull: ['$orderDate', '$createdAt'] }, startOfMonth] }, '$totalAmount', 0]
+                        }
+                    }
+                } 
+            }
         ]);
 
         const purchaseStats = await PurchaseOrder.aggregate([
@@ -217,6 +241,9 @@ export const getDashboardStats = async (req, res, next) => {
             salesActivity: salesActivity.reduce((acc, curr) => ({ ...acc, [curr._id]: curr.count }), {}),
             purchaseActivity: purchaseActivity.reduce((acc, curr) => ({ ...acc, [curr._id]: curr.count }), {}),
             totalSales: salesStats[0]?.totalSales || 0,
+            todaySales: salesStats[0]?.todaySales || 0,
+            weekSales: salesStats[0]?.weekSales || 0,
+            monthSales: salesStats[0]?.monthSales || 0,
             totalPurchase: purchaseStats[0]?.totalPurchase || 0,
             totalItemsCount: totalItemsCount,
             pendingReceipts,
