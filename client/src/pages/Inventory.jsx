@@ -750,7 +750,6 @@ const Inventory = () => {
                                         type="number"
                                         step="0.01"
                                         name="price"
-                                        required
                                         value={editFormData.price}
                                         onChange={handleEditChange}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
