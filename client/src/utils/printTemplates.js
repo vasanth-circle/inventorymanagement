@@ -51,8 +51,7 @@ const buildItemRows = (items, settings, taxPct, isQuotation) => {
             <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
             <td style="text-align:right;font-weight:bold">${formatIndianNumber(withTax, 2)}</td>
         </tr>`;
-    }).join('') +
-    `<tr style="height:100%"><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+    }).join('');
 };
 
 
@@ -92,12 +91,16 @@ const template1 = (order, settings, docType = 'invoice') => {
   .meta-box:first-child { border-right: 1.5px solid #000; }
   .meta-row { display: flex; margin-bottom: 2px; font-size: 9.5px; }
   .meta-label { width: 110px; font-weight: bold; }
-  .items-table { border-bottom: 1.5px solid #000; height: 165mm; }
-  table { width: 100%; height: 100%; border-collapse: collapse; }
+  .items-table { border-bottom: 1.5px solid #000; }
+  table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+  .items-table > table { height: 201mm; }
   th, td { padding: 5px; font-size: 9.5px; border-right: 1.5px solid #000; }
   th:last-child, td:last-child { border-right: none; }
   th { border-bottom: 1.5px solid #000; background: #fff; font-weight: bold; text-transform: uppercase; font-size: 8.5px; }
-  td { vertical-align: middle; border-bottom: none; }
+  td { vertical-align: top; border-bottom: none; }
+  .filler td { height: 100%; }
+  tr { page-break-inside: avoid; page-break-after: auto; }
+  thead { display: table-header-group; }
   .summary-section { display: flex; border-bottom: 1.5px solid #000; min-height: 100px; }
   .summary-left { flex: 1.8; padding: 0; display: flex; flex-direction: column; border-right: 1.5px solid #000; }
   .summary-right { flex: 1; padding: 0; }
@@ -145,7 +148,10 @@ const template1 = (order, settings, docType = 'invoice') => {
         <th width="10%">${rateLabel}</th>
         <th width="11%">Total</th>
       </tr></thead>
-      <tbody>${buildItemRows(order.items, settings, taxPct, isQuotation)}</tbody>
+      <tbody>
+        ${buildItemRows(order.items, settings, taxPct, isQuotation)}
+        <tr class="filler"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      </tbody>
     </table>
   </div>
   <div class="summary-section">
@@ -235,13 +241,23 @@ const template2 = (order, settings, docType = 'invoice') => {
   .meta-title { font-size: 8px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 4px; }
   .meta-value { font-size: 11px; font-weight: 700; color: #1a1a2e; }
   .meta-row2 { display: flex; justify-content: space-between; font-size: 8.5px; margin-bottom: 3px; }
-  .items-section { border-top: 2px solid #1a1a2e; }
-  table { width: 100%; border-collapse: collapse; }
-  .item-table { height: 150mm; }
+  .items-section { 
+     border-top: 2px solid #1a1a2e; 
+     min-height: 150mm;
+     background-image: 
+        linear-gradient(to right, transparent calc(4% - 0.5px), #f0f0f0 calc(4% - 0.5px), #f0f0f0 calc(4% + 0.5px), transparent calc(4% + 0.5px)),
+        linear-gradient(to right, transparent calc(58% - 0.5px), #f0f0f0 calc(58% - 0.5px), #f0f0f0 calc(58% + 0.5px), transparent calc(58% + 0.5px)),
+        linear-gradient(to right, transparent calc(69% - 0.5px), #f0f0f0 calc(69% - 0.5px), #f0f0f0 calc(69% + 0.5px), transparent calc(69% + 0.5px)),
+        linear-gradient(to right, transparent calc(78% - 0.5px), #f0f0f0 calc(78% - 0.5px), #f0f0f0 calc(78% + 0.5px), transparent calc(78% + 0.5px)),
+        linear-gradient(to right, transparent calc(87% - 0.5px), #f0f0f0 calc(87% - 0.5px), #f0f0f0 calc(87% + 0.5px), transparent calc(87% + 0.5px));
+  }
+  table { width: 100%; border-collapse: collapse; page-break-inside: auto; table-layout: fixed; }
   th { background: #1a1a2e; color: white; padding: 6px 6px; font-size: 7.5px; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid #2d2d4e; text-align: left; }
   th:last-child { border-right: none; }
   td { padding: 5px 6px; font-size: 8.5px; border-bottom: 1px solid #f0f0f0; border-right: 1px solid #f0f0f0; vertical-align: top; }
   td:last-child { border-right: none; }
+  tr { page-break-inside: avoid; page-break-after: auto; }
+  thead { display: table-header-group; }
   tr:nth-child(even) td { background: #fafafa; }
   .totals-section { display: flex; border-top: 2px solid #1a1a2e; }
   .totals-left { flex: 1.6; padding: 12px 15px; border-right: 1px solid #e8e8e8; }
@@ -313,7 +329,6 @@ const template2 = (order, settings, docType = 'invoice') => {
             <td style="text-align:right;font-weight:bold">${formatIndianNumber(withTax, 2)}</td>
           </tr>`;
       }).join('')}
-      <tr style="height:100%"><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td></tr>
       </tbody>
     </table>
   </div>
@@ -391,9 +406,11 @@ const template3 = (order, settings, docType = 'invoice') => {
   .bill-meta { flex: 1; }
   .bill-meta-row { display: flex; justify-content: space-between; font-size: 9px; padding: 2px 0; }
   .bill-meta-label { color: #aaa; font-weight: 600; }
-  table { width: 100%; border-collapse: collapse; }
+  table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
   th { padding: 7px 6px; font-size: 7.5px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.8px; color: #999; border-bottom: 1px solid #eee; text-align: left; }
   td { padding: 6px 6px; font-size: 8.5px; color: #333; border-bottom: 1px solid #f5f5f5; vertical-align: top; }
+  tr { page-break-inside: avoid; page-break-after: auto; }
+  thead { display: table-header-group; }
   tr:last-child td { border-bottom: none; }
   .item-table { min-height: 150mm; }
   .totals-section { display: flex; gap: 20px; margin-top: 15px; }
@@ -467,7 +484,7 @@ const template3 = (order, settings, docType = 'invoice') => {
           <td style="text-align:right;font-weight:700">${formatIndianNumber(withTax, 2)}</td>
         </tr>`;
     }).join('')}
-    <tr style="height:100%"><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td></tr>
+    ${Array(Math.max(0, 25 - order.items.length)).fill('<tr style="height:22px"><td style="color:transparent; border-bottom:none">.</td><td style="border-bottom:none"></td><td style="border-bottom:none"></td><td style="border-bottom:none"></td><td style="border-bottom:none"></td><td style="border-bottom:none"></td></tr>').join('')}
     </tbody>
   </table>
 
@@ -540,11 +557,15 @@ const template4 = (order, settings, docType = 'invoice') => {
   .meta-row { display: flex; margin-bottom: 1px; font-size: 9.5px; }
   .meta-label { width: 90px; font-weight: bold; }
   .items-table { border-bottom: 1px solid #999; flex: 1; }
-  table { width: 100%; height: 100%; border-collapse: collapse; }
+  table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+  .items-table > table { height: 201mm; }
   th, td { padding: 4px; font-size: 10px; border-right: 1px solid #999; }
   th:last-child, td:last-child { border-right: none; }
   th { border-bottom: 1px solid #999; background: #fff; font-weight: bold; text-transform: uppercase; font-size: 9px; }
-  td { vertical-align: top; border-bottom: none; font-weight: bold; } 
+  td { vertical-align: top; border-bottom: none; font-weight: bold; }
+  .filler td { height: 100%; }
+  tr { page-break-inside: avoid; page-break-after: auto; }
+  thead { display: table-header-group; }
   .totals-section { display: flex; padding: 4px; border-bottom: 1px solid #999; font-size: 9.5px; }
   .totals-left { flex: 1.5; padding-right: 10px; border-right: 1px solid #999; display: flex; flex-direction: column; justify-content: space-between; }
   .totals-right { flex: 1; padding-left: 10px; }
@@ -615,7 +636,7 @@ const template4 = (order, settings, docType = 'invoice') => {
             <td style="text-align:right">${formatIndianNumber(total, 2)}</td>
           </tr>`;
       }).join('')}
-      <tr style="height:100%"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr class="filler"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
       </tbody>
     </table>
   </div>

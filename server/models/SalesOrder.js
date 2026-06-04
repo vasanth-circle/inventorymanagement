@@ -122,6 +122,12 @@ const salesOrderSchema = new mongoose.Schema({
     // Site/Project tracking — for builder customers with multiple construction sites
     siteName: { type: String, default: '', trim: true },
     siteAddress: { type: String, default: '', trim: true },
+    customerType: {
+        type: String,
+        enum: ['Walk-in', 'Digital Marketing', 'Regular Customer', 'Referral', 'Other'],
+        default: 'Regular Customer'
+    },
+    referredBy: { type: String, default: '', trim: true },
 }, {
     timestamps: true,
 });

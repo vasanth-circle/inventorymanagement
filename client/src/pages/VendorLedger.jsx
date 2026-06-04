@@ -162,8 +162,22 @@ const VendorLedger = () => {
     };
 
     const vendor = data?.vendor;
-    const entries = Array.isArray(data?.ledger) ? data.ledger : [];
+    const backendEntries = Array.isArray(data?.ledger) ? data.ledger : [];
     const balance = vendor?.currentBalance ?? 0;
+
+    const entries = [...backendEntries];
+    if (backendEntries.length === 0 && vendor?.openingBalance) {
+        entries.unshift({
+            _id: 'bbf-entry',
+            date: vendor?.createdAt || new Date().toISOString(),
+            type: 'opening',
+            refNumber: 'OPENING',
+            description: 'Opening Balance',
+            debit: vendor.openingBalance < 0 ? Math.abs(vendor.openingBalance) : 0, // vendor owes us -> debit
+            credit: vendor.openingBalance > 0 ? vendor.openingBalance : 0, // we owe vendor -> credit
+            balance: vendor.openingBalance
+        });
+    }
 
     const typeStyle = (type) => {
         if (type === 'bill') return { bg: 'bg-red-50', badge: 'bg-red-100 text-red-700', label: '📦 Purchase' };

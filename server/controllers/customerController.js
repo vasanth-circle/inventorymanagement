@@ -173,10 +173,24 @@ export const getCustomerLedger = async (req, res, next) => {
             .sort({ date: -1, createdAt: -1 });
         const currentBalance = lastEntry ? lastEntry.balance : (customer.openingBalance || 0);
 
+        // Calculate Balance Brought Forward (bbf)
+        let bbf = customer.openingBalance || 0;
+        if (from) {
+            const lastPreviousEntry = await CustomerLedger.findOne({
+                customer: req.params.id,
+                ...tenantQuery(req),
+                date: { $lt: new Date(from) }
+            }).sort({ date: -1, createdAt: -1 });
+            if (lastPreviousEntry) {
+                bbf = lastPreviousEntry.balance;
+            }
+        }
+
         sendResponse(res, 200, {
             customer,
             entries,
             currentBalance,
+            bbf,
             totalPages: Math.ceil(total / limit),
             currentPage: Number(page),
             total

@@ -140,7 +140,10 @@ const StockReturn = () => {
             // Filter: only real invoices (not quotations/estimations), and not cancelled/void
             const filteredInvoices = orders.filter(o =>
                 !o.isEstimation &&
-                !['cancelled', 'void'].includes(o.status)
+                o.status !== 'quotation' &&
+                !['cancelled', 'void'].includes(o.status) &&
+                !o.orderNumber.startsWith('E-') &&
+                !o.orderNumber.startsWith('EST')
             );
             setInvoices(filteredInvoices);
         } catch (error) {

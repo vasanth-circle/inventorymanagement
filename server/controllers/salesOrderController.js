@@ -216,6 +216,65 @@ export const createBillLedgerEntry = async ({ orderId, tenantId, userId }) => {
     await syncSalesOrderLedger(orderId, tenantId, userId);
 };
 
+// Auto-dispatch (reduce stock) when an invoice is confirmed (for users bypassing dispatch module)
+export const autoDispatchConfirmedOrder = async (orderId, tenantId, userId) => {
+    try {
+        const order = await SalesOrder.findOne({ _id: orderId, tenantId });
+        if (!order || order.isEstimation || ['cancelled', 'void'].includes(order.status)) return;
+        
+        // Only auto-dispatch if it's confirmed
+        if (order.status !== 'confirmed') return;
+
+        let fullyDispatchedItemsCount = 0;
+
+        for (const orderItem of order.items) {
+            const itemDoc = await Item.findOne({ _id: orderItem.item, tenantId });
+            if (itemDoc) {
+                const dispatchQty = Number(orderItem.stockQty || orderItem.quantity);
+                const previousQuantity = itemDoc.quantity;
+
+                const batchId = orderItem.batchId;
+                let usedBatchNumber = '';
+
+                if (batchId && itemDoc.batches) {
+                    const batch = itemDoc.batches.id(batchId);
+                    if (batch) {
+                        batch.quantity -= dispatchQty;
+                        usedBatchNumber = batch.batchNumber;
+                    }
+                }
+
+                itemDoc.quantity -= dispatchQty;
+                await itemDoc.save();
+
+                // Record transaction
+                await Transaction.create({
+                    item: orderItem.item,
+                    type: 'outward',
+                    quantity: dispatchQty,
+                    reason: `Auto-Dispatch for Order ${order.orderNumber}`,
+                    notes: `System auto-dispatch upon invoice confirmation`,
+                    user: userId,
+                    previousQuantity,
+                    newQuantity: itemDoc.quantity,
+                    fromLocation: itemDoc.location,
+                    batchId: batchId || null,
+                    batchNumber: usedBatchNumber || null,
+                    tenantId
+                });
+                fullyDispatchedItemsCount++;
+            }
+        }
+
+        if (fullyDispatchedItemsCount === order.items.length && fullyDispatchedItemsCount > 0) {
+            order.status = 'dispatched';
+            await order.save();
+        }
+    } catch (err) {
+        console.error(`autoDispatchConfirmedOrder error for order ${orderId}:`, err.message);
+    }
+};
+
 
 // @desc    Get all sales orders
 // @route   GET /api/sales-orders
@@ -301,7 +360,8 @@ export const createSalesOrder = async (req, res, next) => {
             customer, items, orderDate, expectedShipmentDate, 
             notes, terms, isEstimation, status,
             loadingCharges, transportCharges, unloadingCharges, oldBalance, advanceAmount, taxAmount,
-            siteName, siteAddress, discountAmount
+            siteName, siteAddress, discountAmount,
+            customerType, referredBy
         } = req.body;
 
         // ── Pricing & Stock Validation ──
@@ -378,6 +438,8 @@ export const createSalesOrder = async (req, res, next) => {
                     discountAmount: discountAmount || 0,
                     siteName: siteName || '',
                     siteAddress: siteAddress || '',
+                    customerType: customerType || 'Regular Customer',
+                    referredBy: referredBy || '',
                     user: req.user._id,
                     tenantId: req.tenantId,
                 });
@@ -394,9 +456,12 @@ export const createSalesOrder = async (req, res, next) => {
             return sendError(res, 500, 'Failed to generate a unique order number');
         }
 
-        // ── Auto-create ledger debit entry ──
+        // ── Auto-create ledger debit entry and auto-dispatch stock ──
         if (order.customer) {
             await syncSalesOrderLedger(order._id, req.tenantId, req.user._id);
+        }
+        if (!order.isEstimation && order.status === 'confirmed') {
+            await autoDispatchConfirmedOrder(order._id, req.tenantId, req.user._id);
         }
 
         sendResponse(res, 201, order, isEstimation ? 'Estimation created successfully' : 'Sales order created successfully');
@@ -462,6 +527,9 @@ export const updateSOStatus = async (req, res, next) => {
         if (order.customer) {
             await syncSalesOrderLedger(order._id, req.tenantId, req.user._id);
         }
+        if (order.status === 'confirmed' && !order.isEstimation) {
+            await autoDispatchConfirmedOrder(order._id, req.tenantId, req.user._id);
+        }
 
         sendResponse(res, 200, order, `Sales order status updated to ${status}`);
     } catch (error) {
@@ -478,7 +546,8 @@ export const updateSalesOrder = async (req, res, next) => {
             customer, items, orderDate, expectedShipmentDate, 
             notes, terms, isEstimation, status,
             loadingCharges, transportCharges, unloadingCharges, oldBalance, advanceAmount, taxAmount,
-            siteName, siteAddress, discountAmount
+            siteName, siteAddress, discountAmount,
+            customerType, referredBy
         } = req.body;
 
         const settings = await Setting.findOne({ tenantId: req.tenantId });
@@ -524,6 +593,8 @@ export const updateSalesOrder = async (req, res, next) => {
         if (discountAmount !== undefined) order.discountAmount = discountAmount;
         if (siteName !== undefined) order.siteName = siteName;
         if (siteAddress !== undefined) order.siteAddress = siteAddress;
+        if (customerType !== undefined) order.customerType = customerType;
+        if (referredBy !== undefined) order.referredBy = referredBy;
 
         // totalAmount calculation
         const itemsTotal = order.items.reduce((sum, item) => sum + (item.total || 0), 0);

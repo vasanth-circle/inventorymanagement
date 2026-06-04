@@ -25,6 +25,9 @@ const SalesOrders = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [userFilter, setUserFilter] = useState('');
     const [typeFilter, setTypeFilter] = useState('');
+    const [fromDate, setFromDate] = useState('');
+    const [toDate, setToDate] = useState('');
+    const [usersList, setUsersList] = useState([]);
     // Sites for the currently selected customer
     const [selectedCustomerSites, setSelectedCustomerSites] = useState([]);
     // Mobile share bottom sheet
@@ -62,14 +65,28 @@ const SalesOrders = () => {
         advanceAmount: '',
         discountAmount: '',
         siteName: '',
-        siteAddress: ''
+        siteAddress: '',
+        customerType: 'Regular Customer',
+        referredBy: ''
     });
 
     useEffect(() => {
         fetchOrders();
         fetchCustomers();
         fetchItems();
+        fetchUsersList();
     }, []);
+
+    const fetchUsersList = async () => {
+        try {
+            const res = await axios.get('/api/auth/users', {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            setUsersList(res.data.data || res.data || []);
+        } catch (error) {
+            console.error('Failed to fetch users');
+        }
+    };
 
     const fetchOrders = async () => {
         try {
@@ -236,7 +253,9 @@ const SalesOrders = () => {
             advanceAmount: order.advanceAmount || 0,
             discountAmount: order.discountAmount || 0,
             siteName: order.siteName || '',
-            siteAddress: order.siteAddress || ''
+            siteAddress: order.siteAddress || '',
+            customerType: order.customerType || 'Regular Customer',
+            referredBy: order.referredBy || ''
         });
         setIsModalOpen(true);
     };
@@ -266,7 +285,9 @@ const SalesOrders = () => {
             advanceAmount: '',
             discountAmount: '',
             siteName: '',
-            siteAddress: ''
+            siteAddress: '',
+            customerType: 'Regular Customer',
+            referredBy: ''
         });
     };
 
@@ -377,10 +398,24 @@ const SalesOrders = () => {
         const matchType = !typeFilter || 
             (typeFilter === 'quote' && order.isEstimation) || 
             (typeFilter === 'invoice' && !order.isEstimation);
-        return matchSearch && matchUser && matchType;
+            
+        let matchDate = true;
+        if (fromDate || toDate) {
+            const orderDate = new Date(order.orderDate).setHours(0,0,0,0);
+            const start = fromDate ? new Date(fromDate).setHours(0,0,0,0) : null;
+            const end = toDate ? new Date(toDate).setHours(0,0,0,0) : null;
+            
+            if (start && end) {
+                matchDate = orderDate >= start && orderDate <= end;
+            } else if (start) {
+                matchDate = orderDate >= start;
+            } else if (end) {
+                matchDate = orderDate <= end;
+            }
+        }
+            
+        return matchSearch && matchUser && matchType && matchDate;
     });
-
-    const uniqueUsers = Array.from(new Set(orders.filter(o => o.user).map(o => JSON.stringify({ id: o.user._id, name: o.user.name })))).map(u => JSON.parse(u));
 
     return (
         <div className="space-y-6">
@@ -405,6 +440,23 @@ const SalesOrders = () => {
                     onChange={e => setSearchTerm(e.target.value)}
                     className="flex-1 min-w-[200px] h-10 px-4 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none shadow-sm"
                 />
+                <div className="flex items-center gap-2">
+                    <input
+                        type="date"
+                        value={fromDate}
+                        onChange={e => setFromDate(e.target.value)}
+                        className="h-10 px-3 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none shadow-sm"
+                        title="From Date"
+                    />
+                    <span className="text-gray-500 text-sm font-medium">to</span>
+                    <input
+                        type="date"
+                        value={toDate}
+                        onChange={e => setToDate(e.target.value)}
+                        className="h-10 px-3 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none shadow-sm"
+                        title="To Date"
+                    />
+                </div>
                 <select
                     value={typeFilter}
                     onChange={e => setTypeFilter(e.target.value)}
@@ -414,16 +466,15 @@ const SalesOrders = () => {
                     <option value="invoice">Invoices</option>
                     <option value="quote">Quotations</option>
                 </select>
-                <select
-                    value={userFilter}
-                    onChange={e => setUserFilter(e.target.value)}
-                    className="h-10 px-4 bg-white border border-gray-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none shadow-sm"
-                >
-                    <option value="">All Reps / Users</option>
-                    {uniqueUsers.map(u => (
-                        <option key={u.id} value={u.id}>{u.name}</option>
-                    ))}
-                </select>
+                <div className="min-w-[200px]">
+                    <SearchableSelect
+                        value={userFilter}
+                        onChange={e => setUserFilter(e.target.value)}
+                        options={usersList.map(u => ({ value: u._id, label: u.name }))}
+                        placeholder="All Reps / Users"
+                        searchPlaceholder="Search users..."
+                    />
+                </div>
             </div>            {loading ? (
                 <div className="flex justify-center items-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
@@ -808,6 +859,22 @@ const SalesOrders = () => {
                                         <label className="block text-sm font-bold text-gray-700 mb-2">Order Date</label>
                                         <input type="date" value={formData.orderDate?.split('T')[0]} onChange={(e) => setFormData({ ...formData, orderDate: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-primary-500" />
                                     </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Customer Type</label>
+                                        <select value={formData.customerType} onChange={(e) => setFormData({ ...formData, customerType: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 bg-white">
+                                            <option value="Regular Customer">Regular Customer</option>
+                                            <option value="Walk-in">Walk-in</option>
+                                            <option value="Digital Marketing">Digital Marketing</option>
+                                            <option value="Referral">Referral</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                    {formData.customerType === 'Referral' && (
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Referred By</label>
+                                            <input type="text" value={formData.referredBy} onChange={(e) => setFormData({ ...formData, referredBy: e.target.value })} placeholder="Name of referrer" className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-primary-500" />
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="space-y-4">

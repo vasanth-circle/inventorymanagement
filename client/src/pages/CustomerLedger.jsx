@@ -190,8 +190,27 @@ const CustomerLedger = () => {
     };
 
     const customer = data?.customer;
-    const entries = data?.entries || [];
+    const backendEntries = data?.entries || [];
     const balance = data?.currentBalance ?? 0;
+    const bbf = data?.bbf ?? 0;
+
+    const entries = [...backendEntries];
+    if (bbf !== 0 || backendEntries.length === 0 && customer?.openingBalance) {
+        // If there are no entries but an opening balance, or if there's a non-zero bbf
+        const displayBbf = bbf !== 0 ? bbf : (customer?.openingBalance || 0);
+        if (displayBbf !== 0) {
+            entries.unshift({
+                _id: 'bbf-entry',
+                date: from ? new Date(from).toISOString() : (customer?.createdAt || new Date().toISOString()),
+                type: 'opening',
+                refNumber: from ? 'B/F' : 'OPENING',
+                description: from ? 'Balance Brought Forward' : 'Opening Balance',
+                debit: displayBbf > 0 ? displayBbf : 0,
+                credit: displayBbf < 0 ? Math.abs(displayBbf) : 0,
+                balance: displayBbf
+            });
+        }
+    }
 
     const typeStyle = (type) => {
         if (type === 'bill') return { bg: 'bg-orange-50', badge: 'bg-orange-100 text-orange-700', label: '🧾 Bill' };

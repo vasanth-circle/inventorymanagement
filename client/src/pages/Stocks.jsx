@@ -8,7 +8,7 @@ const Stocks = () => {
         search: '',
         category: '',
         page: 1,
-        limit: 100, // Show more items on this summary page
+        limit: 5000, // Fetch all items for summary
     });
 
     useEffect(() => {
