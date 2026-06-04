@@ -28,7 +28,7 @@ export const INDUSTRY_PRESETS = {
         productFields: [
             { name: 'size', label: 'Tile Size (Dimensions)', type: 'text', placeholder: 'e.g. 600x600 or 12x18' },
             { name: 'pcsPerBox', label: 'Pcs per Box', type: 'number', default: 1 },
-            { name: 'sqFtPerPc', label: 'SqFt per Piece', type: 'number', required: true, precision: 3 },
+            { name: 'sqFtPerPc', label: 'SqFt per Piece', type: 'number', required: false, precision: 3 },
             { name: 'shadeNumber', label: 'Shade / Batch No', type: 'text' },
             { name: 'finish', label: 'Finish (Glossy/Matte)', type: 'select', options: ['Glossy', 'Matte', 'Satin', 'Sugar', 'Rustic'] }
         ],
