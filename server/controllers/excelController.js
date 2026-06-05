@@ -518,8 +518,8 @@ export const importBulkMapped = async (req, res, next) => {
                     purchasePrice: parseFloat(getCell(row, mapping.purchasePrice)) || 0,
                     sqFtPerPc: parseFloat(getCell(row, mapping.sqFtPerPc)) || 0,
                     sqFtPerBox: parseFloat(getCell(row, mapping.sqFtPerBox)) || 0,
-                    pcsPerBox: parseFloat(getCell(row, mapping.pcsPerBox)) || 1,
-                    unitType: mapping.unitType ? String(getCell(row, mapping.unitType) || 'box').trim().toLowerCase() : 'box',
+                    pcsPerBox: mapping.pcsPerBox ? (parseFloat(getCell(row, mapping.pcsPerBox)) || 1) : null,
+                    unitType: mapping.unitType ? String(getCell(row, mapping.unitType) || 'box').trim().toLowerCase() : null,
                     location: mapping.location ? String(getCell(row, mapping.location) || '').trim() : '',
                     minStockThreshold: parseFloat(getCell(row, mapping.minStockThreshold)) || 10,
                     description: mapping.description ? String(getCell(row, mapping.description) || '').trim() : '',
@@ -531,20 +531,24 @@ export const importBulkMapped = async (req, res, next) => {
                 if (!itemData.partNumber) delete itemData.partNumber;
 
                 // --- Resolve / auto-create Category (uses cache) ---
-                const categoryName = itemData.category || 'Uncategorized';
-                const category = await resolveCategory(categoryName);
-                const categoryId = category._id;
+                let categoryId = null;
+                if (itemData.category) {
+                    const category = await resolveCategory(itemData.category);
+                    categoryId = category._id;
+                }
 
                 // --- Resolve / auto-create Brand (uses cache) ---
-                const brandName = itemData.brand || '';
-                if (brandName) await resolveBrand(brandName, categoryId);
+                let brandName = itemData.brand || '';
+                if (brandName && categoryId) {
+                    await resolveBrand(brandName, categoryId);
+                }
 
                 // --- Resolve / auto-create Size (uses cache) ---
-                const sizeName = itemData.size || '';
+                let sizeName = itemData.size || '';
                 if (sizeName) await resolveSize(sizeName);
 
                 // --- Resolve / auto-create HSN (uses cache) ---
-                const hsnCode = itemData.hsn || '';
+                let hsnCode = itemData.hsn || '';
                 if (hsnCode) await resolveHsn(hsnCode);
 
                 // --- Check for existing item by SKU or name ---
@@ -611,11 +615,11 @@ export const importBulkMapped = async (req, res, next) => {
                     if (itemData.partNumber) item.partNumber = itemData.partNumber;
                     if (brandName) item.brand = brandName;
                     if (sizeName) item.size = sizeName;
-                    if (itemData.hsn) item.hsn = itemData.hsn;
+                    if (hsnCode) item.hsn = hsnCode;
                     if (itemData.sqFtPerPc > 0) item.sqFtPerPc = itemData.sqFtPerPc;
                     if (itemData.sqFtPerBox > 0) item.sqFtPerBox = itemData.sqFtPerBox;
-                    if (itemData.pcsPerBox >= 1) item.pcsPerBox = itemData.pcsPerBox;
-                    if (itemData.unitType) item.unitType = itemData.unitType;
+                    if (itemData.pcsPerBox !== null) item.pcsPerBox = itemData.pcsPerBox;
+                    if (itemData.unitType !== null) item.unitType = itemData.unitType;
                     if (categoryId) item.category = categoryId;
 
                     await item.save();
@@ -623,16 +627,17 @@ export const importBulkMapped = async (req, res, next) => {
                     results.updated.push({ name: item.name, sku: item.sku });
                 } else {
                     // --- Create new item (mirrors item create controller) ---
+                    const fallbackCategory = await resolveCategory('Uncategorized');
                     const newItemPayload = {
                         name: itemData.name,
-                        category: categoryId,
+                        category: categoryId || fallbackCategory._id,
                         quantity: hasQuantityMapping ? (stockQty || 0) : 0, // 0 if no qty column
                         price: itemData.price,
                         minStockThreshold: itemData.minStockThreshold,
-                        pcsPerBox: itemData.pcsPerBox,
+                        pcsPerBox: itemData.pcsPerBox !== null ? itemData.pcsPerBox : 1,
                         sqFtPerPc: itemData.sqFtPerPc,
                         sqFtPerBox: itemData.sqFtPerBox,
-                        unitType: itemData.unitType,
+                        unitType: itemData.unitType !== null ? itemData.unitType : 'box',
                         tenantId: req.tenantId,
                     };
 
