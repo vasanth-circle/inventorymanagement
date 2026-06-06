@@ -5,8 +5,8 @@ import { AuthContext } from '../context/AuthContext';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { confirmDelete } from '../utils/confirmHelper.jsx';
-import { printDocument } from '../utils/printTemplates';
-import { shareViaWhatsApp, shareViaEmail } from '../utils/shareUtils';
+import { printDocument, generateInvoiceHtml } from '../utils/printTemplates';
+import { shareViaWhatsApp, shareViaEmail, shareInvoiceAsPdf } from '../utils/shareUtils';
 import SearchableSelect from '../components/SearchableSelect';
 
 const STATUS_COLORS = {
@@ -542,7 +542,8 @@ const Quotations = () => {
                                         
                                         {/* Action Buttons */}
                                         <div className="flex gap-2">
-                                            <button onClick={() => handlePrint(q)} className="w-9 h-9 bg-gray-800 hover:bg-gray-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Print/PDF">📄</button>
+                                            <button onClick={() => handlePrint(q)} className="w-9 h-9 bg-gray-800 hover:bg-gray-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Print">🖨️</button>
+                                            <button onClick={() => shareInvoiceAsPdf(q, billingSettings, 'quotation', generateInvoiceHtml)} className="w-9 h-9 bg-purple-600 hover:bg-purple-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Share/Download PDF">📄</button>
                                             <button onClick={() => shareViaWhatsApp(q, billingSettings, 'quotation')} className="w-9 h-9 bg-green-600 hover:bg-green-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="WhatsApp Share">💬</button>
                                             <button onClick={() => shareViaEmail(q, billingSettings, 'quotation')} className="w-9 h-9 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Email Share">✉️</button>
                                             <button onClick={() => openEdit(q)} className="w-9 h-9 bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Edit">✏️</button>

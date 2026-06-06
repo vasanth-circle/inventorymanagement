@@ -80,7 +80,7 @@ const template1 = (order, settings, docType = 'invoice') => {
 <style>
   @page { size: A4; margin: 5mm; }
   body { font-family: 'Arial', sans-serif; font-size: 10px; color: #000; margin: 0; display: flex; justify-content: center; }
-  .container { border: 1.5px solid #000; width: 190mm; margin: 0 auto; }
+  .container { border: 1.5px solid #000; width: 190mm; margin: 0 auto; display: flex; flex-direction: column; min-height: 285mm; }
   .company-header { text-align: center; padding: 10px; border-bottom: 1.5px solid #000; position: relative; }
   .contact-info { position: absolute; top: 8px; right: 10px; font-size: 8px; font-weight: bold; text-align: right; }
   .company-header h1 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: 0.5px; }
@@ -91,9 +91,9 @@ const template1 = (order, settings, docType = 'invoice') => {
   .meta-box:first-child { border-right: 1.5px solid #000; }
   .meta-row { display: flex; margin-bottom: 2px; font-size: 9.5px; }
   .meta-label { width: 110px; font-weight: bold; }
-  .items-table { border-bottom: 1.5px solid #000; }
+  .items-table { border-bottom: 1.5px solid #000; flex: 1; }
   table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
-  .items-table > table { height: 201mm; }
+  .items-table > table { min-height: 201mm; height: 100%; }
   th, td { padding: 5px; font-size: 9.5px; border-right: 1.5px solid #000; }
   th:last-child, td:last-child { border-right: none; }
   th { border-bottom: 1.5px solid #000; background: #fff; font-weight: bold; text-transform: uppercase; font-size: 8.5px; }
@@ -558,7 +558,7 @@ const template4 = (order, settings, docType = 'invoice') => {
   .meta-label { width: 90px; font-weight: bold; }
   .items-table { border-bottom: 1px solid #999; flex: 1; }
   table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
-  .items-table > table { height: 201mm; }
+  .items-table > table { min-height: 201mm; height: 100%; }
   th, td { padding: 4px; font-size: 10px; border-right: 1px solid #999; }
   th:last-child, td:last-child { border-right: none; }
   th { border-bottom: 1px solid #999; background: #fff; font-weight: bold; text-transform: uppercase; font-size: 9px; }

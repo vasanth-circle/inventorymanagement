@@ -632,24 +632,8 @@ const SalesOrders = () => {
 
                 const handleShareFile = async () => {
                     try {
-                        const html = generateInvoiceHtml(order, billingSettings, docType);
-                        const blob = new Blob([html], { type: 'text/html' });
-                        const fileName = `${docLabel}-${order.orderNumber}.html`;
-                        const file = new File([blob], fileName, { type: 'text/html' });
-
-                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                            await navigator.share({
-                                title: `${docLabel} #${order.orderNumber}`,
-                                text: `${docLabel} from ${billingSettings?.companyName || ''} — ₹${(order.totalAmount || 0).toLocaleString('en-IN')}`,
-                                files: [file],
-                            });
-                            setShareMenuOrder(null);
-                        } else {
-                            // Desktop fallback: open in new tab → user can print/save as PDF
-                            const w = window.open('', '_blank', 'width=950,height=750');
-                            if (w) { w.document.write(html); w.document.close(); setTimeout(() => { w.focus(); w.print(); }, 600); }
-                            setShareMenuOrder(null);
-                        }
+                        await shareInvoiceAsPdf(order, billingSettings, docType, generateInvoiceHtml);
+                        setShareMenuOrder(null);
                     } catch (err) {
                         if (err?.name !== 'AbortError') {
                             toast.error('Could not share. Try Download instead.');
@@ -657,19 +641,15 @@ const SalesOrders = () => {
                     }
                 };
 
-                const handleDownload = () => {
-                    const html = generateInvoiceHtml(order, billingSettings, docType);
-                    const blob = new Blob([html], { type: 'text/html' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `${docLabel}-${order.orderNumber}.html`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                    toast.success('Downloaded! Open in browser → Print → Save as PDF');
-                    setShareMenuOrder(null);
+                const handleDownload = async () => {
+                    try {
+                        // The shareInvoiceAsPdf function already falls back to downloading if share is unavailable
+                        await shareInvoiceAsPdf(order, billingSettings, docType, generateInvoiceHtml);
+                        toast.success('Downloaded as PDF!');
+                        setShareMenuOrder(null);
+                    } catch (err) {
+                        toast.error('Download failed');
+                    }
                 };
 
                 return (
