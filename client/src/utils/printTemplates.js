@@ -30,24 +30,39 @@ export const numberToWords = (num) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared item rows builder
 // ─────────────────────────────────────────────────────────────────────────────
+// Detects if an item is a tile-type (has sqFt billing) vs simple qty (bags, paste, etc.)
+const isTileItem = (item) => !!(item.totalSqFt > 0 || item.boxCount > 0);
+
+// Detect if ANY item in order uses tiles columns — used to decide header labels
+const orderHasTileItems = (items) => items.some(isTileItem);
+const orderHasSimpleItems = (items) => items.some(i => !isTileItem(i));
+
+// Build smart item rows — tiles get BOX+SQFT columns, bags/paste get QTY only
 const buildItemRows = (items, settings, taxPct, isQuotation) => {
+    const mixedOrder = orderHasTileItems(items) && orderHasSimpleItems(items);
     return items.map((item, i) => {
         const total = item.total || item.quantity * item.price;
         const taxAmt = (total * taxPct / 100);
         const withTax = total + taxAmt;
-        // Single-line description: NAME-BRAND SIZE
         const brand = (item.brand || '').trim();
         const size  = (item.size  || '').trim();
         const namePart = (item.name || '').toUpperCase();
         const subPart  = [brand, size].filter(Boolean).join(' ');
         const fullDesc = subPart ? `${namePart}-${subPart}` : namePart;
+        const isTile = isTileItem(item);
+        // Qty cell: SqFt for tiles, plain Qty for bags/paste
+        const qtyCell = isTile
+            ? formatIndianNumber(item.totalSqFt, 2)
+            : formatIndianNumber(item.primaryQty || item.quantity || 0, 2);
+        // Box cell: Box count for tiles, empty for simple items
+        const boxCell = isTile
+            ? (item.boxCount ? `${item.boxCount} (${item.pcsPerBox || ''} pcs/box)` : '')
+            : '';
         return `<tr style="height:10px">
             <td style="text-align:center">${i + 1}</td>
             <td><strong>${fullDesc}</strong></td>
-            <td style="text-align:center;font-weight:bold">
-                ${item.totalSqFt ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}
-            </td>
-            <td style="text-align:center">${item.boxCount ? item.boxCount + ' (' + (item.pcsPerBox || '') + ' pcs/box)' : (item.secondaryQty ? item.secondaryQty : '')}</td>
+            <td style="text-align:center;font-weight:bold">${qtyCell}</td>
+            <td style="text-align:center">${boxCell}</td>
             <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
             <td style="text-align:right;font-weight:bold">${formatIndianNumber(withTax, 2)}</td>
         </tr>`;
@@ -69,7 +84,9 @@ const template1 = (order, settings, docType = 'invoice') => {
         : (s.documentConfig?.invoiceTitle || 'TAX INVOICE');
     const docNo = isQuotation ? (order.quotationNumber || order.orderNumber) : order.orderNumber;
     const docDate = isQuotation ? (order.quotationDate || order.orderDate || order.createdAt) : order.orderDate;
-    const qtyLabel = s.unitConfig?.quantityLabel || 'Qty (SqFt)';
+    const hasTiles = orderHasTileItems(order.items || []);
+    const hasSimple = orderHasSimpleItems(order.items || []);
+    const qtyLabel = hasTiles ? (s.unitConfig?.quantityLabel || 'SqFt') : 'Qty';
     const rateLabel = s.unitConfig?.rateLabel || 'Rate';
     const terms = order.terms || s.branding?.termsAndConditions || 'E. & O.E.';
     const logoSrc = s.branding?.logoUrl
@@ -144,7 +161,7 @@ const template1 = (order, settings, docType = 'invoice') => {
         <th width="4%">S.No</th>
         <th width="54%">Description of Goods</th>
         <th width="12%">${qtyLabel}</th>
-        <th width="9%">Box Qty</th>
+        <th width="9%">${hasTiles ? 'Box Qty' : ''}</th>
         <th width="10%">${rateLabel}</th>
         <th width="11%">Total</th>
       </tr></thead>
@@ -216,7 +233,8 @@ const template2 = (order, settings, docType = 'invoice') => {
     const title = isQuotation ? (s.documentConfig?.quotationTitle || 'QUOTATION') : (s.documentConfig?.invoiceTitle || 'TAX INVOICE');
     const docNo = isQuotation ? (order.quotationNumber || order.orderNumber) : order.orderNumber;
     const docDate = isQuotation ? (order.quotationDate || order.orderDate || order.createdAt) : order.orderDate;
-    const qtyLabel = s.unitConfig?.quantityLabel || 'Qty';
+    const hasTiles2 = orderHasTileItems(order.items || []);
+    const qtyLabel = hasTiles2 ? (s.unitConfig?.quantityLabel || 'SqFt') : 'Qty';
     const rateLabel = s.unitConfig?.rateLabel || 'Rate';
     const terms = order.terms || s.branding?.termsAndConditions || 'E. & O.E.';
     const sym = s.documentConfig?.currencySymbol || '₹';
@@ -313,7 +331,7 @@ const template2 = (order, settings, docType = 'invoice') => {
         <th width="4%">No.</th>
         <th width="54%">Description</th>
         <th width="11%">${qtyLabel}</th>
-        <th width="9%">Box Qty</th>
+        <th width="9%">${hasTiles2 ? 'Box Qty' : ''}</th>
         <th width="9%">${rateLabel}</th>
         <th width="13%">Total</th>
       </tr></thead>
@@ -321,11 +339,13 @@ const template2 = (order, settings, docType = 'invoice') => {
       ${order.items.map((item, i) => {
           const total = item.total || item.quantity * item.price;
           const withTax = total + (total * taxPct / 100);
+          const isTile = isTileItem(item);
+          const desc = (() => { const b=(item.brand||'').trim(); const sz=(item.size||'').trim(); const n=(item.name||'').toUpperCase(); const sub=[b,sz].filter(Boolean).join(' '); return sub ? n+'-'+sub : n; })();
           return `<tr>
             <td style="text-align:center">${i + 1}</td>
-            <td><strong>${(() => { const b=(item.brand||'').trim(); const sz=(item.size||'').trim(); const n=(item.name||'').toUpperCase(); const sub=[b,sz].filter(Boolean).join(' '); return sub ? n+'-'+sub : n; })()}</strong></td>
-            <td style="text-align:center;font-weight:bold">${item.totalSqFt ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}</td>
-            <td style="text-align:center">${item.boxCount ? `${item.boxCount} (${item.pcsPerBox || ''} pcs/box)` : (item.secondaryQty ? `${item.secondaryQty}` : '')}</td>
+            <td><strong>${desc}</strong></td>
+            <td style="text-align:center;font-weight:bold">${isTile ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}</td>
+            <td style="text-align:center">${isTile ? (item.boxCount ? `${item.boxCount} (${item.pcsPerBox || ''} pcs/box)` : '') : ''}</td>
             <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
             <td style="text-align:right;font-weight:bold">${formatIndianNumber(withTax, 2)}</td>
           </tr>`;
@@ -379,7 +399,8 @@ const template3 = (order, settings, docType = 'invoice') => {
     const title = isQuotation ? (s.documentConfig?.quotationTitle || 'Quotation') : (s.documentConfig?.invoiceTitle || 'Tax Invoice');
     const docNo = isQuotation ? (order.quotationNumber || order.orderNumber) : order.orderNumber;
     const docDate = isQuotation ? (order.quotationDate || order.orderDate || order.createdAt) : order.orderDate;
-    const qtyLabel = s.unitConfig?.quantityLabel || 'Qty';
+    const hasTiles3 = orderHasTileItems(order.items || []);
+    const qtyLabel = hasTiles3 ? (s.unitConfig?.quantityLabel || 'SqFt') : 'Qty';
     const rateLabel = s.unitConfig?.rateLabel || 'Rate';
     const terms = order.terms || s.branding?.termsAndConditions || 'E. & O.E.';
     const sym = s.documentConfig?.currencySymbol || '₹';
@@ -467,7 +488,7 @@ const template3 = (order, settings, docType = 'invoice') => {
       <th width="4%">No</th>
       <th width="54%">Description</th>
       <th width="11%">${qtyLabel}</th>
-      <th width="9%">Box Qty</th>
+      <th width="9%">${hasTiles3 ? 'Box Qty' : ''}</th>
       <th width="9%">${rateLabel}</th>
       <th width="13%">Total</th>
     </tr></thead>
@@ -475,13 +496,13 @@ const template3 = (order, settings, docType = 'invoice') => {
     ${order.items.map((item, i) => {
         const total = item.total || item.quantity * item.price;
         const withTax = total + (total * taxPct / 100);
+        const isTile = isTileItem(item);
+        const desc3 = (() => { const b=(item.brand||'').trim(); const sz=(item.size||'').trim(); const n=(item.name||'').toUpperCase(); const sub=[b,sz].filter(Boolean).join(' '); return sub ? n+'-'+sub : n; })();
         return `<tr>
           <td style="color:#aaa">${i + 1}</td>
-          <td><strong style="color:#111">${(() => { const b=(item.brand||'').trim(); const sz=(item.size||'').trim(); const n=(item.name||'').toUpperCase(); const sub=[b,sz].filter(Boolean).join(' '); return sub ? n+'-'+sub : n; })()}</strong></td>
-          <td style="text-align:center;font-weight:700">
-            ${item.totalSqFt ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}
-          </td>
-          <td style="text-align:center">${item.boxCount ? `${item.boxCount}-${item.pcsPerBox || ''} pcs/box` : (item.secondaryQty ? `${item.secondaryQty}` : '')}</td>
+          <td><strong style="color:#111">${desc3}</strong></td>
+          <td style="text-align:center;font-weight:700">${isTile ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}</td>
+          <td style="text-align:center">${isTile ? (item.boxCount ? `${item.boxCount} (${item.pcsPerBox || ''} pcs/box)` : '') : ''}</td>
           <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
           <td style="text-align:right;font-weight:700">${formatIndianNumber(withTax, 2)}</td>
         </tr>`;
@@ -535,8 +556,9 @@ const template4 = (order, settings, docType = 'invoice') => {
     const docNo = isQuotation ? (order.quotationNumber || order.orderNumber) : order.orderNumber;
     const docDate = isQuotation ? (order.quotationDate || order.orderDate || order.createdAt) : order.orderDate;
     
-    const secondaryLabel = s.unitConfig?.secondaryLabel || 'Box';
-    const qtyLabel = s.unitConfig?.quantityLabel || 'SqFt';
+    const hasTiles4 = orderHasTileItems(order.items || []);
+    const secondaryLabel = hasTiles4 ? (s.unitConfig?.secondaryLabel || 'Box') : '';
+    const qtyLabel = hasTiles4 ? (s.unitConfig?.quantityLabel || 'SqFt') : 'Qty';
     const rateLabel = s.unitConfig?.rateLabel || 'Rate';
     const terms = order.terms || s.branding?.termsAndConditions || 'E. & O.E.';
     const sym = s.documentConfig?.currencySymbol || '₹';
@@ -629,12 +651,17 @@ const template4 = (order, settings, docType = 'invoice') => {
           const namePart = (item.name || '').toUpperCase();
           const subPart  = [brand, size].filter(Boolean).join(' ');
           const fullDesc = subPart ? `${namePart}-${subPart}` : namePart;
-          
+          const isTile4 = isTileItem(item);
+          // Template 4: col order is Box | SqFt | Rate | Amount
+          const boxCell4 = isTile4 ? (item.boxCount ? String(item.boxCount) : '') : '';
+          const sqftCell4 = isTile4
+              ? formatIndianNumber(item.totalSqFt, 2)
+              : formatIndianNumber(item.primaryQty || item.quantity || 0, 2);
           return `<tr style="height:12px">
             <td style="text-align:center">${i + 1}</td>
             <td>${fullDesc}</td>
-            <td style="text-align:center">${item.boxCount ? item.boxCount : (item.secondaryQty || '')}</td>
-            <td style="text-align:center">${item.totalSqFt ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}</td>
+            <td style="text-align:center">${boxCell4}</td>
+            <td style="text-align:center">${sqftCell4}</td>
             <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
             <td style="text-align:right">${formatIndianNumber(total, 2)}</td>
           </tr>`;
