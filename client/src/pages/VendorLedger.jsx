@@ -196,7 +196,7 @@ const VendorLedger = () => {
                         value={selectedVendorId}
                         onChange={handleVendorChange}
                         placeholder="-- Select Vendor Account --"
-                        options={vendors.map(v => ({ value: v._id, label: v.companyName || v.name }))}
+                        options={vendors.map(v => ({ value: v._id, label: v.name }))}
                     />
                 </div>
                 <div className="flex gap-2">
