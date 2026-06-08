@@ -4,6 +4,10 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
     plugins: [react()],
+    build: {
+        target: 'es2015',
+        cssTarget: 'chrome61', // ensures better compatibility for older mobile browsers
+    },
     server: {
         port: 80,
         proxy: {
