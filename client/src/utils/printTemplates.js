@@ -30,6 +30,31 @@ export const numberToWords = (num) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared item rows builder
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Returns a human-readable unit label from item.unitType
+const getUnitLabel = (unitType) => {
+    const map = {
+        box:   'Box',
+        bag:   'Bags',
+        bags:  'Bags',
+        nos:   'Nos',
+        pcs:   'Pcs',
+        piece: 'Nos',
+        pieces:'Nos',
+        kg:    'Kgs',
+        kgs:   'Kgs',
+        ltr:   'Ltr',
+        litre: 'Ltr',
+        meter: 'Mtr',
+        mtr:   'Mtr',
+        sqft:  'SqFt',
+        roll:  'Roll',
+        set:   'Set',
+        unit:  'Units',
+    };
+    return map[(unitType || '').toLowerCase()] || (unitType || 'Nos');
+};
+
 // Detects if an item is a tile-type (has sqFt billing) vs simple qty (bags, paste, etc.)
 const isTileItem = (item) => !!(item.totalSqFt > 0 || item.boxCount > 0);
 
@@ -37,9 +62,14 @@ const isTileItem = (item) => !!(item.totalSqFt > 0 || item.boxCount > 0);
 const orderHasTileItems = (items) => items.some(isTileItem);
 const orderHasSimpleItems = (items) => items.some(i => !isTileItem(i));
 
-// Build smart item rows — tiles get BOX+SQFT columns, bags/paste get QTY only
+// Format qty with unit label: e.g. "4 (Box)", "20 (Bags)", "300.00 SqFt"
+const fmtQtyWithUnit = (qty, unitType, decimals = 2) => {
+    const label = getUnitLabel(unitType);
+    return `${formatIndianNumber(qty, decimals)} <span style="font-size:8px;font-weight:normal;color:#555">(${label})</span>`;
+};
+
+// Build smart item rows — tiles get BOX+SQFT columns, bags/paste get QTY with unit label
 const buildItemRows = (items, settings, taxPct, isQuotation) => {
-    const mixedOrder = orderHasTileItems(items) && orderHasSimpleItems(items);
     return items.map((item, i) => {
         const total = item.total || item.quantity * item.price;
         const taxAmt = (total * taxPct / 100);
@@ -50,13 +80,15 @@ const buildItemRows = (items, settings, taxPct, isQuotation) => {
         const subPart  = [brand, size].filter(Boolean).join(' ');
         const fullDesc = subPart ? `${namePart}-${subPart}` : namePart;
         const isTile = isTileItem(item);
-        // Qty cell: SqFt for tiles, plain Qty for bags/paste
+        const unitType = item.unitType || 'nos';
+
+        // For tiles: qty column = SqFt, box column = "N (Box)"
+        // For bags/paste/nos: qty column = "N (Bags)" / "N (Nos)" etc., box column = empty
         const qtyCell = isTile
-            ? formatIndianNumber(item.totalSqFt, 2)
-            : formatIndianNumber(item.primaryQty || item.quantity || 0, 2);
-        // Box cell: Box count for tiles, empty for simple items
+            ? `${formatIndianNumber(item.totalSqFt, 2)} <span style="font-size:8px;font-weight:normal;color:#555">(SqFt)</span>`
+            : fmtQtyWithUnit(item.primaryQty || item.quantity || 0, unitType);
         const boxCell = isTile
-            ? (item.boxCount ? `${item.boxCount} (${item.pcsPerBox || ''} pcs/box)` : '')
+            ? (item.boxCount ? `${item.boxCount} <span style="font-size:8px;font-weight:normal;color:#555">(Box)</span>` : '')
             : '';
         return `<tr style="height:10px">
             <td style="text-align:center">${i + 1}</td>
@@ -340,12 +372,17 @@ const template2 = (order, settings, docType = 'invoice') => {
           const total = item.total || item.quantity * item.price;
           const withTax = total + (total * taxPct / 100);
           const isTile = isTileItem(item);
+          const unitType2 = item.unitType || 'nos';
           const desc = (() => { const b=(item.brand||'').trim(); const sz=(item.size||'').trim(); const n=(item.name||'').toUpperCase(); const sub=[b,sz].filter(Boolean).join(' '); return sub ? n+'-'+sub : n; })();
+          const qtyC2 = isTile
+              ? `${formatIndianNumber(item.totalSqFt, 2)} <span style="font-size:8px;font-weight:normal;opacity:0.7">(SqFt)</span>`
+              : fmtQtyWithUnit(item.primaryQty || item.quantity || 0, unitType2);
+          const boxC2 = isTile ? (item.boxCount ? `${item.boxCount} <span style="font-size:8px;font-weight:normal;opacity:0.7">(Box)</span>` : '') : '';
           return `<tr>
             <td style="text-align:center">${i + 1}</td>
             <td><strong>${desc}</strong></td>
-            <td style="text-align:center;font-weight:bold">${isTile ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}</td>
-            <td style="text-align:center">${isTile ? (item.boxCount ? `${item.boxCount} (${item.pcsPerBox || ''} pcs/box)` : '') : ''}</td>
+            <td style="text-align:center;font-weight:bold">${qtyC2}</td>
+            <td style="text-align:center">${boxC2}</td>
             <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
             <td style="text-align:right;font-weight:bold">${formatIndianNumber(withTax, 2)}</td>
           </tr>`;
@@ -497,12 +534,17 @@ const template3 = (order, settings, docType = 'invoice') => {
         const total = item.total || item.quantity * item.price;
         const withTax = total + (total * taxPct / 100);
         const isTile = isTileItem(item);
+        const unitType3 = item.unitType || 'nos';
         const desc3 = (() => { const b=(item.brand||'').trim(); const sz=(item.size||'').trim(); const n=(item.name||'').toUpperCase(); const sub=[b,sz].filter(Boolean).join(' '); return sub ? n+'-'+sub : n; })();
+        const qtyC3 = isTile
+            ? `${formatIndianNumber(item.totalSqFt, 2)} <span style="font-size:8px;font-weight:normal;color:#aaa">(SqFt)</span>`
+            : fmtQtyWithUnit(item.primaryQty || item.quantity || 0, unitType3);
+        const boxC3 = isTile ? (item.boxCount ? `${item.boxCount} <span style="font-size:8px;font-weight:normal;color:#aaa">(Box)</span>` : '') : '';
         return `<tr>
           <td style="color:#aaa">${i + 1}</td>
           <td><strong style="color:#111">${desc3}</strong></td>
-          <td style="text-align:center;font-weight:700">${isTile ? formatIndianNumber(item.totalSqFt, 2) : formatIndianNumber(item.primaryQty || item.quantity || 0, 2)}</td>
-          <td style="text-align:center">${isTile ? (item.boxCount ? `${item.boxCount} (${item.pcsPerBox || ''} pcs/box)` : '') : ''}</td>
+          <td style="text-align:center;font-weight:700">${qtyC3}</td>
+          <td style="text-align:center">${boxC3}</td>
           <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
           <td style="text-align:right;font-weight:700">${formatIndianNumber(withTax, 2)}</td>
         </tr>`;
@@ -652,11 +694,14 @@ const template4 = (order, settings, docType = 'invoice') => {
           const subPart  = [brand, size].filter(Boolean).join(' ');
           const fullDesc = subPart ? `${namePart}-${subPart}` : namePart;
           const isTile4 = isTileItem(item);
-          // Template 4: col order is Box | SqFt | Rate | Amount
-          const boxCell4 = isTile4 ? (item.boxCount ? String(item.boxCount) : '') : '';
+          const unitType4 = item.unitType || 'nos';
+          // Template 4: col order is Box | SqFt/Qty | Rate | Amount
+          const boxCell4 = isTile4
+              ? (item.boxCount ? `${item.boxCount} <span style="font-size:8px;font-weight:normal;color:#555">(Box)</span>` : '')
+              : '';
           const sqftCell4 = isTile4
-              ? formatIndianNumber(item.totalSqFt, 2)
-              : formatIndianNumber(item.primaryQty || item.quantity || 0, 2);
+              ? `${formatIndianNumber(item.totalSqFt, 2)} <span style="font-size:8px;font-weight:normal;color:#555">(SqFt)</span>`
+              : fmtQtyWithUnit(item.primaryQty || item.quantity || 0, unitType4);
           return `<tr style="height:12px">
             <td style="text-align:center">${i + 1}</td>
             <td>${fullDesc}</td>
