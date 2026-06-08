@@ -14,9 +14,11 @@ const Inventory = () => {
         search: '',
         category: '',
         status: '',
+        location: '',
         page: 1,
         limit: 10,
     });
+
     const [pagination, setPagination] = useState({ totalPages: 1, currentPage: 1, totalItems: 0 });
     const [editingItem, setEditingItem] = useState(null);
     const [editFormData, setEditFormData] = useState({
