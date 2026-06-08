@@ -55,6 +55,10 @@ const purchaseOrderSchema = new mongoose.Schema({
         type: Number,
         required: true,
     },
+    roundOffAmount: {
+        type: Number,
+        default: 0,
+    },
     status: {
         type: String,
         enum: ['draft', 'issued', 'received', 'billed', 'void'],
@@ -85,7 +89,7 @@ purchaseOrderSchema.pre('validate', function (next) {
             item.total = item.quantity * item.price;
         }
     });
-    this.totalAmount = this.items.reduce((sum, item) => sum + item.total, 0);
+    this.totalAmount = this.items.reduce((sum, item) => sum + item.total, 0) + (Number(this.roundOffAmount) || 0);
     next();
 });
 

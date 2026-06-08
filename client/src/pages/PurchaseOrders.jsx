@@ -123,7 +123,21 @@ const PurchaseOrders = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post(API_URL, formData, {
+            let netTotal = formData.items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
+            let roundOffAmount = 0;
+            if (billingSettings?.documentConfig?.enableRoundOff) {
+                const roundedTotal = Math.round(netTotal);
+                roundOffAmount = roundedTotal - netTotal;
+                netTotal = roundedTotal;
+            }
+            
+            const submissionData = {
+                ...formData,
+                totalAmount: netTotal,
+                roundOffAmount
+            };
+
+            await axios.post(API_URL, submissionData, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
             toast.success('Purchase order created successfully');
@@ -496,8 +510,14 @@ const PurchaseOrders = () => {
                                 <div className="w-64 space-y-1.5 text-right">
                                     <div className="flex justify-between text-xs text-gray-500">
                                         <span>Subtotal</span>
-                                        <span>₹{selectedOrder.totalAmount.toLocaleString()}</span>
+                                        <span>₹{(selectedOrder.totalAmount - (selectedOrder.roundOffAmount || 0)).toLocaleString()}</span>
                                     </div>
+                                    {selectedOrder.roundOffAmount !== 0 && selectedOrder.roundOffAmount != null && (
+                                        <div className="flex justify-between text-xs text-blue-500">
+                                            <span>Round Off</span>
+                                            <span>{selectedOrder.roundOffAmount > 0 ? '+' : ''} ₹{selectedOrder.roundOffAmount.toFixed(2)}</span>
+                                        </div>
+                                    )}
                                     <div className="flex justify-between text-base font-bold text-gray-900 border-t border-gray-100 pt-2">
                                         <span>Total Amount</span>
                                         <span>₹{selectedOrder.totalAmount.toLocaleString()}</span>

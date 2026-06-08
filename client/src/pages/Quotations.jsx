@@ -166,8 +166,16 @@ const Quotations = () => {
             taxAmt = parseFloat((itemsTotal * taxRate / 100).toFixed(2));
         }
 
-        const net = itemsTotal + (parseFloat(formData.loadingCharges) || 0) + (parseFloat(formData.unloadingCharges) || 0) + (parseFloat(formData.transportCharges) || 0) + taxAmt + (parseFloat(formData.oldBalance) || 0) - (parseFloat(formData.discountAmount) || 0);
-        return { itemsTotal, taxAmount: taxAmt, net: parseFloat(net.toFixed(2)) };
+        let net = itemsTotal + (parseFloat(formData.loadingCharges) || 0) + (parseFloat(formData.unloadingCharges) || 0) + (parseFloat(formData.transportCharges) || 0) + taxAmt + (parseFloat(formData.oldBalance) || 0) - (parseFloat(formData.discountAmount) || 0);
+
+        let roundOffAmount = 0;
+        if (billingSettings?.documentConfig?.enableRoundOff) {
+            const roundedTotal = Math.round(net);
+            roundOffAmount = roundedTotal - net;
+            net = roundedTotal;
+        }
+
+        return { itemsTotal, taxAmount: taxAmt, net: parseFloat(net.toFixed(2)), roundOffAmount };
     };
 
     /* ── CRUD ──────────────────────────────────────────────────────── */
@@ -196,7 +204,8 @@ const Quotations = () => {
             oldBalance: Number(formData.oldBalance) || 0,
             discountAmount: Number(formData.discountAmount) || 0,
             itemsTotal, 
-            totalAmount: net 
+            totalAmount: net,
+            roundOffAmount
         };
         
         try {
@@ -319,7 +328,7 @@ const Quotations = () => {
 
     const uniqueUsers = Array.from(new Set(quotations.filter(q => q.user?._id).map(q => JSON.stringify({ id: q.user._id, name: q.user.name || 'Unknown' })))).map(u => JSON.parse(u));
 
-    const { itemsTotal, taxAmount, net } = calcTotals();
+    const { itemsTotal, taxAmount, net, roundOffAmount } = calcTotals();
 
     /* ── Render ────────────────────────────────────────────────────── */
     return (
@@ -845,6 +854,9 @@ const Quotations = () => {
                                 <div className="text-xs text-gray-400 space-y-1">
                                     <div>Items Total: ₹{itemsTotal.toLocaleString()}</div>
                                     <div>Old Balance Reflected: ₹{(Number(formData.oldBalance) || 0).toLocaleString()}</div>
+                                    {roundOffAmount !== 0 && (
+                                        <div className="text-blue-300">Round Off: {roundOffAmount > 0 ? '+' : ''} ₹{roundOffAmount.toFixed(2)}</div>
+                                    )}
                                 </div>
                                 <div className="text-right">
                                     <div className="text-xs text-gray-400 uppercase tracking-widest">Net Amount</div>

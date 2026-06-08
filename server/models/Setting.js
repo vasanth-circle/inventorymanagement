@@ -60,6 +60,7 @@ const settingSchema = new mongoose.Schema({
         taxLabel: { type: String, default: 'GST' },
         defaultTaxRate: { type: Number, default: 18 },
         showSecondaryQty: { type: Boolean, default: false },
+        enableRoundOff: { type: Boolean, default: false },
     },
 
     // ── Pricing & Workflow Configuration ────────────────────────────────

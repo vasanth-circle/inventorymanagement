@@ -184,6 +184,7 @@ const template1 = (order, settings, docType = 'invoice') => {
       ${(order.discountAmount || 0) > 0 ? `<div class="math-row" style="color:green"><span>Discount:</span><span>- ${s.documentConfig?.currencySymbol || '₹'}${formatIndianNumber(order.discountAmount, 2)}</span></div>` : ''}
       ${order.oldBalance > 0 ? `<div class="math-row"><span>Old Balance:</span><span>${s.documentConfig?.currencySymbol || '₹'}${formatIndianNumber(order.oldBalance, 2)}</span></div>` : ''}
       ${order.advanceAmount > 0 ? `<div class="math-row" style="color:green"><span>Advance:</span><span>- ${s.documentConfig?.currencySymbol || '₹'}${formatIndianNumber(order.advanceAmount, 2)}</span></div>` : ''}
+      ${order.roundOffAmount !== undefined && order.roundOffAmount !== 0 ? `<div class="math-row"><span>Round Off:</span><span>${order.roundOffAmount > 0 ? '+' : ''}${formatIndianNumber(order.roundOffAmount, 2)}</span></div>` : ''}
       <div class="grand-total"><span>NET AMOUNT:</span><span>${s.documentConfig?.currencySymbol || '₹'}${formatIndianNumber(order.totalAmount || 0, 2)}</span></div>
     </div>
   </div>
@@ -350,6 +351,7 @@ const template2 = (order, settings, docType = 'invoice') => {
       ${order.transportCharges > 0 ? `<div class="total-row"><span>Transport:</span><span>${sym}${formatIndianNumber(order.transportCharges, 2)}</span></div>` : ''}
       ${(order.discountAmount || 0) > 0 ? `<div class="total-row" style="color:green"><span>Discount:</span><span>- ${sym}${formatIndianNumber(order.discountAmount, 2)}</span></div>` : ''}
       ${order.advanceAmount > 0 ? `<div class="total-row" style="color:green"><span>Advance:</span><span>- ${sym}${formatIndianNumber(order.advanceAmount, 2)}</span></div>` : ''}
+      ${order.roundOffAmount !== undefined && order.roundOffAmount !== 0 ? `<div class="total-row"><span>Round Off:</span><span>${order.roundOffAmount > 0 ? '+' : ''}${formatIndianNumber(order.roundOffAmount, 2)}</span></div>` : ''}
       <div class="net-total"><span>TOTAL:</span><span>${sym}${formatIndianNumber(order.totalAmount || 0, 2)}</span></div>
     </div>
   </div>
@@ -505,6 +507,7 @@ const template3 = (order, settings, docType = 'invoice') => {
       ${order.transportCharges > 0 ? `<div class="total-row"><span class="lbl">Transport</span><span>${sym}${formatIndianNumber(order.transportCharges, 2)}</span></div>` : ''}
       ${(order.discountAmount||0) > 0 ? `<div class="total-row"><span class="lbl" style="color:green">Discount</span><span style="color:green">- ${sym}${formatIndianNumber(order.discountAmount, 2)}</span></div>` : ''}
       ${order.advanceAmount > 0 ? `<div class="total-row"><span class="lbl" style="color:green">Advance</span><span style="color:green">- ${sym}${formatIndianNumber(order.advanceAmount, 2)}</span></div>` : ''}
+      ${order.roundOffAmount !== undefined && order.roundOffAmount !== 0 ? `<div class="total-row"><span class="lbl">Round Off</span><span>${order.roundOffAmount > 0 ? '+' : ''}${formatIndianNumber(order.roundOffAmount, 2)}</span></div>` : ''}
       <div class="grand-row"><span>TOTAL</span><span>${sym}${formatIndianNumber(order.totalAmount || 0, 2)}</span></div>
     </div>
   </div>
@@ -664,6 +667,7 @@ const template4 = (order, settings, docType = 'invoice') => {
       ${order.transportCharges > 0 ? `<div class="total-row"><span>Transport:</span><span><b>${sym}${formatIndianNumber(order.transportCharges, 2)}</b></span></div>` : ''}
       ${(order.discountAmount || 0) > 0 ? `<div class="total-row"><span>Discount:</span><span><b>- ${sym}${formatIndianNumber(order.discountAmount, 2)}</b></span></div>` : ''}
       ${order.advanceAmount > 0 ? `<div class="total-row"><span>Advance:</span><span><b>- ${sym}${formatIndianNumber(order.advanceAmount, 2)}</b></span></div>` : ''}
+      ${order.roundOffAmount !== undefined && order.roundOffAmount !== 0 ? `<div class="total-row"><span>Round Off:</span><span><b>${order.roundOffAmount > 0 ? '+' : ''}${formatIndianNumber(order.roundOffAmount, 2)}</b></span></div>` : ''}
       <div class="net-total"><span>TOTAL:</span><span>${sym}${formatIndianNumber(order.totalAmount || 0, 2)}</span></div>
     </div>
   </div>

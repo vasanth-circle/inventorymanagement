@@ -212,7 +212,7 @@ const SalesOrders = () => {
 
     const calculateTotals = () => {
         const itemsTotal = formData.items.reduce((sum, item) => sum + (item.total || 0), 0);
-        const netTotal = itemsTotal + 
+        let netTotal = itemsTotal + 
             parseFloat(formData.loadingCharges || 0) + 
             parseFloat(formData.unloadingCharges || 0) + 
             parseFloat(formData.transportCharges || 0) + 
@@ -220,7 +220,15 @@ const SalesOrders = () => {
             parseFloat(formData.oldBalance || 0) - 
             parseFloat(formData.discountAmount || 0) -
             parseFloat(formData.advanceAmount || 0);
-        return { itemsTotal, netTotal };
+
+        let roundOffAmount = 0;
+        if (billingSettings?.documentConfig?.enableRoundOff) {
+            const roundedTotal = Math.round(netTotal);
+            roundOffAmount = roundedTotal - netTotal;
+            netTotal = roundedTotal;
+        }
+
+        return { itemsTotal, netTotal, roundOffAmount };
     };
 
     const handleEdit = (order) => {
@@ -294,8 +302,8 @@ const SalesOrders = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const { netTotal } = calculateTotals();
-            const submissionData = { ...formData, totalAmount: netTotal };
+            const { netTotal, roundOffAmount } = calculateTotals();
+            const submissionData = { ...formData, totalAmount: netTotal, roundOffAmount };
 
             // Frontend Pricing & Stock Validation
             let hasNegativeStock = false;
@@ -386,7 +394,7 @@ const SalesOrders = () => {
         }
     };
 
-    const { itemsTotal, netTotal } = calculateTotals();
+    const { itemsTotal, netTotal, roundOffAmount } = calculateTotals();
 
     const filteredOrders = orders.filter(order => {
         const matchSearch = !searchTerm || 
@@ -1111,6 +1119,12 @@ const SalesOrders = () => {
                                                 <div className="flex justify-between text-amber-700 font-semibold text-sm">
                                                     <span>🏷️ Discount:</span>
                                                     <span>- ₹{parseFloat(formData.discountAmount || 0).toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                            {roundOffAmount !== 0 && (
+                                                <div className="flex justify-between text-blue-600 font-semibold text-sm">
+                                                    <span>🔄 Round Off:</span>
+                                                    <span>{roundOffAmount > 0 ? '+' : ''} ₹{roundOffAmount.toFixed(2)}</span>
                                                 </div>
                                             )}
                                             <div className="flex justify-between text-2xl font-black text-gray-900 pt-2 border-t border-dashed">

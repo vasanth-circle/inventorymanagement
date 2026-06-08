@@ -58,6 +58,7 @@ const quotationSchema = new mongoose.Schema({
     // Totals
     itemsTotal: { type: Number, default: 0 },
     taxAmount: { type: Number, default: 0 },
+    roundOffAmount: { type: Number, default: 0 },
     taxRate: { type: Number, default: 0 },
     loadingCharges: { type: Number, default: 0 },
     unloadingCharges: { type: Number, default: 0 },
@@ -97,6 +98,7 @@ quotationSchema.pre('validate', function (next) {
         (Number(this.unloadingCharges) || 0) +
         (Number(this.transportCharges) || 0) +
         (Number(this.taxAmount) || 0) +
+        (Number(this.roundOffAmount) || 0) +
         (Number(this.oldBalance) || 0) -
         (Number(this.discountAmount) || 0)
     );

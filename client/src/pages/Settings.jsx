@@ -92,6 +92,7 @@ const Settings = () => {
             taxLabel: 'GST',
             defaultTaxRate: 18,
             showSecondaryQty: false,
+            enableRoundOff: false,
         },
         // Branding
         branding: {
@@ -161,6 +162,7 @@ const Settings = () => {
                     taxLabel: billingSettings.documentConfig?.taxLabel || 'GST',
                     defaultTaxRate: billingSettings.documentConfig?.defaultTaxRate ?? 18,
                     showSecondaryQty: billingSettings.documentConfig?.showSecondaryQty || false,
+                    enableRoundOff: billingSettings.documentConfig?.enableRoundOff || false,
                 },
                 branding: {
                     logoUrl: billingSettings.branding?.logoUrl || '',
@@ -663,6 +665,18 @@ const Settings = () => {
                                             name="defaultTaxRate" value={formData.documentConfig.defaultTaxRate}
                                             onChange={e => handleNested('documentConfig', 'defaultTaxRate', parseFloat(e.target.value))}
                                             placeholder="18" />
+                                        <div className="space-y-1 flex flex-col justify-center">
+                                            <label className="flex items-center gap-3 cursor-pointer mt-4">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.documentConfig.enableRoundOff || false}
+                                                    onChange={e => handleNested('documentConfig', 'enableRoundOff', e.target.checked)}
+                                                    className="w-5 h-5 text-rose-600 bg-gray-100 border-gray-300 rounded focus:ring-rose-500 cursor-pointer"
+                                                />
+                                                <span className="text-sm font-bold text-gray-700">Enable Amount Round Off</span>
+                                            </label>
+                                            <p className="text-[10px] text-gray-400 px-8">Automatically rounds the net total to the nearest whole number.</p>
+                                        </div>
                                     </div>
                                 </div>
 
