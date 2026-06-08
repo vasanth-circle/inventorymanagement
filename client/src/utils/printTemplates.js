@@ -164,11 +164,11 @@ const template1 = (order, settings, docType = 'invoice') => {
     <table>
       <thead><tr>
         <th width="4%">S.No</th>
-        <th width="54%">Description of Goods</th>
-        <th width="12%">${qtyLabel}</th>
-        <th width="9%">${hasTiles ? 'SqFt' : ''}</th>
-        <th width="10%">${rateLabel}</th>
-        <th width="11%">Total</th>
+        <th width="54%">Description</th>
+        <th width="12%">Box</th>
+        <th width="9%">SqFeet</th>
+        <th width="10%">Rate</th>
+        <th width="11%">Amount</th>
       </tr></thead>
       <tbody>
         ${buildItemRows(order.items, settings, taxPct, isQuotation)}
@@ -333,12 +333,12 @@ const template2 = (order, settings, docType = 'invoice') => {
   <div class="items-section">
     <table class="item-table">
       <thead><tr>
-        <th width="4%">No.</th>
+        <th width="4%">S.No</th>
         <th width="54%">Description</th>
-        <th width="11%">${qtyLabel}</th>
-        <th width="9%">${hasTiles2 ? 'SqFt' : ''}</th>
-        <th width="9%">${rateLabel}</th>
-        <th width="13%">Total</th>
+        <th width="11%">Box</th>
+        <th width="9%">SqFeet</th>
+        <th width="9%">Rate</th>
+        <th width="13%">Amount</th>
       </tr></thead>
       <tbody>
       ${order.items.map((item, i) => {
@@ -495,12 +495,12 @@ const template3 = (order, settings, docType = 'invoice') => {
 
   <table class="item-table">
     <thead><tr>
-      <th width="4%">No</th>
+      <th width="4%">S.No</th>
       <th width="54%">Description</th>
-      <th width="11%">${qtyLabel}</th>
-      <th width="9%">${hasTiles3 ? 'SqFt' : ''}</th>
-      <th width="9%">${rateLabel}</th>
-      <th width="13%">Total</th>
+      <th width="11%">Box</th>
+      <th width="9%">SqFeet</th>
+      <th width="9%">Rate</th>
+      <th width="13%">Amount</th>
     </tr></thead>
     <tbody>
     ${order.items.map((item, i) => {
@@ -652,9 +652,9 @@ const template4 = (order, settings, docType = 'invoice') => {
       <thead><tr>
         <th width="5%">S.No</th>
         <th width="45%" style="text-align:left">Description</th>
-        <th width="12%">${qtyLabel}</th>
-        <th width="10%">${hasTiles4 ? 'SqFt' : ''}</th>
-        <th width="12%">${rateLabel}</th>
+        <th width="12%">Box</th>
+        <th width="10%">SqFeet</th>
+        <th width="12%">Rate</th>
         <th width="16%">Amount</th>
       </tr></thead>
       <tbody>
