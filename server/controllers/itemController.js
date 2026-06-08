@@ -81,9 +81,11 @@ export const getItems = async (req, res, next) => {
                     $or: [{ location: null }, { location: '' }, { location: { $exists: false } }]
                 });
             } else {
-                query.location = location;
+                // Case-insensitive match so 'Goodown' matches 'GOODOWN' stored in DB
+                andConditions.push({ location: { $regex: new RegExp(`^${location.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
             }
         }
+
 
         if (andConditions.length > 0) {
             query.$and = andConditions;
