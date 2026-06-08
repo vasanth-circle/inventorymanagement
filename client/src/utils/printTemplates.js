@@ -58,10 +58,15 @@ const buildItemRows = (items, settings, taxPct, isQuotation) => {
         const fullDesc = subPart ? `${namePart}-${subPart}` : namePart;
         
         const isTile = isTileItem(item);
-        const u = getUnitLabel(item);
-        const unitSuffix = u ? ` (${u})` : '';
-        const qtyVal = formatIndianNumber(item.primaryQty || item.quantity || 0, 2);
-        const qtyCell = `${qtyVal}${unitSuffix}`;
+        let qtyCell;
+        if (isTile) {
+            qtyCell = item.boxCount ? Number(item.boxCount).toString() : '';
+        } else {
+            const u = getUnitLabel(item);
+            const unitSuffix = u ? ` (${u})` : '';
+            const qtyVal = formatIndianNumber(item.primaryQty || item.quantity || 0, 2);
+            qtyCell = `${qtyVal}${unitSuffix}`;
+        }
         const sqftCell = isTile ? formatIndianNumber(item.totalSqFt, 2) : '';
 
         return `<tr style="height:10px">
@@ -345,10 +350,15 @@ const template2 = (order, settings, docType = 'invoice') => {
           const total = item.total || item.quantity * item.price;
           const withTax = total + (total * taxPct / 100);
           const isTile = isTileItem(item);
-          const u = getUnitLabel(item);
-          const unitSuffix = u ? ` (${u})` : '';
-          const qtyVal = formatIndianNumber(item.primaryQty || item.quantity || 0, 2);
-          const qtyCell = `${qtyVal}${unitSuffix}`;
+          let qtyCell;
+          if (isTile) {
+              qtyCell = item.boxCount ? Number(item.boxCount).toString() : '';
+          } else {
+              const u = getUnitLabel(item);
+              const unitSuffix = u ? ` (${u})` : '';
+              const qtyVal = formatIndianNumber(item.primaryQty || item.quantity || 0, 2);
+              qtyCell = `${qtyVal}${unitSuffix}`;
+          }
           const sqftCell = isTile ? formatIndianNumber(item.totalSqFt, 2) : '';
           const desc = (() => { const b=(item.brand||'').trim(); const sz=(item.size||'').trim(); const n=(item.name||'').toUpperCase(); const sub=[b,sz].filter(Boolean).join(' '); return sub ? n+'-'+sub : n; })();
           return `<tr>
@@ -507,10 +517,15 @@ const template3 = (order, settings, docType = 'invoice') => {
         const total = item.total || item.quantity * item.price;
         const withTax = total + (total * taxPct / 100);
         const isTile = isTileItem(item);
-        const u = getUnitLabel(item);
-        const unitSuffix = u ? ` (${u})` : '';
-        const qtyVal = formatIndianNumber(item.primaryQty || item.quantity || 0, 2);
-        const qtyCell = `${qtyVal}${unitSuffix}`;
+        let qtyCell;
+        if (isTile) {
+            qtyCell = item.boxCount ? Number(item.boxCount).toString() : '';
+        } else {
+            const u = getUnitLabel(item);
+            const unitSuffix = u ? ` (${u})` : '';
+            const qtyVal = formatIndianNumber(item.primaryQty || item.quantity || 0, 2);
+            qtyCell = `${qtyVal}${unitSuffix}`;
+        }
         const sqftCell = isTile ? formatIndianNumber(item.totalSqFt, 2) : '';
         const desc3 = (() => { const b=(item.brand||'').trim(); const sz=(item.size||'').trim(); const n=(item.name||'').toUpperCase(); const sub=[b,sz].filter(Boolean).join(' '); return sub ? n+'-'+sub : n; })();
         return `<tr>
@@ -666,10 +681,15 @@ const template4 = (order, settings, docType = 'invoice') => {
           const subPart  = [brand, size].filter(Boolean).join(' ');
           const fullDesc = subPart ? `${namePart}-${subPart}` : namePart;
           const isTile4 = isTileItem(item);
-          const u = getUnitLabel(item);
-          const unitSuffix = u ? ` (${u})` : '';
-          const qtyVal = formatIndianNumber(item.primaryQty || item.quantity || 0, 2);
-          const qtyCell = `${qtyVal}${unitSuffix}`;
+          let qtyCell;
+          if (isTile4) {
+              qtyCell = item.boxCount ? Number(item.boxCount).toString() : '';
+          } else {
+              const u = getUnitLabel(item);
+              const unitSuffix = u ? ` (${u})` : '';
+              const qtyVal = formatIndianNumber(item.primaryQty || item.quantity || 0, 2);
+              qtyCell = `${qtyVal}${unitSuffix}`;
+          }
           const sqftCell = isTile4 ? formatIndianNumber(item.totalSqFt, 2) : '';
           
           return `<tr style="height:12px">
