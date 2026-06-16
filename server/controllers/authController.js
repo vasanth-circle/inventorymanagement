@@ -353,7 +353,7 @@ export const updateProfile = async (req, res, next) => {
 export const updateUser = async (req, res, next) => {
     console.log('UpdateUser Request Body:', JSON.stringify(req.body, null, 2));
     try {
-        const { name, email, role, inventoryRole, isActive, menuAccess, allowedMenus } = req.body;
+        const { name, email, phone, role, inventoryRole, isActive, menuAccess, allowedMenus } = req.body;
         const userId = req.params.id;
 
         const tenantId = req.user.tenantId ? req.user.tenantId.toString() : null;
@@ -381,6 +381,7 @@ export const updateUser = async (req, res, next) => {
         // Update user fields
         if (name) user.name = name;
         if (email) user.email = email;
+        if (phone !== undefined) user.phone = phone;
         if (role) user.role = role;
         if (isActive !== undefined) user.isActive = isActive;
         if (menuAccess) user.menuAccess = menuAccess;

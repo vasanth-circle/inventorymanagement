@@ -314,7 +314,7 @@ export const getSalesOrders = async (req, res, next) => {
         const orders = await SalesOrder.find(query)
             .populate('customer', 'name companyName phone gstin address')
             .populate({ path: 'user', model: User, select: 'name phone' })
-            .populate('items.item', 'name brand size hsn sku barcode')
+            .populate('items.item', 'name brand size hsn sku barcode unitType sqFtPerPc pcsPerBox')
             .sort({ createdAt: -1 })
             .limit(limit * 1)
             .skip((page - 1) * limit);
@@ -360,7 +360,7 @@ export const createSalesOrder = async (req, res, next) => {
             customer, items, orderDate, expectedShipmentDate, 
             notes, terms, isEstimation, status,
             loadingCharges, transportCharges, unloadingCharges, oldBalance, advanceAmount, taxAmount,
-            siteName, siteAddress, discountAmount,
+            siteName, siteAddress, discountAmount, roundOffAmount,
             customerType, referredBy
         } = req.body;
 
@@ -436,6 +436,7 @@ export const createSalesOrder = async (req, res, next) => {
                     advanceAmount: advanceAmount || 0,
                     taxAmount: taxAmount || 0,
                     discountAmount: discountAmount || 0,
+                    roundOffAmount: roundOffAmount || 0,
                     siteName: siteName || '',
                     siteAddress: siteAddress || '',
                     customerType: customerType || 'Regular Customer',
@@ -546,7 +547,7 @@ export const updateSalesOrder = async (req, res, next) => {
             customer, items, orderDate, expectedShipmentDate, 
             notes, terms, isEstimation, status,
             loadingCharges, transportCharges, unloadingCharges, oldBalance, advanceAmount, taxAmount,
-            siteName, siteAddress, discountAmount,
+            siteName, siteAddress, discountAmount, roundOffAmount,
             customerType, referredBy
         } = req.body;
 
@@ -591,6 +592,7 @@ export const updateSalesOrder = async (req, res, next) => {
         if (advanceAmount !== undefined) order.advanceAmount = advanceAmount;
         if (taxAmount !== undefined) order.taxAmount = taxAmount;
         if (discountAmount !== undefined) order.discountAmount = discountAmount;
+        if (roundOffAmount !== undefined) order.roundOffAmount = roundOffAmount;
         if (siteName !== undefined) order.siteName = siteName;
         if (siteAddress !== undefined) order.siteAddress = siteAddress;
         if (customerType !== undefined) order.customerType = customerType;
@@ -606,7 +608,8 @@ export const updateSalesOrder = async (req, res, next) => {
             Number(order.taxAmount) + 
             Number(order.oldBalance) -
             Number(order.discountAmount || 0) -
-            Number(order.advanceAmount)
+            Number(order.advanceAmount) +
+            Number(order.roundOffAmount || 0)
         );
 
         await order.save();

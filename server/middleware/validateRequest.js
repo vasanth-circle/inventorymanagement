@@ -46,6 +46,7 @@ export const schemas = {
     updateUser: Joi.object({
         name: Joi.string().optional().trim(),
         email: Joi.string().email().optional().trim().lowercase(),
+        phone: Joi.string().optional().allow('', null).trim(),
         role: Joi.string().optional().allow(''),
         inventoryRole: Joi.string().optional().allow('', null),
         menuAccess: Joi.string().valid('all', 'specific', null).optional(),

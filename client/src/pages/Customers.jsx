@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 import { toast } from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
 import { LockOpenIcon, BookOpenIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
@@ -45,18 +45,15 @@ const Customers = () => {
     const fetchCustomers = async () => {
         try {
             setLoading(true);
-            const res = await axios.get(API_URL, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
+            const res = await api.get(API_URL);
             const list = res.data.data.customers;
             setCustomers(list);
             // Fetch balances in parallel (non-blocking, silent on individual failures)
-            const token = localStorage.getItem('token');
             const balanceMap = {};
             await Promise.allSettled(
                 list.map(async (c) => {
                     try {
-                        const r = await axios.get(`${API_URL}/${c._id}/balance`, { headers: { Authorization: `Bearer ${token}` } });
+                        const r = await api.get(`${API_URL}/${c._id}/balance`);
                         balanceMap[c._id] = r.data.data.balance;
                     } catch { balanceMap[c._id] = c.currentBalance || 0; }
                 })
@@ -131,14 +128,10 @@ const Customers = () => {
             };
 
             if (editingCustomer) {
-                await axios.put(`${API_URL}/${editingCustomer._id}`, data, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                });
+                await api.put(`${API_URL}/${editingCustomer._id}`, data);
                 toast.success('Customer updated successfully');
             } else {
-                await axios.post(API_URL, data, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                });
+                await api.post(API_URL, data);
                 toast.success('Customer added successfully');
             }
             setIsModalOpen(false);
@@ -153,9 +146,7 @@ const Customers = () => {
         if (!unlockComment.trim()) return toast.error('Unlock comment is required');
         
         try {
-            await axios.post(`${API_URL}/${unlockCustomerData._id}/unlock`, { unlockComment }, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
+            await api.post(`${API_URL}/${unlockCustomerData._id}/unlock`, { unlockComment });
             toast.success(`${unlockCustomerData.companyName || unlockCustomerData.name} has been unlocked for 24 hours.`);
             setUnlockModalOpen(false);
             setUnlockComment('');

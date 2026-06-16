@@ -192,6 +192,7 @@ export const convertToInvoice = async (req, res, next) => {
             unloadingCharges: quotation.unloadingCharges || 0,
             transportCharges: quotation.transportCharges,
             oldBalance: quotation.oldBalance || 0,
+            roundOffAmount: quotation.roundOffAmount || 0,
             advanceAmount: Number(req.body.advanceAmount) || 0,
             notes: quotation.notes,
             terms: quotation.terms,
