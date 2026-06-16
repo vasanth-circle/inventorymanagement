@@ -19,7 +19,7 @@ export default function ProductShowcaseEdit() {
     const fileInputRef = useRef(null);
 
     const getHeaders = () => ({
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
+        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
         'x-tenant-id': user?.tenantId,
     });
 

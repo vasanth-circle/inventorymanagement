@@ -205,7 +205,7 @@ const Profile = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <button 
                             onClick={() => {
-                                localStorage.setItem('activeApp', 'inventory');
+                                sessionStorage.setItem('activeApp', 'inventory');
                                 window.location.href = '/dashboard';
                             }}
                             className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-xl hover:border-primary-500 hover:bg-primary-50 transition-all group cursor-pointer"
@@ -216,7 +216,7 @@ const Profile = () => {
                         </button>
                         <button 
                             onClick={() => {
-                                localStorage.setItem('activeApp', 'assets');
+                                sessionStorage.setItem('activeApp', 'assets');
                                 window.location.href = '/assets/dashboard';
                             }}
                             className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all group cursor-pointer"

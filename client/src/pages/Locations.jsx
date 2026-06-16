@@ -8,7 +8,7 @@ const Locations = () => {
     const [editingLocation, setEditingLocation] = useState(null);
     
     // Determine the type based on the active application
-    const activeApp = localStorage.getItem('activeApp') || 'inventory';
+    const activeApp = sessionStorage.getItem('activeApp') || 'inventory';
     const [formData, setFormData] = useState({ name: '', description: '' });
     const [locationType] = useState(activeApp === 'assets' ? 'asset' : 'inventory');
 

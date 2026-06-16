@@ -27,7 +27,7 @@ const Vendors = () => {
         try {
             setLoading(true);
             const res = await axios.get(API_URL, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
             });
             setVendors(res.data.data.vendors);
         } catch (error) {
@@ -69,12 +69,12 @@ const Vendors = () => {
         try {
             if (editingVendor) {
                 await axios.put(`${API_URL}/${editingVendor._id}`, formData, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
                 });
                 toast.success('Vendor updated successfully');
             } else {
                 await axios.post(API_URL, formData, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
                 });
                 toast.success('Vendor added successfully');
             }

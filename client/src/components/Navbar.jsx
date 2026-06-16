@@ -7,7 +7,7 @@ const Navbar = ({ toggleSidebar }) => {
     const { billingSettings } = useContext(InventoryContext);
     const { user } = useContext(AuthContext);
 
-    const activeApp = localStorage.getItem('activeApp') || 'inventory';
+    const activeApp = sessionStorage.getItem('activeApp') || 'inventory';
 
     return (
         <header className="lg:hidden bg-[#1a1f2e] text-white px-4 py-2 flex items-center justify-between sticky top-0 z-50 shadow-sm print:hidden">

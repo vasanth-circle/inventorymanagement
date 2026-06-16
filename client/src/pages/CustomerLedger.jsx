@@ -6,7 +6,7 @@ import { printAccountStatement } from '../utils/printTemplates';
 import { AuthContext } from '../context/AuthContext';
 import FullScreenModal from '../components/FullScreenModal';
 const api = (path, opts = {}) =>
-    axios({ url: `/api${path}`, ...opts, headers: { Authorization: `Bearer ${localStorage.getItem('token')}`, ...opts.headers } });
+    axios({ url: `/api${path}`, ...opts, headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, ...opts.headers } });
 
 const fmt = (n) => Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 

@@ -13,7 +13,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     const [expandedGroup, setExpandedGroup] = useState(null);
     const [showAppSwitcher, setShowAppSwitcher] = useState(false);
 
-    const activeApp = localStorage.getItem('activeApp') || 'inventory';
+    const activeApp = sessionStorage.getItem('activeApp') || 'inventory';
     const companyLogo = billingSettings?.branding?.logoUrl;
 
     let navGroups = [];
@@ -215,7 +215,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                                     
                                     <button 
                                         onClick={() => {
-                                            localStorage.setItem('activeApp', 'inventory');
+                                            sessionStorage.setItem('activeApp', 'inventory');
                                             window.location.href = '/dashboard';
                                         }}
                                         className={`w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center space-x-3 transition-colors ${activeApp === 'inventory' ? 'bg-primary-50' : ''}`}
@@ -229,7 +229,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
                                     <button 
                                         onClick={() => {
-                                            localStorage.setItem('activeApp', 'assets');
+                                            sessionStorage.setItem('activeApp', 'assets');
                                             window.location.href = '/assets/dashboard';
                                         }}
                                         className={`w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center space-x-3 border-t border-gray-100 transition-colors ${activeApp === 'assets' ? 'bg-blue-50' : ''}`}

@@ -27,7 +27,7 @@ export default function ProductShowcase() {
     const canManage = isAdmin || user?.role === 'manager';
 
     const getHeaders = () => ({
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
+        Authorization: `Bearer ${sessionStorage.getItem('token')}`,
         'x-tenant-id': user?.tenantId,
     });
 

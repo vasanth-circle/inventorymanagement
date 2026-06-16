@@ -80,7 +80,7 @@ const SalesOrders = () => {
     const fetchUsersList = async () => {
         try {
             const res = await axios.get('/api/auth/users', {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
             });
             setUsersList(res.data.data || res.data || []);
         } catch (error) {
@@ -91,7 +91,7 @@ const SalesOrders = () => {
     const fetchOrders = async () => {
         try {
             const res = await axios.get(`${API_URL}?limit=1000`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
             });
             setOrders(res.data.data?.orders || res.data.orders || []);
             setLoading(false);
@@ -104,7 +104,7 @@ const SalesOrders = () => {
     const fetchCustomers = async () => {
         try {
             const res = await axios.get(`${CUSTOMERS_API}?limit=5000`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
             });
             setCustomers(res.data.data?.customers || res.data.customers || []);
         } catch (error) {
@@ -115,7 +115,7 @@ const SalesOrders = () => {
     const fetchItems = async () => {
         try {
             const res = await axios.get(`${ITEMS_API}?limit=5000`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
             });
             setItems(res.data.items || []);
         } catch (error) {
@@ -158,14 +158,14 @@ const SalesOrders = () => {
             try {
                 // Load balance
                 const res = await axios.get(`${CUSTOMERS_API}/${customerId}/balance`, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
                 });
                 const bal = res.data.data?.balance ?? 0;
                 setFormData(prev => ({ ...prev, oldBalance: bal }));
 
                 // Load customer sites
                 const custRes = await axios.get(`${CUSTOMERS_API}/${customerId}`, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
                 });
                 const sites = (custRes.data.data?.sites || []).filter(s => s.isActive !== false);
                 setSelectedCustomerSites(sites);
@@ -335,12 +335,12 @@ const SalesOrders = () => {
             
             if (editingOrder) {
                 await axios.put(`${API_URL}/${editingOrder._id}`, submissionData, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
                 });
                 toast.success('Order updated successfully');
             } else {
                 await axios.post(API_URL, submissionData, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
                 });
                 toast.success('Order created successfully');
             }
@@ -357,7 +357,7 @@ const SalesOrders = () => {
 
         try {
             await axios.delete(`${API_URL}/${orderId}`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
             });
             toast.success('Deleted successfully and stock reverted');
             fetchOrders();
@@ -369,7 +369,7 @@ const SalesOrders = () => {
     const handleStatusUpdate = async (id, status) => {
         try {
             await axios.patch(`${API_URL}/${id}/status`, { status }, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
             });
             toast.success(`Order marked as ${status}`);
             fetchOrders();

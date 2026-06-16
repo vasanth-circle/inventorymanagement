@@ -161,6 +161,8 @@ export const InventoryProvider = ({ children }) => {
                     updatedRow.totalSqFt = qty;
                     updatedRow.totalPcs = sqFtPerPc > 0 ? qty / sqFtPerPc : 0;
                     updatedRow.boxCount = pcsPerBox > 0 ? updatedRow.totalPcs / pcsPerBox : 0;
+                    updatedRow.stockQty = updatedRow.boxCount;
+                    updatedRow.stockUnit = 'boxes';
                 } else if (billingUnit === 'boxes') {
                     updatedRow.boxCount = qty;
                     updatedRow.totalPcs = qty * pcsPerBox;
@@ -183,6 +185,8 @@ export const InventoryProvider = ({ children }) => {
                 
                 if (billingUnit === 'sqft') {
                     updatedRow.quantity = updatedRow.totalSqFt;
+                    updatedRow.stockQty = boxes;
+                    updatedRow.stockUnit = 'boxes';
                 } else if (billingUnit === 'boxes') {
                     updatedRow.quantity = boxes;
                     updatedRow.stockQty = boxes;
@@ -196,6 +200,8 @@ export const InventoryProvider = ({ children }) => {
                 // Adjust quantity display when user switches mode
                 if (value === 'sqft') {
                     updatedRow.quantity = updatedRow.totalSqFt || 0;
+                    updatedRow.stockQty = updatedRow.boxCount || 0;
+                    updatedRow.stockUnit = 'boxes';
                 } else if (value === 'boxes') {
                     updatedRow.quantity = updatedRow.boxCount || 0;
                 } else {
@@ -232,6 +238,8 @@ export const InventoryProvider = ({ children }) => {
                     updatedRow.totalPcs = sqFtPerPc > 0 ? sqft / sqFtPerPc : 0;
                     updatedRow.boxCount = pcsPerBox > 0 ? updatedRow.totalPcs / pcsPerBox : 0;
                     updatedRow.quantity = sqft;
+                    updatedRow.stockQty = updatedRow.boxCount;
+                    updatedRow.stockUnit = 'boxes';
                 }
             }
             // CRITICAL: For tiles, total is ALWAYS totalSqFt × ratePerSqft

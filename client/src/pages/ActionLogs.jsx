@@ -19,7 +19,7 @@ const ActionLogs = () => {
         try {
             setLoading(true);
             const res = await axios.get(`${API_URL}?page=${page}&limit=20&entityNumber=${searchTerm}`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
             });
             setLogs(res.data.data?.logs || []);
             setTotalPages(res.data.data?.totalPages || 1);

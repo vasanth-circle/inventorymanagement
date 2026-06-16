@@ -66,7 +66,7 @@ function AppLayout({ children }) {
 }
 
 function App() {
-    const activeApp = localStorage.getItem('activeApp') || 'inventory';
+    const activeApp = sessionStorage.getItem('activeApp') || 'inventory';
     const fallbackRoute = activeApp === 'assets' ? '/assets/dashboard' : '/dashboard';
 
     return (

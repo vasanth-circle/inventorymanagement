@@ -11,8 +11,8 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const verifyToken = async () => {
-            const token = localStorage.getItem('token');
-            const userData = localStorage.getItem('user');
+            const token = sessionStorage.getItem('token');
+            const userData = sessionStorage.getItem('user');
 
             if (token && userData) {
                 try {
@@ -20,8 +20,8 @@ export const AuthProvider = ({ children }) => {
                     setUser(data);
                 } catch (error) {
                     console.error('Token verification failed:', error);
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
+                    sessionStorage.removeItem('token');
+                    sessionStorage.removeItem('user');
                     setUser(null);
                 }
             }
@@ -34,8 +34,8 @@ export const AuthProvider = ({ children }) => {
     const login = async (email, password) => {
         try {
             const { data } = await api.post('/auth/login', { email, password });
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('user', JSON.stringify(data));
+            sessionStorage.setItem('token', data.token);
+            sessionStorage.setItem('user', JSON.stringify(data));
             setUser(data);
             return { success: true, user: data };
         } catch (error) {
@@ -49,8 +49,8 @@ export const AuthProvider = ({ children }) => {
     const register = async (name, email, password, companyName, phone, termsAccepted) => {
         try {
             const { data } = await api.post('/auth/register', { name, email, password, companyName, phone, termsAccepted });
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('user', JSON.stringify(data));
+            sessionStorage.setItem('token', data.token);
+            sessionStorage.setItem('user', JSON.stringify(data));
             setUser(data);
             return { success: true, user: data };
         } catch (error) {
@@ -62,8 +62,8 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
         setUser(null);
     };
 

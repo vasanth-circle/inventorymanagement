@@ -68,7 +68,7 @@ const Quotations = () => {
     const [quotationToConvert, setQuotationToConvert] = useState(null);
     const [advanceAmount, setAdvanceAmount] = useState('');
 
-    const token = () => localStorage.getItem('token');
+    const token = () => sessionStorage.getItem('token');
     const headers = () => ({ headers: { Authorization: `Bearer ${token()}` } });
 
     useEffect(() => {

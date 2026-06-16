@@ -42,7 +42,7 @@ const PurchaseOrders = () => {
         try {
             setLoading(true);
             const res = await axios.get(API_URL, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
             });
             setOrders(res.data.data.orders);
         } catch (error) {
@@ -55,8 +55,8 @@ const PurchaseOrders = () => {
     const fetchVendorsAndItems = async () => {
         try {
             const [vendRes, itemRes] = await Promise.all([
-                axios.get('/api/vendors', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
-                axios.get('/api/items', { params: { limit: 10000 }, headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+                axios.get('/api/vendors', { headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } }),
+                axios.get('/api/items', { params: { limit: 10000 }, headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } })
             ]);
             setVendors(vendRes.data.data.vendors);
             setItems(itemRes.data.items);
@@ -138,7 +138,7 @@ const PurchaseOrders = () => {
             };
 
             await axios.post(API_URL, submissionData, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
             });
             toast.success('Purchase order created successfully');
             setIsModalOpen(false);
@@ -151,7 +151,7 @@ const PurchaseOrders = () => {
     const handleStatusUpdate = async (id, status) => {
         try {
             await axios.patch(`${API_URL}/${id}/status`, { status }, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
             });
             toast.success(`Order marked as ${status}`);
             fetchOrders();
@@ -193,7 +193,7 @@ const PurchaseOrders = () => {
             await axios.post(`${API_URL}/${selectedOrder._id}/receive`, {
                 receivedItems: receiveData
             }, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
             });
             toast.success(`Purchase order received successfully`);
             setIsReceiveModalOpen(false);
