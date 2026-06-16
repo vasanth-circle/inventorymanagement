@@ -17,6 +17,10 @@ const customerSchema = new mongoose.Schema({
         required: [true, 'Customer phone number is required'],
         trim: true,
     },
+    phone2: {
+        type: String,
+        trim: true,
+    },
     companyName: {
         type: String,
         trim: true,

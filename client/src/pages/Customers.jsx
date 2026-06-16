@@ -29,6 +29,7 @@ const Customers = () => {
         name: '',
         email: '',
         phone: '',
+        phone2: '',
         companyName: '',
         gstin: '',
         openingBalance: '',
@@ -36,7 +37,7 @@ const Customers = () => {
         sites: [],
     });
 
-    const API_URL = '/api/customers';
+    const API_URL = '/customers';
 
     useEffect(() => {
         fetchCustomers();
@@ -77,6 +78,7 @@ const Customers = () => {
                 name: customer.name,
                 email: customer.email || '',
                 phone: customer.phone || '',
+                phone2: customer.phone2 || '',
                 companyName: customer.companyName || '',
                 gstin: customer.gstin || '',
                 openingBalance: customer.openingBalance || 0,
@@ -89,6 +91,7 @@ const Customers = () => {
                 name: '',
                 email: '',
                 phone: '',
+                phone2: '',
                 companyName: '',
                 gstin: '',
                 openingBalance: '',
@@ -121,6 +124,14 @@ const Customers = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        // 10-digit validation for phone
+        const phoneRegex = /^[0-9]{10}$/;
+        if (!phoneRegex.test(formData.phone)) {
+            return toast.error('Primary phone must be a 10-digit number');
+        }
+        if (formData.phone2 && !phoneRegex.test(formData.phone2)) {
+            return toast.error('Secondary phone must be a 10-digit number');
+        }
         try {
             const data = {
                 ...formData,
@@ -220,7 +231,10 @@ const Customers = () => {
                                         {customer.companyName && <div className="text-xs text-gray-500">{customer.name}</div>}
                                     </td>
                                     <td className="px-6 py-4 text-gray-600">{customer.email}</td>
-                                    <td className="px-6 py-4 text-gray-600">{customer.phone}</td>
+                                    <td className="px-6 py-4 text-gray-600">
+                                        <div>{customer.phone}</div>
+                                        {customer.phone2 && <div className="text-xs text-gray-400">{customer.phone2}</div>}
+                                    </td>
                                     <td className="px-6 py-4 text-gray-600">{customer.gstin || '-'}</td>
                                     <td className="px-6 py-4">
                                         {activeSites.length > 0 ? (
@@ -293,8 +307,29 @@ const Customers = () => {
                                     <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
-                                    <input required type="text" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" />
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone * <span className="text-gray-400 text-xs">(10 digits)</span></label>
+                                    <input
+                                        required
+                                        type="tel"
+                                        maxLength={10}
+                                        pattern="[0-9]{10}"
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                        placeholder="e.g. 9876543210"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone 2 <span className="text-gray-400 text-xs">(optional, 10 digits)</span></label>
+                                    <input
+                                        type="tel"
+                                        maxLength={10}
+                                        pattern="[0-9]{10}"
+                                        value={formData.phone2}
+                                        onChange={(e) => setFormData({ ...formData, phone2: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                        placeholder="Optional alternate number"
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">GSTIN</label>

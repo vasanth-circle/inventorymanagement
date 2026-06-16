@@ -95,6 +95,11 @@ const salesOrderSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
+    advancePaymentType: {
+        type: String,
+        enum: ['Cash', 'NEFT', 'Paytm', 'GPay', 'Other', ''],
+        default: '',
+    },
     isEstimation: {
         type: Boolean,
         default: false,

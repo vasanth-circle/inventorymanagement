@@ -63,6 +63,7 @@ const SalesOrders = () => {
         taxAmount: '',
         oldBalance: '',
         advanceAmount: '',
+        advancePaymentType: '',
         discountAmount: '',
         siteName: '',
         siteAddress: '',
@@ -259,6 +260,7 @@ const SalesOrders = () => {
             taxAmount: order.taxAmount || 0,
             oldBalance: order.oldBalance || 0,
             advanceAmount: order.advanceAmount || 0,
+            advancePaymentType: order.advancePaymentType || '',
             discountAmount: order.discountAmount || 0,
             siteName: order.siteName || '',
             siteAddress: order.siteAddress || '',
@@ -291,6 +293,7 @@ const SalesOrders = () => {
             taxAmount: '',
             oldBalance: '',
             advanceAmount: '',
+            advancePaymentType: '',
             discountAmount: '',
             siteName: '',
             siteAddress: '',
@@ -1101,9 +1104,24 @@ const SalesOrders = () => {
                                                 </label>
                                                 <input type="number" value={formData.oldBalance === 0 ? '' : formData.oldBalance} onChange={(e) => setFormData({ ...formData, oldBalance: e.target.value })} className="w-full px-3 py-2 border rounded-lg outline-none text-red-600 font-bold" />
                                             </div>
-                                            <div className="col-span-2">
+                                            <div>
                                                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Advance Amount (Subtract)</label>
                                                 <input type="number" value={formData.advanceAmount === 0 ? '' : formData.advanceAmount} onChange={(e) => setFormData({ ...formData, advanceAmount: e.target.value })} className="w-full px-3 py-2 border rounded-lg border-primary-300 outline-none text-green-600 font-bold" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Advance Payment Mode</label>
+                                                <select
+                                                    value={formData.advancePaymentType}
+                                                    onChange={(e) => setFormData({ ...formData, advancePaymentType: e.target.value })}
+                                                    className="w-full px-3 py-2 border rounded-lg border-primary-300 outline-none text-green-700 font-bold bg-white"
+                                                >
+                                                    <option value="">-- Select Mode --</option>
+                                                    <option value="Cash">💵 Cash</option>
+                                                    <option value="NEFT">🏦 NEFT</option>
+                                                    <option value="Paytm">📱 Paytm</option>
+                                                    <option value="GPay">📲 GPay</option>
+                                                    <option value="Other">Other</option>
+                                                </select>
                                             </div>
                                             <div className="col-span-2">
                                                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">🏷️ Discount Amount (Subtract)</label>

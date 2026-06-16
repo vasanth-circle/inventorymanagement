@@ -7,7 +7,7 @@ import { recalculateCustomerBalance } from './salesOrderController.js';
 // @access  Private
 export const getCustomers = async (req, res, next) => {
     try {
-        const { search = '', page = 1, limit = 10 } = req.query;
+        const { search = '', page = 1, limit = 5000 } = req.query;
         const query = { ...tenantQuery(req), isActive: true };
 
         if (search) {
