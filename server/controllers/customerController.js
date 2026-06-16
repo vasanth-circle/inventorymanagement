@@ -3,6 +3,7 @@ import CustomerLedger from '../models/CustomerLedger.js';
 import User from '../models/User.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
+import { recalculateCustomerBalance } from './salesOrderController.js';
 // @access  Private
 export const getCustomers = async (req, res, next) => {
     try {
@@ -211,7 +212,7 @@ export const recordPayment = async (req, res, next) => {
         const customer = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
         if (!customer) return sendError(res, 404, 'Customer not found');
 
-        // Get current running balance
+        // Get current running balance (temporary for this entry, will be recalculated)
         const lastEntry = await CustomerLedger.findOne({
             customer: req.params.id,
             ...tenantQuery(req),
@@ -230,16 +231,19 @@ export const recordPayment = async (req, res, next) => {
             description: `Payment Received${paymentMode ? ` (${paymentMode.replace('_', ' ')})` : ''}`,
             debit: 0,
             credit: amount,
-            balance: newBalance,
+            balance: 0, // Will be set by recalculate
             paymentMode,
             notes,
             createdBy: req.user._id,
         });
 
-        // Update customer's currentBalance
-        await Customer.findByIdAndUpdate(req.params.id, { currentBalance: newBalance });
+        // Recalculate full ledger chronologically
+        await recalculateCustomerBalance(req.params.id, req.tenantId);
+        
+        // Fetch the updated customer to get the correct new balance
+        const updatedCustomer = await Customer.findById(req.params.id);
 
-        sendResponse(res, 201, { entry, balance: newBalance }, 'Payment recorded successfully');
+        sendResponse(res, 201, { entry, balance: updatedCustomer.currentBalance }, 'Payment recorded successfully');
     } catch (error) {
         next(error);
     }

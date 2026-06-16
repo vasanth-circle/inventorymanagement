@@ -45,7 +45,7 @@ const dispatchSchema = new mongoose.Schema({
     notes: String,
     status: {
         type: String,
-        enum: ['pending', 'dispatched', 'cancelled'],
+        enum: ['pending', 'pending_loading', 'dispatched', 'cancelled'],
         default: 'dispatched',
     },
     createdBy: {
