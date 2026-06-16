@@ -16,4 +16,4 @@ document.addEventListener('wheel', function(event) {
     }
 });
 
-// Cache buster: 1
+console.log("Vite cache buster 2");
