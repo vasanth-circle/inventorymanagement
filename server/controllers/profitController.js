@@ -1,5 +1,6 @@
 import SalesOrder from '../models/SalesOrder.js';
 import Item from '../models/Item.js';
+import User from '../models/User.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
 
 export const getProfitReport = async (req, res, next) => {
@@ -39,7 +40,7 @@ export const getProfitReport = async (req, res, next) => {
 
         const orders = await SalesOrder.find(query)
             .populate('customer', 'name companyName')
-            .populate('user', 'name')
+            .populate({ path: 'user', model: User, select: 'name' })
             .sort({ orderDate: 1 });
 
         const billWise = [];
