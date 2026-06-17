@@ -28,6 +28,9 @@ const SalesOrders = () => {
     const [fromDate, setFromDate] = useState('');
     const [toDate, setToDate] = useState('');
     const [usersList, setUsersList] = useState([]);
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 20;
     // Sites for the currently selected customer
     const [selectedCustomerSites, setSelectedCustomerSites] = useState([]);
     // Mobile share bottom sheet
@@ -77,6 +80,10 @@ const SalesOrders = () => {
         fetchItems();
         fetchUsersList();
     }, []);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, userFilter, typeFilter, fromDate, toDate]);
 
     const fetchUsersList = async () => {
         try {
@@ -170,6 +177,14 @@ const SalesOrders = () => {
                 });
                 const sites = (custRes.data.data?.sites || []).filter(s => s.isActive !== false);
                 setSelectedCustomerSites(sites);
+                
+                if (sites.length > 0) {
+                    setFormData(prev => ({ 
+                        ...prev, 
+                        siteName: sites[0].name, 
+                        siteAddress: sites[0].address || '' 
+                    }));
+                }
             } catch (error) {
                 console.error('Error fetching customer balance/sites');
             } finally {
@@ -262,8 +277,8 @@ const SalesOrders = () => {
             advanceAmount: order.advanceAmount || 0,
             advancePaymentType: order.advancePaymentType || '',
             discountAmount: order.discountAmount || 0,
-            siteName: order.siteName || '',
-            siteAddress: order.siteAddress || '',
+            siteName: order.siteName || (custObj?.sites && custObj.sites.length > 0 ? custObj.sites[0].name : ''),
+            siteAddress: order.siteAddress || (custObj?.sites && custObj.sites.length > 0 ? custObj.sites[0].address : ''),
             customerType: order.customerType || 'Regular Customer',
             referredBy: order.referredBy || ''
         });
@@ -428,6 +443,10 @@ const SalesOrders = () => {
         return matchSearch && matchUser && matchType && matchDate;
     });
 
+    const totalFiltered = filteredOrders.length;
+    const totalPages = Math.max(1, Math.ceil(totalFiltered / itemsPerPage));
+    const paginatedOrders = filteredOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -507,7 +526,7 @@ const SalesOrders = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {filteredOrders.map((order) => (
+                                {paginatedOrders.map((order) => (
                                     <tr key={order._id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4 font-medium text-primary-700">
                                             {order.orderNumber}
@@ -524,40 +543,39 @@ const SalesOrders = () => {
                                         </td>
                                         <td className="px-6 py-4 text-right space-x-2">
                                             <div className="flex justify-end gap-2">
-                                                <button onClick={() => handlePrint(order)} className="text-primary-600 hover:text-primary-800 text-sm font-bold border-2 border-primary-100 px-3 py-1.5 rounded-lg bg-primary-50 transition-all flex items-center inline-flex">
-                                                    <span className="mr-1">📄</span> Bill
+                                                <button onClick={() => handlePrint(order)} className="text-primary-600 hover:text-primary-800 text-lg font-bold border-2 border-primary-100 w-9 h-9 flex items-center justify-center rounded-lg bg-primary-50 transition-all" title="Bill">
+                                                    📄
                                                 </button>
-                                                <button onClick={() => setShareMenuOrder(order)} className="text-blue-600 hover:text-blue-800 text-sm font-bold border-2 border-blue-100 px-3 py-1.5 rounded-lg bg-blue-50 transition-all flex items-center inline-flex" title="Share">
-                                                    <span className="mr-1">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                            <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
-                                                        </svg>
-                                                    </span> 
-                                                    Share
+                                                <button onClick={() => setShareMenuOrder(order)} className="text-blue-600 hover:text-blue-800 text-lg font-bold border-2 border-blue-100 w-9 h-9 flex items-center justify-center rounded-lg bg-blue-50 transition-all" title="Share">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+                                                    </svg>
                                                 </button>
                                                 {order.isEstimation && ['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
                                                     <button 
                                                         onClick={() => handleStatusUpdate(order._id, 'confirmed')} 
-                                                        className="text-green-600 hover:text-green-800 text-sm font-bold border-2 border-green-100 px-3 py-1.5 rounded-lg bg-green-50 transition-all flex items-center inline-flex"
+                                                        className="text-green-600 hover:text-green-800 text-lg font-bold border-2 border-green-100 w-9 h-9 flex items-center justify-center rounded-lg bg-green-50 transition-all"
+                                                        title="Convert to Bill"
                                                     >
-                                                        <span className="mr-1">🔄</span> Convert
+                                                        🔄
                                                     </button>
                                                 )}
                                                 {!['dispatched', 'partially_dispatched'].includes(order.status) && (
                                                     <button 
                                                         onClick={() => handleEdit(order)} 
-                                                        className="text-amber-600 hover:text-amber-800 text-sm font-bold border-2 border-amber-100 px-3 py-1.5 rounded-lg bg-amber-50 transition-all flex items-center inline-flex"
+                                                        className="text-amber-600 hover:text-amber-800 text-lg font-bold border-2 border-amber-100 w-9 h-9 flex items-center justify-center rounded-lg bg-amber-50 transition-all"
+                                                        title="Edit"
                                                     >
-                                                        <span className="mr-1">✏️</span> Edit
+                                                        ✏️
                                                     </button>
                                                 )}
                                                 {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
                                                     <button 
                                                         onClick={() => handleDelete(order._id)} 
-                                                        className="text-red-600 hover:text-red-800 text-sm font-bold border-2 border-red-100 px-3 py-1.5 rounded-lg bg-red-50 transition-all flex items-center inline-flex"
+                                                        className="text-red-600 hover:text-red-800 text-lg font-bold border-2 border-red-100 w-9 h-9 flex items-center justify-center rounded-lg bg-red-50 transition-all"
                                                         title="Delete & Revert Stock"
                                                     >
-                                                        <span className="mr-1">🗑️</span> Delete
+                                                        🗑️
                                                     </button>
                                                 )}
                                             </div>
@@ -570,7 +588,7 @@ const SalesOrders = () => {
 
                     {/* Mobile Card View */}
                     <div className="lg:hidden space-y-4">
-                        {filteredOrders.map((order) => (
+                        {paginatedOrders.map((order) => (
                             <div key={order._id} className="bg-white rounded-2xl border border-gray-100 shadow-lg p-5 relative overflow-hidden active:scale-[0.98] transition-all">
                                 <div className="flex justify-between items-start mb-3">
                                     <div className="flex flex-col">
@@ -631,15 +649,39 @@ const SalesOrders = () => {
                                         {!['dispatched', 'partially_dispatched'].includes(order.status) && (
                                             <button onClick={() => handleEdit(order)} className="flex-shrink-0 w-9 h-9 bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Edit">✏️</button>
                                         )}
-                                        {/* Delete */}
-                                        {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
-                                            <button onClick={() => handleDelete(order._id)} className="flex-shrink-0 w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Delete">🗑️</button>
-                                        )}
                                     </div>
                                 </div>
                             </div>
                         ))}
                     </div>
+
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                            <span className="text-sm text-gray-600 font-medium">
+                                Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalFiltered)} of {totalFiltered} entries
+                            </span>
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    Previous
+                                </button>
+                                <span className="px-4 py-2 text-sm font-bold text-gray-800 bg-gray-50 rounded-lg hidden sm:block">
+                                    Page {currentPage} of {totalPages}
+                                </span>
+                                <button 
+                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 

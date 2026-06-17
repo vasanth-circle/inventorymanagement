@@ -666,6 +666,8 @@ const template4 = (order, settings, docType = 'invoice') => {
       })()}
       ${order.customer?.phone ? `<div class="meta-row" style="margin-top:2px;">Ph: ${order.customer.phone}</div>` : ''}
       ${order.customer?.gstin ? `<div class="meta-row">GSTIN: ${order.customer.gstin}</div>` : ''}
+      ${order.siteName ? `<div class="meta-row" style="margin-top:2px;font-weight:bold;color:#555">🏗️ Site: ${order.siteName}</div>` : ''}
+      ${order.siteAddress ? `<div class="meta-row" style="color:#777">📍 ${order.siteAddress}</div>` : ''}
     </div>
     <div class="meta-box">
       <div class="meta-row"><span class="meta-label">No:</span> <span><b>${docNo}</b></span></div>
