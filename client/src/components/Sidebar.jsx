@@ -143,7 +143,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         }
 
         if (effectiveRole === 'godown_staff' || effectiveRole === 'godown staff') {
-            const godownAllowed = ['dashboard', 'items', 'stocks', 'dispatch-management', 'stock-adjustment', 'stock-return'];
+            const godownAllowed = ['dashboard', 'items', 'stocks', 'dispatch-management', 'stock-adjustment', 'stock-return', 'purchase-orders'];
             return godownAllowed.includes(itemId);
         }
 

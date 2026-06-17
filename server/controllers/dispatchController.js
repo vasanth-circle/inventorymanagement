@@ -5,6 +5,7 @@ import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
+import { allocateFIFO } from '../utils/stock.js';
 
 // @desc    Create a new dispatch record
 // @route   POST /api/dispatches
@@ -91,38 +92,37 @@ export const fulfillDispatch = async (req, res, next) => {
                 }
                 
                 const orderItem = order.items.find(oi => oi.item.toString() === dispatchItem.item.toString());
-                const batchId = orderItem?.batchId;
-                let usedBatchNumber = '';
+                
+                // FIFO Allocation
+                const allocations = allocateFIFO(itemDoc, dispatchQty);
+                dispatchItem.batchAllocations = allocations; // Save to dispatch record
 
-                if (batchId && itemDoc.batches) {
-                    const batch = itemDoc.batches.id(batchId);
-                    if (batch) {
-                        if (batch.quantity < dispatchQty) {
-                            return sendError(res, 400, `Insufficient physical stock in batch ${batch.batchNumber} for ${itemDoc.name}.`);
-                        }
-                        batch.quantity -= dispatchQty;
-                        usedBatchNumber = batch.batchNumber;
-                    }
+                // Accumulate to sales order item
+                if (orderItem) {
+                    if (!orderItem.batchAllocations) orderItem.batchAllocations = [];
+                    orderItem.batchAllocations.push(...allocations);
                 }
 
                 itemDoc.quantity -= dispatchQty;
                 await itemDoc.save();
 
-                // Record transaction
-                await Transaction.create({
-                    item: dispatchItem.item,
-                    type: 'outward',
-                    quantity: dispatchQty,
-                    reason: `Dispatch for Order ${order.orderNumber}`,
-                    notes: `Vehicle: ${vehicleNumber}, Dispatch: ${dispatch.dispatchNumber}`,
-                    user: req.user._id,
-                    previousQuantity,
-                    newQuantity: itemDoc.quantity,
-                    fromLocation: itemDoc.location,
-                    batchId: batchId || null,
-                    batchNumber: usedBatchNumber || null,
-                    ...tenantQuery(req)
-                });
+                // Record transactions for each allocation
+                for (const alloc of allocations) {
+                    await Transaction.create({
+                        item: dispatchItem.item,
+                        type: 'outward',
+                        quantity: alloc.quantity,
+                        reason: `Dispatch for Order ${order.orderNumber}`,
+                        notes: `Vehicle: ${vehicleNumber}, Dispatch: ${dispatch.dispatchNumber}`,
+                        user: req.user._id,
+                        previousQuantity,
+                        newQuantity: itemDoc.quantity,
+                        fromLocation: itemDoc.location,
+                        batchId: alloc.batchId || null,
+                        batchNumber: alloc.batchNumber || null,
+                        ...tenantQuery(req)
+                    });
+                }
             }
         }
 

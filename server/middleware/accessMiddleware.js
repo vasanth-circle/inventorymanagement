@@ -18,7 +18,7 @@ export const checkMenuAccess = (menuName) => {
         }
 
         if (inventoryRole === 'godown_staff' || inventoryRole === 'godown staff' || user.role === 'godown_staff') {
-            const godownAllowed = ['dashboard', 'items', 'stocks', 'dispatch-management', 'stock-adjustment', 'stock-return'];
+            const godownAllowed = ['dashboard', 'items', 'stocks', 'dispatch-management', 'stock-adjustment', 'stock-return', 'customers', 'purchases'];
             if (godownAllowed.includes(menuName)) return next();
             return res.status(403).json({ message: `Access denied for Godown Staff` });
         }

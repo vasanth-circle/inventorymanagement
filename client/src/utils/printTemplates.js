@@ -103,7 +103,7 @@ const template1 = (order, settings, docType = 'invoice') => {
         ? (s.branding.logoUrl.startsWith('http') ? s.branding.logoUrl : `${window.location.origin}${s.branding.logoUrl}`)
         : '';
 
-    return `<html><head><meta charset="UTF-8"><title>${title} - ${docNo}</title>
+    return `<html><head><meta charset="UTF-8"><title>${title}_${docNo}_${(order.customer?.companyName || order.customer?.name || 'Customer').replace(/[^a-zA-Z0-9\\s-]/g, '').trim().replace(/\\s+/g, '_')}</title>
 <style>
   @page { size: A4; margin: 5mm; }
   body { font-family: 'Arial', sans-serif; font-size: 10px; color: #000; margin: 0; display: flex; justify-content: center; }
@@ -252,7 +252,7 @@ const template2 = (order, settings, docType = 'invoice') => {
         ? (s.branding.logoUrl.startsWith('http') ? s.branding.logoUrl : `${window.location.origin}${s.branding.logoUrl}`)
         : '';
 
-    return `<html><head><meta charset="UTF-8"><title>${title} - ${docNo}</title>
+    return `<html><head><meta charset="UTF-8"><title>${title}_${docNo}_${(order.customer?.companyName || order.customer?.name || 'Customer').replace(/[^a-zA-Z0-9\\s-]/g, '').trim().replace(/\\s+/g, '_')}</title>
 <style>
   @page { size: A4; margin: 5mm; }
   body { font-family: 'Arial', sans-serif; font-size: 10px; color: #1a1a2e; margin: 0; background: #fff; display: flex; justify-content: center; }
@@ -428,7 +428,7 @@ const template3 = (order, settings, docType = 'invoice') => {
         ? (s.branding.logoUrl.startsWith('http') ? s.branding.logoUrl : `${window.location.origin}${s.branding.logoUrl}`)
         : '';
 
-    return `<html><head><meta charset="UTF-8"><title>${title} - ${docNo}</title>
+    return `<html><head><meta charset="UTF-8"><title>${title}_${docNo}_${(order.customer?.companyName || order.customer?.name || 'Customer').replace(/[^a-zA-Z0-9\\s-]/g, '').trim().replace(/\\s+/g, '_')}</title>
 <style>
   @page { size: A4; margin: 10mm; }
   body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; color: #333; margin: 0; background: #fff; display: flex; justify-content: center; }
@@ -598,7 +598,7 @@ const template4 = (order, settings, docType = 'invoice') => {
     // Compute itemsTotal if not already set
     const itemsTotal = order.itemsTotal ?? (order.items || []).reduce((sum, item) => sum + (item.total || (item.quantity * item.price) || 0), 0);
 
-    return `<html><head><meta charset="UTF-8"><title>${title} - ${docNo}</title>
+    return `<html><head><meta charset="UTF-8"><title>${title}_${docNo}_${(order.customer?.companyName || order.customer?.name || 'Customer').replace(/[^a-zA-Z0-9\\s-]/g, '').trim().replace(/\\s+/g, '_')}</title>
 <style>
   @page { size: A4 portrait; margin: 5mm; }
   * { box-sizing: border-box; }

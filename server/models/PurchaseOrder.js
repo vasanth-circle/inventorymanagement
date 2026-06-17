@@ -64,6 +64,10 @@ const purchaseOrderSchema = new mongoose.Schema({
         enum: ['draft', 'issued', 'received', 'billed', 'void'],
         default: 'draft',
     },
+    vendorBillNumber: {
+        type: String,
+        trim: true,
+    },
     orderDate: {
         type: Date,
         default: Date.now,

@@ -29,6 +29,12 @@ const salesOrderSchema = new mongoose.Schema({
         hsn: String,
         batchId: String,
         batchNumber: String,
+        batchAllocations: [{
+            batchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Item.batches' },
+            batchNumber: String,
+            quantity: Number,
+            purchasePrice: Number
+        }],
         boxCount: {
             type: Number,
             default: 0,

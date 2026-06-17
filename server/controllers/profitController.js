@@ -65,7 +65,14 @@ export const getProfitReport = async (req, res, next) => {
                 // In tiles industry, if price is per box, and purchase is per box, they match.
                 // We'll use orderItem.total for revenue to account for any line-level differences
                 const itemRevenue = orderItem.total || (quantityToUse * orderItem.price);
-                const itemCogs = quantityToUse * itemData.purchasePrice;
+                // Calculate COGS using batchAllocations if available (FIFO)
+                let itemCogs = 0;
+                if (orderItem.batchAllocations && orderItem.batchAllocations.length > 0) {
+                    itemCogs = orderItem.batchAllocations.reduce((sum, alloc) => sum + (alloc.quantity * (alloc.purchasePrice || itemData.purchasePrice)), 0);
+                } else {
+                    // Fallback to legacy logic for old invoices without allocations
+                    itemCogs = quantityToUse * itemData.purchasePrice;
+                }
                 const itemProfit = itemRevenue - itemCogs;
 
                 orderRevenue += itemRevenue;

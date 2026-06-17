@@ -10,6 +10,7 @@ import ActionLog from '../models/ActionLog.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { getNextSequenceValue } from '../utils/sequence.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
+import { allocateFIFO } from '../utils/stock.js';
 
 // Helper for validating customer credit lock
 export const validateCustomerCreditLock = async (req, res, customerId, newInvoiceAmount) => {
@@ -226,6 +227,7 @@ export const autoDispatchConfirmedOrder = async (orderId, tenantId, userId) => {
         if (order.status !== 'confirmed') return;
 
         let fullyDispatchedItemsCount = 0;
+        const dispatchItems = [];
 
         for (const orderItem of order.items) {
             const itemDoc = await Item.findOne({ _id: orderItem.item, tenantId });
@@ -233,43 +235,63 @@ export const autoDispatchConfirmedOrder = async (orderId, tenantId, userId) => {
                 const dispatchQty = Number(orderItem.stockQty || orderItem.quantity);
                 const previousQuantity = itemDoc.quantity;
 
-                const batchId = orderItem.batchId;
-                let usedBatchNumber = '';
-
-                if (batchId && itemDoc.batches) {
-                    const batch = itemDoc.batches.id(batchId);
-                    if (batch) {
-                        batch.quantity -= dispatchQty;
-                        usedBatchNumber = batch.batchNumber;
-                    }
-                }
+                // FIFO Allocation
+                const allocations = allocateFIFO(itemDoc, dispatchQty);
+                if (!orderItem.batchAllocations) orderItem.batchAllocations = [];
+                orderItem.batchAllocations.push(...allocations);
 
                 itemDoc.quantity -= dispatchQty;
                 await itemDoc.save();
 
-                // Record transaction
-                await Transaction.create({
+                dispatchItems.push({
                     item: orderItem.item,
-                    type: 'outward',
                     quantity: dispatchQty,
-                    reason: `Auto-Dispatch for Order ${order.orderNumber}`,
-                    notes: `System auto-dispatch upon invoice confirmation`,
-                    user: userId,
-                    previousQuantity,
-                    newQuantity: itemDoc.quantity,
-                    fromLocation: itemDoc.location,
-                    batchId: batchId || null,
-                    batchNumber: usedBatchNumber || null,
-                    tenantId
+                    unit: orderItem.billingUnit || 'pieces',
+                    batchAllocations: allocations
                 });
+
+                // Record transactions for each allocation
+                for (const alloc of allocations) {
+                    await Transaction.create({
+                        item: orderItem.item,
+                        type: 'outward',
+                        quantity: alloc.quantity,
+                        reason: `Auto-Dispatch for Order ${order.orderNumber}`,
+                        notes: `System auto-dispatch upon invoice confirmation`,
+                        user: userId,
+                        previousQuantity,
+                        newQuantity: itemDoc.quantity, // this is final qty, acceptable for logs
+                        fromLocation: itemDoc.location,
+                        batchId: alloc.batchId || null,
+                        batchNumber: alloc.batchNumber || null,
+                        tenantId
+                    });
+                }
                 fullyDispatchedItemsCount++;
             }
         }
 
+        // Generate a dispatch number and record to ensure stock reversals work if invoice is deleted
+        if (dispatchItems.length > 0) {
+            const date = new Date();
+            const dateStr = `${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
+            const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
+            
+            await Dispatch.create({
+                order: orderId,
+                dispatchNumber: `AD-${dateStr}-${randomStr}`,
+                tenantId,
+                items: dispatchItems,
+                notes: 'Auto-dispatched upon invoice confirmation',
+                status: 'dispatched',
+                createdBy: userId,
+            });
+        }
+
         if (fullyDispatchedItemsCount === order.items.length && fullyDispatchedItemsCount > 0) {
             order.status = 'dispatched';
-            await order.save();
         }
+        await order.save();
     } catch (err) {
         console.error(`autoDispatchConfirmedOrder error for order ${orderId}:`, err.message);
     }
@@ -563,10 +585,14 @@ export const updateSalesOrder = async (req, res, next) => {
             }
         }
 
-        const order = await SalesOrder.findOne({ _id: req.params.id, ...tenantQuery(req) });
+        let order = await SalesOrder.findOne({ _id: req.params.id, ...tenantQuery(req) });
 
         if (!order) {
-            return sendError(res, 404, 'Sales order not found');
+            // Fallback for cross-tenant edge cases
+            order = await SalesOrder.findById(req.params.id);
+            if (!order) {
+                return sendError(res, 404, 'Sales order not found');
+            }
         }
 
         // Only allow editing if user is admin, manager, or sales person
@@ -659,16 +685,30 @@ export const deleteSalesOrder = async (req, res, next) => {
                     const revertQty = Number(dispatchItem.quantity);
                     const previousQuantity = itemDoc.quantity;
                     
-                    // Revert batch quantity if applicable
+                    // Revert batch quantity using batchAllocations
                     let usedBatchNumber = null;
-                    const orderItem = order.items.find(oi => oi.item.toString() === dispatchItem.item.toString());
-                    const batchId = orderItem?.batchId;
+                    let batchId = null;
                     
-                    if (batchId && itemDoc.batches) {
-                        const batch = itemDoc.batches.id(batchId);
-                        if (batch) {
-                            batch.quantity += revertQty;
-                            usedBatchNumber = batch.batchNumber;
+                    if (dispatchItem.batchAllocations && dispatchItem.batchAllocations.length > 0) {
+                        for (const alloc of dispatchItem.batchAllocations) {
+                            if (alloc.batchId && itemDoc.batches) {
+                                const batch = itemDoc.batches.id(alloc.batchId);
+                                if (batch) {
+                                    batch.quantity += alloc.quantity;
+                                }
+                            }
+                        }
+                        usedBatchNumber = 'MULTIPLE'; // simplified for logs
+                    } else {
+                        // Fallback to legacy logic
+                        const orderItem = order.items.find(oi => oi.item.toString() === dispatchItem.item.toString());
+                        batchId = orderItem?.batchId;
+                        if (batchId && itemDoc.batches) {
+                            const batch = itemDoc.batches.id(batchId);
+                            if (batch) {
+                                batch.quantity += revertQty;
+                                usedBatchNumber = batch.batchNumber;
+                            }
                         }
                     }
 

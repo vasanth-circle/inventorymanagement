@@ -51,7 +51,9 @@ export const shareViaWhatsApp = (order, settings, docType = 'quotation') => {
 export const shareInvoiceAsPdf = async (order, settings, docType = 'quotation', generateHtmlFn) => {
     const docNo = order.orderNumber;
     const docTitle = docType === 'quotation' ? 'Quotation' : 'Invoice';
-    const fileName = `${docTitle}-${docNo}.pdf`;
+    const customerName = order.customer?.companyName || order.customer?.name || 'Customer';
+    const cleanCustomerName = customerName.replace(/[^a-zA-Z0-9\s-]/g, '').trim().replace(/\s+/g, '_');
+    const fileName = `${docTitle}_${docNo}_${cleanCustomerName}.pdf`;
 
     try {
         // Generate the invoice HTML

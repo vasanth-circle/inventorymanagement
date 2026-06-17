@@ -527,6 +527,14 @@ const SalesOrders = () => {
                                                 <button onClick={() => handlePrint(order)} className="text-primary-600 hover:text-primary-800 text-sm font-bold border-2 border-primary-100 px-3 py-1.5 rounded-lg bg-primary-50 transition-all flex items-center inline-flex">
                                                     <span className="mr-1">📄</span> Bill
                                                 </button>
+                                                <button onClick={() => setShareMenuOrder(order)} className="text-blue-600 hover:text-blue-800 text-sm font-bold border-2 border-blue-100 px-3 py-1.5 rounded-lg bg-blue-50 transition-all flex items-center inline-flex" title="Share">
+                                                    <span className="mr-1">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                            <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+                                                        </svg>
+                                                    </span> 
+                                                    Share
+                                                </button>
                                                 {order.isEstimation && ['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
                                                     <button 
                                                         onClick={() => handleStatusUpdate(order._id, 'confirmed')} 

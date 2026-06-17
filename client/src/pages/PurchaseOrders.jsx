@@ -3,9 +3,12 @@ import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import SearchableSelect from '../components/SearchableSelect';
 import { InventoryContext } from '../context/InventoryContext';
+import { AuthContext } from '../context/AuthContext';
 
 const PurchaseOrders = () => {
     const { billingSettings, calculateItemValues } = useContext(InventoryContext);
+    const { user } = useContext(AuthContext);
+    const isGodown = user?.role === 'godown_staff' || user?.appRoles?.inventory === 'godown_staff' || user?.role === 'godown staff' || user?.appRoles?.inventory === 'godown staff';
     const [orders, setOrders] = useState([]);
     const [vendors, setVendors] = useState([]);
     const [items, setItems] = useState([]);
@@ -15,8 +18,10 @@ const PurchaseOrders = () => {
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [receiveData, setReceiveData] = useState([]);
+    const [receiveVendorBillNo, setReceiveVendorBillNo] = useState('');
     const [formData, setFormData] = useState({
         vendor: '',
+        vendorBillNumber: '',
         items: [{ 
             item: '', 
             quantity: '', 
@@ -167,6 +172,7 @@ const PurchaseOrders = () => {
 
     const openReceiveModal = (order) => {
         setSelectedOrder(order);
+        setReceiveVendorBillNo(order.vendorBillNumber || '');
         // order.items have item populated with name and sku
         const initialReceiveData = order.items.map(i => ({
             item: i.item?._id || i.item,
@@ -191,7 +197,8 @@ const PurchaseOrders = () => {
         e.preventDefault();
         try {
             await axios.post(`${API_URL}/${selectedOrder._id}/receive`, {
-                receivedItems: receiveData
+                receivedItems: receiveData,
+                vendorBillNumber: receiveVendorBillNo
             }, {
                 headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
             });
@@ -278,12 +285,18 @@ const PurchaseOrders = () => {
                             <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
                         </div>
                         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                            <div className="w-1/2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Vendor *</label>
-                                <select required value={formData.vendor} onChange={(e) => setFormData({ ...formData, vendor: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
-                                    <option value="">Select Vendor</option>
-                                    {vendors.map(v => <option key={v._id} value={v._id}>{v.name}</option>)}
-                                </select>
+                            <div className="flex gap-4 w-full">
+                                <div className="w-1/2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Vendor *</label>
+                                    <select required value={formData.vendor} onChange={(e) => setFormData({ ...formData, vendor: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
+                                        <option value="">Select Vendor</option>
+                                        {vendors.map(v => <option key={v._id} value={v._id}>{v.name}</option>)}
+                                    </select>
+                                </div>
+                                <div className="w-1/2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Bill No.</label>
+                                    <input type="text" value={formData.vendorBillNumber} onChange={(e) => setFormData({ ...formData, vendorBillNumber: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" placeholder="Optional" />
+                                </div>
                             </div>
 
                             <div className="space-y-4">
@@ -293,9 +306,9 @@ const PurchaseOrders = () => {
                                         <tr>
                                             <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-48">Item</th>
                                             <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-center">Qty / Boxes</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32">Rate</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32">{!isGodown && 'Rate'}</th>
                                             <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24">Unit</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32 text-right">Amount</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32 text-right">{!isGodown && 'Amount'}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
@@ -333,7 +346,7 @@ const PurchaseOrders = () => {
                                                     )}
                                                 </td>
                                                 <td className="px-2 py-2">
-                                                    <input required type="number" step="0.01" value={row.price === 0 ? '' : row.price} onChange={(e) => handleItemChange(index, 'price', e.target.value)} className="w-full px-2 py-2 border rounded-lg border-gray-200 text-right font-bold focus:ring-1 focus:ring-primary-400 outline-none" placeholder="Rate" />
+                                                    {!isGodown && <input required type="number" step="0.01" value={row.price === 0 ? '' : row.price} onChange={(e) => handleItemChange(index, 'price', e.target.value)} className="w-full px-2 py-2 border rounded-lg border-gray-200 text-right font-bold focus:ring-1 focus:ring-primary-400 outline-none" placeholder="Rate" />}
                                                 </td>
                                                 <td className="px-2 py-2">
                                                     {billingSettings?.industry === 'tiles' && isTile ? (
@@ -348,7 +361,7 @@ const PurchaseOrders = () => {
                                                     )}
                                                 </td>
                                                 <td className="px-2 py-2 font-bold text-gray-800 text-right">
-                                                    ₹{(row.total || 0).toLocaleString()}
+                                                    {!isGodown && `₹${(row.total || 0).toLocaleString()}`}
                                                 </td>
                                             </tr>
                                             );
@@ -379,11 +392,16 @@ const PurchaseOrders = () => {
                         <form onSubmit={handleReceiveSubmit} className="p-6 space-y-6">
                             <div className="space-y-4">
                                 <p className="text-sm text-gray-600 mb-4">Please verify the quantities received and record any damaged stock before converting to an inward transaction. Damaged stock will be recorded but won't be added to your usable inventory count.</p>
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Bill No.</label>
+                                    <input type="text" value={receiveVendorBillNo} onChange={(e) => setReceiveVendorBillNo(e.target.value)} className="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" placeholder="Enter bill number" />
+                                </div>
                                 <table className="w-full text-left">
                                     <thead className="bg-gray-50">
                                         <tr>
                                             <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Item Name</th>
                                             <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-center">Expected (SqFt)</th>
+                                            {!isGodown && <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-center">Rate</th>}
                                             <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-36 text-center text-green-700 font-bold">Good Qty (SqFt)</th>
                                             <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32 text-center text-red-600 font-bold">Damaged (SqFt)</th>
                                         </tr>
@@ -397,6 +415,11 @@ const PurchaseOrders = () => {
                                                 <td className="px-3 py-3 text-gray-600">
                                                     {row.expected}
                                                 </td>
+                                                {!isGodown && (
+                                                    <td className="px-3 py-3">
+                                                        <input required type="number" step="0.01" min="0" value={row.price} onChange={(e) => handleReceiveDataChange(index, 'price', e.target.value)} className="w-full px-2 py-1 border rounded border-gray-200 text-right focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none" />
+                                                    </td>
+                                                )}
                                                 <td className="px-3 py-3">
                                                     <input required type="number" step="0.01" min="0" value={row.receivedQuantity} onChange={(e) => handleReceiveDataChange(index, 'receivedQuantity', e.target.value)} className="w-full px-2 py-1 border rounded border-gray-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none" />
                                                 </td>
@@ -460,6 +483,7 @@ const PurchaseOrders = () => {
                                 </div>
                                 <div className="text-right">
                                     <div className="text-[10px] uppercase font-bold tracking-wider text-gray-400 mb-1">Inward Details</div>
+                                    {selectedOrder.vendorBillNumber && <div className="text-xs text-gray-600">Bill No: <span className="font-bold text-gray-800">{selectedOrder.vendorBillNumber}</span></div>}
                                     <div className="text-xs text-gray-600">Total Billed: <span className="font-bold text-gray-800">₹{selectedOrder.totalAmount.toLocaleString()}</span></div>
                                     {selectedOrder.status === 'received' && <div className="text-xs text-green-600 font-semibold mt-1">✓ Stock Inward Completed</div>}
                                 </div>

@@ -86,6 +86,13 @@ const Reports = () => {
                     setReportData(response.data.data);
                     toast.success('Receivables report generated');
                 }
+            } else if (reportType === 'damaged_goods') {
+                const data = await fetchItems({ limit: 5000 });
+                if (data && data.items) {
+                    const damagedItems = data.items.filter(item => item.damagedQuantity > 0);
+                    setReportData(damagedItems);
+                    toast.success('Damaged Goods report generated');
+                }
             } else if (reportType === 'detailed_ledger') {
                 if (!selectedCustomer) {
                     toast.error('Please select a customer first');
@@ -170,6 +177,14 @@ const Reports = () => {
                 'Debit': entry.debit || 0,
                 'Credit': entry.credit || 0,
                 'Balance': entry.balance
+            }));
+        } else if (reportType === 'damaged_goods') {
+            exportData = reportData.map(item => ({
+                'Item Name': item.name,
+                'Category': item.category?.name || 'N/A',
+                'Damaged Quantity': item.damagedQuantity,
+                'Purchase Price': formatCurrency(item.purchasePrice || 0),
+                'Total Damaged Value': formatCurrency((item.damagedQuantity || 0) * (item.purchasePrice || item.price || 0))
             }));
         }
 
@@ -360,6 +375,29 @@ const Reports = () => {
                     </table>
                 </div>
             );
+        } else if (reportType === 'damaged_goods') {
+            return (
+                <div className="overflow-x-auto">
+                    <table className="min-w-full">
+                        <thead className="bg-white border-b border-gray-100">
+                            <tr>
+                                <th className="px-3 py-2 sm:px-6 sm:py-4 text-left text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Item</th>
+                                <th className="px-3 py-2 sm:px-6 sm:py-4 text-center text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Damaged Qty</th>
+                                <th className="px-3 py-2 sm:px-6 sm:py-4 text-right text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Damaged Value</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 font-medium">
+                            {reportData.map((item) => (
+                                <tr key={item._id} className="hover:bg-red-50/50">
+                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs font-bold text-gray-900">{item.name}<br/><span className="text-[9px] sm:text-[10px] font-normal text-gray-400">{item.category?.name || 'N/A'}</span></td>
+                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-center text-[11px] sm:text-xs font-black text-red-600">{item.damagedQuantity} <span className="text-[8px] sm:text-[9px] font-bold text-gray-400">{item.unit || ''}</span></td>
+                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-right text-[11px] sm:text-xs text-red-700 font-bold">{formatCurrency((item.damagedQuantity || 0) * (item.purchasePrice || item.price || 0))}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
         }
     };
 
@@ -370,6 +408,7 @@ const Reports = () => {
         { id: 'performance', label: '👤 Sales by User' },
         { id: 'daywise_receivables', label: '💸 Daywise Receivables' },
         { id: 'detailed_ledger', label: '📒 Detailed Ledger' },
+        { id: 'damaged_goods', label: '❌ Damaged Goods' },
     ];
 
     return (

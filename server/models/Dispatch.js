@@ -41,6 +41,12 @@ const dispatchSchema = new mongoose.Schema({
             min: 0.1,
         },
         unit: String, // e.g., 'SqFt', 'Pcs'
+        batchAllocations: [{
+            batchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Item.batches' },
+            batchNumber: String,
+            quantity: Number,
+            purchasePrice: Number
+        }],
     }],
     notes: String,
     status: {

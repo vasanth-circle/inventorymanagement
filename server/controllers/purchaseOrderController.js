@@ -101,7 +101,7 @@ export const getPurchaseOrder = async (req, res, next) => {
 // @access  Private
 export const createPurchaseOrder = async (req, res, next) => {
     try {
-        const { vendor, items, orderDate, expectedDeliveryDate, notes } = req.body;
+        const { vendor, items, orderDate, expectedDeliveryDate, notes, vendorBillNumber } = req.body;
 
         // Generate Order Number with retry logic
         let order;
@@ -114,6 +114,7 @@ export const createPurchaseOrder = async (req, res, next) => {
                 order = await PurchaseOrder.create({
                     orderNumber,
                     vendor,
+                    vendorBillNumber,
                     items,
                     orderDate,
                     expectedDeliveryDate,
@@ -189,7 +190,7 @@ export const updatePOStatus = async (req, res, next) => {
 // @access  Private
 export const receivePurchaseOrder = async (req, res, next) => {
     try {
-        const { receivedItems } = req.body; 
+        const { receivedItems, vendorBillNumber } = req.body; 
         const order = await PurchaseOrder.findOne({ _id: req.params.id, ...tenantQuery(req) });
 
         if (!order) {
@@ -255,6 +256,10 @@ export const receivePurchaseOrder = async (req, res, next) => {
                     });
                 }
             }
+        }
+
+        if (vendorBillNumber) {
+            order.vendorBillNumber = vendorBillNumber;
         }
 
         order.status = 'received';
