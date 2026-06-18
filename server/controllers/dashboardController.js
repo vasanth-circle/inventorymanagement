@@ -38,9 +38,16 @@ export const getDashboardStats = async (req, res, next) => {
         const startOfWeek = new Date(today); startOfWeek.setDate(today.getDate() - today.getDay());
         const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
+        const trueSalesExpr = { $subtract: [{ $add: ['$totalAmount', { $ifNull: ['$advanceAmount', 0] }] }, { $ifNull: ['$oldBalance', 0] }] };
         const salesStats = await SalesOrder.aggregate([
             { $match: { ...tenantQuery, status: { $ne: 'void' }, isEstimation: { $ne: true } } },
-            { $group: { _id: null, totalSales: { $sum: '$totalAmount' }, todaySales: { $sum: { $cond: [{ $gte: [{ $ifNull: ['$orderDate', '$createdAt'] }, today] }, '$totalAmount', 0] } }, weekSales: { $sum: { $cond: [{ $gte: [{ $ifNull: ['$orderDate', '$createdAt'] }, startOfWeek] }, '$totalAmount', 0] } }, monthSales: { $sum: { $cond: [{ $gte: [{ $ifNull: ['$orderDate', '$createdAt'] }, startOfMonth] }, '$totalAmount', 0] } } } }
+            { $group: { 
+                _id: null, 
+                totalSales: { $sum: trueSalesExpr }, 
+                todaySales: { $sum: { $cond: [{ $gte: [{ $ifNull: ['$orderDate', '$createdAt'] }, today] }, trueSalesExpr, 0] } }, 
+                weekSales: { $sum: { $cond: [{ $gte: [{ $ifNull: ['$orderDate', '$createdAt'] }, startOfWeek] }, trueSalesExpr, 0] } }, 
+                monthSales: { $sum: { $cond: [{ $gte: [{ $ifNull: ['$orderDate', '$createdAt'] }, startOfMonth] }, trueSalesExpr, 0] } } 
+            } }
         ]);
         const purchaseStats = await PurchaseOrder.aggregate([{ $match: { ...tenantQuery, status: { $ne: 'void' } } }, { $group: { _id: null, totalPurchase: { $sum: '$totalAmount' } } }]);
         const categoryDistribution = await Item.aggregate([
@@ -180,7 +187,7 @@ export const getInventoryDashboard = async (req, res, next) => {
             ]),
             SalesOrder.aggregate([
                 { $match: { ...tenantQuery, orderDate: { $gte: sixMonthsAgo }, status: { $ne: 'void' }, isEstimation: { $ne: true } } },
-                { $group: { _id: { year: { $year: '$orderDate' }, month: { $month: '$orderDate' } }, value: { $sum: '$totalAmount' }, count: { $sum: 1 } } },
+                { $group: { _id: { year: { $year: '$orderDate' }, month: { $month: '$orderDate' } }, value: { $sum: { $subtract: [{ $add: ['$totalAmount', { $ifNull: ['$advanceAmount', 0] }] }, { $ifNull: ['$oldBalance', 0] }] } }, count: { $sum: 1 } } },
                 { $sort: { '_id.year': 1, '_id.month': 1 } }
             ])
         ]);

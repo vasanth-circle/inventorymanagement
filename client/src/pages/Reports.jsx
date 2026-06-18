@@ -63,11 +63,13 @@ const Reports = () => {
                             };
                         }
 
+                        // True sale value = totalAmount − oldBalance + advanceAmount
+                        const trueSaleValue = (order.totalAmount || 0) - (order.oldBalance || 0) + (order.advanceAmount || 0);
                         if (order.isEstimation || order.orderNumber?.startsWith('E-')) {
-                            userMap[userName].quotationAmount += (order.totalAmount || 0);
+                            userMap[userName].quotationAmount += trueSaleValue;
                             userMap[userName].quotationCount += 1;
                         } else if (order.status !== 'void' && order.status !== 'cancelled') {
-                            userMap[userName].invoiceAmount += (order.totalAmount || 0);
+                            userMap[userName].invoiceAmount += trueSaleValue;
                             userMap[userName].invoiceCount += 1;
                         }
 
