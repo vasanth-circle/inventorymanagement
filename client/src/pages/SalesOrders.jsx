@@ -19,6 +19,7 @@ const SalesOrders = () => {
     const [customers, setCustomers] = useState([]);
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingOrder, setEditingOrder] = useState(null);
     const [fetchingBalance, setFetchingBalance] = useState(false);
@@ -319,6 +320,8 @@ const SalesOrders = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (submitting) return; // Guard against double-click
+        setSubmitting(true);
         try {
             const { netTotal, roundOffAmount } = calculateTotals();
             const submissionData = { ...formData, totalAmount: netTotal, roundOffAmount };
@@ -366,6 +369,8 @@ const SalesOrders = () => {
             fetchOrders();
         } catch (error) {
             toast.error(error.response?.data?.message || 'Error saving order');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -1209,9 +1214,10 @@ const SalesOrders = () => {
                             <button 
                                 form="salesOrderForm"
                                 type="submit"
-                                className="px-10 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 font-black shadow-lg shadow-primary-200 transition-all active:scale-95"
+                                disabled={submitting}
+                                className="px-10 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 font-black shadow-lg shadow-primary-200 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
                             >
-                                {editingOrder ? '💾 Update Changes' : (formData.isEstimation ? '💾 Save Quotation' : '✅ Generate Final Bill')}
+                                {submitting ? '⏳ Saving...' : (editingOrder ? '💾 Update Changes' : (formData.isEstimation ? '💾 Save Quotation' : '✅ Generate Final Bill'))}
                             </button>
                         </div>
                     </div>

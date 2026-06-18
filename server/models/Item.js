@@ -121,6 +121,9 @@ itemSchema.index({ barcode: 1, tenantId: 1 }, {
     partialFilterExpression: { barcode: { $type: "string", $gt: "" } }
 });
 
+itemSchema.index({ tenantId: 1, updatedAt: -1 }); // slow-moving items & inventory list sort
+
+
 // Virtual field for stock status
 itemSchema.virtual('stockStatus').get(function () {
     if (this.quantity === 0) return 'out-of-stock';

@@ -188,6 +188,12 @@ const salesOrderSchema = new mongoose.Schema({
 salesOrderSchema.index({ orderNumber: 1, tenantId: 1 }, { unique: true });
 salesOrderSchema.index({ customer: 1, tenantId: 1 });
 salesOrderSchema.index({ status: 1, tenantId: 1 });
+// Performance indexes — list sorting, dashboard aggregations, duplicate guard
+salesOrderSchema.index({ tenantId: 1, createdAt: -1 });               // list page sort
+salesOrderSchema.index({ tenantId: 1, orderDate: -1 });                // dashboard today/week/month filters
+salesOrderSchema.index({ tenantId: 1, isEstimation: 1, status: 1 });  // dashboard & profit aggregations
+salesOrderSchema.index({ tenantId: 1, user: 1, createdAt: -1 });      // duplicate submission guard
+
 
 const SalesOrder = appConn.model('SalesOrder', salesOrderSchema);
 

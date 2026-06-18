@@ -413,7 +413,33 @@ export const createSalesOrder = async (req, res, next) => {
             }
         }
 
-        // ── Customer Credit & Lock Validation ──
+        // ── Duplicate Submission Guard (same user + same customer + same items fingerprint within 15s) ──
+        if (!isEstimation) {
+            const fifteenSecondsAgo = new Date(Date.now() - 15000);
+            const itemsFingerprint = (items || [])
+                .map(i => `${i.item}:${i.quantity}:${i.price}`)
+                .sort()
+                .join('|');
+
+            const recentOrders = await SalesOrder.find({
+                tenantId: req.tenantId,
+                customer,
+                user: req.user._id,
+                isEstimation: false,
+                createdAt: { $gte: fifteenSecondsAgo }
+            }).select('items createdAt');
+
+            for (const recent of recentOrders) {
+                const recentFingerprint = (recent.items || [])
+                    .map(i => `${i.item}:${i.quantity}:${i.price}`)
+                    .sort()
+                    .join('|');
+                if (recentFingerprint === itemsFingerprint) {
+                    return sendError(res, 409, 'Duplicate submission detected. This invoice appears to have already been saved. Please refresh and check before trying again.');
+                }
+            }
+        }
+
         if (!isEstimation) {
             let itemsTotal = 0;
             items.forEach(item => {

@@ -91,6 +91,8 @@ const transactionSchema = new mongoose.Schema({
 transactionSchema.index({ item: 1, createdAt: -1, tenantId: 1 });
 transactionSchema.index({ type: 1, tenantId: 1 });
 transactionSchema.index({ user: 1, tenantId: 1 });
+transactionSchema.index({ tenantId: 1, createdAt: -1 }); // dashboard recent activity & list sort
+
 
 const Transaction = appConn.model('Transaction', transactionSchema);
 

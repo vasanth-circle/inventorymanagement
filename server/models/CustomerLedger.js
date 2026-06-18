@@ -78,6 +78,8 @@ const customerLedgerSchema = new mongoose.Schema({
 
 customerLedgerSchema.index({ customer: 1, tenantId: 1, date: -1 });
 customerLedgerSchema.index({ refId: 1, refType: 1 });
+customerLedgerSchema.index({ tenantId: 1, createdAt: -1 }); // balance recalc sort
+
 
 const CustomerLedger = appConn.model('CustomerLedger', customerLedgerSchema);
 

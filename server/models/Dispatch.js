@@ -64,6 +64,8 @@ const dispatchSchema = new mongoose.Schema({
 
 dispatchSchema.index({ dispatchNumber: 1, tenantId: 1 }, { unique: true });
 dispatchSchema.index({ order: 1 });
+dispatchSchema.index({ tenantId: 1, createdAt: -1 }); // dispatch list sort
+
 
 const Dispatch = appConn.model('Dispatch', dispatchSchema);
 
