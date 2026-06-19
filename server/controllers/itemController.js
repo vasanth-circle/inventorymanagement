@@ -165,6 +165,9 @@ export const createItem = async (req, res, next) => {
         // Sanitize for partial indexing: empty strings should be undefined
         if (itemData.sku === '') delete itemData.sku;
         if (itemData.barcode === '') delete itemData.barcode;
+        if (itemData.minStockThreshold === '') itemData.minStockThreshold = 0;
+        if (itemData.price === '') itemData.price = 0;
+        if (itemData.purchasePrice === '') itemData.purchasePrice = 0;
 
         itemData.tenantId = req.tenantId;
 
@@ -218,6 +221,9 @@ export const updateItem = async (req, res, next) => {
         // Sanitize for partial indexing
         if (updateData.sku === '') updateData.sku = undefined;
         if (updateData.barcode === '') updateData.barcode = undefined;
+        if (updateData.minStockThreshold === '') updateData.minStockThreshold = 0;
+        if (updateData.price === '') updateData.price = 0;
+        if (updateData.purchasePrice === '') updateData.purchasePrice = 0;
 
         const updatedItem = await Item.findOneAndUpdate(
             { _id: req.params.id, ...tenantQuery(req) },
