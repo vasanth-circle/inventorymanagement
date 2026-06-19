@@ -284,6 +284,10 @@ export const getTransactions = async (req, res, next) => {
 
         const query = { ...tenantQuery(req) };
 
+        if (req.query._id) {
+            query._id = req.query._id;
+        }
+
         if (type) {
             query.type = type;
         }
@@ -307,6 +311,8 @@ export const getTransactions = async (req, res, next) => {
         const transactions = await Transaction.find(query)
             .populate('item', 'name barcode category')
             .populate({ path: 'user', model: User, select: 'name email' })
+            .populate('customer', 'name companyName phone')
+            .populate('vendor', 'name companyName phone')
             .sort({ createdAt: -1 })
             .limit(limit * 1)
             .skip((page - 1) * limit)
@@ -427,6 +433,7 @@ export const stockReturn = async (req, res, next) => {
             type: 'return',
             returnType,
             quantity: qty,
+            rate: parseFloat(rate) || 0,
             referenceOrder,
             reason,
             notes,
@@ -435,7 +442,8 @@ export const stockReturn = async (req, res, next) => {
             user: req.user._id,
             previousQuantity,
             newQuantity,
-            tenantId: req.tenantId
+            tenantId: req.tenantId,
+            settlementType: req.body.settlementType || 'ledger'
         });
 
         const totalAmount = qty * (parseFloat(rate) || 0);
@@ -458,6 +466,23 @@ export const stockReturn = async (req, res, next) => {
                 createdBy: req.user._id,
                 notes: notes || 'Automated entry from stock return'
             });
+
+            if (req.body.settlementType === 'cash') {
+                const finalBalance = newBalance + totalAmount; // Credit increases liability back
+                await VendorLedger.create({
+                    tenantId: req.tenantId,
+                    vendor,
+                    date: Date.now(),
+                    type: 'payment',
+                    refType: 'Cash',
+                    refNumber: referenceOrder || `CASH-${Date.now()}`,
+                    description: `Cash Received for Return: ${itemDoc.name}`,
+                    credit: totalAmount,
+                    balance: finalBalance,
+                    createdBy: req.user._id,
+                    notes: 'Immediate cash received for return'
+                });
+            }
         } else if (returnType === 'customer' && customer && totalAmount > 0) {
             const lastEntry = await CustomerLedger.findOne({ customer, tenantId: req.tenantId }).sort({ date: -1, createdAt: -1 });
             const currentBalance = lastEntry ? lastEntry.balance : 0;
@@ -476,6 +501,23 @@ export const stockReturn = async (req, res, next) => {
                 createdBy: req.user._id,
                 notes: notes || 'Automated refund entry from stock return'
             });
+
+            if (req.body.settlementType === 'cash') {
+                const finalBalance = newBalance + totalAmount; // Debit increases liability back
+                await CustomerLedger.create({
+                    tenantId: req.tenantId,
+                    customer,
+                    date: Date.now(),
+                    type: 'payment',
+                    refType: 'Cash',
+                    refNumber: referenceOrder || `CASH-${Date.now()}`,
+                    description: `Cash Paid for Return: ${itemDoc.name}`,
+                    debit: totalAmount,
+                    balance: finalBalance,
+                    createdBy: req.user._id,
+                    notes: 'Immediate cash paid for return'
+                });
+            }
         }
 
         const populatedTransaction = await Transaction.findOne({ _id: transaction._id, ...tenantQuery(req) })

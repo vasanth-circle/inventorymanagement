@@ -110,6 +110,12 @@ const Reports = () => {
                     setSummary(response.data.data); // Stores customer, summary info
                     toast.success('Detailed Ledger generated');
                 }
+            } else if (reportType === 'returns') {
+                const data = await fetchTransactions({ ...filters, type: 'return', limit: 5000 });
+                if (data && data.transactions) {
+                    setReportData(data.transactions);
+                    toast.success('Stock Returns report generated');
+                }
             }
         } catch (error) {
             toast.error('Failed to generate report');
@@ -187,6 +193,17 @@ const Reports = () => {
                 'Damaged Quantity': item.damagedQuantity,
                 'Purchase Price': formatCurrency(item.purchasePrice || 0),
                 'Total Damaged Value': formatCurrency((item.damagedQuantity || 0) * (item.purchasePrice || item.price || 0))
+            }));
+        } else if (reportType === 'returns') {
+            exportData = reportData.map(tx => ({
+                'Date': formatDateTime(tx.createdAt),
+                'Entity': tx.customer?.companyName || tx.customer?.name || tx.vendor?.companyName || tx.vendor?.name || 'Unknown',
+                'Type': tx.returnType,
+                'Item': tx.item?.name || 'N/A',
+                'Quantity': tx.quantity,
+                'Rate': formatCurrency(tx.rate || 0),
+                'Amount': formatCurrency((tx.quantity || 0) * (tx.rate || 0)),
+                'Reason': tx.reason || 'N/A'
             }));
         }
 
@@ -400,6 +417,35 @@ const Reports = () => {
                     </table>
                 </div>
             );
+        } else if (reportType === 'returns') {
+            return (
+                <div className="overflow-x-auto">
+                    <table className="min-w-full">
+                        <thead className="bg-white border-b border-gray-100">
+                            <tr>
+                                <th className="px-3 py-2 sm:px-6 sm:py-4 text-left text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Date</th>
+                                <th className="px-3 py-2 sm:px-6 sm:py-4 text-left text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Entity</th>
+                                <th className="px-3 py-2 sm:px-6 sm:py-4 text-left text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Item</th>
+                                <th className="px-3 py-2 sm:px-6 sm:py-4 text-center text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Qty</th>
+                                <th className="px-3 py-2 sm:px-6 sm:py-4 text-right text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Rate</th>
+                                <th className="px-3 py-2 sm:px-6 sm:py-4 text-right text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 font-medium">
+                            {reportData.map((t) => (
+                                <tr key={t._id} className="hover:bg-gray-50/50">
+                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs text-gray-900">{formatDateTime(t.createdAt)}</td>
+                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs font-bold text-gray-900">{t.customer?.companyName || t.customer?.name || t.vendor?.companyName || t.vendor?.name || 'Unknown'}</td>
+                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs font-bold text-gray-900">{t.item?.name || 'N/A'}</td>
+                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-center text-[11px] sm:text-xs font-black text-purple-600">{t.quantity}</td>
+                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-right text-[11px] sm:text-xs text-gray-900">{formatCurrency(t.rate || 0)}</td>
+                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-right text-[11px] sm:text-xs font-bold text-gray-900">{formatCurrency((t.quantity || 0) * (t.rate || 0))}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
         }
     };
 
@@ -411,6 +457,7 @@ const Reports = () => {
         { id: 'daywise_receivables', label: '💸 Daywise Receivables' },
         { id: 'detailed_ledger', label: '📒 Detailed Ledger' },
         { id: 'damaged_goods', label: '❌ Damaged Goods' },
+        { id: 'returns', label: '↩️ Stock Returns' },
     ];
 
     return (

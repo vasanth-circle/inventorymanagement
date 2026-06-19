@@ -35,6 +35,27 @@ const ActionLogs = () => {
         setPage(1);
     };
 
+    const handlePrintReturn = async (log) => {
+        try {
+            const toastId = toast.loading('Fetching return details...');
+            const res = await axios.get(`/api/transactions?_id=${log.entityId}`, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+            });
+            toast.dismiss(toastId);
+            if (res.data.transactions && res.data.transactions.length > 0) {
+                const tx = res.data.transactions[0];
+                import('../utils/printTemplates').then(module => {
+                    module.printReturnSlip(tx, {});
+                });
+            } else {
+                toast.error('Transaction details not found');
+            }
+        } catch (error) {
+            toast.dismiss();
+            toast.error('Failed to print return slip');
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -87,6 +108,14 @@ const ActionLogs = () => {
                                         <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-xs font-bold uppercase">
                                             {log.action.replace('_', ' ')}
                                         </span>
+                                        {log.action === 'stock_return' && (
+                                            <button 
+                                                onClick={() => handlePrintReturn(log)}
+                                                className="ml-3 px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded"
+                                            >
+                                                🖨️ Print Slip
+                                            </button>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4 text-sm font-bold text-gray-700">
                                         {log.entityNumber || 'N/A'}

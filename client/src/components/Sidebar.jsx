@@ -35,6 +35,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 { name: 'Bulk Import', path: '/bulk-import', id: 'bulk-import' },
                 { name: 'Stock Summary', path: '/stocks', id: 'stocks' },
                 { name: 'Stock Returns', path: '/stock-return', id: 'stock-return' },
+                { name: 'Stock Returns List', path: '/stock-returns-list', id: 'stock-returns-list' },
                 { name: 'Make Adjustment', path: '/stock-adjustment', id: 'stock-adjustment' },
             ]
         },

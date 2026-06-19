@@ -1399,6 +1399,8 @@ export const printReturnSlip = (returnTx, settings) => {
     const name = entity.companyName || entity.name || 'Unknown';
     const date = new Date(returnTx.createdAt).toLocaleDateString('en-IN');
     const qty = returnTx.quantity || 0;
+    const rate = returnTx.rate || 0;
+    const amount = qty * rate;
     const title = returnTx.returnType === 'customer' ? 'CREDIT NOTE / RETURN SLIP' : 'DEBIT NOTE / RETURN OUTWARD';
 
     const html = `<html><head><meta charset="UTF-8"><title>Return_Slip_${name.replace(/[^a-zA-Z0-9]/g, '_')}</title>
@@ -1452,15 +1454,19 @@ export const printReturnSlip = (returnTx, settings) => {
     <table>
       <thead>
         <tr>
-          <th width="50%">Item Description</th>
-          <th width="20%" style="text-align:center">Quantity</th>
-          <th width="30%">Reason</th>
+          <th width="40%">Item Description</th>
+          <th width="15%" style="text-align:center">Quantity</th>
+          <th width="15%" style="text-align:right">Rate</th>
+          <th width="15%" style="text-align:right">Amount</th>
+          <th width="15%">Reason</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td><strong>${returnTx.item?.name || 'Unknown Item'}</strong></td>
           <td style="text-align:center; font-weight:bold">${qty}</td>
+          <td style="text-align:right">${sym}${rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+          <td style="text-align:right; font-weight:bold">${sym}${amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
           <td>${returnTx.reason || 'N/A'}</td>
         </tr>
       </tbody>

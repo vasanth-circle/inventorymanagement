@@ -100,10 +100,11 @@ const StockReturn = () => {
     const [vendorQty, setVendorQty] = useState('');
     const [vendorRate, setVendorRate] = useState('');
 
-    // Common
+    // Shared Form Fields
+    const [referenceOrder, setReferenceOrder] = useState('');
     const [reason, setReason] = useState('');
     const [notes, setNotes] = useState('');
-    const [referenceOrder, setReferenceOrder] = useState('');
+    const [settlementType, setSettlementType] = useState('ledger');
 
     useEffect(() => {
         fetchInitialData();
@@ -188,6 +189,7 @@ const StockReturn = () => {
     // Submit handler
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (loading) return;
 
         if (returnType === 'customer') {
             if (!selectedCustomer) return toast.error('Please select a customer');
@@ -216,6 +218,7 @@ const StockReturn = () => {
                         referenceOrder,
                         reason,
                         notes,
+                        settlementType,
                     });
                 }
                 toast.success(`Return recorded! ₹${refundTotal.toLocaleString('en-IN')} refunded to customer ledger.`);
@@ -261,8 +264,9 @@ const StockReturn = () => {
                     referenceOrder,
                     reason,
                     notes,
+                    settlementType,
                 });
-                toast.success('Return to vendor recorded successfully');
+                toast.success('Vendor return recorded! Adjustments made to vendor ledger.');
                 if (window.confirm('Return recorded successfully! Would you like to print the return slip?')) {
                     const returnTx = {
                         returnType: 'vendor',
@@ -566,6 +570,25 @@ const StockReturn = () => {
                                 className="w-full p-4 bg-gray-50 border-none rounded-lg text-sm font-medium text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all"
                             />
                         </div>
+                        <div className="space-y-2 pt-4 border-t border-gray-100">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Settlement Method</label>
+                            <div className="flex flex-col sm:flex-row gap-4">
+                                <label className={`flex-1 flex items-center gap-3 p-4 border rounded-xl cursor-pointer transition-all ${settlementType === 'ledger' ? 'border-rose-500 bg-rose-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
+                                    <input type="radio" name="settlementType" value="ledger" checked={settlementType === 'ledger'} onChange={() => setSettlementType('ledger')} className="w-4 h-4 text-rose-600 focus:ring-rose-500 border-gray-300" />
+                                    <div>
+                                        <div className="text-sm font-bold text-gray-900">Add to Ledger Balance (Credit)</div>
+                                        <div className="text-[10px] font-medium text-gray-500">Refund amount will be added to the outstanding ledger balance.</div>
+                                    </div>
+                                </label>
+                                <label className={`flex-1 flex items-center gap-3 p-4 border rounded-xl cursor-pointer transition-all ${settlementType === 'cash' ? 'border-rose-500 bg-rose-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
+                                    <input type="radio" name="settlementType" value="cash" checked={settlementType === 'cash'} onChange={() => setSettlementType('cash')} className="w-4 h-4 text-rose-600 focus:ring-rose-500 border-gray-300" />
+                                    <div>
+                                        <div className="text-sm font-bold text-gray-900">Immediate Cash Refund</div>
+                                        <div className="text-[10px] font-medium text-gray-500">A secondary cash payment entry will be created to settle the return immediately.</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
                     </div>
 
                     {/* ── Action Bar ── */}
@@ -573,7 +596,7 @@ const StockReturn = () => {
                         {/* Refund summary badge */}
                         {returnType === 'customer' && refundTotal > 0 && (
                             <div className="flex items-center gap-2 bg-rose-50 border border-rose-100 rounded-xl px-4 py-2">
-                                <span className="text-xs font-black text-rose-600 uppercase tracking-widest">Refunded Amt:</span>
+                                <span className="text-xs font-black text-rose-600 uppercase tracking-widest">{settlementType === 'cash' ? 'Cash to Pay:' : 'Refund to Ledger:'}</span>
                                 <span className="text-lg font-black text-rose-700">₹{refundTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                             </div>
                         )}

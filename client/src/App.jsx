@@ -14,6 +14,7 @@ import Inventory from './pages/Inventory';
 import StockInward from './pages/StockInward';
 import StockOutward from './pages/StockOutward';
 import StockReturn from './pages/StockReturn';
+import StockReturnsList from './pages/StockReturnsList';
 import StockAdjustment from './pages/StockAdjustment';
 import Reports from './pages/Reports';
 import Stocks from './pages/Stocks';
@@ -98,6 +99,7 @@ function App() {
                                             <Route path="/stock-inward" element={<StockInward />} />
                                             <Route path="/stock-outward" element={<StockOutward />} />
                                             <Route path="/stock-return" element={<StockReturn />} />
+                                            <Route path="/stock-returns-list" element={<StockReturnsList />} />
                                             <Route path="/stock-adjustment" element={<StockAdjustment />} />
                                             <Route path="/reports" element={<Reports />} />
                                             <Route path="/ledger-reports" element={<LedgerReports />} />

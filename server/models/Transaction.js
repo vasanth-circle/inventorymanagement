@@ -22,6 +22,10 @@ const transactionSchema = new mongoose.Schema({
         default: 0,
         min: 0,
     },
+    rate: {
+        type: Number,
+        default: 0,
+    },
     reason: {
         type: String,
         trim: true,
@@ -76,6 +80,11 @@ const transactionSchema = new mongoose.Schema({
     vendor: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Vendor',
+    },
+    settlementType: {
+        type: String,
+        enum: ['ledger', 'cash'],
+        default: 'ledger'
     },
     tenantId: {
         type: mongoose.Schema.Types.ObjectId,
