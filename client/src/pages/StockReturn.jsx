@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import { InventoryContext } from '../context/InventoryContext';
 
 // ── Searchable Select Component (inline, lightweight) ──────────────────────
 const SearchableDropdown = ({ options = [], value, onChange, placeholder = 'Search...', disabled = false }) => {
@@ -77,6 +78,7 @@ const SearchableDropdown = ({ options = [], value, onChange, placeholder = 'Sear
 // ── Main Component ─────────────────────────────────────────────────────────
 const StockReturn = () => {
     const navigate = useNavigate();
+    const { billingSettings } = useContext(InventoryContext);
     const [loading, setLoading] = useState(false);
     const [customers, setCustomers] = useState([]);
     const [vendors, setVendors] = useState([]);
@@ -235,7 +237,7 @@ const StockReturn = () => {
                         item: itemsToReturn.length === 1 ? { name: itemsToReturn[0].itemName } : { name: `Multiple Items (${itemsToReturn.length})` }
                     };
                     import('../utils/printTemplates').then(module => {
-                        module.printReturnSlip(returnTx, {});
+                        module.printReturnSlip(returnTx, billingSettings);
                         navigate('/inventory');
                     });
                 } else {
@@ -279,7 +281,7 @@ const StockReturn = () => {
                         item: { name: allItems.find(i => i._id === vendorItem)?.name || 'Item' }
                     };
                     import('../utils/printTemplates').then(module => {
-                        module.printReturnSlip(returnTx, {});
+                        module.printReturnSlip(returnTx, billingSettings);
                         navigate('/inventory');
                     });
                 } else {

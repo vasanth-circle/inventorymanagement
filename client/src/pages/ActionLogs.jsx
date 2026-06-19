@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { InventoryContext } from '../context/InventoryContext';
 
 const API_URL = '/api/logs';
 
 const ActionLogs = () => {
+    const { billingSettings } = useContext(InventoryContext);
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -45,7 +47,7 @@ const ActionLogs = () => {
             if (res.data.transactions && res.data.transactions.length > 0) {
                 const tx = res.data.transactions[0];
                 import('../utils/printTemplates').then(module => {
-                    module.printReturnSlip(tx, {});
+                    module.printReturnSlip(tx, billingSettings);
                 });
             } else {
                 toast.error('Transaction details not found');

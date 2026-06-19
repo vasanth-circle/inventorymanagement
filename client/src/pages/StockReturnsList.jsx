@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { printReturnSlip } from '../utils/printTemplates';
+import { InventoryContext } from '../context/InventoryContext';
 
 const API_URL = '/api/transactions';
 
 const StockReturnsList = () => {
+    const { billingSettings } = useContext(InventoryContext);
     const [returns, setReturns] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -38,7 +40,7 @@ const StockReturnsList = () => {
     };
 
     const handlePrint = (returnTx) => {
-        printReturnSlip(returnTx, {});
+        printReturnSlip(returnTx, billingSettings);
     };
 
     const filteredReturns = returns.filter(tx => {
