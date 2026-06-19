@@ -1391,7 +1391,7 @@ export const printReturnSlip = (returnTx, settings) => {
     const s = settings || {};
     const sym = s.documentConfig?.currencySymbol || '₹';
     const logoSrc = s.branding?.logoUrl
-        ? (s.branding.logoUrl.startsWith('http') ? s.branding.logoUrl : \`\${window.location.origin}\${s.branding.logoUrl}\`)
+        ? (s.branding.logoUrl.startsWith('http') ? s.branding.logoUrl : `${window.location.origin}${s.branding.logoUrl}`)
         : '';
     
     const entityType = returnTx.returnType === 'customer' ? 'Customer' : 'Vendor';
@@ -1401,7 +1401,7 @@ export const printReturnSlip = (returnTx, settings) => {
     const qty = returnTx.quantity || 0;
     const title = returnTx.returnType === 'customer' ? 'CREDIT NOTE / RETURN SLIP' : 'DEBIT NOTE / RETURN OUTWARD';
 
-    const html = \`<html><head><meta charset="UTF-8"><title>Return_Slip_\${name.replace(/[^a-zA-Z0-9]/g, '_')}</title>
+    const html = `<html><head><meta charset="UTF-8"><title>Return_Slip_${name.replace(/[^a-zA-Z0-9]/g, '_')}</title>
 <style>
   @page { size: A5 landscape; margin: 10mm; }
   body { font-family: 'Arial', sans-serif; font-size: 11px; color: #333; margin: 0; background: #fff; }
@@ -1425,27 +1425,27 @@ export const printReturnSlip = (returnTx, settings) => {
   <div class="container">
     <div class="header">
       <div>
-        \${logoSrc ? \`<img src="\${logoSrc}" class="logo"/>\` : \`<div class="company-name">\${s.companyName || 'OUR COMPANY'}</div>\`}
+        ${logoSrc ? `<img src="${logoSrc}" class="logo"/>` : `<div class="company-name">${s.companyName || 'OUR COMPANY'}</div>`}
       </div>
       <div class="company-info">
-        \${logoSrc ? \`<div class="company-name">\${s.companyName || 'OUR COMPANY'}</div>\` : ''}
-        <div>\${s.address || ''}</div>
-        <div>\${s.phone1 ? \`Ph: \${s.phone1}\` : ''}</div>
+        ${logoSrc ? `<div class="company-name">${s.companyName || 'OUR COMPANY'}</div>` : ''}
+        <div>${s.address || ''}</div>
+        <div>${s.phone1 ? `Ph: ${s.phone1}` : ''}</div>
       </div>
     </div>
     
-    <div class="title-band">\${title}</div>
+    <div class="title-band">${title}</div>
     
     <div class="details-grid">
       <div class="box">
-        <div class="box-label">\${entityType}</div>
-        <div class="box-value">\${name}</div>
-        \${entity.phone ? \`<div style="font-size:10px;margin-top:2px;">Ph: \${entity.phone}</div>\` : ''}
+        <div class="box-label">${entityType}</div>
+        <div class="box-value">${name}</div>
+        ${entity.phone ? `<div style="font-size:10px;margin-top:2px;">Ph: ${entity.phone}</div>` : ''}
       </div>
       <div class="box" style="text-align: right;">
         <div class="box-label">Return Date</div>
-        <div class="box-value">\${date}</div>
-        \${returnTx.referenceOrder ? \`<div class="box-label" style="margin-top:8px;">Ref. Order / Invoice</div><div class="box-value">\${returnTx.referenceOrder}</div>\` : ''}
+        <div class="box-value">${date}</div>
+        ${returnTx.referenceOrder ? `<div class="box-label" style="margin-top:8px;">Ref. Order / Invoice</div><div class="box-value">${returnTx.referenceOrder}</div>` : ''}
       </div>
     </div>
     
@@ -1459,21 +1459,21 @@ export const printReturnSlip = (returnTx, settings) => {
       </thead>
       <tbody>
         <tr>
-          <td><strong>\${returnTx.item?.name || 'Unknown Item'}</strong></td>
-          <td style="text-align:center; font-weight:bold">\${qty}</td>
-          <td>\${returnTx.reason || 'N/A'}</td>
+          <td><strong>${returnTx.item?.name || 'Unknown Item'}</strong></td>
+          <td style="text-align:center; font-weight:bold">${qty}</td>
+          <td>${returnTx.reason || 'N/A'}</td>
         </tr>
       </tbody>
     </table>
     
-    \${returnTx.notes ? \`<div style="font-size:10px; color:#555; margin-bottom: 20px;"><b>Notes:</b> \${returnTx.notes}</div>\` : ''}
+    ${returnTx.notes ? `<div style="font-size:10px; color:#555; margin-bottom: 20px;"><b>Notes:</b> ${returnTx.notes}</div>` : ''}
     
     <div class="footer">
       <div class="sig"><div class="sig-line">Customer / Receiver Signature</div></div>
       <div class="sig"><div class="sig-line">Authorised Signatory</div></div>
     </div>
   </div>
-</body></html>\`;
+</body></html>`;
 
     const w = window.open('', '_blank', 'width=800,height=600');
     w.document.write(html);
