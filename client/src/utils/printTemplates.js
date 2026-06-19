@@ -1384,3 +1384,100 @@ export const printShippingLabels = (dispatch, fullOrder, settings) => {
     setTimeout(() => { w.focus(); w.print(); }, 600);
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// RETURN SLIP PRINTING
+// ─────────────────────────────────────────────────────────────────────────────
+export const printReturnSlip = (returnTx, settings) => {
+    const s = settings || {};
+    const sym = s.documentConfig?.currencySymbol || '₹';
+    const logoSrc = s.branding?.logoUrl
+        ? (s.branding.logoUrl.startsWith('http') ? s.branding.logoUrl : \`\${window.location.origin}\${s.branding.logoUrl}\`)
+        : '';
+    
+    const entityType = returnTx.returnType === 'customer' ? 'Customer' : 'Vendor';
+    const entity = returnTx.customer || returnTx.vendor || { name: 'Unknown' };
+    const name = entity.companyName || entity.name || 'Unknown';
+    const date = new Date(returnTx.createdAt).toLocaleDateString('en-IN');
+    const qty = returnTx.quantity || 0;
+    const title = returnTx.returnType === 'customer' ? 'CREDIT NOTE / RETURN SLIP' : 'DEBIT NOTE / RETURN OUTWARD';
+
+    const html = \`<html><head><meta charset="UTF-8"><title>Return_Slip_\${name.replace(/[^a-zA-Z0-9]/g, '_')}</title>
+<style>
+  @page { size: A5 landscape; margin: 10mm; }
+  body { font-family: 'Arial', sans-serif; font-size: 11px; color: #333; margin: 0; background: #fff; }
+  .container { border: 1px solid #ccc; padding: 20px; border-radius: 8px; width: 100%; box-sizing: border-box; }
+  .header { display: flex; justify-content: space-between; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+  .logo { max-height: 40px; max-width: 150px; object-fit: contain; }
+  .company-info { text-align: right; }
+  .company-name { font-size: 16px; font-weight: 900; color: #111; }
+  .title-band { background: #f8f9fa; padding: 10px; text-align: center; font-size: 14px; font-weight: bold; letter-spacing: 2px; margin-bottom: 15px; border: 1px solid #eee; }
+  .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .box { padding: 10px; border: 1px solid #eee; border-radius: 4px; }
+  .box-label { font-size: 9px; color: #888; text-transform: uppercase; margin-bottom: 4px; }
+  .box-value { font-size: 12px; font-weight: bold; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  th { background: #f8f9fa; padding: 8px; text-align: left; font-size: 10px; border: 1px solid #eee; }
+  td { padding: 10px 8px; border: 1px solid #eee; font-size: 11px; }
+  .footer { display: flex; justify-content: space-between; margin-top: 40px; }
+  .sig { text-align: center; width: 200px; }
+  .sig-line { border-top: 1px solid #ccc; padding-top: 5px; font-size: 10px; color: #666; }
+</style></head><body>
+  <div class="container">
+    <div class="header">
+      <div>
+        \${logoSrc ? \`<img src="\${logoSrc}" class="logo"/>\` : \`<div class="company-name">\${s.companyName || 'OUR COMPANY'}</div>\`}
+      </div>
+      <div class="company-info">
+        \${logoSrc ? \`<div class="company-name">\${s.companyName || 'OUR COMPANY'}</div>\` : ''}
+        <div>\${s.address || ''}</div>
+        <div>\${s.phone1 ? \`Ph: \${s.phone1}\` : ''}</div>
+      </div>
+    </div>
+    
+    <div class="title-band">\${title}</div>
+    
+    <div class="details-grid">
+      <div class="box">
+        <div class="box-label">\${entityType}</div>
+        <div class="box-value">\${name}</div>
+        \${entity.phone ? \`<div style="font-size:10px;margin-top:2px;">Ph: \${entity.phone}</div>\` : ''}
+      </div>
+      <div class="box" style="text-align: right;">
+        <div class="box-label">Return Date</div>
+        <div class="box-value">\${date}</div>
+        \${returnTx.referenceOrder ? \`<div class="box-label" style="margin-top:8px;">Ref. Order / Invoice</div><div class="box-value">\${returnTx.referenceOrder}</div>\` : ''}
+      </div>
+    </div>
+    
+    <table>
+      <thead>
+        <tr>
+          <th width="50%">Item Description</th>
+          <th width="20%" style="text-align:center">Quantity</th>
+          <th width="30%">Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>\${returnTx.item?.name || 'Unknown Item'}</strong></td>
+          <td style="text-align:center; font-weight:bold">\${qty}</td>
+          <td>\${returnTx.reason || 'N/A'}</td>
+        </tr>
+      </tbody>
+    </table>
+    
+    \${returnTx.notes ? \`<div style="font-size:10px; color:#555; margin-bottom: 20px;"><b>Notes:</b> \${returnTx.notes}</div>\` : ''}
+    
+    <div class="footer">
+      <div class="sig"><div class="sig-line">Customer / Receiver Signature</div></div>
+      <div class="sig"><div class="sig-line">Authorised Signatory</div></div>
+    </div>
+  </div>
+</body></html>\`;
+
+    const w = window.open('', '_blank', 'width=800,height=600');
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => { w.focus(); w.print(); }, 600);
+};
+

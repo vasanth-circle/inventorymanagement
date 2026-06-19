@@ -117,7 +117,7 @@ export const schemas = {
         notes: Joi.string().optional().trim().allow(''),
         price: Joi.number().min(0).optional(),
         batchNumber: Joi.string().optional().allow(''),
-    }),
+    }).unknown(true),
 
     createCategory: Joi.object({
         name: Joi.string().required().trim(),

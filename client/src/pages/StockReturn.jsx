@@ -219,7 +219,26 @@ const StockReturn = () => {
                     });
                 }
                 toast.success(`Return recorded! ₹${refundTotal.toLocaleString('en-IN')} refunded to customer ledger.`);
-                navigate('/inventory');
+                if (window.confirm('Return recorded successfully! Would you like to print the return slip?')) {
+                    // Create a mock transaction object for printing
+                    const returnTx = {
+                        returnType: 'customer',
+                        customer: customers.find(c => c._id === selectedCustomer),
+                        createdAt: new Date(),
+                        quantity: itemsToReturn.reduce((sum, r) => sum + parseFloat(r.returnQty), 0),
+                        referenceOrder,
+                        reason,
+                        notes,
+                        item: itemsToReturn.length === 1 ? { name: itemsToReturn[0].itemName } : { name: `Multiple Items (${itemsToReturn.length})` }
+                    };
+                    import('../utils/printTemplates').then(module => {
+                        module.printReturnSlip(returnTx, {});
+                        navigate('/inventory');
+                    });
+                } else {
+                    navigate('/inventory');
+                }
+
             } catch (error) {
                 toast.error(error.response?.data?.message || 'Failed to record return');
             } finally {
@@ -244,7 +263,25 @@ const StockReturn = () => {
                     notes,
                 });
                 toast.success('Return to vendor recorded successfully');
-                navigate('/inventory');
+                if (window.confirm('Return recorded successfully! Would you like to print the return slip?')) {
+                    const returnTx = {
+                        returnType: 'vendor',
+                        vendor: vendors.find(v => v._id === selectedVendor),
+                        createdAt: new Date(),
+                        quantity: parseFloat(vendorQty),
+                        referenceOrder,
+                        reason,
+                        notes,
+                        item: { name: allItems.find(i => i._id === vendorItem)?.name || 'Item' }
+                    };
+                    import('../utils/printTemplates').then(module => {
+                        module.printReturnSlip(returnTx, {});
+                        navigate('/inventory');
+                    });
+                } else {
+                    navigate('/inventory');
+                }
+
             } catch (error) {
                 toast.error(error.response?.data?.message || 'Failed to record return');
             } finally {
