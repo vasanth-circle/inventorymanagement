@@ -101,7 +101,7 @@ export const getPurchaseOrder = async (req, res, next) => {
 // @access  Private
 export const createPurchaseOrder = async (req, res, next) => {
     try {
-        const { vendor, items, orderDate, expectedDeliveryDate, notes, vendorBillNumber } = req.body;
+        const { vendor, items, orderDate, expectedDeliveryDate, notes, vendorBillNumber, taxRate, totalAmount } = req.body;
 
         // Generate Order Number with retry logic
         let order;
@@ -116,6 +116,8 @@ export const createPurchaseOrder = async (req, res, next) => {
                     vendor,
                     vendorBillNumber,
                     items,
+                    taxRate,
+                    totalAmount: totalAmount || 0,
                     orderDate,
                     expectedDeliveryDate,
                     notes,

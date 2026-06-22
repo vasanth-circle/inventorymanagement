@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import SearchableSelect from '../components/SearchableSelect';
 import { InventoryContext } from '../context/InventoryContext';
 import { AuthContext } from '../context/AuthContext';
+import { generatePurchaseOrderHtml } from '../utils/printTemplates';
 
 const PurchaseOrders = () => {
     const { billingSettings, calculateItemValues } = useContext(InventoryContext);
@@ -22,6 +23,7 @@ const PurchaseOrders = () => {
     const [formData, setFormData] = useState({
         vendor: '',
         vendorBillNumber: '',
+        taxRate: 0,
         items: [{ 
             item: '', 
             quantity: '', 
@@ -112,6 +114,22 @@ const PurchaseOrders = () => {
                     // Recalculate totals with the new defaults
                     newItems[index] = calculateItemValues(newItems[index], 'price', newItems[index].price, billingSettings?.industry);
                 }
+            } else if (field === 'piecesCount') {
+                const row = newItems[index];
+                const pcs = Number(value || 0);
+                row.totalPcs = pcs;
+                row.totalSqFt = Number((pcs * (row.sqFtPerPc || 0)).toFixed(4));
+                row.boxCount = row.pcsPerBox > 0 ? pcs / row.pcsPerBox : 0;
+                row.quantity = row.billingUnit === 'sqft' ? row.totalSqFt : (row.billingUnit === 'boxes' ? row.boxCount : pcs);
+                row.total = Number((row.totalSqFt * row.price).toFixed(2));
+            } else if (field === 'sqftTotal') {
+                const row = newItems[index];
+                const sqft = Number(value || 0);
+                row.totalSqFt = sqft;
+                row.totalPcs = row.sqFtPerPc > 0 ? sqft / row.sqFtPerPc : 0;
+                row.boxCount = row.pcsPerBox > 0 ? row.totalPcs / row.pcsPerBox : 0;
+                row.quantity = row.billingUnit === 'sqft' ? row.totalSqFt : (row.billingUnit === 'boxes' ? row.boxCount : row.totalPcs);
+                row.total = Number((row.totalSqFt * row.price).toFixed(2));
             } else {
                 // Apply standard calculations using central utility
                 const row = newItems[index];
@@ -128,7 +146,9 @@ const PurchaseOrders = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            let netTotal = formData.items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
+            let itemsTotal = formData.items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
+            let taxAmount = itemsTotal * (Number(formData.taxRate) || 0) / 100;
+            let netTotal = itemsTotal + taxAmount;
             let roundOffAmount = 0;
             if (billingSettings?.documentConfig?.enableRoundOff) {
                 const roundedTotal = Math.round(netTotal);
@@ -138,6 +158,8 @@ const PurchaseOrders = () => {
             
             const submissionData = {
                 ...formData,
+                itemsTotal,
+                taxAmount,
                 totalAmount: netTotal,
                 roundOffAmount
             };
@@ -168,6 +190,17 @@ const PurchaseOrders = () => {
     const openViewModal = (order) => {
         setSelectedOrder(order);
         setIsViewModalOpen(true);
+    };
+
+    const handlePrintOrder = (order) => {
+        if (!billingSettings) return;
+        const html = generatePurchaseOrderHtml(order, billingSettings);
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(html);
+        printWindow.document.close();
+        setTimeout(() => {
+            printWindow.print();
+        }, 500);
     };
 
     const openReceiveModal = (order) => {
@@ -286,16 +319,26 @@ const PurchaseOrders = () => {
                         </div>
                         <form onSubmit={handleSubmit} className="p-6 space-y-6">
                             <div className="flex gap-4 w-full">
-                                <div className="w-1/2">
+                                <div className="w-1/3">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Vendor *</label>
                                     <select required value={formData.vendor} onChange={(e) => setFormData({ ...formData, vendor: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
                                         <option value="">Select Vendor</option>
                                         {vendors.map(v => <option key={v._id} value={v._id}>{v.name}</option>)}
                                     </select>
                                 </div>
-                                <div className="w-1/2">
+                                <div className="w-1/3">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Bill No.</label>
                                     <input type="text" value={formData.vendorBillNumber} onChange={(e) => setFormData({ ...formData, vendorBillNumber: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" placeholder="Optional" />
+                                </div>
+                                <div className="w-1/3">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Tax Rate (%)</label>
+                                    <select value={formData.taxRate} onChange={(e) => setFormData({ ...formData, taxRate: Number(e.target.value) })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
+                                        <option value={0}>No Tax (0%)</option>
+                                        <option value={5}>GST 5%</option>
+                                        <option value={12}>GST 12%</option>
+                                        <option value={18}>GST 18%</option>
+                                        <option value={28}>GST 28%</option>
+                                    </select>
                                 </div>
                             </div>
 
@@ -327,22 +370,29 @@ const PurchaseOrders = () => {
                                                     />
                                                 </td>
                                                 <td className="px-2 py-2">
-                                                    <input 
-                                                        required 
-                                                        type="number" 
-                                                        step={isTile ? "0.5" : "0.01"}
-                                                        min="0" 
-                                                        value={isTile ? (row.boxCount || '') : (row.quantity || '')} 
-                                                        onChange={(e) => handleItemChange(index, isTile ? 'boxCount' : 'quantity', e.target.value)} 
-                                                        placeholder={isTile ? "Boxes" : "Qty"}
-                                                        className="w-full px-2 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 text-center font-bold" 
-                                                    />
-                                                    {isTile && (
-                                                        <div className="mt-1 flex flex-col items-center gap-0.5">
-                                                            <div className="text-[9px] font-black text-primary-600">
-                                                                {row.totalSqFt || 0} SqFt
+                                                    {isTile ? (
+                                                        <div className="flex flex-col gap-1">
+                                                            <div className="flex gap-1 items-center">
+                                                                <input type="number" step="0.5" min="0" value={row.boxCount || ''} onChange={(e) => handleItemChange(index, 'boxCount', e.target.value)} placeholder="Boxes" className="w-16 px-1 py-1 border rounded-md text-center text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none" />
+                                                                <span className="text-[10px] text-gray-400">Bx</span>
+                                                                <input type="number" step="1" min="0" value={row.totalPcs || ''} onChange={(e) => handleItemChange(index, 'piecesCount', e.target.value)} placeholder="Pcs" className="w-16 px-1 py-1 border rounded-md text-center text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none" />
+                                                                <span className="text-[10px] text-gray-400">Pc</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1 mt-1">
+                                                                <input type="number" step="0.01" min="0" value={row.totalSqFt || ''} onChange={(e) => handleItemChange(index, 'sqftTotal', e.target.value)} placeholder="SqFt" className="w-full px-1 py-1 border border-primary-300 bg-primary-50 rounded-md text-center text-xs font-bold text-primary-700 outline-none focus:ring-1 focus:ring-primary-500" />
                                                             </div>
                                                         </div>
+                                                    ) : (
+                                                        <input 
+                                                            required 
+                                                            type="number" 
+                                                            step="0.01"
+                                                            min="0" 
+                                                            value={row.quantity || ''} 
+                                                            onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} 
+                                                            placeholder="Qty"
+                                                            className="w-full px-2 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 text-center font-bold" 
+                                                        />
                                                     )}
                                                 </td>
                                                 <td className="px-2 py-2">
@@ -373,7 +423,24 @@ const PurchaseOrders = () => {
                                 </button>
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-6 border-t sticky bottom-0 bg-white">
+                            <div className="flex justify-end pt-4 pb-2">
+                                <div className="w-64 space-y-1.5 text-right">
+                                    <div className="flex justify-between text-sm text-gray-600 font-medium">
+                                        <span>Items Total:</span>
+                                        <span>₹{(formData.items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm text-gray-600 font-medium">
+                                        <span>Tax ({formData.taxRate || 0}%):</span>
+                                        <span>₹{(formData.items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0) * (Number(formData.taxRate) || 0) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                    </div>
+                                    <div className="flex justify-between text-lg text-gray-900 font-bold border-t pt-1">
+                                        <span>Net Amount:</span>
+                                        <span>₹{Math.round(formData.items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0) * (1 + (Number(formData.taxRate) || 0) / 100)).toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
                                 <button type="submit" className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-bold">Save PO</button>
                             </div>
@@ -458,7 +525,7 @@ const PurchaseOrders = () => {
                             {/* Company and PO Header */}
                             <div className="flex justify-between items-start border-b border-gray-100 pb-6">
                                 <div className="space-y-1">
-                                    <div className="text-xl font-extrabold text-primary-600 tracking-tight">Siva Foundation</div>
+                                    <div className="text-xl font-extrabold text-primary-600 tracking-tight">{billingSettings?.companyName || 'Company Name'}</div>
                                     <div className="text-xs text-gray-500">Inventory Management Portal</div>
                                 </div>
                                 <div className="text-right space-y-1">
@@ -552,11 +619,11 @@ const PurchaseOrders = () => {
 
                         {/* Footer */}
                         <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center print:hidden">
-                            <div className="text-xs text-gray-400">Generated by Siva Foundation CRM</div>
+                            <div className="text-xs text-gray-400">Generated by {billingSettings?.companyName || 'CRM'}</div>
                             <div className="flex gap-3">
                                 <button
                                     type="button"
-                                    onClick={() => window.print()}
+                                    onClick={() => handlePrintOrder(selectedOrder)}
                                     className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center"
                                 >
                                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>

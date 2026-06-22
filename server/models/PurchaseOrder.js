@@ -51,6 +51,18 @@ const purchaseOrderSchema = new mongoose.Schema({
         },
         total: Number,
     }],
+    itemsTotal: {
+        type: Number,
+        default: 0,
+    },
+    taxRate: {
+        type: Number,
+        default: 0,
+    },
+    taxAmount: {
+        type: Number,
+        default: 0,
+    },
     totalAmount: {
         type: Number,
         required: true,
@@ -93,7 +105,9 @@ purchaseOrderSchema.pre('validate', function (next) {
             item.total = item.quantity * item.price;
         }
     });
-    this.totalAmount = this.items.reduce((sum, item) => sum + item.total, 0) + (Number(this.roundOffAmount) || 0);
+    this.itemsTotal = this.items.reduce((sum, item) => sum + item.total, 0);
+    this.taxAmount = this.itemsTotal * (Number(this.taxRate) || 0) / 100;
+    this.totalAmount = this.itemsTotal + this.taxAmount + (Number(this.roundOffAmount) || 0);
     next();
 });
 
