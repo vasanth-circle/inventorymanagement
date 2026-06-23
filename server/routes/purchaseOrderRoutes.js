@@ -4,7 +4,9 @@ import {
     getPurchaseOrder,
     createPurchaseOrder,
     updatePOStatus,
-    receivePurchaseOrder
+    receivePurchaseOrder,
+    updatePurchaseOrder,
+    deletePurchaseOrder
 } from '../controllers/purchaseOrderController.js';
 // import { protect } from '../middleware/authMiddleware.js';
 import { checkMenuAccess } from '../middleware/accessMiddleware.js';
@@ -19,7 +21,9 @@ router.route('/')
     .post(createPurchaseOrder);
 
 router.route('/:id')
-    .get(getPurchaseOrder);
+    .get(getPurchaseOrder)
+    .put(updatePurchaseOrder)
+    .delete(deletePurchaseOrder);
 
 router.route('/:id/status')
     .patch(updatePOStatus);

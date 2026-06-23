@@ -144,6 +144,62 @@ export const createPurchaseOrder = async (req, res, next) => {
     }
 };
 
+// @desc    Update purchase order
+// @route   PUT /api/purchase-orders/:id
+// @access  Private
+export const updatePurchaseOrder = async (req, res, next) => {
+    try {
+        const order = await PurchaseOrder.findOne({ _id: req.params.id, ...tenantQuery(req) });
+        if (!order) {
+            return sendError(res, 404, 'Purchase order not found');
+        }
+
+        if (order.status !== 'draft' && order.status !== 'issued') {
+            return sendError(res, 400, 'Cannot edit an order that has been received or billed');
+        }
+
+        const { vendor, items, notes, vendorBillNumber, taxRate, taxType, taxAmount, totalAmount, roundOffAmount } = req.body;
+
+        order.vendor = vendor;
+        order.items = items;
+        order.notes = notes;
+        order.vendorBillNumber = vendorBillNumber;
+        order.taxRate = taxRate;
+        order.taxType = taxType;
+        order.taxAmount = taxAmount;
+        order.totalAmount = totalAmount;
+        if (roundOffAmount !== undefined) order.roundOffAmount = roundOffAmount;
+
+        await order.save();
+
+        sendResponse(res, 200, order, 'Purchase order updated successfully');
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Delete purchase order
+// @route   DELETE /api/purchase-orders/:id
+// @access  Private
+export const deletePurchaseOrder = async (req, res, next) => {
+    try {
+        const order = await PurchaseOrder.findOne({ _id: req.params.id, ...tenantQuery(req) });
+        if (!order) {
+            return sendError(res, 404, 'Purchase order not found');
+        }
+
+        if (order.status === 'received' || order.status === 'billed') {
+            return sendError(res, 400, 'Cannot delete an order that has been received or billed.');
+        }
+
+        await order.deleteOne();
+
+        sendResponse(res, 200, {}, 'Purchase order deleted successfully');
+    } catch (error) {
+        next(error);
+    }
+};
+
 // @desc    Update purchase order status
 // @route   PATCH /api/purchase-orders/:id/status
 // @access  Private

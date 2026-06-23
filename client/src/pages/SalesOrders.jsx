@@ -574,15 +574,13 @@ const SalesOrders = () => {
                                                         ✏️
                                                     </button>
                                                 )}
-                                                {['super_admin', 'admin', 'tenant_owner', 'tenant_admin'].includes(user?.role) && (
-                                                    <button 
-                                                        onClick={() => handleDelete(order._id)} 
-                                                        className="text-red-600 hover:text-red-800 text-lg font-bold border-2 border-red-100 w-9 h-9 flex items-center justify-center rounded-lg bg-red-50 transition-all"
-                                                        title="Delete & Revert Stock"
-                                                    >
-                                                        🗑️
-                                                    </button>
-                                                )}
+                                                <button 
+                                                    onClick={() => handleDelete(order._id)} 
+                                                    className="text-red-600 hover:text-red-800 text-lg font-bold border-2 border-red-100 w-9 h-9 flex items-center justify-center rounded-lg bg-red-50 transition-all"
+                                                    title="Delete & Revert Stock"
+                                                >
+                                                    🗑️
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -654,6 +652,8 @@ const SalesOrders = () => {
                                         {!['dispatched', 'partially_dispatched'].includes(order.status) && (
                                             <button onClick={() => handleEdit(order)} className="flex-shrink-0 w-9 h-9 bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Edit">✏️</button>
                                         )}
+                                        {/* Delete */}
+                                        <button onClick={() => handleDelete(order._id)} className="flex-shrink-0 w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Delete">🗑️</button>
                                     </div>
                                 </div>
                             </div>

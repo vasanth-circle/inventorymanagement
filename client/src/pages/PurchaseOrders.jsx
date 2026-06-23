@@ -22,6 +22,7 @@ const PurchaseOrders = () => {
     const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
+    const [editingOrder, setEditingOrder] = useState(null);
     const [receiveData, setReceiveData] = useState([]);
     const [receiveVendorBillNo, setReceiveVendorBillNo] = useState('');
     const [taxType, setTaxType] = useState('cgst'); // 'cgst' (intra) or 'igst' (inter)
@@ -106,7 +107,7 @@ const PurchaseOrders = () => {
                 totalSqFt: '',
                 brand: '',
                 size: '',
-                billingUnit: billingSettings?.unitConfig?.quantityBasis === 'sqft' ? 'sqft' : 'pieces'
+                billingUnit: billingSettings?.industry === 'tiles' ? 'boxes' : 'pieces'
             }]
         });
     };
@@ -136,32 +137,31 @@ const PurchaseOrders = () => {
                         unitType: selectedItem.unitType || 'pieces',
                         sqFtPerPc: Number(selectedItem.sqFtPerPc) || 0,
                         pcsPerBox: Math.max(1, Number(selectedItem.pcsPerBox) || 1),
-                        billingUnit: (billingSettings?.industry === 'tiles' && Number(selectedItem.sqFtPerPc) > 0) ? 'sqft' : 'pieces'
+                        billingUnit: (billingSettings?.industry === 'tiles' && Number(selectedItem.sqFtPerPc) > 0) ? 'boxes' : (['box', 'boxes'].includes((selectedItem.unitType || '').toLowerCase()) ? 'boxes' : 'pieces')
                     };
                     
-                    // Recalculate totals with the new defaults
-                    newItems[index] = calculateItemValues(newItems[index], 'price', newItems[index].price, billingSettings?.industry);
+                    // Initial calculation
+                    newItems[index].total = 0;
                 }
-            } else if (field === 'piecesCount') {
+            } else if (field === 'piecesCount' || field === 'boxCount' || field === 'price' || field === 'billingUnit' || field === 'quantity') {
                 const row = newItems[index];
-                const pcs = Number(value || 0);
-                row.totalPcs = pcs;
-                row.totalSqFt = Number((pcs * (row.sqFtPerPc || 0)).toFixed(4));
-                row.boxCount = row.pcsPerBox > 0 ? pcs / row.pcsPerBox : 0;
-                row.quantity = row.billingUnit === 'sqft' ? row.totalSqFt : (row.billingUnit === 'boxes' ? row.boxCount : pcs);
-                row.total = Number((row.totalSqFt * row.price).toFixed(2));
-            } else if (field === 'sqftTotal') {
-                const row = newItems[index];
-                const sqft = Number(value || 0);
-                row.totalSqFt = sqft;
-                row.totalPcs = row.sqFtPerPc > 0 ? sqft / row.sqFtPerPc : 0;
-                row.boxCount = row.pcsPerBox > 0 ? row.totalPcs / row.pcsPerBox : 0;
-                row.quantity = row.billingUnit === 'sqft' ? row.totalSqFt : (row.billingUnit === 'boxes' ? row.boxCount : row.totalPcs);
-                row.total = Number((row.totalSqFt * row.price).toFixed(2));
+                if (field === 'piecesCount') row.totalPcs = Number(value || 0);
+                if (field === 'boxCount') row.boxCount = Number(value || 0);
+                if (field === 'price') row.price = Number(value || 0);
+                if (field === 'billingUnit') row.billingUnit = value;
+                if (field === 'quantity') row.quantity = Number(value || 0);
+
+                if (billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0) {
+                    if (field === 'piecesCount') {
+                        row.boxCount = row.pcsPerBox > 0 ? row.totalPcs / row.pcsPerBox : 0;
+                    } else if (field === 'boxCount') {
+                        row.totalPcs = row.boxCount * (row.pcsPerBox || 1);
+                    }
+                    row.quantity = row.billingUnit === 'boxes' ? row.boxCount : row.totalPcs;
+                }
+                row.total = Number(((row.quantity || 0) * (row.price || 0)).toFixed(2));
             } else {
-                // Apply standard calculations using central utility
-                const row = newItems[index];
-                newItems[index] = calculateItemValues(row, field, value, billingSettings?.industry);
+                newItems[index][field] = value;
             }
 
             setFormData({ ...formData, items: newItems });
@@ -197,14 +197,59 @@ const PurchaseOrders = () => {
                 roundOffAmount
             };
 
-            await axios.post(API_URL, submissionData, {
-                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
-            });
-            toast.success('Purchase order created successfully');
+            if (editingOrder) {
+                await axios.put(`${API_URL}/${editingOrder._id}`, submissionData, {
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+                });
+                toast.success('Purchase order updated successfully');
+            } else {
+                await axios.post(API_URL, submissionData, {
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+                });
+                toast.success('Purchase order created successfully');
+            }
             setIsModalOpen(false);
+            setEditingOrder(null);
             fetchOrders();
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Error creating order');
+            toast.error(error.response?.data?.message || 'Error saving order');
+        }
+    };
+
+    const handleEdit = (order) => {
+        setEditingOrder(order);
+        setFormData({
+            vendor: order.vendor?._id || order.vendor,
+            vendorBillNumber: order.vendorBillNumber || '',
+            taxRate: order.taxRate || 18,
+            notes: order.notes || '',
+            items: order.items.map(i => ({
+                item: i.item?._id || i.item,
+                quantity: i.quantity,
+                price: i.price,
+                taxRate: i.taxRate || order.taxRate || 18,
+                boxCount: i.boxCount || '',
+                totalPcs: i.totalPcs || '',
+                brand: i.item?.brand || i.brand || '',
+                size: i.item?.size || i.size || '',
+                billingUnit: i.billingUnit || (billingSettings?.industry === 'tiles' ? 'boxes' : 'pieces'),
+                total: i.total || (i.quantity * i.price)
+            }))
+        });
+        setTaxType(order.taxType || 'cgst');
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (orderId) => {
+        if (!window.confirm("Are you sure you want to delete this purchase order?")) return;
+        try {
+            await axios.delete(`${API_URL}/${orderId}`, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+            });
+            toast.success('Purchase order deleted successfully');
+            fetchOrders();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Error deleting order');
         }
     };
 
@@ -293,10 +338,30 @@ const PurchaseOrders = () => {
                     <div className="flex justify-between items-center print:hidden">
                         <h1 className="text-2xl font-bold text-gray-800">Purchase Orders</h1>
                         <button
-                            onClick={() => setIsModalOpen(true)}
+                            onClick={() => {
+                                setEditingOrder(null);
+                                setFormData({
+                                    vendor: '',
+                                    vendorBillNumber: '',
+                                    taxRate: 18,
+                                    items: [{ 
+                                        item: '', 
+                                        quantity: '', 
+                                        price: '', 
+                                        taxRate: 18,
+                                        boxCount: '', 
+                                        totalPcs: '', 
+                                        brand: '',
+                                        size: '',
+                                        billingUnit: billingSettings?.industry === 'tiles' ? 'boxes' : 'pieces'
+                                    }],
+                                    notes: '',
+                                });
+                                setIsModalOpen(true);
+                            }}
                             className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                         >
-                            Create Purchase Order
+                            Purchase Entry
                         </button>
                     </div>
 
@@ -332,11 +397,15 @@ const PurchaseOrders = () => {
                                     <td className="px-6 py-4 text-right space-x-2">
                                         <button onClick={() => openViewModal(order)} className="text-primary-600 hover:text-primary-800 text-sm font-medium mr-2">View</button>
                                         {order.status === 'draft' && (
-                                            <button onClick={() => handleStatusUpdate(order._id, 'issued')} className="text-blue-600 hover:text-blue-800 text-sm">Issue PO</button>
+                                            <button onClick={() => handleStatusUpdate(order._id, 'issued')} className="text-blue-600 hover:text-blue-800 text-sm mr-2">Issue PO</button>
                                         )}
                                         {order.status === 'issued' && (
-                                            <button onClick={() => openReceiveModal(order)} className="text-green-600 hover:text-green-800 text-sm font-semibold">Convert to Inward</button>
+                                            <button onClick={() => openReceiveModal(order)} className="text-green-600 hover:text-green-800 text-sm font-semibold mr-2">Convert to Inward</button>
                                         )}
+                                        {['draft', 'issued'].includes(order.status) && (
+                                            <button onClick={() => handleEdit(order)} className="text-amber-600 hover:text-amber-800 text-sm font-medium mr-2">Edit</button>
+                                        )}
+                                        <button onClick={() => handleDelete(order._id)} className="text-red-600 hover:text-red-800 text-sm font-medium">Delete</button>
                                     </td>
                                 </tr>
                             ))}
@@ -372,16 +441,6 @@ const PurchaseOrders = () => {
                                 <div className="w-1/4 min-w-[150px]">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Bill No.</label>
                                     <input type="text" value={formData.vendorBillNumber} onChange={(e) => setFormData({ ...formData, vendorBillNumber: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" placeholder="Optional" />
-                                </div>
-                                <div className="w-1/5 min-w-[130px]">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Default Tax Rate (%)</label>
-                                    <select value={formData.taxRate} onChange={(e) => { const r = Number(e.target.value); setFormData(prev => ({ ...prev, taxRate: r, items: prev.items.map(it => ({...it, taxRate: r})) })); }} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
-                                        <option value={0}>No Tax (0%)</option>
-                                        <option value={5}>GST 5%</option>
-                                        <option value={12}>GST 12%</option>
-                                        <option value={18}>GST 18%</option>
-                                        <option value={28}>GST 28%</option>
-                                    </select>
                                 </div>
                                 <div className="flex items-end min-w-[140px]">
                                     <div className={`px-3 py-2 rounded-lg text-sm font-bold border-2 ${ taxType === 'igst' ? 'bg-orange-50 border-orange-300 text-orange-700' : 'bg-green-50 border-green-300 text-green-700'}`}>
@@ -428,9 +487,6 @@ const PurchaseOrders = () => {
                                                                 <input type="number" step="1" min="0" value={row.totalPcs || ''} onChange={(e) => handleItemChange(index, 'piecesCount', e.target.value)} placeholder="Pcs" className="w-16 px-1 py-1 border rounded-md text-center text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none" />
                                                                 <span className="text-[10px] text-gray-400">Pc</span>
                                                             </div>
-                                                            <div className="flex items-center gap-1 mt-1">
-                                                                <input type="number" step="0.01" min="0" value={row.totalSqFt || ''} onChange={(e) => handleItemChange(index, 'sqftTotal', e.target.value)} placeholder="SqFt" className="w-full px-1 py-1 border border-primary-300 bg-primary-50 rounded-md text-center text-xs font-bold text-primary-700 outline-none focus:ring-1 focus:ring-primary-500" />
-                                                            </div>
                                                         </div>
                                                     ) : (
                                                         <input 
@@ -468,8 +524,8 @@ const PurchaseOrders = () => {
                                                 <td className="px-2 py-2">
                                                     {billingSettings?.industry === 'tiles' && isTile ? (
                                                         <select value={row.billingUnit} onChange={(e) => handleItemChange(index, 'billingUnit', e.target.value)} className="w-full px-2 py-2 border rounded-lg border-gray-200 text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none">
-                                                            <option value="sqft">SqFt</option>
                                                             <option value="boxes">Box</option>
+                                                            <option value="pieces">Pieces</option>
                                                         </select>
                                                     ) : (
                                                         <div className="text-xs font-bold text-gray-400 text-center uppercase py-2">
