@@ -114,16 +114,21 @@ const StockReturn = () => {
 
     const fetchInitialData = async () => {
         try {
-            const [custRes, vendRes, itemsRes] = await Promise.all([
+            const [custRes, vendRes, itemsRes] = await Promise.allSettled([
                 api.get('/customers?limit=5000'),
                 api.get('/vendors?limit=1000'),
                 api.get('/items?limit=5000'),
             ]);
-            setCustomers(custRes.data.data?.customers || []);
-            setVendors(vendRes.data.data?.vendors || []);
-            setAllItems(itemsRes.data.items || itemsRes.data.data?.items || []);
+            
+            if (custRes.status === 'fulfilled') setCustomers(custRes.value.data.data?.customers || []);
+            if (vendRes.status === 'fulfilled') setVendors(vendRes.value.data.data?.vendors || []);
+            if (itemsRes.status === 'fulfilled') setAllItems(itemsRes.value.data.items || itemsRes.value.data.data?.items || []);
+
+            if (custRes.status === 'rejected' && vendRes.status === 'rejected' && itemsRes.status === 'rejected') {
+                throw new Error('All initial data requests failed');
+            }
         } catch (error) {
-            toast.error('Failed to load initial data');
+            toast.error('Failed to load some initial data');
         }
     };
 

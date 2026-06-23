@@ -6,6 +6,9 @@ import { InventoryContext } from '../context/InventoryContext';
 import { AuthContext } from '../context/AuthContext';
 import { generatePurchaseOrderHtml } from '../utils/printTemplates';
 
+// Extract state code from GSTIN (first 2 chars)
+const getGstStateCode = (gstin) => (gstin && gstin.length >= 2) ? gstin.substring(0, 2).toUpperCase() : '';
+
 const PurchaseOrders = () => {
     const { billingSettings, calculateItemValues } = useContext(InventoryContext);
     const { user } = useContext(AuthContext);
@@ -13,6 +16,7 @@ const PurchaseOrders = () => {
     const [orders, setOrders] = useState([]);
     const [vendors, setVendors] = useState([]);
     const [items, setItems] = useState([]);
+    const [hsnCodes, setHsnCodes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
@@ -20,14 +24,16 @@ const PurchaseOrders = () => {
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [receiveData, setReceiveData] = useState([]);
     const [receiveVendorBillNo, setReceiveVendorBillNo] = useState('');
+    const [taxType, setTaxType] = useState('cgst'); // 'cgst' (intra) or 'igst' (inter)
     const [formData, setFormData] = useState({
         vendor: '',
         vendorBillNumber: '',
-        taxRate: 0,
+        taxRate: 18,
         items: [{ 
             item: '', 
             quantity: '', 
             price: '', 
+            taxRate: 18,
             boxCount: '', 
             totalPcs: '', 
             totalSqFt: '',
@@ -37,6 +43,19 @@ const PurchaseOrders = () => {
         }],
         notes: '',
     });
+
+    // Auto-detect IGST vs CGST+SGST when vendor changes
+    const handleVendorChange = (vendorId) => {
+        setFormData(prev => ({ ...prev, vendor: vendorId }));
+        if (!vendorId) return;
+        const selectedVendor = vendors.find(v => v._id === vendorId);
+        const companyGstin = billingSettings?.gstNumber || '';
+        const vendorGstin = selectedVendor?.gstin || '';
+        const companyState = getGstStateCode(companyGstin);
+        const vendorState = getGstStateCode(vendorGstin);
+        const isInterState = vendorState && companyState && vendorState !== companyState;
+        setTaxType(isInterState ? 'igst' : 'cgst');
+    };
 
     const API_URL = '/api/purchase-orders';
 
@@ -61,12 +80,14 @@ const PurchaseOrders = () => {
 
     const fetchVendorsAndItems = async () => {
         try {
-            const [vendRes, itemRes] = await Promise.all([
+            const [vendRes, itemRes, hsnRes] = await Promise.allSettled([
                 axios.get('/api/vendors', { headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } }),
-                axios.get('/api/items', { params: { limit: 10000 }, headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } })
+                axios.get('/api/items', { params: { limit: 10000 }, headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } }),
+                axios.get('/api/hsn', { headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } }),
             ]);
-            setVendors(vendRes.data.data.vendors);
-            setItems(itemRes.data.items);
+            if (vendRes.status === 'fulfilled') setVendors(vendRes.value.data.data?.vendors || []);
+            if (itemRes.status === 'fulfilled') setItems(itemRes.value.data.items || []);
+            if (hsnRes.status === 'fulfilled') setHsnCodes(hsnRes.value.data.data || hsnRes.value.data || []);
         } catch (error) {
             console.error('Error fetching dependencies');
         }
@@ -79,6 +100,7 @@ const PurchaseOrders = () => {
                 item: '', 
                 quantity: '', 
                 price: '', 
+                taxRate: formData.taxRate,
                 boxCount: '', 
                 totalPcs: '', 
                 totalSqFt: '',
@@ -98,6 +120,10 @@ const PurchaseOrders = () => {
                 const selectedItemId = (value && value.target) ? value.target.value : value;
                 const selectedItem = items.find(i => i._id === selectedItemId);
                 if (selectedItem) {
+                    // Look up HSN gstRate for this item
+                    const hsnEntry = hsnCodes.find(h => h.code === selectedItem.hsn);
+                    const autoTaxRate = hsnEntry ? hsnEntry.gstRate : (formData.taxRate || 0);
+
                     newItems[index] = {
                         ...newItems[index],
                         item: selectedItemId,
@@ -105,6 +131,8 @@ const PurchaseOrders = () => {
                         price: Number(selectedItem.purchasePrice || selectedItem.price) || 0,
                         brand: selectedItem.brand || '',
                         size: selectedItem.size || '',
+                        hsnCode: selectedItem.hsn || '',
+                        taxRate: autoTaxRate,
                         unitType: selectedItem.unitType || 'pieces',
                         sqFtPerPc: Number(selectedItem.sqFtPerPc) || 0,
                         pcsPerBox: Math.max(1, Number(selectedItem.pcsPerBox) || 1),
@@ -147,7 +175,11 @@ const PurchaseOrders = () => {
         e.preventDefault();
         try {
             let itemsTotal = formData.items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
-            let taxAmount = itemsTotal * (Number(formData.taxRate) || 0) / 100;
+            // Calculate tax per item using each row's individual tax rate
+            let taxAmount = formData.items.reduce((sum, item) => {
+                const rate = parseFloat(item.taxRate ?? formData.taxRate) || 0;
+                return sum + ((parseFloat(item.total) || 0) * rate / 100);
+            }, 0);
             let netTotal = itemsTotal + taxAmount;
             let roundOffAmount = 0;
             if (billingSettings?.documentConfig?.enableRoundOff) {
@@ -158,6 +190,7 @@ const PurchaseOrders = () => {
             
             const submissionData = {
                 ...formData,
+                taxType,
                 itemsTotal,
                 taxAmount,
                 totalAmount: netTotal,
@@ -318,27 +351,32 @@ const PurchaseOrders = () => {
                             <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
                         </div>
                         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                            <div className="flex gap-4 w-full">
-                                <div className="w-1/3">
+                            <div className="flex gap-4 w-full flex-wrap">
+                                <div className="w-1/3 min-w-[180px]">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Vendor *</label>
-                                    <select required value={formData.vendor} onChange={(e) => setFormData({ ...formData, vendor: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
+                                    <select required value={formData.vendor} onChange={(e) => handleVendorChange(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
                                         <option value="">Select Vendor</option>
-                                        {vendors.map(v => <option key={v._id} value={v._id}>{v.name}</option>)}
+                                        {vendors.map(v => <option key={v._id} value={v._id}>{v.name}{v.gstin ? ` (${v.gstin})` : ''}</option>)}
                                     </select>
                                 </div>
-                                <div className="w-1/3">
+                                <div className="w-1/4 min-w-[150px]">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Bill No.</label>
                                     <input type="text" value={formData.vendorBillNumber} onChange={(e) => setFormData({ ...formData, vendorBillNumber: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" placeholder="Optional" />
                                 </div>
-                                <div className="w-1/3">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Tax Rate (%)</label>
-                                    <select value={formData.taxRate} onChange={(e) => setFormData({ ...formData, taxRate: Number(e.target.value) })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
+                                <div className="w-1/5 min-w-[130px]">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Default Tax Rate (%)</label>
+                                    <select value={formData.taxRate} onChange={(e) => { const r = Number(e.target.value); setFormData(prev => ({ ...prev, taxRate: r, items: prev.items.map(it => ({...it, taxRate: r})) })); }} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
                                         <option value={0}>No Tax (0%)</option>
                                         <option value={5}>GST 5%</option>
                                         <option value={12}>GST 12%</option>
                                         <option value={18}>GST 18%</option>
                                         <option value={28}>GST 28%</option>
                                     </select>
+                                </div>
+                                <div className="flex items-end min-w-[140px]">
+                                    <div className={`px-3 py-2 rounded-lg text-sm font-bold border-2 ${ taxType === 'igst' ? 'bg-orange-50 border-orange-300 text-orange-700' : 'bg-green-50 border-green-300 text-green-700'}`}>
+                                        {taxType === 'igst' ? '🔴 IGST (Inter-State)' : '🟢 CGST+SGST (Intra-State)'}
+                                    </div>
                                 </div>
                             </div>
 
@@ -349,9 +387,11 @@ const PurchaseOrders = () => {
                                         <tr>
                                             <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-48">Item</th>
                                             <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-center">Qty / Boxes</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32">{!isGodown && 'Rate'}</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24">Unit</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-32 text-right">{!isGodown && 'Amount'}</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-28">{!isGodown && 'Rate'}</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-20 text-center">GST%</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-20">Unit</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-right">{!isGodown && 'Taxable'}</th>
+                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-right">{!isGodown && 'Total (w/Tax)'}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
@@ -399,6 +439,23 @@ const PurchaseOrders = () => {
                                                     {!isGodown && <input required type="number" step="0.01" value={row.price === 0 ? '' : row.price} onChange={(e) => handleItemChange(index, 'price', e.target.value)} className="w-full px-2 py-2 border rounded-lg border-gray-200 text-right font-bold focus:ring-1 focus:ring-primary-400 outline-none" placeholder="Rate" />}
                                                 </td>
                                                 <td className="px-2 py-2">
+                                                    {row.hsnCode && (
+                                                        <div className="text-[9px] text-blue-600 font-bold mb-0.5 text-center">
+                                                            HSN: {row.hsnCode}
+                                                        </div>
+                                                    )}
+                                                    <select value={row.taxRate ?? formData.taxRate} onChange={(e) => { const newItems = [...formData.items]; newItems[index] = {...newItems[index], taxRate: Number(e.target.value)}; setFormData({...formData, items: newItems}); }} className="w-full px-1 py-1 border rounded-lg border-gray-200 text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none">
+                                                        <option value={0}>0%</option>
+                                                        <option value={5}>5%</option>
+                                                        <option value={12}>12%</option>
+                                                        <option value={18}>18%</option>
+                                                        <option value={28}>28%</option>
+                                                    </select>
+                                                    {row.hsnCode && (
+                                                        <div className="text-[9px] text-green-600 font-semibold text-center mt-0.5">✓ from HSN</div>
+                                                    )}
+                                                </td>
+                                                <td className="px-2 py-2">
                                                     {billingSettings?.industry === 'tiles' && isTile ? (
                                                         <select value={row.billingUnit} onChange={(e) => handleItemChange(index, 'billingUnit', e.target.value)} className="w-full px-2 py-2 border rounded-lg border-gray-200 text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none">
                                                             <option value="sqft">SqFt</option>
@@ -410,8 +467,11 @@ const PurchaseOrders = () => {
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td className="px-2 py-2 font-bold text-gray-800 text-right">
-                                                    {!isGodown && `₹${(row.total || 0).toLocaleString()}`}
+                                                <td className="px-2 py-2 font-bold text-gray-700 text-right text-sm">
+                                                    {!isGodown && `₹${(row.total || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`}
+                                                </td>
+                                                <td className="px-2 py-2 font-bold text-green-700 text-right text-sm">
+                                                    {!isGodown && `₹${((row.total || 0) * (1 + (row.taxRate ?? formData.taxRate) / 100)).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`}
                                                 </td>
                                             </tr>
                                             );
@@ -424,19 +484,37 @@ const PurchaseOrders = () => {
                             </div>
 
                             <div className="flex justify-end pt-4 pb-2">
-                                <div className="w-64 space-y-1.5 text-right">
-                                    <div className="flex justify-between text-sm text-gray-600 font-medium">
-                                        <span>Items Total:</span>
-                                        <span>₹{(formData.items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm text-gray-600 font-medium">
-                                        <span>Tax ({formData.taxRate || 0}%):</span>
-                                        <span>₹{(formData.items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0) * (Number(formData.taxRate) || 0) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                                    </div>
-                                    <div className="flex justify-between text-lg text-gray-900 font-bold border-t pt-1">
-                                        <span>Net Amount:</span>
-                                        <span>₹{Math.round(formData.items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0) * (1 + (Number(formData.taxRate) || 0) / 100)).toLocaleString()}</span>
-                                    </div>
+                                <div className="w-80 space-y-1.5 text-right">
+                                    {(() => {
+                                        const taxableTotal = formData.items.reduce((s, i) => s + (parseFloat(i.total) || 0), 0);
+                                        const taxTotal = formData.items.reduce((s, i) => s + (parseFloat(i.total) || 0) * (parseFloat(i.taxRate ?? formData.taxRate) || 0) / 100, 0);
+                                        const grandTotal = taxableTotal + taxTotal;
+                                        const halfTax = taxTotal / 2;
+                                        return (<>
+                                            <div className="flex justify-between text-sm text-gray-600 font-medium">
+                                                <span>Taxable Amount:</span>
+                                                <span>₹{taxableTotal.toLocaleString(undefined, {minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                                            </div>
+                                            {taxType === 'cgst' ? (
+                                                <>
+                                                    <div className="flex justify-between text-sm text-green-700 font-medium">
+                                                        <span>CGST:</span><span>₹{halfTax.toLocaleString(undefined, {minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-sm text-green-700 font-medium">
+                                                        <span>SGST:</span><span>₹{halfTax.toLocaleString(undefined, {minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="flex justify-between text-sm text-orange-700 font-medium">
+                                                    <span>IGST:</span><span>₹{taxTotal.toLocaleString(undefined, {minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                                                </div>
+                                            )}
+                                            <div className="flex justify-between text-lg text-gray-900 font-bold border-t pt-2">
+                                                <span>Net Amount:</span>
+                                                <span>₹{grandTotal.toLocaleString(undefined, {minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                                            </div>
+                                        </>);
+                                    })()}
                                 </div>
                             </div>
 

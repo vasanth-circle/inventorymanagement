@@ -50,6 +50,18 @@ const purchaseOrderSchema = new mongoose.Schema({
             required: true,
         },
         total: Number,
+        taxRate: {
+            type: Number,
+            default: 0,
+        },
+        taxAmount: {
+            type: Number,
+            default: 0,
+        },
+        hsnCode: {
+            type: String,
+            trim: true,
+        },
     }],
     itemsTotal: {
         type: Number,
@@ -104,9 +116,13 @@ purchaseOrderSchema.pre('validate', function (next) {
         } else {
             item.total = item.quantity * item.price;
         }
+        // Per-item tax calculation
+        const itemTaxRate = parseFloat(item.taxRate) || 0;
+        item.taxAmount = item.total * itemTaxRate / 100;
     });
     this.itemsTotal = this.items.reduce((sum, item) => sum + item.total, 0);
-    this.taxAmount = this.itemsTotal * (Number(this.taxRate) || 0) / 100;
+    // Total tax = sum of all per-item taxes
+    this.taxAmount = this.items.reduce((sum, item) => sum + (item.taxAmount || 0), 0);
     this.totalAmount = this.itemsTotal + this.taxAmount + (Number(this.roundOffAmount) || 0);
     next();
 });

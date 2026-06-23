@@ -1,4 +1,4 @@
-// ─────────────────────────────────────────────────────────────────────────────
+﻿// ─────────────────────────────────────────────────────────────────────────────
 // Shared Indian number formatting utility
 // ─────────────────────────────────────────────────────────────────────────────
 export const formatIndianNumber = (num, decimals = 2) => {
@@ -1488,133 +1488,236 @@ export const printReturnSlip = (returnTx, settings) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PURCHASE ORDER PRINT TEMPLATE
+// PURCHASE ORDER PRINT TEMPLATE — Portrait A4, matching sample bill format
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Extract 2-digit state code from a GSTIN string
+const getGstStateCode = (gstin) => {
+    if (!gstin || gstin.length < 2) return '';
+    return gstin.substring(0, 2).toUpperCase();
+};
+
 export const generatePurchaseOrderHtml = (order, settings) => {
     const s = settings || {};
-    const taxPct = (order.taxRate !== undefined && order.taxRate !== null && order.taxRate !== '')
-        ? parseFloat(order.taxRate)
-        : (order.taxAmount > 0 ? (s.documentConfig?.defaultTaxRate || 18) : 0);
-    const title = 'PURCHASE ORDER';
+    const sym = s.documentConfig?.currencySymbol || '₹';
+
+    // Determine if IGST or CGST+SGST applies from GSTIN state codes
+    const companyGstin = s.gstNumber || '';
+    const vendorGstin = order.vendor?.gstin || '';
+    const companyState = getGstStateCode(companyGstin);
+    const vendorState = getGstStateCode(vendorGstin);
+    const isInterState = vendorState && companyState && vendorState !== companyState;
+
     const docNo = order.orderNumber;
     const docDate = order.orderDate || order.createdAt;
-    const terms = order.notes || s.branding?.termsAndConditions || '';
+    const terms = order.notes || s.branding?.termsAndConditions || 'E. & O.E.';
     const logoSrc = s.branding?.logoUrl
         ? (s.branding.logoUrl.startsWith('http') ? s.branding.logoUrl : `${window.location.origin}${s.branding.logoUrl}`)
         : '';
 
-    return `<html><head><meta charset="UTF-8"><title>${title}_${docNo}_${(order.vendor?.companyName || order.vendor?.name || 'Vendor').replace(/[^a-zA-Z0-9\s-]/g, '').trim().replace(/\s+/g, '_')}</title>
+    // Compute totals
+    const itemsTotal = order.itemsTotal ?? (order.items || []).reduce((sum, it) => sum + (it.total || it.quantity * it.price || 0), 0);
+    const taxAmount = order.taxAmount ?? (order.items || []).reduce((sum, it) => {
+        const rate = parseFloat(it.taxRate) || 0;
+        const base = it.total || it.quantity * it.price || 0;
+        return sum + base * rate / 100;
+    }, 0);
+    const grandTotal = order.totalAmount ?? (itemsTotal + taxAmount);
+    const roundOff = order.roundOffAmount || 0;
+
+    // Build item rows — each row: S.No | Description | HSN | Qty(Box) | SqFt | Rate | Amount | Tax% | Total Amt
+    const itemRows = (order.items || []).map((item, i) => {
+        const subtotal = item.total || (item.quantity * item.price) || 0;
+        const itemTaxPct = parseFloat(item.taxRate) || 0;
+        const itemTaxAmt = subtotal * itemTaxPct / 100;
+        const totalAmt = subtotal + itemTaxAmt;
+        const isTile = !!(item.totalSqFt > 0 || item.boxCount > 0);
+        const qtyVal = isTile ? (item.boxCount ? `${Number(item.boxCount)} Nos` : '') : formatIndianNumber(item.quantity || 0, 3);
+        const sqftVal = isTile ? formatIndianNumber(item.totalSqFt || 0, 3) : '';
+        const hsnVal = item.hsnCode || item.hsn || '';
+        const desc = (() => {
+            const b = (item.brand || '').trim();
+            const sz = (item.size || '').trim();
+            const n = (item.name || '').toUpperCase();
+            const sub = [b, sz].filter(Boolean).join(' ');
+            return sub ? `${n}-${sub}` : n;
+        })();
+
+        return `<tr>
+          <td style="text-align:center">${i + 1}</td>
+          <td><strong>${desc}</strong></td>
+          <td style="text-align:center">${hsnVal}</td>
+          <td style="text-align:center;font-weight:bold">${qtyVal}</td>
+          <td style="text-align:center">${sqftVal}</td>
+          <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
+          <td style="text-align:right">${formatIndianNumber(subtotal, 2)}</td>
+          <td style="text-align:center">${itemTaxPct > 0 ? itemTaxPct + '%' : '0%'}</td>
+          <td style="text-align:right;font-weight:bold">${formatIndianNumber(totalAmt, 2)}</td>
+        </tr>`;
+    }).join('');
+
+    // Bottom tax analysis table — CGST+SGST or IGST
+    const taxAnalysisHtml = isInterState
+        ? `<table class="tax-table">
+            <thead><tr><th>Taxable Value</th><th>IGST%</th><th>AMT</th><th>Total Tax</th></tr></thead>
+            <tbody><tr>
+              <td>${formatIndianNumber(itemsTotal, 2)}</td>
+              <td>${taxAmount > 0 ? (taxAmount / itemsTotal * 100).toFixed(0) + '%' : '0%'}</td>
+              <td>${formatIndianNumber(taxAmount, 2)}</td>
+              <td>${formatIndianNumber(taxAmount, 2)}</td>
+            </tr></tbody>
+           </table>`
+        : `<table class="tax-table">
+            <thead><tr><th>Taxable Value</th><th>CGST%</th><th>AMT</th><th>SGST%</th><th>AMT</th><th>NET%</th><th>AMT</th></tr></thead>
+            <tbody><tr>
+              <td>${formatIndianNumber(itemsTotal, 2)}</td>
+              <td>${formatIndianNumber(taxAmount > 0 ? (taxAmount / itemsTotal * 100) / 2 : 0, 2)}%</td>
+              <td>${formatIndianNumber(taxAmount / 2, 2)}</td>
+              <td>${formatIndianNumber(taxAmount > 0 ? (taxAmount / itemsTotal * 100) / 2 : 0, 2)}%</td>
+              <td>${formatIndianNumber(taxAmount / 2, 2)}</td>
+              <td>${formatIndianNumber(taxAmount > 0 ? (taxAmount / itemsTotal * 100) : 0, 2)}%</td>
+              <td>${formatIndianNumber(taxAmount, 2)}</td>
+            </tr></tbody>
+           </table>`;
+
+    return `<html><head><meta charset="UTF-8"><title>PURCHASE_ORDER_${docNo}</title>
 <style>
-  @page { size: A4; margin: 5mm; }
-  body { font-family: 'Arial', sans-serif; font-size: 10px; color: #000; margin: 0; display: flex; justify-content: center; }
-  .container { border: 1.5px solid #000; width: 190mm; margin: 0 auto; display: flex; flex-direction: column; min-height: 285mm; }
-  .company-header { text-align: center; padding: 10px; border-bottom: 1.5px solid #000; position: relative; }
-  .contact-info { position: absolute; top: 8px; right: 10px; font-size: 8px; font-weight: bold; text-align: right; }
-  .company-header h1 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: 0.5px; }
-  .company-header p { margin: 2px 0; font-size: 9px; }
-  .doc-title { text-align: center; font-size: 12px; font-weight: bold; letter-spacing: 5px; padding: 5px; border-bottom: 1.5px solid #000; }
-  .meta-grid { display: grid; grid-template-columns: 1.5fr 1fr; border-bottom: 1.5px solid #000; }
-  .meta-box { padding: 6px 10px; }
+  @page { size: A4 portrait; margin: 5mm; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Arial', sans-serif; font-size: 9.5px; color: #000; margin: 0; background: #fff; }
+  .container { border: 1.5px solid #000; width: 200mm; min-height: 285mm; margin: 0 auto; display: flex; flex-direction: column; }
+  /* Header */
+  .company-header { text-align: center; padding: 6px 5px; border-bottom: 1.5px solid #000; position: relative; min-height: 70px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+  .company-header .contact-info { position: absolute; top: 6px; right: 8px; font-size: 7.5px; font-weight: bold; text-align: right; }
+  .company-header h1 { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: 0.5px; }
+  .company-header p { margin: 1px 0; font-size: 8.5px; }
+  /* Doc title */
+  .doc-title { text-align: center; font-size: 11px; font-weight: bold; letter-spacing: 4px; padding: 4px; border-bottom: 1.5px solid #000; }
+  /* Meta grid */
+  .meta-grid { display: grid; grid-template-columns: 1.6fr 1fr; border-bottom: 1.5px solid #000; }
+  .meta-box { padding: 5px 8px; }
   .meta-box:first-child { border-right: 1.5px solid #000; }
-  .meta-row { display: flex; margin-bottom: 2px; font-size: 9.5px; }
-  .meta-label { width: 110px; font-weight: bold; }
+  .meta-row { display: flex; margin-bottom: 2px; font-size: 9px; align-items: flex-start; }
+  .meta-label { min-width: 95px; font-weight: bold; }
+  /* Items table */
   .items-table { border-bottom: 1.5px solid #000; flex: 1; }
   table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
-  .items-table > table { min-height: 201mm; height: 100%; }
-  th, td { padding: 5px; font-size: 9.5px; border-right: 1.5px solid #000; }
+  .items-table > table { min-height: 170mm; }
+  th, td { padding: 4px 3px; font-size: 8.5px; border-right: 1.5px solid #000; }
   th:last-child, td:last-child { border-right: none; }
-  th { border-bottom: 1.5px solid #000; background: #fff; font-weight: bold; text-transform: uppercase; font-size: 8.5px; }
+  th { border-bottom: 1.5px solid #000; font-weight: bold; text-transform: uppercase; font-size: 8px; text-align: center; }
   td { vertical-align: top; border-bottom: none; }
-  .filler td { height: 100%; }
-  tr { page-break-inside: avoid; page-break-after: auto; }
+  .filler td { height: 100%; border-bottom: none; }
+  tr { page-break-inside: avoid; }
   thead { display: table-header-group; }
-  .summary-section { display: flex; border-bottom: 1.5px solid #000; min-height: 100px; }
-  .summary-left { flex: 1.8; padding: 0; display: flex; flex-direction: column; border-right: 1.5px solid #000; }
-  .summary-right { flex: 1; padding: 0; }
-  .tax-table { width: 100%; border-collapse: collapse; font-size: 7.5px; }
+  /* Summary section */
+  .summary-section { border-bottom: 1.5px solid #000; }
+  /* Tax table */
+  .tax-table { width: 100%; border-collapse: collapse; font-size: 8px; }
   .tax-table th, .tax-table td { border: 1px solid #000; padding: 2px 4px; text-align: right; }
-  .math-row { display: flex; justify-content: space-between; padding: 3px 8px; font-size: 9px; }
-  .grand-total { background: #000; color: #fff; font-weight: bold; font-size: 12px; padding: 6px 8px; display: flex; justify-content: space-between; margin-top: auto; }
-  .footer { padding: 10px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; }
+  .tax-table th { font-weight: bold; text-align: center; font-size: 7.5px; }
+  /* Math rows */
+  .math-section { display: flex; border-bottom: 1.5px solid #000; }
+  .math-left { flex: 1.8; padding: 6px 8px; border-right: 1.5px solid #000; }
+  .math-right { flex: 1; padding: 0; }
+  .math-row { display: flex; justify-content: space-between; padding: 3px 8px; font-size: 9px; border-bottom: 1px solid #eee; }
+  .math-row:last-child { border-bottom: none; }
+  .grand-total-row { background: #000; color: #fff; font-weight: bold; font-size: 11px; padding: 5px 8px; display: flex; justify-content: space-between; }
+  /* Footer */
+  .footer { padding: 8px 10px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 8.5px; margin-top: auto; }
 </style></head><body>
 <div class="container">
-  <div class="company-header" style="min-height: 80px; display: flex; flex-direction: column; justify-content: center;">
-    ${logoSrc ? `<div style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%);"><img src="${logoSrc}" alt="Logo" style="max-height:65px;max-width:180px;object-fit:contain;display:block;"/></div>` : ''}
+
+  <!-- Company Header -->
+  <div class="company-header">
+    ${logoSrc ? `<div style="position:absolute;left:8px;top:50%;transform:translateY(-50%)"><img src="${logoSrc}" alt="Logo" style="max-height:55px;max-width:130px;object-fit:contain"/></div>` : ''}
     <div class="contact-info">CELL: ${s.phone1 || ''}${s.phone2 ? ', ' + s.phone2 : ''}</div>
-    <div style="margin: 0 auto; width: 60%; z-index: 1;">
-        <h1>${s.companyName || 'YOUR COMPANY'}</h1>
-        <p>${s.address || ''}</p>
-        ${s.gstNumber ? `<p><strong>GSTIN: ${s.gstNumber}</strong></p>` : ''}
-        ${s.panNumber ? `<p><strong>PAN: ${s.panNumber}</strong></p>` : ''}
+    <div style="z-index:1">
+      <h1>${s.companyName || 'YOUR COMPANY'}</h1>
+      <p>${s.address || ''}</p>
+      ${s.gstNumber ? `<p><strong>GSTIN: ${s.gstNumber}</strong></p>` : ''}
     </div>
   </div>
-  <div class="doc-title">${title}</div>
+
+  <!-- Doc Title -->
+  <div class="doc-title">Purchase Order</div>
+
+  <!-- Vendor & PO Meta -->
   <div class="meta-grid">
     <div class="meta-box">
-      <div class="meta-row"><span class="meta-label">Vendor:</span><strong>${(order.vendor?.companyName || order.vendor?.name || 'Vendor').toUpperCase()}</strong></div>
+      <div class="meta-row"><span class="meta-label">From.</span></div>
+      <div class="meta-row"><span class="meta-label"></span><strong>${(order.vendor?.companyName || order.vendor?.name || 'Vendor').toUpperCase()}</strong></div>
       ${order.vendor?.name && order.vendor?.companyName ? `<div class="meta-row"><span class="meta-label"></span>${order.vendor.name}</div>` : ''}
-      ${order.vendor?.phone ? `<div class="meta-row"><span class="meta-label">Phone:</span>${order.vendor.phone}</div>` : ''}
-      ${order.vendor?.email ? `<div class="meta-row"><span class="meta-label">Email:</span>${order.vendor.email}</div>` : ''}
-      ${order.vendor?.gstin ? `<div class="meta-row"><span class="meta-label">GSTIN:</span>${order.vendor.gstin}</div>` : ''}
-      ${(() => { const parts = [order.vendor?.address?.street, order.vendor?.address?.city, order.vendor?.address?.state, order.vendor?.address?.zipCode].filter(Boolean); return parts.length ? `<div class="meta-row"><span class="meta-label">Address:</span><span style="font-size:9px">${parts.join(', ')}</span></div>` : ''; })()}
+      ${order.vendor?.phone ? `<div class="meta-row"><span class="meta-label"></span>${order.vendor.phone}</div>` : ''}
+      ${vendorGstin ? `<div class="meta-row"><span class="meta-label">GSTIN:</span>${vendorGstin}</div>` : ''}
+      ${(() => { const parts = [order.vendor?.address?.street, order.vendor?.address?.city, order.vendor?.address?.state, order.vendor?.address?.zipCode].filter(Boolean); return parts.length ? `<div class="meta-row"><span class="meta-label"></span><span style="font-size:8.5px">${parts.join(', ')}</span></div>` : ''; })()}
     </div>
     <div class="meta-box">
-      <div class="meta-row"><span class="meta-label">PO No:</span><strong style="font-size:14px">${docNo}</strong></div>
-      <div class="meta-row"><span class="meta-label">Date:</span>${new Date(docDate).toLocaleDateString()}</div>
-      ${order.expectedDeliveryDate ? `<div class="meta-row"><span class="meta-label">Expected Delivery:</span>${new Date(order.expectedDeliveryDate).toLocaleDateString()}</div>` : ''}
+      <div class="meta-row"><span class="meta-label">Payment Terms</span><span>: Credit</span></div>
+      <div class="meta-row"><span class="meta-label">PO No:</span><strong style="font-size:12px">${docNo}</strong></div>
+      <div class="meta-row"><span class="meta-label">Date:</span>${new Date(docDate).toLocaleDateString('en-IN')}</div>
+      ${order.vendorBillNumber ? `<div class="meta-row"><span class="meta-label">Vendor Bill No:</span><strong>${order.vendorBillNumber}</strong></div>` : ''}
+      <div class="meta-row"><span class="meta-label">Tax Type:</span><strong>${isInterState ? 'Inter-State (IGST)' : 'Intra-State (CGST+SGST)'}</strong></div>
     </div>
   </div>
+
+  <!-- Items Table -->
   <div class="items-table">
     <table>
-      <thead><tr>
-        <th width="4%">S.No</th>
-        <th width="54%">Description</th>
-        <th width="12%">Box</th>
-        <th width="9%">SqFeet</th>
-        <th width="10%">Rate</th>
-        <th width="11%">Amount</th>
-      </tr></thead>
+      <thead>
+        <tr>
+          <th width="4%">S.No</th>
+          <th width="30%">Description</th>
+          <th width="9%">HSN Code</th>
+          <th width="10%">Qty</th>
+          <th width="9%">SqFt</th>
+          <th width="9%">Rate</th>
+          <th width="12%">Amount</th>
+          <th width="7%">Tax %</th>
+          <th width="10%">Total Amt</th>
+        </tr>
+      </thead>
       <tbody>
-        ${buildItemRows(order.items, settings, taxPct, false)}
-        <tr class="filler"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+        ${itemRows}
+        <tr class="filler"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
       </tbody>
     </table>
   </div>
-  <div class="summary-section">
-    <div class="summary-left">
-      <div style="padding:8px 10px;border-bottom:1px solid #000">
-        <div style="font-size:7.5px;font-weight:bold;margin-bottom:3px">TAX ANALYSIS:</div>
-        <table class="tax-table">
-          <thead><tr><th>Taxable Value</th><th>CGST%</th><th>CGST Amt</th><th>SGST%</th><th>SGST Amt</th><th>Total Tax</th></tr></thead>
-          <tbody><tr>
-            <td>${formatIndianNumber(order.itemsTotal || 0, 2)}</td>
-            <td>${taxPct > 0 ? taxPct / 2 + '%' : '0%'}</td>
-            <td>${formatIndianNumber((order.taxAmount || 0) / 2, 2)}</td>
-            <td>${taxPct > 0 ? taxPct / 2 + '%' : '0%'}</td>
-            <td>${formatIndianNumber((order.taxAmount || 0) / 2, 2)}</td>
-            <td>${formatIndianNumber(order.taxAmount || 0, 2)}</td>
-          </tr></tbody>
-        </table>
-      </div>
-      <div style="padding:8px 10px;flex:1">
-        <div style="font-size:7.5px;font-weight:bold;text-decoration:underline;margin-bottom:3px">AMOUNT IN WORDS:</div>
-        <div style="font-weight:bold;text-transform:uppercase;font-size:8.5px">${numberToWords(Math.round(order.totalAmount || 0))}</div>
-        <div style="font-size:7px;margin-top:8px;line-height:1.4">${terms.replace(/\n/g, '<br/>')}</div>
-      </div>
+
+  <!-- Tax Analysis (bottom, before totals) -->
+  <div class="summary-section" style="padding:5px 8px;border-bottom:1.5px solid #000">
+    <div style="font-size:7.5px;font-weight:bold;margin-bottom:3px">TAX ANALYSIS (${isInterState ? 'IGST — Inter-State' : 'CGST + SGST — Intra-State'}):</div>
+    ${taxAnalysisHtml}
+  </div>
+
+  <!-- Math totals -->
+  <div class="math-section">
+    <div class="math-left">
+      <div style="font-size:7.5px;font-weight:bold;text-decoration:underline;margin-bottom:3px">AMOUNT IN WORDS:</div>
+      <div style="font-weight:bold;text-transform:uppercase;font-size:8.5px">${numberToWords(Math.round(grandTotal))}</div>
+      <div style="font-size:7px;margin-top:6px;line-height:1.5;color:#333">${terms.replace(/\n/g, '<br/>')}</div>
     </div>
-    <div class="summary-right">
-      <div class="math-row"><span>Taxable Value:</span><span>${s.documentConfig?.currencySymbol || '₹'}${formatIndianNumber(order.itemsTotal || 0, 2)}</span></div>
-      ${order.roundOffAmount !== undefined && order.roundOffAmount !== 0 ? `<div class="math-row"><span>Round Off:</span><span>${order.roundOffAmount > 0 ? '+' : ''}${formatIndianNumber(order.roundOffAmount, 2)}</span></div>` : ''}
-      <div class="grand-total"><span>NET AMOUNT:</span><span>${s.documentConfig?.currencySymbol || '₹'}${formatIndianNumber(order.totalAmount || 0, 2)}</span></div>
+    <div class="math-right">
+      <div class="math-row"><span>Taxable Value:</span><span>${sym}${formatIndianNumber(itemsTotal, 2)}</span></div>
+      ${!isInterState && taxAmount > 0 ? `<div class="math-row"><span>CGST (${formatIndianNumber(taxAmount > 0 ? (taxAmount / itemsTotal * 100) / 2 : 0, 2)}%):</span><span>${sym}${formatIndianNumber(taxAmount / 2, 2)}</span></div>` : ''}
+      ${!isInterState && taxAmount > 0 ? `<div class="math-row"><span>SGST (${formatIndianNumber(taxAmount > 0 ? (taxAmount / itemsTotal * 100) / 2 : 0, 2)}%):</span><span>${sym}${formatIndianNumber(taxAmount / 2, 2)}</span></div>` : ''}
+      ${isInterState && taxAmount > 0 ? `<div class="math-row"><span>IGST:</span><span>${sym}${formatIndianNumber(taxAmount, 2)}</span></div>` : ''}
+      ${roundOff !== 0 ? `<div class="math-row"><span>Rounded Off (Sub):</span><span>${roundOff > 0 ? '+' : ''}${formatIndianNumber(roundOff, 2)}</span></div>` : ''}
+      <div class="grand-total-row"><span>Net Amount :</span><span>${sym}${formatIndianNumber(grandTotal, 2)}</span></div>
     </div>
   </div>
+
+  <!-- Footer -->
   <div class="footer">
     <div style="font-size:8px">
-      ${order.user?.name ? `<div style="font-weight:bold">Created By: ${order.user.name}</div>` : ''}
-      ${order.user?.phone ? `<div style="color:#555">${order.user.phone}</div>` : ''}
+      ${order.user?.name ? `<div style="font-weight:bold">Created by: ${order.user.name}</div>` : ''}
+      <div>E. &amp; O.E.</div>
     </div>
-    <div style="text-align:center;border-top:1px solid #000;width:150px;padding-top:4px">AUTHORISED SIGNATORY</div>
+    <div style="text-align:center">
+      <div style="font-weight:bold;font-size:8px;margin-bottom:30px">For ${s.companyName || 'COMPANY'}</div>
+      <div style="border-top:1px solid #000;padding-top:4px;font-size:8px">Authorised Signatory</div>
+    </div>
   </div>
+
 </div></body></html>`;
 };
-
