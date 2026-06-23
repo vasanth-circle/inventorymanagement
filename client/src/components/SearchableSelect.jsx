@@ -22,6 +22,7 @@ const SearchableSelect = ({
     disabled = false,
     className = '',
     name = '',
+    allowCreate = false,
 }) => {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
@@ -137,8 +138,21 @@ const SearchableSelect = ({
                                 </li>
                             ))
                         ) : (
-                            <li className="px-4 py-3 text-sm text-gray-400 text-center">
-                                No results for "{search}"
+                            !allowCreate && (
+                                <li className="px-4 py-3 text-sm text-gray-400 text-center">
+                                    No results for "{search}"
+                                </li>
+                            )
+                        )}
+                        {allowCreate && search && !options.some(o => o.label?.toLowerCase() === search.toLowerCase()) && (
+                            <li className="border-t border-gray-100">
+                                <button
+                                    type="button"
+                                    onClick={() => handleSelect(search)}
+                                    className="w-full text-left px-4 py-2 text-sm text-primary-600 hover:bg-primary-50 font-medium flex items-center gap-2"
+                                >
+                                    <span>➕</span> Add "{search}"
+                                </button>
                             </li>
                         )}
                     </ul>

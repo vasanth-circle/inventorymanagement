@@ -63,13 +63,14 @@ const Sidebar = ({ isOpen, onClose }) => {
             ]
         },
         {
-            name: 'Reports',
+            name: 'Reports & Accounts',
             id: 'reports',
             icon: '📈',
             items: [
                 { name: 'Analytics Dashboard', path: '/reports', id: 'reports' },
                 { name: 'Financial Ledgers', path: '/ledger-reports', id: 'ledger-reports' },
-                { name: 'Profit Tracking', path: '/profit-tracking', id: 'profit-tracking' }
+                { name: 'Profit Tracking', path: '/profit-tracking', id: 'profit-tracking' },
+                { name: 'Company Expenses', path: '/expenses', id: 'expenses' }
             ]
         },
         {
@@ -142,7 +143,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             if (!isAllowed) {
                 if (itemId === 'items' && user?.allowedMenus?.includes('inventory')) isAllowed = true;
                 if (itemId === 'dispatch-management' && user?.allowedMenus?.includes('stock-outward')) isAllowed = true;
-                if ((itemId === 'reports' || itemId === 'ledger-reports' || itemId === 'profit-tracking') && user?.allowedMenus?.includes('reports')) isAllowed = true;
+                if ((itemId === 'reports' || itemId === 'ledger-reports' || itemId === 'profit-tracking' || itemId === 'expenses') && user?.allowedMenus?.includes('reports')) isAllowed = true;
             }
             return isAllowed;
         }
@@ -160,7 +161,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         }
 
         if (normalizedRole === 'accounts') {
-            const accountsAllowed = ['dashboard', 'items', 'customers', 'vendors', 'customer-ledger', 'vendor-ledger', 'reports', 'ledger-reports', 'profit-tracking'];
+            const accountsAllowed = ['dashboard', 'items', 'customers', 'vendors', 'customer-ledger', 'vendor-ledger', 'reports', 'ledger-reports', 'profit-tracking', 'expenses'];
             return accountsAllowed.includes(itemId);
         }
 

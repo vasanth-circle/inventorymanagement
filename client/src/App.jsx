@@ -46,6 +46,7 @@ import Sizes from './pages/Sizes';
 import Brands from './pages/Brands';
 import ActionLogs from './pages/ActionLogs';
 import ProfitTracking from './pages/ProfitTracking';
+import Expenses from './pages/Expenses';
 
 function AppLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -118,6 +119,7 @@ function App() {
                                             <Route path="/vendor-ledger" element={<VendorLedger />} />
                                             <Route path="/hsn-management" element={<HSNManagement />} />
                                             <Route path="/vendor-ledger/:id" element={<VendorLedger />} />
+                                            <Route path="/expenses" element={<Expenses />} />
                                             <Route path="/sizes" element={<Sizes />} />
                                             <Route path="/brands" element={<Brands />} />
                                             <Route path="/action-logs" element={<ActionLogs />} />
