@@ -136,7 +136,7 @@ export const getInventoryDashboard = async (req, res, next) => {
             Item.countDocuments({ ...tenantQuery, quantity: 0 }),
             Item.find({ ...tenantQuery, $expr: { $and: [{ $gt: ['$quantity', 0] }, { $lte: ['$quantity', '$minStockThreshold'] }] } })
                 .select('name sku quantity minStockThreshold category price purchasePrice').populate('category', 'name').sort({ quantity: 1 }).limit(50),
-            Item.aggregate([{ $match: { ...tenantQuery, damagedQuantity: { $gt: 0 } } }, { $group: { _id: null, total: { $sum: '$damagedQuantity' }, count: { $sum: 1 } } }]),
+            Item.aggregate([{ $match: { ...tenantQuery, damagedQuantity: { $gt: 0 } } }, { $group: { _id: null, total: { $sum: '$damagedQuantity' }, count: { $sum: 1 }, value: { $sum: { $multiply: ['$damagedQuantity', { $ifNull: ['$purchasePrice', '$price'] }] } } } }]),
             Item.aggregate([{ $match: tenantQuery }, { $group: { _id: null, value: { $sum: { $multiply: ['$quantity', '$purchasePrice'] } } } }]),
             Item.aggregate([{ $match: tenantQuery }, { $group: { _id: null, qty: { $sum: '$quantity' } } }]),
             Item.countDocuments({ ...tenantQuery, sku: { $exists: true, $ne: '' } }),
@@ -149,7 +149,7 @@ export const getInventoryDashboard = async (req, res, next) => {
 
         // Damaged items list
         const damagedItems = await Item.find({ ...tenantQuery, damagedQuantity: { $gt: 0 } })
-            .select('name sku damagedQuantity quantity price').sort({ damagedQuantity: -1 }).limit(20);
+            .select('name sku damagedQuantity quantity price purchasePrice').sort({ damagedQuantity: -1 }).limit(20);
 
         // --- PURCHASE ORDER STATS ---
         const [poStats, monthPOStats] = await Promise.all([
@@ -258,7 +258,10 @@ export const getInventoryDashboard = async (req, res, next) => {
             kpi: {
                 totalProducts, totalSKUs: skuCount, inventoryValue: inventoryValueAgg[0]?.value || 0,
                 availableStock: stockQtyAgg[0]?.qty || 0, lowStockCount: lowStockDocs.length,
-                outOfStockCount, overStockedCount, damagedTotal: damagedSummary[0]?.total || 0,
+                outOfStockCount, overStockedCount,
+                damagedTotal: damagedSummary[0]?.total || 0,
+                damagedCount: damagedSummary[0]?.count || 0,
+                damagedValue: damagedSummary[0]?.value || 0,
                 purchaseThisMonth: monthPOStats[0]?.total || 0, pendingPOs: poByStatus.issued?.count || 0,
             },
             monthlyTrend, stockMovement, categoryDistribution, supplierAnalytics,

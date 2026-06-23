@@ -263,7 +263,7 @@ const Dashboard = () => {
                 <KpiCard icon="⚠️" label="Low Stock" value={kpi.lowStockCount ?? '—'} sub="At or below threshold" color="amber" urgent={kpi.lowStockCount > 0} onClick={() => setStockTab('low')} />
                 <KpiCard icon="🔴" label="Out of Stock" value={kpi.outOfStockCount ?? '—'} sub="Zero quantity items" color="rose" urgent={kpi.outOfStockCount > 0} onClick={() => setStockTab('out')} />
                 <KpiCard icon="📈" label="Overstocked" value={kpi.overStockedCount ?? '—'} sub="3x above threshold" color="orange" />
-                {isFinancialAdmin && <KpiCard icon="🔧" label="Damaged Units" value={kpi.damagedTotal?.toLocaleString() ?? '—'} sub="Total damaged qty" color="slate" onClick={() => setStockTab('damaged')} />}
+                {isFinancialAdmin && <KpiCard icon="🔧" label="Damaged Units" value={kpi.damagedTotal?.toLocaleString() ?? '—'} sub={kpi.damagedValue > 0 ? `Value: ${fmtCompact(kpi.damagedValue)} · ${kpi.damagedCount ?? 0} items` : `Total damaged qty · ${kpi.damagedCount ?? 0} items`} color="slate" onClick={() => setStockTab('damaged')} />}
                 {isFinancialAdmin && <KpiCard icon="🛒" label="Pending POs" value={kpi.pendingPOs ?? '—'} sub="Awaiting delivery" color="indigo" onClick={() => navigate('/purchase-orders')} />}
                 {isFinancialAdmin && <KpiCard icon="📅" label="Purchase This Month" value={fmtCompact(kpi.purchaseThisMonth)} sub="Current month spend" color="sky" />}
                 <KpiCard icon="📥" label="Today Stock In" value={oldStats?.todayInward?.total ?? '—'} sub={`${oldStats?.todayInward?.count ?? 0} transactions`} color="emerald" />
@@ -434,6 +434,7 @@ const Dashboard = () => {
                                     <th className="px-4 py-2.5 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">
                                         {stockTab === 'damaged' ? 'Damaged Qty' : 'Qty'}
                                     </th>
+                                    {stockTab === 'damaged' && isFinancialAdmin && <th className="px-4 py-2.5 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Damage Value</th>}
                                     {stockTab === 'low' && <th className="px-4 py-2.5 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Min Threshold</th>}
                                     <th className="px-4 py-2.5 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Action</th>
                                 </tr>
@@ -453,6 +454,16 @@ const Dashboard = () => {
                                                 {stockTab === 'damaged' ? item.damagedQuantity : item.quantity}
                                             </span>
                                         </td>
+                                        {stockTab === 'damaged' && isFinancialAdmin && (
+                                            <td className="px-4 py-3 text-right">
+                                                <span className="text-sm font-black text-red-700">
+                                                    {fmtCompact((item.damagedQuantity || 0) * (item.purchasePrice || item.price || 0))}
+                                                </span>
+                                                <p className="text-[9px] text-gray-400">
+                                                    @ {fmtCompact(item.purchasePrice || item.price || 0)}/unit
+                                                </p>
+                                            </td>
+                                        )}
                                         {stockTab === 'low' && (
                                             <td className="px-4 py-3 text-right text-xs font-bold text-gray-400">{item.minStockThreshold}</td>
                                         )}
@@ -467,6 +478,13 @@ const Dashboard = () => {
                         </table>
                     )}
                 </div>
+                {/* Damaged total value footer */}
+                {stockTab === 'damaged' && isFinancialAdmin && kpi.damagedValue > 0 && (
+                    <div className="px-4 py-3 border-t border-orange-100 bg-orange-50 flex items-center justify-between">
+                        <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest">Total Damaged Goods Value</span>
+                        <span className="text-sm font-black text-red-700">{fmtCompact(kpi.damagedValue)}</span>
+                    </div>
+                )}
             </SectionCard>
 
             {/* ─── Product Performance ─────────────────────────────── */}
