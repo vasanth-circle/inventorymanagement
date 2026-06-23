@@ -29,6 +29,8 @@ const PurchaseOrders = () => {
     const [formData, setFormData] = useState({
         vendor: '',
         vendorBillNumber: '',
+        billDate: new Date().toISOString().split('T')[0],
+        roundOffAmount: '',
         taxRate: 18,
         items: [{ 
             item: '', 
@@ -47,15 +49,30 @@ const PurchaseOrders = () => {
 
     // Auto-detect IGST vs CGST+SGST when vendor changes
     const handleVendorChange = (vendorId) => {
-        setFormData(prev => ({ ...prev, vendor: vendorId }));
-        if (!vendorId) return;
+        if (!vendorId) {
+            setFormData(prev => ({ ...prev, vendor: '' }));
+            return;
+        }
         const selectedVendor = vendors.find(v => v._id === vendorId);
         const companyGstin = billingSettings?.gstNumber || '';
         const vendorGstin = selectedVendor?.gstin || '';
         const companyState = getGstStateCode(companyGstin);
         const vendorState = getGstStateCode(vendorGstin);
         const isInterState = vendorState && companyState && vendorState !== companyState;
+        
         setTaxType(isInterState ? 'igst' : 'cgst');
+        
+        // If vendor has no GSTIN, they cannot charge tax. Force tax to 0.
+        if (!vendorGstin) {
+            setFormData(prev => ({
+                ...prev,
+                vendor: vendorId,
+                taxRate: 0,
+                items: prev.items.map(item => ({ ...item, taxRate: 0 }))
+            }));
+        } else {
+            setFormData(prev => ({ ...prev, vendor: vendorId }));
+        }
     };
 
     const API_URL = '/api/purchase-orders';
@@ -123,7 +140,10 @@ const PurchaseOrders = () => {
                 if (selectedItem) {
                     // Look up HSN gstRate for this item
                     const hsnEntry = hsnCodes.find(h => h.code === selectedItem.hsn);
-                    const autoTaxRate = hsnEntry ? hsnEntry.gstRate : (formData.taxRate || 0);
+                    let autoTaxRate = hsnEntry ? hsnEntry.gstRate : (formData.taxRate || 0);
+                    
+                    const vendorGstin = vendors.find(v => v._id === formData.vendor)?.gstin;
+                    if (!vendorGstin) autoTaxRate = 0;
 
                     newItems[index] = {
                         ...newItems[index],
@@ -221,6 +241,8 @@ const PurchaseOrders = () => {
         setFormData({
             vendor: order.vendor?._id || order.vendor,
             vendorBillNumber: order.vendorBillNumber || '',
+            billDate: order.billDate ? new Date(order.billDate).toISOString().split('T')[0] : (order.orderDate ? new Date(order.orderDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
+            roundOffAmount: order.roundOffAmount !== undefined && order.roundOffAmount !== null && order.roundOffAmount !== 0 ? order.roundOffAmount : '',
             taxRate: order.taxRate || 18,
             notes: order.notes || '',
             items: order.items.map(i => ({
@@ -344,6 +366,8 @@ const PurchaseOrders = () => {
                                     vendor: '',
                                     vendorBillNumber: '',
                                     taxRate: 18,
+                                    billDate: new Date().toISOString().split('T')[0],
+                                    roundOffAmount: '',
                                     items: [{ 
                                         item: '', 
                                         quantity: '', 
@@ -441,6 +465,10 @@ const PurchaseOrders = () => {
                                 <div className="w-1/4 min-w-[150px]">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Bill No.</label>
                                     <input type="text" value={formData.vendorBillNumber} onChange={(e) => setFormData({ ...formData, vendorBillNumber: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" placeholder="Optional" />
+                                </div>
+                                <div className="w-1/4 min-w-[150px]">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Bill Date</label>
+                                    <input type="date" value={formData.billDate} onChange={(e) => setFormData({ ...formData, billDate: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" />
                                 </div>
                                 <div className="flex items-end min-w-[140px]">
                                     <div className={`px-3 py-2 rounded-lg text-sm font-bold border-2 ${ taxType === 'igst' ? 'bg-orange-50 border-orange-300 text-orange-700' : 'bg-green-50 border-green-300 text-green-700'}`}>
@@ -554,7 +582,8 @@ const PurchaseOrders = () => {
                                     {(() => {
                                         const taxableTotal = formData.items.reduce((s, i) => s + (parseFloat(i.total) || 0), 0);
                                         const taxTotal = formData.items.reduce((s, i) => s + (parseFloat(i.total) || 0) * (parseFloat(i.taxRate ?? formData.taxRate) || 0) / 100, 0);
-                                        const grandTotal = taxableTotal + taxTotal;
+                                        const roundOff = parseFloat(formData.roundOffAmount) || 0;
+                                        const grandTotal = taxableTotal + taxTotal + roundOff;
                                         const halfTax = taxTotal / 2;
                                         return (<>
                                             <div className="flex justify-between text-sm text-gray-600 font-medium">
@@ -575,6 +604,17 @@ const PurchaseOrders = () => {
                                                     <span>IGST:</span><span>₹{taxTotal.toLocaleString(undefined, {minimumFractionDigits:2,maximumFractionDigits:2})}</span>
                                                 </div>
                                             )}
+                                            <div className="flex justify-between items-center text-sm text-gray-700 font-medium pt-1">
+                                                <span>Round Off (+/-):</span>
+                                                <input 
+                                                    type="number" 
+                                                    step="0.01" 
+                                                    value={formData.roundOffAmount} 
+                                                    onChange={(e) => setFormData({...formData, roundOffAmount: e.target.value})} 
+                                                    className="w-24 px-2 py-1 text-right border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 outline-none text-sm font-bold bg-gray-50" 
+                                                    placeholder="0.00" 
+                                                />
+                                            </div>
                                             <div className="flex justify-between text-lg text-gray-900 font-bold border-t pt-2">
                                                 <span>Net Amount:</span>
                                                 <span>₹{grandTotal.toLocaleString(undefined, {minimumFractionDigits:2,maximumFractionDigits:2})}</span>
@@ -658,7 +698,7 @@ const PurchaseOrders = () => {
                         {/* Header */}
                         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 print:bg-white print:px-0">
                             <div>
-                                <h2 className="text-lg font-bold text-gray-800">Purchase Order Details</h2>
+                                <h2 className="text-lg font-bold text-gray-800">Purchase Invoice Details</h2>
                                 <p className="text-xs text-gray-500">Reference document for vendor invoice comparison</p>
                             </div>
                             <button onClick={() => setIsViewModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-2xl font-bold outline-none print:hidden">&times;</button>
@@ -673,9 +713,12 @@ const PurchaseOrders = () => {
                                     <div className="text-xs text-gray-500">Inventory Management Portal</div>
                                 </div>
                                 <div className="text-right space-y-1">
-                                    <div className="text-xs font-semibold uppercase text-gray-400">Purchase Order</div>
+                                    <div className="text-xs font-semibold uppercase text-gray-400">Purchase Invoice</div>
                                     <div className="text-lg font-bold text-gray-800">{selectedOrder.orderNumber}</div>
-                                    <div className="text-xs text-gray-500">Date: {new Date(selectedOrder.orderDate).toLocaleDateString()}</div>
+                                    <div className="text-xs text-gray-500">PO Date: {new Date(selectedOrder.orderDate).toLocaleDateString()}</div>
+                                    {selectedOrder.billDate && (
+                                        <div className="text-xs font-bold text-gray-700">Bill Date: {new Date(selectedOrder.billDate).toLocaleDateString()}</div>
+                                    )}
                                     <div>
                                         <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${getStatusColor(selectedOrder.status)}`}>
                                             {selectedOrder.status}
@@ -690,7 +733,13 @@ const PurchaseOrders = () => {
                                     <div className="text-[10px] uppercase font-bold tracking-wider text-gray-400 mb-1">Vendor Details</div>
                                     <div className="text-sm font-bold text-gray-800">{selectedOrder.vendor?.name || 'Unknown'}</div>
                                     {selectedOrder.vendor?.companyName && <div className="text-xs text-gray-600">{selectedOrder.vendor.companyName}</div>}
-                                    {selectedOrder.vendor?.phone && <div className="text-xs text-gray-500">Phone: {selectedOrder.vendor.phone}</div>}
+                                    {selectedOrder.vendor?.gstin && <div className="text-xs text-gray-600 font-medium mt-0.5">GSTIN: {selectedOrder.vendor.gstin}</div>}
+                                    {selectedOrder.vendor?.address && (
+                                        <div className="text-xs text-gray-500 mt-0.5 whitespace-pre-wrap">
+                                            {[selectedOrder.vendor.address.street, selectedOrder.vendor.address.city, selectedOrder.vendor.address.state, selectedOrder.vendor.address.zipCode].filter(Boolean).join(', ')}
+                                        </div>
+                                    )}
+                                    {selectedOrder.vendor?.phone && <div className="text-xs text-gray-500 mt-0.5">Phone: {selectedOrder.vendor.phone}</div>}
                                 </div>
                                 <div className="text-right">
                                     <div className="text-[10px] uppercase font-bold tracking-wider text-gray-400 mb-1">Inward Details</div>

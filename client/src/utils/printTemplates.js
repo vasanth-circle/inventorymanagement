@@ -1536,11 +1536,11 @@ export const generatePurchaseOrderHtml = (order, settings) => {
         const sqftVal = isTile ? formatIndianNumber(item.totalSqFt || 0, 3) : '';
         const hsnVal = item.hsnCode || item.hsn || '';
         const desc = (() => {
-            const b = (item.brand || '').trim();
-            const sz = (item.size || '').trim();
-            const n = (item.name || '').toUpperCase();
+            const b = (item.item?.brand || item.brand || '').trim();
+            const sz = (item.item?.size || item.size || '').trim();
+            const n = (item.item?.name || item.name || '').toUpperCase();
             const sub = [b, sz].filter(Boolean).join(' ');
-            return sub ? `${n}-${sub}` : n;
+            return sub ? `${n} - ${sub}` : n;
         })();
 
         return `<tr>
@@ -1640,7 +1640,7 @@ export const generatePurchaseOrderHtml = (order, settings) => {
   </div>
 
   <!-- Doc Title -->
-  <div class="doc-title">Purchase Order</div>
+  <div class="doc-title">Purchase Invoice</div>
 
   <!-- Vendor & PO Meta -->
   <div class="meta-grid">

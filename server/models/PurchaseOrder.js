@@ -92,6 +92,9 @@ const purchaseOrderSchema = new mongoose.Schema({
         type: String,
         trim: true,
     },
+    billDate: {
+        type: Date,
+    },
     orderDate: {
         type: Date,
         default: Date.now,

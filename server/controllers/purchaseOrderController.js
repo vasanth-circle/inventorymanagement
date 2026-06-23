@@ -54,8 +54,8 @@ export const getPurchaseOrders = async (req, res, next) => {
         }
 
         const orders = await PurchaseOrder.find(query)
-            .populate('vendor', 'name companyName')
-            .populate('items.item', 'name sku barcode size')
+            .populate('vendor', 'name companyName gstin address phone email')
+            .populate('items.item', 'name sku barcode size brand unitType')
             .populate({ path: 'user', model: User, select: 'name' })
             .sort({ createdAt: -1 })
             .limit(limit * 1)
@@ -84,7 +84,7 @@ export const getPurchaseOrder = async (req, res, next) => {
     try {
         const order = await PurchaseOrder.findOne({ _id: req.params.id, ...tenantQuery(req) })
             .populate('vendor')
-            .populate('items.item', 'name sku barcode size')
+            .populate('items.item', 'name sku barcode size brand unitType')
             .populate({ path: 'user', model: User, select: 'name' });
 
         if (!order) {
@@ -101,7 +101,7 @@ export const getPurchaseOrder = async (req, res, next) => {
 // @access  Private
 export const createPurchaseOrder = async (req, res, next) => {
     try {
-        const { vendor, items, orderDate, expectedDeliveryDate, notes, vendorBillNumber, taxRate, totalAmount } = req.body;
+        const { vendor, items, orderDate, expectedDeliveryDate, notes, vendorBillNumber, billDate, taxRate, totalAmount, roundOffAmount } = req.body;
 
         // Generate Order Number with retry logic
         let order;
@@ -115,9 +115,11 @@ export const createPurchaseOrder = async (req, res, next) => {
                     orderNumber,
                     vendor,
                     vendorBillNumber,
+                    billDate,
                     items,
                     taxRate,
                     totalAmount: totalAmount || 0,
+                    roundOffAmount: roundOffAmount || 0,
                     orderDate,
                     expectedDeliveryDate,
                     notes,
@@ -158,12 +160,13 @@ export const updatePurchaseOrder = async (req, res, next) => {
             return sendError(res, 400, 'Cannot edit an order that has been received or billed');
         }
 
-        const { vendor, items, notes, vendorBillNumber, taxRate, taxType, taxAmount, totalAmount, roundOffAmount } = req.body;
+        const { vendor, items, notes, vendorBillNumber, billDate, taxRate, taxType, taxAmount, totalAmount, roundOffAmount } = req.body;
 
         order.vendor = vendor;
         order.items = items;
         order.notes = notes;
         order.vendorBillNumber = vendorBillNumber;
+        order.billDate = billDate;
         order.taxRate = taxRate;
         order.taxType = taxType;
         order.taxAmount = taxAmount;
