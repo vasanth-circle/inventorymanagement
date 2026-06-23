@@ -82,7 +82,9 @@ const Sidebar = ({ isOpen, onClose }) => {
         }
     ];
 
-        if (user?.role === 'super_admin' || user?.role === 'admin' || user?.role === 'tenant_owner' || user?.role === 'tenant_admin') {
+        const isSettingsAllowed = user?.role === 'super_admin' || user?.role === 'admin' || user?.role === 'tenant_owner' || user?.role === 'tenant_admin' || (user?.menuAccess === 'specific' && user?.allowedMenus?.includes('users'));
+
+        if (isSettingsAllowed) {
             navGroups.push({
                 name: 'Settings',
                 id: 'settings',
@@ -132,32 +134,43 @@ const Sidebar = ({ isOpen, onClose }) => {
     const checkAccess = (itemId) => {
         const effectiveRole = user?.appRoles?.inventory || user?.role;
 
-        // 1. Apply restrictive roles first (Top Priority)
-        if (effectiveRole === 'sales_person' || effectiveRole === 'sales person' || effectiveRole === 'sales user' || effectiveRole === 'sales_user') {
-            const salesAllowed = ['dashboard', 'items', 'stocks', 'sales-orders', 'dispatch-management', 'customers', 'customer-ledger'];
-            return salesAllowed.includes(itemId);
+        // 1. Specific menu access check (Highest Priority)
+        if (user?.menuAccess === 'specific') {
+            let isAllowed = user?.allowedMenus?.includes(itemId) || false;
+            
+            // Handle aliases between Users.jsx options and Sidebar.jsx ids
+            if (!isAllowed) {
+                if (itemId === 'items' && user?.allowedMenus?.includes('inventory')) isAllowed = true;
+                if (itemId === 'dispatch-management' && user?.allowedMenus?.includes('stock-outward')) isAllowed = true;
+                if ((itemId === 'reports' || itemId === 'ledger-reports' || itemId === 'profit-tracking') && user?.allowedMenus?.includes('reports')) isAllowed = true;
+            }
+            return isAllowed;
         }
 
-        if (effectiveRole === 'accounts') {
-            const accountsAllowed = ['dashboard', 'items', 'customers', 'vendors', 'customer-ledger', 'vendor-ledger', 'reports', 'ledger-reports', 'profit-tracking'];
-            return accountsAllowed.includes(itemId);
-        }
-
-        if (effectiveRole === 'godown_staff' || effectiveRole === 'godown staff') {
-            const godownAllowed = ['dashboard', 'items', 'stocks', 'dispatch-management', 'stock-adjustment', 'stock-return', 'purchase-orders'];
-            return godownAllowed.includes(itemId);
-        }
-
-        // 2. Full Access overrides (If no restrictive app role is set)
-        if (user?.menuAccess === 'all') return true;
+        // 2. Admin overrides
         if (effectiveRole === 'admin' || effectiveRole === 'manager' || effectiveRole === 'inventory_admin' || user?.role === 'admin' || user?.role === 'manager') {
             return true;
         }
 
-        // 3. Specific menu access check
-        if (user?.menuAccess === 'specific' && user?.allowedMenus?.includes(itemId)) {
-            return true;
+        // 3. Apply restrictive roles
+        const normalizedRole = effectiveRole?.toLowerCase() || '';
+        if (['sales_person', 'sales person', 'sales user', 'sales_user'].includes(normalizedRole)) {
+            const salesAllowed = ['dashboard', 'items', 'stocks', 'sales-orders', 'dispatch-management', 'customers', 'customer-ledger'];
+            return salesAllowed.includes(itemId);
         }
+
+        if (normalizedRole === 'accounts') {
+            const accountsAllowed = ['dashboard', 'items', 'customers', 'vendors', 'customer-ledger', 'vendor-ledger', 'reports', 'ledger-reports', 'profit-tracking'];
+            return accountsAllowed.includes(itemId);
+        }
+
+        if (['godown_staff', 'godown staff'].includes(normalizedRole)) {
+            const godownAllowed = ['dashboard', 'items', 'stocks', 'dispatch-management', 'stock-adjustment', 'stock-return', 'purchase-orders'];
+            return godownAllowed.includes(itemId);
+        }
+
+        // 4. Full Access overrides (If no restrictive app role is set)
+        if (user?.menuAccess === 'all') return true;
 
         return false;
     };
