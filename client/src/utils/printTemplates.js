@@ -1,4 +1,4 @@
-﻿// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // Shared Indian number formatting utility
 // ─────────────────────────────────────────────────────────────────────────────
 export const formatIndianNumber = (num, decimals = 2) => {
@@ -1600,15 +1600,15 @@ export const generatePurchaseOrderHtml = (order, settings) => {
   .meta-row { display: flex; margin-bottom: 2px; font-size: 9px; align-items: flex-start; }
   .meta-label { min-width: 95px; font-weight: bold; }
   /* Items table */
-  .items-table { border-bottom: 1.5px solid #000; flex: 1; }
+  .items-table { border-bottom: 1.5px solid #000; flex: 1; display: flex; flex-direction: column; }
   table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
-  .items-table > table { min-height: 170mm; }
+  .items-table > table { flex: 1; height: 100%; min-height: 170mm; }
   th, td { padding: 4px 3px; font-size: 8.5px; border-right: 1.5px solid #000; }
   th:last-child, td:last-child { border-right: none; }
   th { border-bottom: 1.5px solid #000; font-weight: bold; text-transform: uppercase; font-size: 8px; text-align: center; }
   td { vertical-align: top; border-bottom: none; }
-  .filler td { height: 100%; border-bottom: none; }
-  tr { page-break-inside: avoid; }
+  .filler td { height: auto; border-bottom: none; }
+  tr.filler { height: 100%; }
   thead { display: table-header-group; }
   /* Summary section */
   .summary-section { border-bottom: 1.5px solid #000; }

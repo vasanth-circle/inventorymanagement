@@ -5,6 +5,9 @@ import { toast } from 'react-hot-toast';
 const Vendors = () => {
     const [vendors, setVendors] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState('');
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingVendor, setEditingVendor] = useState(null);
     const [formData, setFormData] = useState({
@@ -21,15 +24,17 @@ const Vendors = () => {
 
     useEffect(() => {
         fetchVendors();
-    }, []);
+    }, [page, search]);
 
     const fetchVendors = async () => {
         try {
             setLoading(true);
             const res = await axios.get(API_URL, {
+                params: { page, limit: 10, search },
                 headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
             });
             setVendors(res.data.data.vendors);
+            setTotalPages(res.data.data.totalPages || 1);
         } catch (error) {
             toast.error('Failed to fetch vendors');
         } finally {
@@ -87,14 +92,23 @@ const Vendors = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-2xl font-bold text-gray-800">Vendors</h1>
-                <button
-                    onClick={() => handleOpenModal()}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                >
-                    Add Vendor
-                </button>
+                <div className="flex w-full sm:w-auto items-center gap-3">
+                    <input 
+                        type="text" 
+                        placeholder="Search vendors..." 
+                        value={search}
+                        onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                        className="w-full sm:w-64 px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <button
+                        onClick={() => handleOpenModal()}
+                        className="shrink-0 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    >
+                        Add Vendor
+                    </button>
+                </div>
             </div>
 
             {loading ? (
@@ -136,6 +150,30 @@ const Vendors = () => {
                             ))}
                         </tbody>
                     </table>
+                    
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 bg-gray-50">
+                            <span className="text-sm text-gray-600">
+                                Page <span className="font-bold text-gray-900">{page}</span> of <span className="font-bold text-gray-900">{totalPages}</span>
+                            </span>
+                            <div className="flex gap-2">
+                                <button
+                                    disabled={page === 1}
+                                    onClick={() => setPage(p => p - 1)}
+                                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Previous
+                                </button>
+                                <button
+                                    disabled={page === totalPages}
+                                    onClick={() => setPage(p => p + 1)}
+                                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
