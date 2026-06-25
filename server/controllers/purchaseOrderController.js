@@ -46,11 +46,21 @@ export const createPurchaseLedgerEntry = async ({ orderId, orderNumber, vendorId
 // @access  Private
 export const getPurchaseOrders = async (req, res, next) => {
     try {
-        const { status = '', page = 1, limit = 10 } = req.query;
+        const { status = '', page = 1, limit = 10, from, to } = req.query;
         const query = { ...tenantQuery(req) };
 
         if (status) {
             query.status = status;
+        }
+
+        if (from || to) {
+            query.orderDate = {};
+            if (from) query.orderDate.$gte = new Date(from);
+            if (to) {
+                const toDate = new Date(to);
+                toDate.setHours(23, 59, 59, 999);
+                query.orderDate.$lte = toDate;
+            }
         }
 
         const orders = await PurchaseOrder.find(query)

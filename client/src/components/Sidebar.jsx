@@ -69,6 +69,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             items: [
                 { name: 'Analytics Dashboard', path: '/reports', id: 'reports' },
                 { name: 'Financial Ledgers', path: '/ledger-reports', id: 'ledger-reports' },
+                { name: 'Custom Reports', path: '/custom-reports', id: 'custom-reports' },
                 { name: 'Profit Tracking', path: '/profit-tracking', id: 'profit-tracking' },
                 { name: 'Company Expenses', path: '/expenses', id: 'expenses' }
             ]
@@ -143,7 +144,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             if (!isAllowed) {
                 if (itemId === 'items' && user?.allowedMenus?.includes('inventory')) isAllowed = true;
                 if (itemId === 'dispatch-management' && user?.allowedMenus?.includes('stock-outward')) isAllowed = true;
-                if ((itemId === 'reports' || itemId === 'ledger-reports' || itemId === 'profit-tracking' || itemId === 'expenses') && user?.allowedMenus?.includes('reports')) isAllowed = true;
+                if ((itemId === 'reports' || itemId === 'ledger-reports' || itemId === 'profit-tracking' || itemId === 'expenses' || itemId === 'custom-reports') && user?.allowedMenus?.includes('reports')) isAllowed = true;
             }
             return isAllowed;
         }
@@ -161,7 +162,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         }
 
         if (normalizedRole === 'accounts') {
-            const accountsAllowed = ['dashboard', 'items', 'customers', 'vendors', 'customer-ledger', 'vendor-ledger', 'reports', 'ledger-reports', 'profit-tracking', 'expenses'];
+            const accountsAllowed = ['dashboard', 'items', 'customers', 'vendors', 'customer-ledger', 'vendor-ledger', 'reports', 'ledger-reports', 'custom-reports', 'profit-tracking', 'expenses'];
             return accountsAllowed.includes(itemId);
         }
 

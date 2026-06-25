@@ -10,15 +10,41 @@ import { tenantQuery } from '../utils/tenantQuery.js';
 export const getVendorLedger = async (req, res, next) => {
     try {
         const { vendorId } = req.params;
+        const { from, to } = req.query;
         const query = { vendor: vendorId, ...tenantQuery(req) };
+
+        // Date range filter support
+        if (from || to) {
+            query.date = {};
+            if (from) query.date.$gte = new Date(from);
+            if (to) query.date.$lte = new Date(new Date(to).setHours(23, 59, 59, 999));
+        }
 
         const ledger = await VendorLedger.find(query)
             .populate({ path: 'createdBy', model: User, select: 'name email' })
-            .sort({ date: -1, createdAt: -1 });
+            .sort({ date: 1, createdAt: 1 });
 
         const vendor = await Vendor.findOne({ _id: vendorId, ...tenantQuery(req) });
 
-        sendResponse(res, 200, { ledger, vendor }, 'Vendor ledger fetched successfully');
+        // Calculate Balance Brought Forward (bbf)
+        let bbf = vendor?.openingBalance || 0;
+        if (from) {
+            const lastPreviousEntry = await VendorLedger.findOne({
+                vendor: vendorId,
+                ...tenantQuery(req),
+                date: { $lt: new Date(from) }
+            }).sort({ date: -1, createdAt: -1 });
+            if (lastPreviousEntry) {
+                bbf = lastPreviousEntry.balance;
+            }
+        }
+
+        // Last entry balance = current balance
+        const lastEntry = await VendorLedger.findOne({ vendor: vendorId, ...tenantQuery(req) })
+            .sort({ date: -1, createdAt: -1 });
+        const currentBalance = lastEntry ? lastEntry.balance : (vendor?.openingBalance || 0);
+
+        sendResponse(res, 200, { ledger, vendor, bbf, currentBalance }, 'Vendor ledger fetched successfully');
     } catch (error) {
         next(error);
     }
@@ -179,6 +205,144 @@ export const getVendorOverallStatement = async (req, res, next) => {
         sendResponse(res, 200, statements, 'Overall vendor statements fetched');
     } catch (error) {
         console.error('Error in getVendorOverallStatement:', error);
+        next(error);
+    }
+};
+
+// @desc    Get payables report — pending bills owed TO each vendor
+// @route   GET /api/vendor-ledger/reports/payables
+// @access  Private
+export const getVendorPayables = async (req, res, next) => {
+    try {
+        const query = { ...tenantQuery(req), isActive: true };
+        if (req.query.vendor) {
+            query._id = req.query.vendor;
+        }
+        const vendors = await Vendor.find(query).sort({ name: 1 });
+        const currentDate = new Date();
+        const fromDate = req.query.from ? new Date(req.query.from) : null;
+        if (fromDate) fromDate.setHours(0, 0, 0, 0);
+        const toDate = req.query.to ? new Date(req.query.to) : null;
+        if (toDate) toDate.setHours(23, 59, 59, 999);
+
+        const payablesData = [];
+
+        await Promise.all(vendors.map(async (vendor) => {
+            const entries = await VendorLedger.find({ vendor: vendor._id, ...tenantQuery(req) })
+                .sort({ date: 1, createdAt: 1 });
+
+            // credit = purchase bill (we owe vendor), debit = we paid
+            let totalDebits = entries.reduce((sum, e) => sum + (e.debit || 0), 0);
+            const allPendingBills = [];
+
+            if (vendor.openingBalance > 0) {
+                const billDate = new Date(vendor.createdAt);
+                if (totalDebits >= vendor.openingBalance) {
+                    totalDebits -= vendor.openingBalance;
+                } else if (totalDebits > 0) {
+                    allPendingBills.push({
+                        refNumber: 'Opening Balance',
+                        pendingAmount: vendor.openingBalance - totalDebits,
+                        date: vendor.createdAt,
+                        osDays: Math.floor((currentDate - billDate) / (1000 * 60 * 60 * 24))
+                    });
+                    totalDebits = 0;
+                } else {
+                    allPendingBills.push({
+                        refNumber: 'Opening Balance',
+                        pendingAmount: vendor.openingBalance,
+                        date: vendor.createdAt,
+                        osDays: Math.floor((currentDate - billDate) / (1000 * 60 * 60 * 24))
+                    });
+                }
+            }
+
+            for (const entry of entries) {
+                if (entry.credit > 0) {
+                    const billDate = new Date(entry.date);
+                    if (totalDebits >= entry.credit) {
+                        totalDebits -= entry.credit;
+                    } else if (totalDebits > 0) {
+                        const pendingAmt = entry.credit - totalDebits;
+                        totalDebits = 0;
+                        allPendingBills.push({
+                            refNumber: entry.refNumber || 'Bill',
+                            pendingAmount: pendingAmt,
+                            date: entry.date,
+                            osDays: Math.floor((currentDate - billDate) / (1000 * 60 * 60 * 24))
+                        });
+                    } else {
+                        allPendingBills.push({
+                            refNumber: entry.refNumber || 'Bill',
+                            pendingAmount: entry.credit,
+                            date: entry.date,
+                            osDays: Math.floor((currentDate - billDate) / (1000 * 60 * 60 * 24))
+                        });
+                    }
+                }
+            }
+
+            const pendingBills = allPendingBills.filter(bill => {
+                const bDate = new Date(bill.date);
+                if (fromDate && bDate < fromDate) return false;
+                if (toDate && bDate > toDate) return false;
+                return true;
+            });
+
+            if (pendingBills.length > 0) {
+                payablesData.push({
+                    vendorId: vendor._id,
+                    name: vendor.companyName || vendor.name,
+                    contact: vendor.phone,
+                    totalPending: pendingBills.reduce((s, b) => s + b.pendingAmount, 0),
+                    pendingBills
+                });
+            }
+        }));
+
+        payablesData.sort((a, b) => a.name.localeCompare(b.name));
+        sendResponse(res, 200, payablesData, 'Payables report fetched');
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Get outstanding summary for all vendors (Name, Debit, Credit, Closing Balance)
+// @route   GET /api/vendor-ledger/reports/outstanding-summary
+// @access  Private
+export const getVendorOutstandingSummary = async (req, res, next) => {
+    try {
+        const query = { ...tenantQuery(req), isActive: true };
+        const vendors = await Vendor.find(query).sort({ name: 1 });
+        const fromDate = req.query.from ? new Date(req.query.from) : null;
+        if (fromDate) fromDate.setHours(0, 0, 0, 0);
+        const toDate = req.query.to ? new Date(req.query.to) : null;
+        if (toDate) toDate.setHours(23, 59, 59, 999);
+
+        const summaries = await Promise.all(vendors.map(async (vendor) => {
+            const entryQuery = { vendor: vendor._id, ...tenantQuery(req) };
+            if (fromDate || toDate) {
+                entryQuery.date = {};
+                if (fromDate) entryQuery.date.$gte = fromDate;
+                if (toDate) entryQuery.date.$lte = toDate;
+            }
+            const entries = await VendorLedger.find(entryQuery).sort({ date: 1, createdAt: 1 });
+            const totalCredit = entries.reduce((s, e) => s + (e.credit || 0), 0); // purchases
+            const totalDebit = entries.reduce((s, e) => s + (e.debit || 0), 0);   // payments
+            const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null;
+            const closingBalance = lastEntry ? lastEntry.balance : (vendor.openingBalance || 0);
+            return {
+                vendorId: vendor._id,
+                name: vendor.companyName || vendor.name,
+                phone: vendor.phone,
+                totalDebit,
+                totalCredit,
+                closingBalance
+            };
+        }));
+
+        sendResponse(res, 200, summaries, 'Vendor outstanding summary fetched');
+    } catch (error) {
         next(error);
     }
 };

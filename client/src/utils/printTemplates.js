@@ -1501,12 +1501,15 @@ export const generatePurchaseOrderHtml = (order, settings) => {
     const s = settings || {};
     const sym = s.documentConfig?.currencySymbol || '₹';
 
-    // Determine if IGST or CGST+SGST applies from GSTIN state codes
     const companyGstin = s.gstNumber || '';
     const vendorGstin = order.vendor?.gstin || '';
     const companyState = getGstStateCode(companyGstin);
     const vendorState = getGstStateCode(vendorGstin);
-    const isInterState = vendorState && companyState && vendorState !== companyState;
+    
+    // Use taxType explicitly saved, or fallback to GSTIN comparison for older records
+    const isInterState = order.taxType 
+        ? order.taxType === 'igst' 
+        : (vendorState && companyState && vendorState !== companyState);
 
     const docNo = order.orderNumber;
     const docDate = order.orderDate || order.createdAt;
@@ -1525,15 +1528,24 @@ export const generatePurchaseOrderHtml = (order, settings) => {
     const grandTotal = order.totalAmount ?? (itemsTotal + taxAmount);
     const roundOff = order.roundOffAmount || 0;
 
-    // Build item rows — each row: S.No | Description | HSN | Qty(Box) | SqFt | Rate | Amount | Tax% | Total Amt
+    // Build item rows
+    let totQty = 0;
     const itemRows = (order.items || []).map((item, i) => {
         const subtotal = item.total || (item.quantity * item.price) || 0;
         const itemTaxPct = parseFloat(item.taxRate) || 0;
         const itemTaxAmt = subtotal * itemTaxPct / 100;
         const totalAmt = subtotal + itemTaxAmt;
         const isTile = !!(item.totalSqFt > 0 || item.boxCount > 0);
-        const qtyVal = isTile ? (item.boxCount ? `${Number(item.boxCount)} Nos` : '') : formatIndianNumber(item.quantity || 0, 3);
-        const sqftVal = isTile ? formatIndianNumber(item.totalSqFt || 0, 3) : '';
+        
+        let qtyVal;
+        if (isTile) {
+            totQty += Number(item.boxCount || 0);
+            qtyVal = item.boxCount ? `${Number(item.boxCount)} Nos` : '';
+        } else {
+            totQty += Number(item.quantity || 0);
+            qtyVal = formatIndianNumber(item.quantity || 0, 3) + ' ' + (item.billingUnit || 'Nos').substring(0,3);
+        }
+
         const hsnVal = item.hsnCode || item.hsn || '';
         const desc = (() => {
             const b = (item.item?.brand || item.brand || '').trim();
@@ -1548,39 +1560,39 @@ export const generatePurchaseOrderHtml = (order, settings) => {
           <td><strong>${desc}</strong></td>
           <td style="text-align:center">${hsnVal}</td>
           <td style="text-align:center;font-weight:bold">${qtyVal}</td>
-          <td style="text-align:center">${sqftVal}</td>
           <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
           <td style="text-align:right">${formatIndianNumber(subtotal, 2)}</td>
-          <td style="text-align:center">${itemTaxPct > 0 ? itemTaxPct + '%' : '0%'}</td>
+          <td style="text-align:center">${itemTaxPct > 0 ? itemTaxPct : '0'}</td>
           <td style="text-align:right;font-weight:bold">${formatIndianNumber(totalAmt, 2)}</td>
         </tr>`;
     }).join('');
 
-    // Bottom tax analysis table — CGST+SGST or IGST
+    // Bottom tax analysis table — exact match to screenshot
+    const basePct = taxAmount > 0 ? (taxAmount / itemsTotal * 100) : 0;
+    
     const taxAnalysisHtml = isInterState
-        ? `<table class="tax-table">
-            <thead><tr><th>Taxable Value</th><th>IGST%</th><th>AMT</th><th>Total Tax</th></tr></thead>
+        ? `<table style="width:70%; text-align:center; border:none; font-size:9.5px; margin-bottom:15px">
+            <thead><tr><th style="border:none;border-bottom:1px solid #000;text-align:left">Taxable Value</th><th style="border:none;border-bottom:1px solid #000">IGST%</th><th style="border:none;border-bottom:1px solid #000;text-align:right">AMT</th></tr></thead>
             <tbody><tr>
-              <td>${formatIndianNumber(itemsTotal, 2)}</td>
-              <td>${taxAmount > 0 ? (taxAmount / itemsTotal * 100).toFixed(0) + '%' : '0%'}</td>
-              <td>${formatIndianNumber(taxAmount, 2)}</td>
-              <td>${formatIndianNumber(taxAmount, 2)}</td>
+              <td style="border:none;text-align:left">${formatIndianNumber(itemsTotal, 2)}</td>
+              <td style="border:none">${formatIndianNumber(basePct, 2)}</td>
+              <td style="border:none;text-align:right">${formatIndianNumber(taxAmount, 2)}</td>
             </tr></tbody>
            </table>`
-        : `<table class="tax-table">
-            <thead><tr><th>Taxable Value</th><th>CGST%</th><th>AMT</th><th>SGST%</th><th>AMT</th><th>NET%</th><th>AMT</th></tr></thead>
+        : `<table style="width:90%; text-align:center; border:none; font-size:9.5px; margin-bottom:15px">
+            <thead><tr><th style="border:none;border-bottom:1px solid #000;text-align:left">Taxable Value</th><th style="border:none;border-bottom:1px solid #000">CGST%</th><th style="border:none;border-bottom:1px solid #000;text-align:right">AMT</th><th style="border:none;border-bottom:1px solid #000">SGST%</th><th style="border:none;border-bottom:1px solid #000;text-align:right">AMT</th><th style="border:none;border-bottom:1px solid #000">NET%</th><th style="border:none;border-bottom:1px solid #000;text-align:right">AMT</th></tr></thead>
             <tbody><tr>
-              <td>${formatIndianNumber(itemsTotal, 2)}</td>
-              <td>${formatIndianNumber(taxAmount > 0 ? (taxAmount / itemsTotal * 100) / 2 : 0, 2)}%</td>
-              <td>${formatIndianNumber(taxAmount / 2, 2)}</td>
-              <td>${formatIndianNumber(taxAmount > 0 ? (taxAmount / itemsTotal * 100) / 2 : 0, 2)}%</td>
-              <td>${formatIndianNumber(taxAmount / 2, 2)}</td>
-              <td>${formatIndianNumber(taxAmount > 0 ? (taxAmount / itemsTotal * 100) : 0, 2)}%</td>
-              <td>${formatIndianNumber(taxAmount, 2)}</td>
+              <td style="border:none;text-align:left">${formatIndianNumber(itemsTotal, 2)}</td>
+              <td style="border:none">${formatIndianNumber(basePct / 2, 2)}</td>
+              <td style="border:none;text-align:right">${formatIndianNumber(taxAmount / 2, 2)}</td>
+              <td style="border:none">${formatIndianNumber(basePct / 2, 2)}</td>
+              <td style="border:none;text-align:right">${formatIndianNumber(taxAmount / 2, 2)}</td>
+              <td style="border:none">${formatIndianNumber(basePct, 2)}</td>
+              <td style="border:none;text-align:right">${formatIndianNumber(taxAmount, 2)}</td>
             </tr></tbody>
            </table>`;
 
-    return `<html><head><meta charset="UTF-8"><title>PURCHASE_ORDER_${docNo}</title>
+    return `<html><head><meta charset="UTF-8"><title>Purchase_Bill_${docNo}</title>
 <style>
   @page { size: A4 portrait; margin: 5mm; }
   * { box-sizing: border-box; }
@@ -1590,9 +1602,9 @@ export const generatePurchaseOrderHtml = (order, settings) => {
   .company-header { text-align: center; padding: 6px 5px; border-bottom: 1.5px solid #000; position: relative; min-height: 70px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
   .company-header .contact-info { position: absolute; top: 6px; right: 8px; font-size: 7.5px; font-weight: bold; text-align: right; }
   .company-header h1 { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: 0.5px; }
-  .company-header p { margin: 1px 0; font-size: 8.5px; }
+  .company-header p { margin: 1px 0; font-size: 8.5px; font-weight: bold; }
   /* Doc title */
-  .doc-title { text-align: center; font-size: 11px; font-weight: bold; letter-spacing: 4px; padding: 4px; border-bottom: 1.5px solid #000; }
+  .doc-title { text-align: center; font-size: 11px; font-weight: bold; letter-spacing: 1px; padding: 4px; border-bottom: 1.5px solid #000; }
   /* Meta grid */
   .meta-grid { display: grid; grid-template-columns: 1.6fr 1fr; border-bottom: 1.5px solid #000; }
   .meta-box { padding: 5px 8px; }
@@ -1600,31 +1612,24 @@ export const generatePurchaseOrderHtml = (order, settings) => {
   .meta-row { display: flex; margin-bottom: 2px; font-size: 9px; align-items: flex-start; }
   .meta-label { min-width: 95px; font-weight: bold; }
   /* Items table */
-  .items-table { border-bottom: 1.5px solid #000; flex: 1; display: flex; flex-direction: column; }
+  .items-table { flex: 1; display: flex; flex-direction: column; }
   table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
-  .items-table > table { flex: 1; height: 100%; min-height: 170mm; }
-  th, td { padding: 4px 3px; font-size: 8.5px; border-right: 1.5px solid #000; }
+  .items-table > table { flex: 1; height: 100%; min-height: 150mm; border-bottom: 1.5px solid #000; }
+  th, td { padding: 4px 5px; font-size: 9.5px; border-right: 1.5px solid #000; }
   th:last-child, td:last-child { border-right: none; }
-  th { border-bottom: 1.5px solid #000; font-weight: bold; text-transform: uppercase; font-size: 8px; text-align: center; }
+  th { border-bottom: 1.5px solid #000; font-weight: bold; font-size: 9px; text-align: center; }
   td { vertical-align: top; border-bottom: none; }
   .filler td { height: auto; border-bottom: none; }
   tr.filler { height: 100%; }
   thead { display: table-header-group; }
-  /* Summary section */
-  .summary-section { border-bottom: 1.5px solid #000; }
-  /* Tax table */
-  .tax-table { width: 100%; border-collapse: collapse; font-size: 8px; }
-  .tax-table th, .tax-table td { border: 1px solid #000; padding: 2px 4px; text-align: right; }
-  .tax-table th { font-weight: bold; text-align: center; font-size: 7.5px; }
-  /* Math rows */
-  .math-section { display: flex; border-bottom: 1.5px solid #000; }
-  .math-left { flex: 1.8; padding: 6px 8px; border-right: 1.5px solid #000; }
-  .math-right { flex: 1; padding: 0; }
-  .math-row { display: flex; justify-content: space-between; padding: 3px 8px; font-size: 9px; border-bottom: 1px solid #eee; }
-  .math-row:last-child { border-bottom: none; }
-  .grand-total-row { background: #000; color: #fff; font-weight: bold; font-size: 11px; padding: 5px 8px; display: flex; justify-content: space-between; }
+  /* Math section */
+  .math-section { display: flex; border-bottom: 1.5px solid #000; min-height: 60px; }
+  .math-left { flex: 1.5; padding: 6px 8px; border-right: 1.5px solid #000; display:flex; flex-direction:column; justify-content:space-between;}
+  .math-right { flex: 1; padding: 6px 15px; display:flex; flex-direction:column; justify-content:flex-end; font-size:10px; font-weight:bold; }
+  .math-row { display: flex; justify-content: space-between; margin-bottom:6px; }
   /* Footer */
-  .footer { padding: 8px 10px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 8.5px; margin-top: auto; }
+  .words-bar { padding: 5px 8px; border-bottom: 1.5px solid #000; font-weight: bold; font-size: 9px; }
+  .footer { padding: 8px 10px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; margin-top: auto; }
 </style></head><body>
 <div class="container">
 
@@ -1640,24 +1645,21 @@ export const generatePurchaseOrderHtml = (order, settings) => {
   </div>
 
   <!-- Doc Title -->
-  <div class="doc-title">Purchase Invoice</div>
+  <div class="doc-title">Purchase Bill</div>
 
   <!-- Vendor & PO Meta -->
   <div class="meta-grid">
     <div class="meta-box">
-      <div class="meta-row"><span class="meta-label">From.</span></div>
-      <div class="meta-row"><span class="meta-label"></span><strong>${(order.vendor?.companyName || order.vendor?.name || 'Vendor').toUpperCase()}</strong></div>
-      ${order.vendor?.name && order.vendor?.companyName ? `<div class="meta-row"><span class="meta-label"></span>${order.vendor.name}</div>` : ''}
-      ${order.vendor?.phone ? `<div class="meta-row"><span class="meta-label"></span>${order.vendor.phone}</div>` : ''}
-      ${vendorGstin ? `<div class="meta-row"><span class="meta-label">GSTIN:</span>${vendorGstin}</div>` : ''}
-      ${(() => { const parts = [order.vendor?.address?.street, order.vendor?.address?.city, order.vendor?.address?.state, order.vendor?.address?.zipCode].filter(Boolean); return parts.length ? `<div class="meta-row"><span class="meta-label"></span><span style="font-size:8.5px">${parts.join(', ')}</span></div>` : ''; })()}
+      <div class="meta-row"><span class="meta-label" style="min-width:35px">From.</span><strong>${(order.vendor?.companyName || order.vendor?.name || 'Vendor').toUpperCase()}</strong></div>
+      ${order.vendor?.name && order.vendor?.companyName ? `<div class="meta-row"><span style="min-width:35px"></span>${order.vendor.name}</div>` : ''}
+      ${(() => { const parts = [order.vendor?.address?.street, order.vendor?.address?.city, order.vendor?.address?.state, order.vendor?.address?.zipCode].filter(Boolean); return parts.length ? `<div class="meta-row"><span style="min-width:35px"></span><span style="font-size:8.5px">${parts.join(', ')}</span></div>` : ''; })()}
+      ${vendorGstin ? `<br/><div class="meta-row"><span class="meta-label" style="min-width:60px">GSTIN :</span>${vendorGstin}</div>` : ''}
     </div>
     <div class="meta-box">
       <div class="meta-row"><span class="meta-label">Payment Terms</span><span>: Credit</span></div>
-      <div class="meta-row"><span class="meta-label">PO No:</span><strong style="font-size:12px">${docNo}</strong></div>
-      <div class="meta-row"><span class="meta-label">Date:</span>${new Date(docDate).toLocaleDateString('en-IN')}</div>
-      ${order.vendorBillNumber ? `<div class="meta-row"><span class="meta-label">Vendor Bill No:</span><strong>${order.vendorBillNumber}</strong></div>` : ''}
-      <div class="meta-row"><span class="meta-label">Tax Type:</span><strong>${isInterState ? 'Inter-State (IGST)' : 'Intra-State (CGST+SGST)'}</strong></div>
+      ${order.vendorBillNumber ? `<div class="meta-row"><span class="meta-label">Inv. No</span><strong style="font-size:11px">: ${order.vendorBillNumber}</strong></div>` : ''}
+      <div class="meta-row"><span class="meta-label">Inv.Date</span><span>: ${new Date(docDate).toLocaleDateString('en-GB')}</span></div>
+      <div class="meta-row"><span class="meta-label">S.No</span><span>: ${docNo}</span></div>
     </div>
   </div>
 
@@ -1666,45 +1668,46 @@ export const generatePurchaseOrderHtml = (order, settings) => {
     <table>
       <thead>
         <tr>
-          <th width="4%">S.No</th>
-          <th width="30%">Description</th>
-          <th width="9%">HSN Code</th>
-          <th width="10%">Qty</th>
-          <th width="9%">SqFt</th>
-          <th width="9%">Rate</th>
+          <th width="5%">S.No</th>
+          <th width="38%">Description</th>
+          <th width="10%">HSN<br/>Code</th>
+          <th width="12%">Qty</th>
+          <th width="10%">Rate</th>
           <th width="12%">Amount</th>
-          <th width="7%">Tax %</th>
-          <th width="10%">Total Amt</th>
+          <th width="5%">Tax<br/>%</th>
+          <th width="12%">Total<br/>Amount</th>
         </tr>
       </thead>
       <tbody>
         ${itemRows}
-        <tr class="filler"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+        <tr class="filler"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
       </tbody>
     </table>
   </div>
-
-  <!-- Tax Analysis (bottom, before totals) -->
-  <div class="summary-section" style="padding:5px 8px;border-bottom:1.5px solid #000">
-    <div style="font-size:7.5px;font-weight:bold;margin-bottom:3px">TAX ANALYSIS (${isInterState ? 'IGST — Inter-State' : 'CGST + SGST — Intra-State'}):</div>
-    ${taxAnalysisHtml}
+  
+  <div style="border-bottom:1.5px solid #000; border-top:1.5px solid #000; padding:2px 5px; font-weight:bold; font-size:10px; display:flex">
+    <div style="width:53%; padding-left:15px">Total</div>
+    <div style="width:12%; text-align:center">${formatIndianNumber(totQty, 3)}</div>
+    <div style="width:10%"></div>
+    <div style="width:12%; text-align:right">${formatIndianNumber(itemsTotal, 2)}</div>
+    <div style="width:5%"></div>
+    <div style="width:12%; text-align:right">${formatIndianNumber(itemsTotal + taxAmount, 2)}</div>
   </div>
 
-  <!-- Math totals -->
+  <!-- Math & Tax block -->
   <div class="math-section">
     <div class="math-left">
-      <div style="font-size:7.5px;font-weight:bold;text-decoration:underline;margin-bottom:3px">AMOUNT IN WORDS:</div>
-      <div style="font-weight:bold;text-transform:uppercase;font-size:8.5px">${numberToWords(Math.round(grandTotal))}</div>
-      <div style="font-size:7px;margin-top:6px;line-height:1.5;color:#333">${terms.replace(/\n/g, '<br/>')}</div>
+      ${taxAnalysisHtml}
+      <div style="font-weight:bold; font-size:10px">E. &amp; O.E.</div>
     </div>
     <div class="math-right">
-      <div class="math-row"><span>Taxable Value:</span><span>${sym}${formatIndianNumber(itemsTotal, 2)}</span></div>
-      ${!isInterState && taxAmount > 0 ? `<div class="math-row"><span>CGST (${formatIndianNumber(taxAmount > 0 ? (taxAmount / itemsTotal * 100) / 2 : 0, 2)}%):</span><span>${sym}${formatIndianNumber(taxAmount / 2, 2)}</span></div>` : ''}
-      ${!isInterState && taxAmount > 0 ? `<div class="math-row"><span>SGST (${formatIndianNumber(taxAmount > 0 ? (taxAmount / itemsTotal * 100) / 2 : 0, 2)}%):</span><span>${sym}${formatIndianNumber(taxAmount / 2, 2)}</span></div>` : ''}
-      ${isInterState && taxAmount > 0 ? `<div class="math-row"><span>IGST:</span><span>${sym}${formatIndianNumber(taxAmount, 2)}</span></div>` : ''}
-      ${roundOff !== 0 ? `<div class="math-row"><span>Rounded Off (Sub):</span><span>${roundOff > 0 ? '+' : ''}${formatIndianNumber(roundOff, 2)}</span></div>` : ''}
-      <div class="grand-total-row"><span>Net Amount :</span><span>${sym}${formatIndianNumber(grandTotal, 2)}</span></div>
+      ${roundOff !== 0 ? `<div class="math-row"><span>Rounded Off (${roundOff > 0 ? 'Add' : 'Sub'}) :</span><span>${formatIndianNumber(roundOff, 2)}</span></div>` : ''}
+      <div class="math-row" style="font-size:11px; margin-top:2px"><span>Net Amount :</span><span>${formatIndianNumber(grandTotal, 2)}</span></div>
     </div>
+  </div>
+  
+  <div class="words-bar">
+    ${numberToWords(Math.round(grandTotal))}
   </div>
 
   <!-- Footer -->
@@ -1713,9 +1716,9 @@ export const generatePurchaseOrderHtml = (order, settings) => {
       ${order.user?.name ? `<div style="font-weight:bold">Created by: ${order.user.name}</div>` : ''}
       <div>E. &amp; O.E.</div>
     </div>
-    <div style="text-align:center">
-      <div style="font-weight:bold;font-size:8px;margin-bottom:30px">For ${s.companyName || 'COMPANY'}</div>
-      <div style="border-top:1px solid #000;padding-top:4px;font-size:8px">Authorised Signatory</div>
+    <div style="text-align:right">
+      <div style="font-weight:bold;font-size:10px;margin-bottom:30px">For ${s.companyName || 'COMPANY'}</div>
+      <div style="font-size:9.5px">Authorised Signatory</div>
     </div>
   </div>
 

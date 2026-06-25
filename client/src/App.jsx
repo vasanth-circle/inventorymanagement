@@ -47,6 +47,7 @@ import Brands from './pages/Brands';
 import ActionLogs from './pages/ActionLogs';
 import ProfitTracking from './pages/ProfitTracking';
 import Expenses from './pages/Expenses';
+import CustomReports from './pages/CustomReports';
 
 function AppLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -123,6 +124,7 @@ function App() {
                                             <Route path="/sizes" element={<Sizes />} />
                                             <Route path="/brands" element={<Brands />} />
                                             <Route path="/action-logs" element={<ActionLogs />} />
+                                            <Route path="/custom-reports" element={<CustomReports />} />
                                             <Route path="/locations" element={<Locations />} />
                                             <Route path="/dispatch-management" element={<DispatchManagement />} />
                                             <Route path="/settings" element={<Settings />} />

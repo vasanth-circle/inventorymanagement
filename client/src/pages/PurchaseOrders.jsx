@@ -17,6 +17,7 @@ const PurchaseOrders = () => {
     const [vendors, setVendors] = useState([]);
     const [items, setItems] = useState([]);
     const [hsnCodes, setHsnCodes] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
@@ -26,6 +27,10 @@ const PurchaseOrders = () => {
     const [receiveData, setReceiveData] = useState([]);
     const [receiveVendorBillNo, setReceiveVendorBillNo] = useState('');
     const [taxType, setTaxType] = useState('cgst'); // 'cgst' (intra) or 'igst' (inter)
+    const [from, setFrom] = useState('');
+    const [to, setTo] = useState('');
+    const [isQuickAddItemOpen, setIsQuickAddItemOpen] = useState(false);
+    const [quickAddItemData, setQuickAddItemData] = useState({ name: '', sku: '', purchasePrice: '', category: '', hsn: '', unitType: 'pieces', size: '', pcsPerBox: '', sqFtPerPc: '' });
     const [formData, setFormData] = useState({
         vendor: '',
         vendorBillNumber: '',
@@ -85,7 +90,11 @@ const PurchaseOrders = () => {
     const fetchOrders = async () => {
         try {
             setLoading(true);
+            const params = {};
+            if (from) params.from = from;
+            if (to) params.to = to;
             const res = await axios.get(API_URL, {
+                params,
                 headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
             });
             setOrders(res.data.data.orders);
@@ -98,14 +107,16 @@ const PurchaseOrders = () => {
 
     const fetchVendorsAndItems = async () => {
         try {
-            const [vendRes, itemRes, hsnRes] = await Promise.allSettled([
+            const [vendRes, itemRes, hsnRes, catRes] = await Promise.allSettled([
                 axios.get('/api/vendors', { params: { limit: 1000 }, headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } }),
                 axios.get('/api/items', { params: { limit: 10000 }, headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } }),
                 axios.get('/api/hsn', { headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } }),
+                axios.get('/api/categories', { headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } })
             ]);
             if (vendRes.status === 'fulfilled') setVendors(vendRes.value.data.data?.vendors || []);
             if (itemRes.status === 'fulfilled') setItems(itemRes.value.data.items || []);
             if (hsnRes.status === 'fulfilled') setHsnCodes(hsnRes.value.data.data || hsnRes.value.data || []);
+            if (catRes.status === 'fulfilled') setCategories(catRes.value.data.data?.categories || catRes.value.data.categories || []);
         } catch (error) {
             console.error('Error fetching dependencies');
         }
@@ -127,6 +138,25 @@ const PurchaseOrders = () => {
                 billingUnit: billingSettings?.industry === 'tiles' ? 'boxes' : 'pieces'
             }]
         });
+    };
+
+    const handleQuickAddItemSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const dataToSubmit = {
+                ...quickAddItemData,
+                unitType: billingSettings?.unitConfig?.quantityBasis || 'pieces'
+            };
+            const res = await axios.post('/api/items', dataToSubmit, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+            });
+            toast.success('Item added successfully');
+            setItems([...items, res.data.data]);
+            setIsQuickAddItemOpen(false);
+            setQuickAddItemData({ name: '', sku: '', purchasePrice: '', category: '', hsn: '', unitType: 'pieces', size: '', pcsPerBox: '', sqFtPerPc: '' });
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Error adding item');
+        }
     };
 
     const handleItemChange = (index, field, value) => {
@@ -358,8 +388,24 @@ const PurchaseOrders = () => {
             {!isModalOpen && (
                 <>
                     <div className="flex justify-between items-center print:hidden">
-                        <h1 className="text-2xl font-bold text-gray-800">Purchase Orders</h1>
-                        <button
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-800">Purchase Orders</h1>
+                        </div>
+                        <div className="flex gap-4 items-end">
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 mb-1">From Date</label>
+                                <input type="date" value={from} onChange={e => setFrom(e.target.value)}
+                                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 mb-1">To Date</label>
+                                <input type="date" value={to} onChange={e => setTo(e.target.value)}
+                                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" />
+                            </div>
+                            <button onClick={fetchOrders} className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors">
+                                Filter
+                            </button>
+                            <button
                             onClick={() => {
                                 setEditingOrder(null);
                                 setFormData({
@@ -388,6 +434,7 @@ const PurchaseOrders = () => {
                             Purchase Entry
                         </button>
                     </div>
+                </div>
 
             {loading ? (
                 <div className="flex justify-center items-center h-64 print:hidden">
@@ -399,8 +446,11 @@ const PurchaseOrders = () => {
                         <thead>
                             <tr className="bg-gray-50 border-bottom border-gray-100">
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">PO #</th>
+                                <th className="px-6 py-4 text-sm font-semibold text-gray-600">Bill No</th>
+                                <th className="px-6 py-4 text-sm font-semibold text-gray-600">Bill Date</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">Vendor</th>
-                                <th className="px-6 py-4 text-sm font-semibold text-gray-600">Date</th>
+                                <th className="px-6 py-4 text-sm font-semibold text-gray-600">Inv Type</th>
+                                <th className="px-6 py-4 text-sm font-semibold text-gray-600">PO Date</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">Amount</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-right">Actions</th>
@@ -410,9 +460,12 @@ const PurchaseOrders = () => {
                             {orders.map((order) => (
                                 <tr key={order._id} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4 font-medium text-primary-600 cursor-pointer hover:underline" onClick={() => openViewModal(order)}>{order.orderNumber}</td>
+                                    <td className="px-6 py-4 text-gray-900 font-mono text-xs">{order.vendorBillNumber || '-'}</td>
+                                    <td className="px-6 py-4 text-gray-600 whitespace-nowrap text-sm">{order.billDate ? new Date(order.billDate).toLocaleDateString() : '-'}</td>
                                     <td className="px-6 py-4 text-gray-900">{order.vendor?.name}</td>
-                                    <td className="px-6 py-4 text-gray-600">{new Date(order.orderDate).toLocaleDateString()}</td>
-                                    <td className="px-6 py-4 font-semibold text-gray-900">₹{order.totalAmount.toLocaleString()}</td>
+                                    <td className="px-6 py-4 text-gray-600 font-semibold text-sm">Credit</td>
+                                    <td className="px-6 py-4 text-gray-600 whitespace-nowrap text-sm">{new Date(order.orderDate).toLocaleDateString()}</td>
+                                    <td className="px-6 py-4 font-semibold text-gray-900 whitespace-nowrap text-sm">₹{order.totalAmount.toLocaleString()}</td>
                                     <td className="px-6 py-4">
                                         <span className={`px-3 py-1 rounded-full text-xs font-medium uppercase ${getStatusColor(order.status)}`}>
                                             {order.status}
@@ -497,14 +550,21 @@ const PurchaseOrders = () => {
                                             return (
                                             <tr key={index}>
                                                 <td className="py-2 pr-2">
-                                                    <SearchableSelect
-                                                        value={row.item}
-                                                        onChange={(e) => handleItemChange(index, 'item', e.target.value)}
-                                                        options={items.map(i => ({ value: i._id, label: `${i.name}${i.size ? ` - ${i.size}` : ''} (${i.sku || 'No SKU'})` }))}
-                                                        placeholder="Select Item"
-                                                        searchPlaceholder="Search Item..."
-                                                        className="w-full"
-                                                    />
+                                                    <div className="flex gap-1 items-center">
+                                                        <div className="flex-1">
+                                                            <SearchableSelect
+                                                                value={row.item}
+                                                                onChange={(e) => handleItemChange(index, 'item', e.target.value)}
+                                                                options={items.map(i => ({ value: i._id, label: `${i.name}${i.size ? ` - ${i.size}` : ''} (${i.sku || 'No SKU'})` }))}
+                                                                placeholder="Select Item"
+                                                                searchPlaceholder="Search Item..."
+                                                                className="w-full"
+                                                            />
+                                                        </div>
+                                                        <button type="button" onClick={() => setIsQuickAddItemOpen(true)} className="p-1.5 bg-gray-100 text-gray-600 rounded hover:bg-gray-200" title="Add New Item">
+                                                            <span className="font-bold">+</span>
+                                                        </button>
+                                                    </div>
                                                 </td>
                                                 <td className="px-2 py-2">
                                                     {isTile ? (
@@ -831,6 +891,77 @@ const PurchaseOrders = () => {
                                 </button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+            {isQuickAddItemOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60] overflow-y-auto">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 my-8">
+                        <h2 className="text-xl font-bold mb-4">Quick Add Item</h2>
+                        <form onSubmit={handleQuickAddItemSubmit} className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-medium mb-1">Item Name *</label>
+                                    <input required type="text" value={quickAddItemData.name} onChange={e => setQuickAddItemData({...quickAddItemData, name: e.target.value})} className="w-full px-3 py-2 border rounded outline-none focus:ring-2 focus:ring-primary-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Category *</label>
+                                    <select required value={quickAddItemData.category} onChange={e => setQuickAddItemData({...quickAddItemData, category: e.target.value})} className="w-full px-3 py-2 border rounded outline-none focus:ring-2 focus:ring-primary-500">
+                                        <option value="">Select Category</option>
+                                        {categories.map(cat => (
+                                            <option key={cat._id} value={cat._id}>{cat.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">HSN Code</label>
+                                    <select value={quickAddItemData.hsn} onChange={e => setQuickAddItemData({...quickAddItemData, hsn: e.target.value})} className="w-full px-3 py-2 border rounded outline-none focus:ring-2 focus:ring-primary-500">
+                                        <option value="">Select HSN</option>
+                                        {hsnCodes.map(hsn => (
+                                            <option key={hsn.code} value={hsn.code}>{hsn.code} - {hsn.description} ({hsn.gstRate}%)</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">SKU</label>
+                                    <input type="text" value={quickAddItemData.sku} onChange={e => setQuickAddItemData({...quickAddItemData, sku: e.target.value})} className="w-full px-3 py-2 border rounded outline-none focus:ring-2 focus:ring-primary-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Purchase Price</label>
+                                    <input type="number" step="0.01" value={quickAddItemData.purchasePrice} onChange={e => setQuickAddItemData({...quickAddItemData, purchasePrice: e.target.value})} className="w-full px-3 py-2 border rounded outline-none focus:ring-2 focus:ring-primary-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Unit Type</label>
+                                    <select value={quickAddItemData.unitType} onChange={e => setQuickAddItemData({...quickAddItemData, unitType: e.target.value})} className="w-full px-3 py-2 border rounded outline-none focus:ring-2 focus:ring-primary-500">
+                                        <option value="pieces">Pieces</option>
+                                        <option value="box">Box</option>
+                                        <option value="sqft">SqFt</option>
+                                        <option value="nos">Nos</option>
+                                        <option value="kgs">Kgs</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Size (e.g., 2x2, 4x4)</label>
+                                    <input type="text" value={quickAddItemData.size} onChange={e => setQuickAddItemData({...quickAddItemData, size: e.target.value})} className="w-full px-3 py-2 border rounded outline-none focus:ring-2 focus:ring-primary-500" />
+                                </div>
+                                {billingSettings?.industry === 'tiles' && (
+                                    <>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Pieces Per Box</label>
+                                            <input type="number" value={quickAddItemData.pcsPerBox} onChange={e => setQuickAddItemData({...quickAddItemData, pcsPerBox: e.target.value})} className="w-full px-3 py-2 border rounded outline-none focus:ring-2 focus:ring-primary-500" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">SqFt Per Piece</label>
+                                            <input type="number" step="0.01" value={quickAddItemData.sqFtPerPc} onChange={e => setQuickAddItemData({...quickAddItemData, sqFtPerPc: e.target.value})} className="w-full px-3 py-2 border rounded outline-none focus:ring-2 focus:ring-primary-500" />
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                            <div className="flex justify-end gap-2 pt-4">
+                                <button type="button" onClick={() => setIsQuickAddItemOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-medium">Cancel</button>
+                                <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded font-bold hover:bg-primary-700">Add Item</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

@@ -489,3 +489,42 @@ export const getCustomerReceivables = async (req, res, next) => {
     }
 };
 
+// @desc    Get outstanding summary for all customers (Name, Debit, Credit, Closing Balance)
+// @route   GET /api/customers/reports/outstanding-summary
+// @access  Private
+export const getCustomerOutstandingSummary = async (req, res, next) => {
+    try {
+        const query = { ...tenantQuery(req), isActive: true };
+        const customers = await Customer.find(query).sort({ name: 1 });
+        const fromDate = req.query.from ? new Date(req.query.from) : null;
+        if (fromDate) fromDate.setHours(0, 0, 0, 0);
+        const toDate = req.query.to ? new Date(req.query.to) : null;
+        if (toDate) toDate.setHours(23, 59, 59, 999);
+
+        const summaries = await Promise.all(customers.map(async (customer) => {
+            const entryQuery = { customer: customer._id, ...tenantQuery(req) };
+            if (fromDate || toDate) {
+                entryQuery.date = {};
+                if (fromDate) entryQuery.date.$gte = fromDate;
+                if (toDate) entryQuery.date.$lte = toDate;
+            }
+            const entries = await CustomerLedger.find(entryQuery).sort({ date: 1, createdAt: 1 });
+            const totalDebit = entries.reduce((s, e) => s + (e.debit || 0), 0);   // bills
+            const totalCredit = entries.reduce((s, e) => s + (e.credit || 0), 0); // payments
+            const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null;
+            const closingBalance = lastEntry ? lastEntry.balance : (customer.openingBalance || 0);
+            return {
+                customerId: customer._id,
+                name: customer.companyName || customer.name,
+                phone: customer.phone,
+                totalDebit,
+                totalCredit,
+                closingBalance
+            };
+        }));
+
+        sendResponse(res, 200, summaries, 'Customer outstanding summary fetched');
+    } catch (error) {
+        next(error);
+    }
+};
