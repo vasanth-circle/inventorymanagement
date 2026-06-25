@@ -111,7 +111,21 @@ export const getPurchaseOrder = async (req, res, next) => {
 // @access  Private
 export const createPurchaseOrder = async (req, res, next) => {
     try {
-        const { vendor, items, orderDate, expectedDeliveryDate, notes, vendorBillNumber, billDate, taxRate, totalAmount, roundOffAmount } = req.body;
+        const { vendor, items, orderDate, expectedDeliveryDate, notes, vendorBillNumber, billDate, taxRate, taxType, totalAmount, roundOffAmount } = req.body;
+
+        if (!vendorBillNumber) {
+            return sendError(res, 400, 'Vendor Bill Number is required');
+        }
+
+        const existingPO = await PurchaseOrder.findOne({
+            vendor,
+            vendorBillNumber,
+            ...tenantQuery(req)
+        });
+
+        if (existingPO) {
+            return sendError(res, 400, `A Purchase Order with Vendor Bill Number '${vendorBillNumber}' already exists for this vendor.`);
+        }
 
         // Generate Order Number with retry logic
         let order;

@@ -97,7 +97,10 @@ const StockReturn = () => {
     // Return items table (for customer returns from a bill)
     const [returnItems, setReturnItems] = useState([]);
 
-    // For vendor returns (simpler — single item)
+    // For vendor returns
+    const [purchaseOrders, setPurchaseOrders] = useState([]);
+    const [loadingPOs, setLoadingPOs] = useState(false);
+    const [selectedPO, setSelectedPO] = useState(null);
     const [vendorItem, setVendorItem] = useState('');
     const [vendorQty, setVendorQty] = useState('');
     const [vendorRate, setVendorRate] = useState('');
@@ -161,6 +164,25 @@ const StockReturn = () => {
         }
     };
 
+    // Fetch POs for selected vendor
+    const handleVendorSelect = async (vendorId) => {
+        setSelectedVendor(vendorId);
+        setSelectedPO(null);
+        setVendorItem('');
+        setPurchaseOrders([]);
+        if (!vendorId) return;
+
+        setLoadingPOs(true);
+        try {
+            const res = await api.get(`/purchase-orders?vendor=${vendorId}&limit=200`);
+            setPurchaseOrders(res.data.data?.orders || []);
+        } catch (error) {
+            toast.error('Failed to fetch purchase orders');
+        } finally {
+            setLoadingPOs(false);
+        }
+    };
+
     // When an invoice is selected — populate return items table
     const handleInvoiceSelect = (invoiceId) => {
         const invoice = invoices.find(i => i._id === invoiceId);
@@ -178,6 +200,22 @@ const StockReturn = () => {
             setReturnItems(rows);
         } else {
             setReturnItems([]);
+        }
+    };
+
+    const handlePOSelect = (poId) => {
+        const po = purchaseOrders.find(p => p._id === poId);
+        setSelectedPO(po || null);
+        setReferenceOrder(po?.vendorBillNumber || po?.orderNumber || '');
+        setVendorItem('');
+        setVendorRate('');
+    };
+
+    const handleVendorItemSelect = (itemId) => {
+        setVendorItem(itemId);
+        if (selectedPO) {
+            const poItem = selectedPO.items.find(i => (i.item?._id || i.item) === itemId);
+            if (poItem) setVendorRate(poItem.price);
         }
     };
 
@@ -321,6 +359,21 @@ const StockReturn = () => {
         label: `${inv.orderNumber}  •  ${new Date(inv.orderDate).toLocaleDateString('en-IN')}  •  ₹${(inv.totalAmount || 0).toLocaleString('en-IN')}`,
     }));
 
+    const poOptions = purchaseOrders.map(po => ({
+        value: po._id,
+        label: `${po.vendorBillNumber ? `Bill: ${po.vendorBillNumber}` : `PO: ${po.orderNumber}`}  •  ${new Date(po.orderDate || po.createdAt).toLocaleDateString('en-IN')}  •  ₹${(po.totalAmount || 0).toLocaleString('en-IN')}`
+    }));
+
+    const vendorItemOptions = selectedPO 
+        ? selectedPO.items.map(i => {
+            const item = allItems.find(ai => ai._id === (i.item?._id || i.item));
+            return {
+                value: item?._id || i.item,
+                label: `${item?.name || i.name} (Billed: ${i.quantity})`,
+            };
+        })
+        : allItems.map(i => ({ value: i._id, label: `${i.name} (${i.brand || ''} - ${i.size || ''})` }));
+
     return (
         <div className="p-1 space-y-6 max-w-[1000px] mx-auto">
             {/* Header */}
@@ -349,6 +402,8 @@ const StockReturn = () => {
                                     setSelectedCustomer('');
                                     setSelectedVendor('');
                                     setSelectedInvoice(null);
+                                    setSelectedPO(null);
+                                    setPurchaseOrders([]);
                                     setReturnItems([]);
                                     setInvoices([]);
                                 }}
@@ -381,7 +436,7 @@ const StockReturn = () => {
                                     <SearchableDropdown
                                         options={vendorOptions}
                                         value={selectedVendor}
-                                        onChange={setSelectedVendor}
+                                        onChange={handleVendorSelect}
                                         placeholder="Search & select vendor..."
                                     />
                                 </>
@@ -507,14 +562,27 @@ const StockReturn = () => {
                     )}
 
                     {/* ── Section 2 (Vendor): Item + Qty + Rate ── */}
-                    {returnType === 'vendor' && (
+                    {returnType === 'vendor' && selectedVendor && (
                         <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50/30">
+                            <div className="space-y-1 md:col-span-3">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
+                                    📄 Select Bill / PO to Return From
+                                    {loadingPOs && <span className="ml-2 text-slate-400 animate-pulse">⏳ Loading...</span>}
+                                </label>
+                                <SearchableDropdown
+                                    options={poOptions}
+                                    value={selectedPO?._id || ''}
+                                    onChange={handlePOSelect}
+                                    placeholder="Optional: Select PO to autofill items..."
+                                    disabled={loadingPOs || purchaseOrders.length === 0}
+                                />
+                            </div>
                             <div className="space-y-1 md:col-span-3">
                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Select Item <span className="text-rose-500">*</span></label>
                                 <SearchableDropdown
-                                    options={itemOptions}
+                                    options={vendorItemOptions}
                                     value={vendorItem}
-                                    onChange={setVendorItem}
+                                    onChange={handleVendorItemSelect}
                                     placeholder="Search & select item..."
                                 />
                             </div>

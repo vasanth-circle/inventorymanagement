@@ -516,8 +516,8 @@ const PurchaseOrders = () => {
                                     />
                                 </div>
                                 <div className="w-1/4 min-w-[150px]">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Bill No.</label>
-                                    <input type="text" value={formData.vendorBillNumber} onChange={(e) => setFormData({ ...formData, vendorBillNumber: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" placeholder="Optional" />
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Bill No. *</label>
+                                    <input required type="text" value={formData.vendorBillNumber} onChange={(e) => setFormData({ ...formData, vendorBillNumber: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" placeholder="Enter Bill No." />
                                 </div>
                                 <div className="w-1/4 min-w-[150px]">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Bill Date</label>
