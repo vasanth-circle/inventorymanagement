@@ -116,7 +116,10 @@ export const syncSalesOrderLedger = async (orderId, tenantId, userId) => {
         if (isRealBill) {
             let oldCustomer = null;
             const newCustomer = order.customer.toString();
-            const fullAmount = order.totalAmount + (order.advanceAmount || 0);
+            // The ledger debit = net bill value for THIS invoice only.
+            // order.totalAmount has: itemsTotal + charges + taxes + oldBalance - discounts - advance + roundOff
+            // We must EXCLUDE oldBalance (already in ledger from previous entries) and ADD BACK advance (it becomes a separate credit entry).
+            const billDebitAmount = order.totalAmount + (order.advanceAmount || 0) - (order.oldBalance || 0);
 
             // ─── 1. Main Bill Entry (Debit) ───
             if (existingBillEntry) {
@@ -126,7 +129,7 @@ export const syncSalesOrderLedger = async (orderId, tenantId, userId) => {
                 existingBillEntry.date = order.orderDate || new Date();
                 existingBillEntry.refNumber = order.orderNumber;
                 existingBillEntry.description = `Bill #${order.orderNumber}`;
-                existingBillEntry.debit = fullAmount;
+                existingBillEntry.debit = billDebitAmount;
                 existingBillEntry.credit = 0;
                 await existingBillEntry.save();
             } else {
@@ -139,7 +142,7 @@ export const syncSalesOrderLedger = async (orderId, tenantId, userId) => {
                     refId: order._id,
                     refNumber: order.orderNumber,
                     description: `Bill #${order.orderNumber}`,
-                    debit: fullAmount,
+                    debit: billDebitAmount,
                     credit: 0,
                     balance: 0,
                     createdBy: userId,
