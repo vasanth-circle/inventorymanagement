@@ -116,7 +116,7 @@ const PurchaseOrders = () => {
             if (vendRes.status === 'fulfilled') setVendors(vendRes.value.data.data?.vendors || []);
             if (itemRes.status === 'fulfilled') setItems(itemRes.value.data.items || []);
             if (hsnRes.status === 'fulfilled') setHsnCodes(hsnRes.value.data.data || hsnRes.value.data || []);
-            if (catRes.status === 'fulfilled') setCategories(catRes.value.data.data?.categories || catRes.value.data.categories || []);
+            if (catRes.status === 'fulfilled') setCategories(Array.isArray(catRes.value.data) ? catRes.value.data : (catRes.value.data?.categories || []));
         } catch (error) {
             console.error('Error fetching dependencies');
         }
@@ -906,12 +906,12 @@ const PurchaseOrders = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium mb-1">Category *</label>
-                                    <select required value={quickAddItemData.category} onChange={e => setQuickAddItemData({...quickAddItemData, category: e.target.value})} className="w-full px-3 py-2 border rounded outline-none focus:ring-2 focus:ring-primary-500">
-                                        <option value="">Select Category</option>
-                                        {categories.map(cat => (
-                                            <option key={cat._id} value={cat._id}>{cat.name}</option>
-                                        ))}
-                                    </select>
+                                    <SearchableSelect 
+                                        options={categories.map(cat => ({ value: cat._id, label: cat.name }))}
+                                        value={quickAddItemData.category}
+                                        onChange={e => setQuickAddItemData({...quickAddItemData, category: e.target.value})}
+                                        placeholder="Search Category"
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium mb-1">HSN Code</label>
@@ -921,10 +921,6 @@ const PurchaseOrders = () => {
                                             <option key={hsn.code} value={hsn.code}>{hsn.code} - {hsn.description} ({hsn.gstRate}%)</option>
                                         ))}
                                     </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">SKU</label>
-                                    <input type="text" value={quickAddItemData.sku} onChange={e => setQuickAddItemData({...quickAddItemData, sku: e.target.value})} className="w-full px-3 py-2 border rounded outline-none focus:ring-2 focus:ring-primary-500" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium mb-1">Purchase Price</label>
@@ -942,7 +938,13 @@ const PurchaseOrders = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium mb-1">Size (e.g., 2x2, 4x4)</label>
-                                    <input type="text" value={quickAddItemData.size} onChange={e => setQuickAddItemData({...quickAddItemData, size: e.target.value})} className="w-full px-3 py-2 border rounded outline-none focus:ring-2 focus:ring-primary-500" />
+                                    <SearchableSelect 
+                                        options={[...new Set(items.map(i => i.size).filter(Boolean))].map(s => ({ value: s, label: s }))}
+                                        value={quickAddItemData.size}
+                                        onChange={e => setQuickAddItemData({...quickAddItemData, size: e.target.value})}
+                                        placeholder="Search or Type Size"
+                                        allowCreate={true}
+                                    />
                                 </div>
                                 {billingSettings?.industry === 'tiles' && (
                                     <>
