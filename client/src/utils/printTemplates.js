@@ -171,7 +171,7 @@ const template1 = (order, settings, docType = 'invoice') => {
         <th width="4%">S.No</th>
         <th width="54%">Description</th>
         <th width="12%">Box</th>
-        <th width="9%">SqFeet</th>
+        <th width="9%">Quantity</th>
         <th width="10%">Rate</th>
         <th width="11%">Amount</th>
       </tr></thead>
@@ -341,7 +341,7 @@ const template2 = (order, settings, docType = 'invoice') => {
         <th width="4%">S.No</th>
         <th width="54%">Description</th>
         <th width="11%">Box</th>
-        <th width="9%">SqFeet</th>
+        <th width="9%">Quantity</th>
         <th width="9%">Rate</th>
         <th width="13%">Amount</th>
       </tr></thead>
@@ -508,7 +508,7 @@ const template3 = (order, settings, docType = 'invoice') => {
       <th width="4%">S.No</th>
       <th width="54%">Description</th>
       <th width="11%">Box</th>
-      <th width="9%">SqFeet</th>
+      <th width="9%">Quantity</th>
       <th width="9%">Rate</th>
       <th width="13%">Amount</th>
     </tr></thead>

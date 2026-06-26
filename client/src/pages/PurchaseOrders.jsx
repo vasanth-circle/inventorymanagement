@@ -816,8 +816,8 @@ const PurchaseOrders = () => {
                                             <tr>
                                                 <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase">Item Description</th>
                                                 <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase text-center w-24">Boxes</th>
-                                                <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase text-center w-28">Total SqFt</th>
-                                                <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase text-right w-28">Rate (SqFt)</th>
+                                                <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase text-center w-28">Quantity</th>
+                                                <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase text-right w-28">Rate</th>
                                                 <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase text-right w-32">Amount</th>
                                             </tr>
                                         </thead>
@@ -829,7 +829,10 @@ const PurchaseOrders = () => {
                                                         {(row.item?.sku || row.sku) && <div className="text-[10px] text-gray-400">SKU: {row.item?.sku || row.sku}</div>}
                                                     </td>
                                                     <td className="px-4 py-3 text-center text-gray-600 font-semibold">{row.boxCount || '-'}</td>
-                                                    <td className="px-4 py-3 text-center text-primary-700 font-bold">{row.quantity?.toLocaleString() || '-'}</td>
+                                                    <td className="px-4 py-3 text-center text-primary-700 font-bold">
+                                                        {row.quantity?.toLocaleString() || '-'}
+                                                        {row.billingUnit ? <span className="text-xs text-gray-500 ml-1 font-normal capitalize">({row.billingUnit})</span> : ''}
+                                                    </td>
                                                     <td className="px-4 py-3 text-right text-gray-600">₹{row.price?.toLocaleString()}</td>
                                                     <td className="px-4 py-3 text-right font-bold text-gray-800">₹{(row.quantity * row.price).toLocaleString()}</td>
                                                 </tr>

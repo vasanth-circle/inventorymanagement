@@ -8,12 +8,13 @@ export const getProfitReport = async (req, res, next) => {
         const { from, to } = req.query;
 
         // Fetch all items to map their current purchase price
-        const items = await Item.find({ ...tenantQuery(req) }).select('_id name purchasePrice category');
+        const items = await Item.find({ ...tenantQuery(req) }).select('_id name purchasePrice purchasePriceSqFt category');
         const itemMap = {};
         items.forEach(item => {
             itemMap[item._id.toString()] = {
                 name: item.name,
                 purchasePrice: item.purchasePrice || 0,
+                purchasePriceSqFt: item.purchasePriceSqFt || 0,
                 categoryId: item.category
             };
         });
@@ -71,7 +72,11 @@ export const getProfitReport = async (req, res, next) => {
                     itemCogs = orderItem.batchAllocations.reduce((sum, alloc) => sum + (alloc.quantity * (alloc.purchasePrice || itemData.purchasePrice)), 0);
                 } else {
                     // Fallback to legacy logic for old invoices without allocations
-                    itemCogs = quantityToUse * itemData.purchasePrice;
+                    if ((orderItem.billingUnit === 'sqft' || orderItem.totalSqFt > 0) && itemData.purchasePriceSqFt > 0) {
+                        itemCogs = quantityToUse * itemData.purchasePriceSqFt;
+                    } else {
+                        itemCogs = quantityToUse * itemData.purchasePrice;
+                    }
                 }
                 const itemProfit = itemRevenue - itemCogs;
 

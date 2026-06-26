@@ -55,6 +55,11 @@ const itemSchema = new mongoose.Schema({
         default: 0,
         min: 0,
     },
+    purchasePriceSqFt: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
     location: {
         type: String,
         trim: true,

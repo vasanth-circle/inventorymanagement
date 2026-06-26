@@ -401,6 +401,15 @@ export const receivePurchaseOrder = async (req, res, next) => {
                         itemDoc.damagedQuantity = (itemDoc.damagedQuantity || 0) + dmgQty;
                     }
 
+                    let sqftRate = 0;
+                    if (itemDoc.sqFtPerPc > 0) {
+                        // rate is typically per box if pcsPerBox > 0
+                        const sqFtPerBox = (itemDoc.pcsPerBox || 1) * itemDoc.sqFtPerPc;
+                        if (sqFtPerBox > 0) {
+                            sqftRate = Number((rate / sqFtPerBox).toFixed(4));
+                        }
+                    }
+
                     // Handle Batches
                     if (!itemDoc.batches) itemDoc.batches = [];
                     let batch = itemDoc.batches.find(b => b.price === rate && b.batchNumber === batchNum);
@@ -412,12 +421,16 @@ export const receivePurchaseOrder = async (req, res, next) => {
                             batchNumber: batchNum,
                             quantity: recQty,
                             price: rate,
+                            purchasePriceSqFt: sqftRate,
                             receivedDate: Date.now()
                         });
                         batch = itemDoc.batches[itemDoc.batches.length - 1];
                     }
 
                     itemDoc.purchasePrice = rate;
+                    if (sqftRate > 0) {
+                        itemDoc.purchasePriceSqFt = sqftRate;
+                    }
                     await itemDoc.save();
 
                     // Create transaction record
