@@ -8,6 +8,8 @@ import {
     getCustomerBalance,
     getCustomerLedger,
     recordPayment,
+    updatePayment,
+    deletePayment,
     getCustomerStatement,
     getCustomerOverallStatement,
     unlockCustomer,
@@ -40,6 +42,8 @@ router.get('/:id/balance', getCustomerBalance);
 router.get('/:id/ledger', getCustomerLedger);
 router.get('/:id/statement', getCustomerStatement);
 router.post('/:id/payment', recordPayment);
+router.put('/:id/payment/:entryId', authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), updatePayment);
+router.delete('/:id/payment/:entryId', authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), deletePayment);
 router.post('/:id/unlock', authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), unlockCustomer);
 
 export default router;

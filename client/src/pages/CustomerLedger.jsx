@@ -103,11 +103,23 @@ const CustomerLedger = () => {
 
     const effectiveRole = user?.appRoles?.inventory || user?.role;
     const canRecordPayment = ['admin', 'manager', 'tenant_owner', 'tenant_admin', 'accounts'].includes(effectiveRole) || ['admin', 'manager', 'tenant_owner', 'tenant_admin', 'super_admin'].includes(user?.role);
+    const canEditPayment = ['admin', 'manager', 'tenant_owner', 'tenant_admin'].includes(effectiveRole) || ['admin', 'manager', 'tenant_owner', 'tenant_admin', 'super_admin'].includes(user?.role);
 
-    // Payment modal state
+    // New Payment modal state
     const [payModal, setPayModal] = useState(false);
     const [paying, setPaying] = useState(false);
     const [payForm, setPayForm] = useState({ amount: '', paymentMode: 'cash', date: new Date().toISOString().split('T')[0], notes: '', refNumber: '' });
+
+    // Edit Payment modal state
+    const [editModal, setEditModal] = useState(false);
+    const [editingEntry, setEditingEntry] = useState(null);
+    const [editForm, setEditForm] = useState({ amount: '', paymentMode: 'cash', date: '', notes: '', refNumber: '' });
+    const [editSaving, setEditSaving] = useState(false);
+
+    // Delete confirm state
+    const [deleteConfirm, setDeleteConfirm] = useState(null); // holds the entry to delete
+    const [deleting, setDeleting] = useState(false);
+
 
     const fetchLedger = useCallback(async () => {
         if (!selectedCustomerId) {
@@ -188,6 +200,54 @@ const CustomerLedger = () => {
             setPaying(false);
         }
     };
+
+    const handleEditOpen = (entry) => {
+        setEditingEntry(entry);
+        setEditForm({
+            amount: entry.credit,
+            paymentMode: entry.paymentMode || 'cash',
+            date: new Date(entry.date).toISOString().split('T')[0],
+            notes: entry.notes || '',
+            refNumber: entry.refNumber || '',
+        });
+        setEditModal(true);
+    };
+
+    const handleEditSubmit = async (e) => {
+        e.preventDefault();
+        if (!editForm.amount || Number(editForm.amount) <= 0) return toast.error('Enter a valid amount');
+        setEditSaving(true);
+        try {
+            await api(`/customers/${selectedCustomerId}/payment/${editingEntry._id}`, {
+                method: 'PUT',
+                data: { ...editForm, amount: Number(editForm.amount) },
+            });
+            toast.success('Payment updated successfully');
+            setEditModal(false);
+            setEditingEntry(null);
+            fetchLedger();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to update payment');
+        } finally {
+            setEditSaving(false);
+        }
+    };
+
+    const handleDeletePayment = async () => {
+        if (!deleteConfirm) return;
+        setDeleting(true);
+        try {
+            await api(`/customers/${selectedCustomerId}/payment/${deleteConfirm._id}`, { method: 'DELETE' });
+            toast.success('Payment deleted successfully');
+            setDeleteConfirm(null);
+            fetchLedger();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to delete payment');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
 
     const customer = data?.customer;
     const backendEntries = data?.entries || [];
@@ -324,11 +384,13 @@ const CustomerLedger = () => {
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Debit (Dr)</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Credit (Cr)</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Balance</th>
+                                    {canEditPayment && <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-center">Actions</th>}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {entries.map((entry, i) => {
                                     const ts = typeStyle(entry.type);
+                                    const isManualPayment = entry.type === 'payment' && entry.refType === 'Manual';
                                     return (
                                         <tr key={entry._id} className={`${ts.bg} hover:brightness-95 transition-all`}>
                                             <td className="px-4 py-3 text-gray-400 text-sm" data-label="#">{i + 1}</td>
@@ -355,20 +417,42 @@ const CustomerLedger = () => {
                                                 ₹{fmt(Math.abs(entry.balance))}
                                                 <span className="text-xs font-normal ml-1">{entry.balance >= 0 ? 'Dr' : 'Cr'}</span>
                                             </td>
+                                            {canEditPayment && (
+                                                <td className="px-4 py-3 text-center whitespace-nowrap" data-label="Actions">
+                                                    {isManualPayment ? (
+                                                        <div className="flex gap-1 justify-center">
+                                                            <button
+                                                                onClick={() => handleEditOpen(entry)}
+                                                                title="Edit payment"
+                                                                className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+                                                                ✏️
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setDeleteConfirm(entry)}
+                                                                title="Delete payment"
+                                                                className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
+                                                                🗑️
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-gray-300 text-xs">—</span>
+                                                    )}
+                                                </td>
+                                            )}
                                         </tr>
                                     );
                                 })}
                             </tbody>
                             <tfoot>
                                 <tr className="bg-gray-800 text-white">
-                                    <td colSpan={4} className="px-4 py-3 font-bold text-sm">TOTAL</td>
+                                    <td colSpan={canEditPayment ? 5 : 4} className="px-4 py-3 font-bold text-sm">TOTAL</td>
                                     <td className="px-4 py-3 text-right font-bold text-red-300">
                                         ₹{fmt(entries.reduce((s, e) => s + e.debit, 0))}
                                     </td>
                                     <td className="px-4 py-3 text-right font-bold text-green-300">
                                         ₹{fmt(entries.reduce((s, e) => s + e.credit, 0))}
                                     </td>
-                                    <td className={`px-4 py-3 text-right font-bold text-lg ${balance >= 0 ? 'text-orange-300' : 'text-green-300'}`}>
+                                    <td colSpan={canEditPayment ? 2 : 1} className={`px-4 py-3 text-right font-bold text-lg ${balance >= 0 ? 'text-orange-300' : 'text-green-300'}`}>
                                         ₹{fmt(Math.abs(balance))} {balance >= 0 ? 'Dr' : 'Cr'}
                                     </td>
                                 </tr>
@@ -378,7 +462,7 @@ const CustomerLedger = () => {
                 )}
             </div>
 
-            {/* Payment Modal */}
+            {/* Receive Payment Modal */}
             {payModal && (
                 <FullScreenModal isOpen={payModal} onClose={() => setPayModal(false)}>
                     <div className="modal-content">
@@ -390,7 +474,6 @@ const CustomerLedger = () => {
                             <button onClick={() => setPayModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
                         </div>
                         <form onSubmit={handlePaymentSubmit} className="p-6 space-y-4">
-                            {/* Current balance chip */}
                             <div className={`p-3 rounded-lg text-center font-semibold text-sm ${balance > 0 ? 'bg-orange-50 text-orange-700 border border-orange-100' : 'bg-green-50 text-green-700 border border-green-100'}`}>
                                 Current Balance: ₹{fmt(Math.abs(balance))} {balance >= 0 ? 'Dr (Pending)' : 'Cr (Advance)'}
                             </div>
@@ -438,6 +521,96 @@ const CustomerLedger = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </FullScreenModal>
+            )}
+
+            {/* Edit Payment Modal */}
+            {editModal && (
+                <FullScreenModal isOpen={editModal} onClose={() => { setEditModal(false); setEditingEntry(null); }}>
+                    <div className="modal-content">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-blue-50">
+                            <div className="flex flex-col">
+                                <h2 className="text-xl font-bold text-blue-800">✏️ Edit Payment</h2>
+                                <p className="text-xs font-bold text-blue-600 uppercase tracking-tight mt-0.5">CUSTOMER: {customer?.companyName || customer?.name}</p>
+                            </div>
+                            <button onClick={() => { setEditModal(false); setEditingEntry(null); }} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+                        </div>
+                        <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">Amount Received *</label>
+                                <input type="number" step="0.01" min="0.01" required
+                                    value={editForm.amount} onChange={e => setEditForm({ ...editForm, amount: e.target.value })}
+                                    placeholder="Enter amount"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-lg font-bold" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Payment Mode</label>
+                                    <select value={editForm.paymentMode} onChange={e => setEditForm({ ...editForm, paymentMode: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                                        {PAYMENT_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Date</label>
+                                    <input type="date" value={editForm.date} onChange={e => setEditForm({ ...editForm, date: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">Ref / Cheque No. (optional)</label>
+                                <input type="text" value={editForm.refNumber} onChange={e => setEditForm({ ...editForm, refNumber: e.target.value })}
+                                    placeholder="e.g. CHQ-123456, UPI Ref"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">Notes (optional)</label>
+                                <textarea rows={2} value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })}
+                                    placeholder="Any remarks..."
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none" />
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                                <button type="submit" disabled={editSaving}
+                                    className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50">
+                                    {editSaving ? 'Saving...' : '✅ Save Changes'}
+                                </button>
+                                <button type="button" onClick={() => { setEditModal(false); setEditingEntry(null); }}
+                                    className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-50">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </FullScreenModal>
+            )}
+
+            {/* Delete Confirm Modal */}
+            {deleteConfirm && (
+                <FullScreenModal isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)}>
+                    <div className="modal-content">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-red-50">
+                            <h2 className="text-xl font-bold text-red-800">🗑️ Delete Payment</h2>
+                            <button onClick={() => setDeleteConfirm(null)} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                                <p className="text-red-700 font-semibold">Are you sure you want to delete this payment entry?</p>
+                                <p className="text-2xl font-black text-red-600 mt-2">₹{fmt(deleteConfirm.credit)}</p>
+                                <p className="text-sm text-gray-500 mt-1">{deleteConfirm.description} · {new Date(deleteConfirm.date).toLocaleDateString('en-IN')}</p>
+                                <p className="text-xs text-red-500 mt-2 font-medium">This action cannot be undone. The customer balance will be recalculated automatically.</p>
+                            </div>
+                            <div className="flex gap-3">
+                                <button onClick={handleDeletePayment} disabled={deleting}
+                                    className="flex-1 py-2.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 disabled:opacity-50">
+                                    {deleting ? 'Deleting...' : '🗑️ Yes, Delete'}
+                                </button>
+                                <button onClick={() => setDeleteConfirm(null)}
+                                    className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-50">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </FullScreenModal>
             )}

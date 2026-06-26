@@ -4,6 +4,33 @@ import User from '../models/User.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
 
+/**
+ * Helper to recalculate running balance for a vendor's ledger chronologically
+ */
+export const recalculateVendorBalance = async (vendorId, tenantId) => {
+    const vendor = await Vendor.findOne({ _id: vendorId, tenantId });
+    if (!vendor) return;
+
+    const entries = await VendorLedger.find({ vendor: vendorId, tenantId })
+        .sort({ date: 1, createdAt: 1 });
+
+    let running = vendor.openingBalance || 0;
+    for (const entry of entries) {
+        // Vendor ledger logic:
+        // Credit (e.g. Purchase Bill) INCREASES our liability to them
+        // Debit (e.g. Payment made) DECREASES our liability to them
+        running = running + (entry.credit || 0) - (entry.debit || 0);
+        
+        if (entry.balance !== running) {
+            entry.balance = running;
+            await entry.save();
+        }
+    }
+
+    await Vendor.findByIdAndUpdate(vendorId, { currentBalance: running });
+    return running;
+};
+
 // @desc    Get ledger for a specific vendor
 // @route   GET /api/vendor-ledger/:vendorId
 // @access  Private
@@ -66,16 +93,16 @@ export const recordPayment = async (req, res, next) => {
         const previousBalance = lastEntry ? lastEntry.balance : (vendor.openingBalance || 0);
         
         // Debit reduces our liability (balance)
-        const newBalance = previousBalance - amount;
-
         const ledgerEntry = await VendorLedger.create({
             tenantId: req.tenantId,
             vendor: vendorId,
             date: date || new Date(),
             type: 'payment',
+            refType: 'Manual',
+            refNumber: req.body.refNumber || `PMT-${Date.now()}`,
             debit: amount,
             credit: 0,
-            balance: newBalance,
+            balance: 0, // Set by recalculate
             paymentMode: paymentMode || 'cash',
             notes,
             description: description || 'Payment to vendor',
@@ -83,9 +110,71 @@ export const recordPayment = async (req, res, next) => {
         });
 
         // Update vendor current balance
-        await Vendor.findByIdAndUpdate(vendorId, { currentBalance: newBalance });
+        const newBalance = await recalculateVendorBalance(vendorId, req.tenantId);
+        ledgerEntry.balance = newBalance; // Send back the updated value
 
         sendResponse(res, 201, ledgerEntry, 'Payment recorded successfully');
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Update a manual payment made to a vendor
+// @route   PUT /api/vendor-ledger/payment/:entryId
+// @access  Private (Admin/Manager)
+export const updatePayment = async (req, res, next) => {
+    try {
+        const { amount, paymentMode, date, notes, description, refNumber } = req.body;
+
+        const entry = await VendorLedger.findOne({
+            _id: req.params.entryId,
+            ...tenantQuery(req),
+        });
+
+        if (!entry) return sendError(res, 404, 'Payment entry not found');
+        if (entry.refType !== 'Manual') return sendError(res, 400, 'Only manually recorded payments can be edited');
+        if (entry.type !== 'payment') return sendError(res, 400, 'Only payment entries can be edited');
+
+        if (amount !== undefined) {
+            if (Number(amount) <= 0) return sendError(res, 400, 'Amount must be greater than 0');
+            entry.debit = Number(amount);
+        }
+        if (paymentMode !== undefined) entry.paymentMode = paymentMode;
+        if (date !== undefined) entry.date = new Date(date);
+        if (notes !== undefined) entry.notes = notes;
+        if (description !== undefined) entry.description = description;
+        if (refNumber !== undefined) entry.refNumber = refNumber;
+
+        await entry.save();
+        
+        await recalculateVendorBalance(entry.vendor, req.tenantId);
+
+        sendResponse(res, 200, { entry }, 'Payment updated successfully');
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Delete a manual payment made to a vendor
+// @route   DELETE /api/vendor-ledger/payment/:entryId
+// @access  Private (Admin/Manager)
+export const deletePayment = async (req, res, next) => {
+    try {
+        const entry = await VendorLedger.findOne({
+            _id: req.params.entryId,
+            ...tenantQuery(req),
+        });
+
+        if (!entry) return sendError(res, 404, 'Payment entry not found');
+        if (entry.refType !== 'Manual') return sendError(res, 400, 'Only manually recorded payments can be deleted');
+        if (entry.type !== 'payment') return sendError(res, 400, 'Only payment entries can be deleted');
+
+        const vendorId = entry.vendor;
+        await VendorLedger.deleteOne({ _id: entry._id });
+        
+        await recalculateVendorBalance(vendorId, req.tenantId);
+
+        sendResponse(res, 200, null, 'Payment deleted successfully');
     } catch (error) {
         next(error);
     }
@@ -103,37 +192,27 @@ export const addAdjustment = async (req, res, next) => {
             return sendError(res, 404, 'Vendor not found');
         }
 
-        const lastEntry = await VendorLedger.findOne({ vendor: vendorId, ...tenantQuery(req) }).sort({ date: -1, createdAt: -1 });
-        const previousBalance = lastEntry ? lastEntry.balance : (vendor.openingBalance || 0);
-        
-        let debit = 0;
-        let credit = 0;
-        let newBalance = previousBalance;
-
-        if (type === 'debit') {
-            debit = amount;
-            newBalance -= amount;
-        } else {
-            credit = amount;
-            newBalance += amount;
-        }
+        const debit = type === 'debit' ? amount : 0;
+        const credit = type === 'credit' ? amount : 0;
 
         const ledgerEntry = await VendorLedger.create({
             tenantId: req.tenantId,
             vendor: vendorId,
             date: date || new Date(),
             type: 'adjustment',
+            refType: 'Manual',
             debit,
             credit,
-            balance: newBalance,
+            balance: 0,
             notes,
             description: description || 'Manual Adjustment',
             createdBy: req.user._id,
         });
 
-        await Vendor.findByIdAndUpdate(vendorId, { currentBalance: newBalance });
+        const newBalance = await recalculateVendorBalance(vendorId, req.tenantId);
+        ledgerEntry.balance = newBalance;
 
-        sendResponse(res, 201, ledgerEntry, 'Adjustment recorded successfully');
+        sendResponse(res, 201, ledgerEntry, 'Adjustment added successfully');
     } catch (error) {
         next(error);
     }

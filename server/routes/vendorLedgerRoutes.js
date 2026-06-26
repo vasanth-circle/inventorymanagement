@@ -1,5 +1,14 @@
 import express from 'express';
-import { getVendorLedger, recordPayment, addAdjustment, getVendorOverallStatement, getVendorPayables, getVendorOutstandingSummary } from '../controllers/vendorLedgerController.js';
+import { 
+    getVendorLedger, 
+    recordPayment, 
+    updatePayment,
+    deletePayment,
+    addAdjustment, 
+    getVendorOverallStatement, 
+    getVendorPayables, 
+    getVendorOutstandingSummary 
+} from '../controllers/vendorLedgerController.js';
 
 const router = express.Router();
 
@@ -8,6 +17,8 @@ router.get('/reports/payables', getVendorPayables);
 router.get('/reports/outstanding-summary', getVendorOutstandingSummary);
 router.get('/:vendorId', getVendorLedger);
 router.post('/payment', recordPayment);
+router.put('/payment/:entryId', updatePayment);
+router.delete('/payment/:entryId', deletePayment);
 router.post('/adjustment', addAdjustment);
 
 export default router;

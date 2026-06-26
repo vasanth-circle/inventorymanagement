@@ -249,6 +249,71 @@ export const recordPayment = async (req, res, next) => {
     }
 };
 
+// @desc    Update a manually recorded payment entry
+// @route   PUT /api/customers/:id/payment/:entryId
+// @access  Private (Admin/Manager)
+export const updatePayment = async (req, res, next) => {
+    try {
+        const { amount, paymentMode, date, notes, refNumber } = req.body;
+
+        const entry = await CustomerLedger.findOne({
+            _id: req.params.entryId,
+            customer: req.params.id,
+            ...tenantQuery(req),
+        });
+
+        if (!entry) return sendError(res, 404, 'Payment entry not found');
+        if (entry.refType !== 'Manual') return sendError(res, 400, 'Only manually recorded payments can be edited');
+        if (entry.type !== 'payment') return sendError(res, 400, 'Only payment entries can be edited');
+
+        if (amount !== undefined) {
+            if (Number(amount) <= 0) return sendError(res, 400, 'Amount must be greater than 0');
+            entry.credit = Number(amount);
+        }
+        if (paymentMode !== undefined) {
+            entry.paymentMode = paymentMode;
+            entry.description = `Payment Received (${paymentMode.replace('_', ' ')})`;
+        }
+        if (date !== undefined) entry.date = new Date(date);
+        if (notes !== undefined) entry.notes = notes;
+        if (refNumber !== undefined) entry.refNumber = refNumber;
+
+        await entry.save();
+        await recalculateCustomerBalance(req.params.id, req.tenantId);
+
+        const updatedCustomer = await Customer.findById(req.params.id);
+        sendResponse(res, 200, { entry, balance: updatedCustomer.currentBalance }, 'Payment updated successfully');
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Delete a manually recorded payment entry
+// @route   DELETE /api/customers/:id/payment/:entryId
+// @access  Private (Admin/Manager)
+export const deletePayment = async (req, res, next) => {
+    try {
+        const entry = await CustomerLedger.findOne({
+            _id: req.params.entryId,
+            customer: req.params.id,
+            ...tenantQuery(req),
+        });
+
+        if (!entry) return sendError(res, 404, 'Payment entry not found');
+        if (entry.refType !== 'Manual') return sendError(res, 400, 'Only manually recorded payments can be deleted');
+        if (entry.type !== 'payment') return sendError(res, 400, 'Only payment entries can be deleted');
+
+        await CustomerLedger.deleteOne({ _id: entry._id });
+        await recalculateCustomerBalance(req.params.id, req.tenantId);
+
+        const updatedCustomer = await Customer.findById(req.params.id);
+        sendResponse(res, 200, { balance: updatedCustomer.currentBalance }, 'Payment deleted successfully');
+    } catch (error) {
+        next(error);
+    }
+};
+
+
 // @desc    Get full account statement (for printing) with optional date range
 // @route   GET /api/customers/:id/statement
 // @access  Private

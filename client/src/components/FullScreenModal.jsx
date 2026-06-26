@@ -11,10 +11,14 @@ import React from 'react';
 const FullScreenModal = ({ isOpen, onClose, children }) => {
   if (!isOpen) return null;
   return (
-    <div className="full-screen-modal" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal-content">
-        <button className="close-btn" onClick={onClose}>✕</button>
-        {children}
+    <div 
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 sm:p-6" 
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-hidden flex flex-col relative animate-in fade-in zoom-in duration-200">
+        <div className="overflow-y-auto w-full h-full flex flex-col">
+          {children}
+        </div>
       </div>
     </div>
   );
