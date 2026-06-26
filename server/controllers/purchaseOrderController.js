@@ -7,6 +7,40 @@ import { getNextSequenceValue } from '../utils/sequence.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
 import VendorLedger from '../models/VendorLedger.js';
 import Vendor from '../models/Vendor.js';
+import { recalculateVendorBalance } from './vendorLedgerController.js';
+
+const revertPurchaseOrder = async (orderId, vendorId, tenantId, orderNumber) => {
+    try {
+        const transactions = await Transaction.find({ 
+            reason: `PO ${orderNumber} Received`, 
+            tenantId,
+            type: 'inward'
+        });
+
+        for (const tx of transactions) {
+            const itemDoc = await Item.findOne({ _id: tx.item, tenantId });
+            if (itemDoc) {
+                itemDoc.quantity = Math.max(0, (itemDoc.quantity || 0) - tx.quantity);
+                itemDoc.damagedQuantity = Math.max(0, (itemDoc.damagedQuantity || 0) - (tx.damagedQuantity || 0));
+
+                if (itemDoc.batches && tx.batchNumber) {
+                    const batch = itemDoc.batches.find(b => b.batchNumber === tx.batchNumber && b._id?.toString() === tx.batchId?.toString());
+                    if (batch) {
+                        batch.quantity = Math.max(0, batch.quantity - tx.quantity);
+                    }
+                }
+                await itemDoc.save();
+            }
+            await Transaction.deleteOne({ _id: tx._id });
+        }
+
+        await VendorLedger.deleteOne({ refId: orderId, refType: 'PurchaseOrder', tenantId });
+        await recalculateVendorBalance(vendorId, tenantId);
+    } catch (error) {
+        console.error('Error reverting PO:', error);
+        throw error;
+    }
+};
 
 // ─── Ledger helper (called after PO receipt/bill, does not change existing flow) ─
 export const createPurchaseLedgerEntry = async ({ orderId, orderNumber, vendorId, amount, tenantId, userId, orderDate }) => {
@@ -180,8 +214,9 @@ export const updatePurchaseOrder = async (req, res, next) => {
             return sendError(res, 404, 'Purchase order not found');
         }
 
-        if (order.status !== 'draft' && order.status !== 'issued') {
-            return sendError(res, 400, 'Cannot edit an order that has been received or billed');
+        const wasReceived = order.status === 'received' || order.status === 'billed';
+        if (wasReceived) {
+            await revertPurchaseOrder(order._id, order.vendor, req.tenantId, order.orderNumber);
         }
 
         const { vendor, items, notes, vendorBillNumber, billDate, taxRate, taxType, taxAmount, totalAmount, roundOffAmount } = req.body;
@@ -198,6 +233,66 @@ export const updatePurchaseOrder = async (req, res, next) => {
         if (roundOffAmount !== undefined) order.roundOffAmount = roundOffAmount;
 
         await order.save();
+
+        if (wasReceived) {
+            for (const item of items) {
+                const itemId = item.item?._id || item.item;
+                const itemDoc = await Item.findOne({ _id: itemId, ...tenantQuery(req) });
+                if (itemDoc) {
+                    const recQty = parseFloat(item.quantity) || 0;
+                    const dmgQty = 0; 
+                    const batchNum = `PO-${order.orderNumber}`;
+                    const rate = parseFloat(item.price) || itemDoc.price;
+
+                    if (recQty > 0) {
+                        const previousQuantity = itemDoc.quantity || 0;
+                        itemDoc.quantity = (itemDoc.quantity || 0) + recQty;
+
+                        if (!itemDoc.batches) itemDoc.batches = [];
+                        let batch = itemDoc.batches.find(b => b.price === rate && b.batchNumber === batchNum);
+                        
+                        if (batch) {
+                            batch.quantity += recQty;
+                        } else {
+                            itemDoc.batches.push({
+                                batchNumber: batchNum,
+                                quantity: recQty,
+                                price: rate,
+                                receivedDate: Date.now()
+                            });
+                            batch = itemDoc.batches[itemDoc.batches.length - 1];
+                        }
+                        itemDoc.purchasePrice = rate;
+                        await itemDoc.save();
+
+                        await Transaction.create({
+                            item: itemId,
+                            type: 'inward',
+                            quantity: recQty,
+                            damagedQuantity: dmgQty,
+                            reason: `PO ${order.orderNumber} Received`,
+                            user: req.user._id,
+                            previousQuantity,
+                            newQuantity: itemDoc.quantity,
+                            batchId: batch._id,
+                            batchNumber: batch.batchNumber,
+                            ...tenantQuery(req),
+                        });
+                    }
+                }
+            }
+
+            await createPurchaseLedgerEntry({
+                orderId: order._id,
+                orderNumber: order.orderNumber,
+                vendorId: order.vendor,
+                amount: order.totalAmount,
+                tenantId: req.tenantId,
+                userId: req.user._id,
+                orderDate: order.orderDate,
+            });
+            await recalculateVendorBalance(order.vendor, req.tenantId);
+        }
 
         sendResponse(res, 200, order, 'Purchase order updated successfully');
     } catch (error) {
@@ -216,7 +311,7 @@ export const deletePurchaseOrder = async (req, res, next) => {
         }
 
         if (order.status === 'received' || order.status === 'billed') {
-            return sendError(res, 400, 'Cannot delete an order that has been received or billed.');
+            await revertPurchaseOrder(order._id, order.vendor, req.tenantId, order.orderNumber);
         }
 
         await order.deleteOne();

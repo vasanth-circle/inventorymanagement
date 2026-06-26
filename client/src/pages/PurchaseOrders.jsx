@@ -479,9 +479,7 @@ const PurchaseOrders = () => {
                                         {order.status === 'issued' && (
                                             <button onClick={() => openReceiveModal(order)} className="text-green-600 hover:text-green-800 text-sm font-semibold mr-2">Convert to Inward</button>
                                         )}
-                                        {['draft', 'issued'].includes(order.status) && (
-                                            <button onClick={() => handleEdit(order)} className="text-amber-600 hover:text-amber-800 text-sm font-medium mr-2">Edit</button>
-                                        )}
+                                        <button onClick={() => handleEdit(order)} className="text-amber-600 hover:text-amber-800 text-sm font-medium mr-2">Edit</button>
                                         <button onClick={() => handleDelete(order._id)} className="text-red-600 hover:text-red-800 text-sm font-medium">Delete</button>
                                     </td>
                                 </tr>

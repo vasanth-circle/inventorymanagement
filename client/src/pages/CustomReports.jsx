@@ -880,7 +880,7 @@ const OutstandingSummary = ({ settings }) => {
 
     useEffect(() => { fetchData(); }, [entityType]);
 
-    const rows = (data || []).filter(r => r.closingBalance !== 0 || r.totalDebit > 0 || r.totalCredit > 0);
+    const rows = (data || []).filter(r => Math.abs(r.closingBalance) > 0.001);
     const grandDebit   = rows.reduce((s, r) => s + r.totalDebit, 0);
     const grandCredit  = rows.reduce((s, r) => s + r.totalCredit, 0);
     const grandBalance = rows.reduce((s, r) => s + r.closingBalance, 0);
