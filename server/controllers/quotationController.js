@@ -7,6 +7,7 @@ import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
 import { getNextSequenceValue } from '../utils/sequence.js';
 import Setting from '../models/Setting.js';
+import { syncSalesOrderLedger } from './salesOrderController.js';
 
 // @desc    Get all quotations for the tenant
 // @route   GET /api/quotations
@@ -206,51 +207,10 @@ export const convertToInvoice = async (req, res, next) => {
         await quotation.save();
 
         // ── Customer Ledger Entries ─────────────────────────────────────────────
-        // 1) Bill entry: debit the full invoice amount (before advance)
-        const grossInvoiceAmount = salesOrder.totalAmount + (Number(req.body.advanceAmount) || 0);
-        const lastEntry = await CustomerLedger.findOne(
-            { customer: quotation.customer, tenantId: req.tenantId }
-        ).sort({ date: -1, createdAt: -1 });
-        const runningBalance = lastEntry ? lastEntry.balance : 0;
-        const balanceAfterBill = runningBalance + grossInvoiceAmount;
-
-        await CustomerLedger.create({
-            tenantId: req.tenantId,
-            customer: quotation.customer,
-            date: new Date(),
-            type: 'bill',
-            refType: 'SalesOrder',
-            refId: salesOrder._id,
-            refNumber: salesOrder.orderNumber,
-            description: `Invoice ${salesOrder.orderNumber} (from ${quotation.quotationNumber})`,
-            debit: grossInvoiceAmount,
-            credit: 0,
-            balance: balanceAfterBill,
-            createdBy: req.user._id,
-            notes: `Converted from quotation ${quotation.quotationNumber}`,
-        });
-
-        // 2) If advance was collected, add a payment credit entry
-        const advAmt = Number(req.body.advanceAmount) || 0;
-        if (advAmt > 0) {
-            const balanceAfterAdvance = balanceAfterBill - advAmt;
-            await CustomerLedger.create({
-                tenantId: req.tenantId,
-                customer: quotation.customer,
-                date: new Date(),
-                type: 'payment',
-                refType: 'SalesOrder',
-                refId: salesOrder._id,
-                refNumber: salesOrder.orderNumber,
-                description: `Advance payment against ${salesOrder.orderNumber}`,
-                debit: 0,
-                credit: advAmt,
-                balance: balanceAfterAdvance,
-                paymentMode: 'cash',
-                createdBy: req.user._id,
-                notes: `Advance collected at time of invoice conversion`,
-            });
-        }
+        // Use syncSalesOrderLedger which correctly computes:
+        //   billDebit = totalAmount + advance - oldBalance
+        // This prevents oldBalance (already in ledger) from being double-counted.
+        await syncSalesOrderLedger(salesOrder._id, req.tenantId, req.user._id);
         // ───────────────────────────────────────────────────────────────────────
 
         sendResponse(res, 201, { salesOrder }, 'Quotation converted to Invoice successfully');
