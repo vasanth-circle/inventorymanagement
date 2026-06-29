@@ -4,6 +4,17 @@ import User from '../models/User.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
 import { recalculateCustomerBalance } from './salesOrderController.js';
+// Helper for phone validation
+const validatePhoneNumber = (phone) => {
+    if (!phone) return null; // allow empty if not required by schema, schema handles required
+    const cleanPhone = phone.replace(/[\s-]/g, '');
+    if (!/^\d{10}$/.test(cleanPhone)) return 'Phone number must be exactly 10 digits';
+    if (/^(\d)\1{9}$/.test(cleanPhone)) return 'Invalid phone number: all digits are the same';
+    const sequential = ['0123456789', '1234567890', '9876543210'];
+    if (sequential.includes(cleanPhone)) return 'Invalid phone number: sequential numbers are not allowed';
+    return null; // Valid
+};
+
 // @access  Private
 export const getCustomers = async (req, res, next) => {
     try {
@@ -14,7 +25,8 @@ export const getCustomers = async (req, res, next) => {
             query.$or = [
                 { name: { $regex: search, $options: 'i' } },
                 { companyName: { $regex: search, $options: 'i' } },
-                { email: { $regex: search, $options: 'i' } }
+                { email: { $regex: search, $options: 'i' } },
+                { phone: { $regex: search, $options: 'i' } }
             ];
         }
 
@@ -57,6 +69,21 @@ export const getCustomer = async (req, res, next) => {
 export const createCustomer = async (req, res, next) => {
     try {
         const payload = { ...req.body, tenantId: req.tenantId };
+        
+        // Phone validation
+        if (payload.phone) {
+            const error = validatePhoneNumber(payload.phone);
+            if (error) return sendError(res, 400, error);
+            
+            // Duplicate check
+            const exists = await Customer.findOne({ 
+                phone: payload.phone, 
+                isActive: true,
+                ...tenantQuery(req) 
+            });
+            if (exists) return sendError(res, 400, 'A customer with this phone number already exists');
+        }
+
         if (payload.openingBalance !== undefined) {
             payload.currentBalance = payload.openingBalance;
         }
@@ -74,6 +101,22 @@ export const createCustomer = async (req, res, next) => {
 export const updateCustomer = async (req, res, next) => {
     try {
         const payload = { ...req.body };
+        
+        // Phone validation
+        if (payload.phone) {
+            const error = validatePhoneNumber(payload.phone);
+            if (error) return sendError(res, 400, error);
+            
+            // Duplicate check
+            const exists = await Customer.findOne({ 
+                _id: { $ne: req.params.id },
+                phone: payload.phone, 
+                isActive: true,
+                ...tenantQuery(req) 
+            });
+            if (exists) return sendError(res, 400, 'Another customer with this phone number already exists');
+        }
+
         if (payload.openingBalance !== undefined) {
             const existing = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
             if (existing) {
@@ -106,14 +149,19 @@ export const updateCustomer = async (req, res, next) => {
 // @access  Private/Admin
 export const deleteCustomer = async (req, res, next) => {
     try {
-        const customer = await Customer.findOneAndUpdate(
-            { _id: req.params.id, ...tenantQuery(req) },
-            { isActive: false },
-            { new: true }
-        );
+        const customer = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
         if (!customer) {
             return sendError(res, 404, 'Customer not found');
         }
+
+        // Prevent deletion if customer has a balance
+        if (customer.currentBalance && customer.currentBalance !== 0) {
+            return sendError(res, 400, `Cannot delete customer with an outstanding balance of ₹${Math.abs(customer.currentBalance).toLocaleString('en-IN')}`);
+        }
+
+        customer.isActive = false;
+        await customer.save();
+
         sendResponse(res, 200, null, 'Customer deleted successfully');
     } catch (error) {
         next(error);

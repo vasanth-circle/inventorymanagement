@@ -31,6 +31,7 @@ import vendorLedgerRoutes from './routes/vendorLedgerRoutes.js';
 import hsnRoutes from './routes/hsnRoutes.js';
 import sizeRoutes from './routes/sizeRoutes.js';
 import brandRoutes from './routes/brandRoutes.js';
+import finishRoutes from './routes/finishRoutes.js';
 import logRoutes from './routes/logRoutes.js';
 import profitRoutes from './routes/profitRoutes.js';
 import expenseRoutes from './routes/expenseRoutes.js';
@@ -46,10 +47,10 @@ const app = express();
 // Enable trust proxy for CapRover (behind Nginx)
 app.set('trust proxy', 1);
 
-// Rate limiting
+// Rate limiting disabled temporarily due to proxy IP issues
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000, // limit each IP to 1000 requests per windowMs (increased from 100)
+    windowMs: 15 * 60 * 1000,
+    max: 100000, // effectively disabled
     message: 'Too many requests from this IP, please try again later.',
 });
 
@@ -101,6 +102,7 @@ app.use('/api/vendor-ledger', vendorLedgerRoutes);
 app.use('/api/hsn', hsnRoutes);
 app.use('/api/sizes', sizeRoutes);
 app.use('/api/brands', brandRoutes);
+app.use('/api/finishes', finishRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/profit', profitRoutes);
 app.use('/api/expenses', expenseRoutes);

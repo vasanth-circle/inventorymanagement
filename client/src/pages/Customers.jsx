@@ -3,12 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { toast } from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
-import { LockOpenIcon, BookOpenIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
+import { LockOpenIcon, BookOpenIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 const Customers = () => {
     const navigate = useNavigate();
     const [customers, setCustomers] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalCustomers, setTotalCustomers] = useState(0);
     const [balances, setBalances] = useState({}); // { customerId: balance }
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,15 +44,22 @@ const Customers = () => {
     const API_URL = '/customers';
 
     useEffect(() => {
-        fetchCustomers();
-    }, []);
+        const delayDebounceFn = setTimeout(() => {
+            fetchCustomers(currentPage, searchQuery, itemsPerPage);
+        }, 500);
 
-    const fetchCustomers = async () => {
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchQuery, currentPage, itemsPerPage]);
+
+    const fetchCustomers = async (page = 1, search = '', limit = 10) => {
         try {
             setLoading(true);
-            const res = await api.get(API_URL);
+            const res = await api.get(API_URL, { params: { page, limit, search } });
             const list = res.data.data.customers;
             setCustomers(list);
+            setTotalPages(res.data.data.totalPages || 1);
+            setTotalCustomers(res.data.data.totalCustomers || 0);
+            
             // Fetch balances in parallel (non-blocking, silent on individual failures)
             const balanceMap = {};
             await Promise.allSettled(
@@ -167,6 +178,21 @@ const Customers = () => {
         }
     };
 
+    const handleDelete = async (id, balance) => {
+        if (balance !== 0) {
+            return toast.error('Cannot delete customer with an outstanding balance');
+        }
+        if (window.confirm('Are you sure you want to delete this customer? This action cannot be undone.')) {
+            try {
+                await api.delete(`${API_URL}/${id}`);
+                toast.success('Customer deleted successfully');
+                fetchCustomers(currentPage, searchQuery, itemsPerPage);
+            } catch (error) {
+                toast.error(error.response?.data?.message || 'Failed to delete customer');
+            }
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -177,7 +203,7 @@ const Customers = () => {
                             type="text" 
                             placeholder="Search customers..." 
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                             className="px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none w-64"
                         />
                         <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
@@ -210,15 +236,15 @@ const Customers = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {customers.filter(c => 
-                                c.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                c.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                c.phone?.includes(searchQuery)
-                            ).map((customer) => {
+                            {customers.map((customer) => {
                                 const bal = balances[customer._id] ?? customer.currentBalance ?? 0;
                                 const activeSites = (customer.sites || []).filter(s => s.isActive !== false);
                                 return (
-                                <tr key={customer._id} className="hover:bg-gray-50 transition-colors">
+                                <tr 
+                                    key={customer._id} 
+                                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                                    onClick={() => navigate(`/customer-ledger/${customer._id}`)}
+                                >
                                     <td className="px-6 py-4">
                                         <div className="font-medium text-gray-900 flex items-center gap-2">
                                             {customer.companyName || customer.name}
@@ -259,7 +285,7 @@ const Customers = () => {
                                             {bal !== 0 ? `₹${Math.abs(bal).toLocaleString('en-IN')} ${bal > 0 ? 'Dr' : 'Cr'}` : '—'}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-right space-x-3">
+                                    <td className="px-6 py-4 text-right space-x-3" onClick={(e) => e.stopPropagation()}>
                                         <button
                                             onClick={() => navigate(`/customer-ledger/${customer._id}`)}
                                             className="text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 p-1.5 rounded-lg transition-colors inline-flex items-center justify-center"
@@ -274,12 +300,98 @@ const Customers = () => {
                                         >
                                             <PencilSquareIcon className="w-5 h-5" />
                                         </button>
+                                        <button
+                                            onClick={() => handleDelete(customer._id, bal)}
+                                            className={`${bal !== 0 ? 'text-gray-300 cursor-not-allowed' : 'text-red-400 hover:text-red-600 hover:bg-red-50'} p-1.5 rounded-lg transition-colors inline-flex items-center justify-center`}
+                                            title={bal !== 0 ? "Cannot delete customer with outstanding balance" : "Delete Customer"}
+                                            disabled={bal !== 0}
+                                        >
+                                            <TrashIcon className="w-5 h-5" />
+                                        </button>
                                     </td>
                                 </tr>
                                 );
                             })}
+                            
+                            {customers.length === 0 && (
+                                <tr>
+                                    <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
+                                        <div className="flex flex-col items-center">
+                                            <span className="text-4xl mb-3">🔍</span>
+                                            <p className="text-lg font-medium">No customers found</p>
+                                            <p className="text-sm">Try adjusting your search or add a new customer.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
+
+                    {/* Pagination */}
+                    {totalCustomers > 0 && (
+                    <div className="flex items-center justify-between px-6 py-3 bg-white border-t border-gray-200">
+                        <div className="flex flex-1 justify-between sm:hidden">
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                Previous
+                            </button>
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage === totalPages}
+                                className="relative ml-3 inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                Next
+                            </button>
+                        </div>
+                        <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                            <div className="flex items-center gap-4">
+                                <p className="text-sm text-gray-700">
+                                    Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalCustomers)}</span> of <span className="font-medium">{totalCustomers}</span> results
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm text-gray-700">Rows per page:</span>
+                                    <select
+                                        value={itemsPerPage}
+                                        onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                                        className="text-sm border border-gray-300 rounded-md py-1 px-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                                    >
+                                        <option value="10">10</option>
+                                        <option value="20">20</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                        <option value="500">500</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                        disabled={currentPage === 1}
+                                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                                    >
+                                        <span className="sr-only">Previous</span>
+                                        &larr;
+                                    </button>
+                                    <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                                        Page {currentPage} of {totalPages}
+                                    </span>
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={currentPage === totalPages}
+                                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                                    >
+                                        <span className="sr-only">Next</span>
+                                        &rarr;
+                                    </button>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                    )}
                 </div>
             )}
 

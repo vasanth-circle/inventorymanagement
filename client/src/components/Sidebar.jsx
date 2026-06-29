@@ -30,6 +30,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 { name: 'HSN Codes', path: '/hsn-management', id: 'hsn' },
                 { name: 'Categories', path: '/categories', id: 'categories' },
                 { name: 'Brands', path: '/brands', id: 'brands' },
+                { name: 'Finishes', path: '/finishes', id: 'finishes' },
                 ...(billingSettings?.industry === 'tiles' ? [{ name: 'Manage Sizes', path: '/sizes', id: 'sizes' }] : []),
                 { name: 'Locations', path: '/locations', id: 'locations' },
                 { name: 'Bulk Import', path: '/bulk-import', id: 'bulk-import' },
@@ -58,7 +59,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             items: [
                 { name: 'Vendors', path: '/vendors', id: 'vendors' },
                 { name: 'Vendor Ledgers', path: '/vendor-ledger', id: 'vendor-ledger' },
-                { name: 'Purchase Orders', path: '/purchase-orders', id: 'purchase-orders' },
+                { name: 'Purchase Entry', path: '/purchase-orders', id: 'purchase-orders' },
                 { name: activePreset?.terminology?.inward || 'Stock Inward', path: '/stock-inward', id: 'stock-inward' },
             ]
         },

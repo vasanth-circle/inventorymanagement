@@ -17,6 +17,7 @@ export const InventoryProvider = ({ children }) => {
     const [hsnCodes, setHsnCodes] = useState([]);
     const [sizes, setSizes] = useState([]);
     const [brands, setBrands] = useState([]);
+    const [finishes, setFinishes] = useState([]);
     const [purchaseOrders, setPurchaseOrders] = useState([]);
     const [billingSettings, setBillingSettings] = useState(null);
     const [activePreset, setActivePreset] = useState(getIndustryPreset('generic'));
@@ -454,6 +455,50 @@ export const InventoryProvider = ({ children }) => {
         }
     };
 
+    // Finish CRUD functions
+    const fetchFinishes = async () => {
+        try {
+            const { data } = await api.get('/finishes');
+            setFinishes(data.data || []);
+            return data.data || [];
+        } catch (error) {
+            console.error('Failed to fetch finishes');
+        }
+    };
+
+    const addFinish = async (finishData) => {
+        try {
+            const { data } = await api.post('/finishes', finishData);
+            setFinishes([...finishes, data.data]);
+            return { success: true, data: data.data };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to create finish');
+            return { success: false };
+        }
+    };
+
+    const editFinish = async (id, finishData) => {
+        try {
+            const { data } = await api.put(`/finishes/${id}`, finishData);
+            setFinishes(finishes.map(f => f._id === id ? data.data : f));
+            return { success: true, data: data.data };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update finish');
+            return { success: false };
+        }
+    };
+
+    const removeFinish = async (id) => {
+        try {
+            await api.delete(`/finishes/${id}`);
+            setFinishes(finishes.filter(f => f._id !== id));
+            return { success: true };
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete finish');
+            return { success: false };
+        }
+    };
+
     // Fetch Purchase Orders
     const fetchPurchaseOrders = async (params = {}) => {
         try {
@@ -558,6 +603,7 @@ export const InventoryProvider = ({ children }) => {
             fetchHsnCodes();
             fetchSizes();
             fetchBrands();
+            fetchFinishes();
             fetchPurchaseOrders({ status: 'issued' });
         }
     }, [user]);
@@ -600,6 +646,16 @@ export const InventoryProvider = ({ children }) => {
                 addSize,
                 editSize,
                 removeSize,
+                brands, 
+                setBrands,
+                finishes, 
+                setFinishes,
+                addBrand, 
+                editBrand, 
+                removeBrand,
+                addFinish, 
+                editFinish, 
+                removeFinish,
                 fetchBillingSettings,
                 updateBillingSettings,
                 fetchSalesOrders,
@@ -607,11 +663,8 @@ export const InventoryProvider = ({ children }) => {
                 calculateItemValues,
                 purchaseOrders,
                 fetchPurchaseOrders,
-                brands,
                 fetchBrands,
-                addBrand,
-                editBrand,
-                removeBrand,
+                fetchFinishes,
             }}
         >
             {children}

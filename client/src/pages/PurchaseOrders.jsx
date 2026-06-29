@@ -253,9 +253,29 @@ const PurchaseOrders = () => {
                 });
                 toast.success('Purchase order updated successfully');
             } else {
-                await axios.post(API_URL, submissionData, {
+                const res = await axios.post(API_URL, submissionData, {
                     headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
                 });
+                
+                if (billingSettings?.directPurchaseInward) {
+                    const newOrder = res.data.data;
+                    await axios.patch(`${API_URL}/${newOrder._id}/status`, { status: 'issued' }, {
+                        headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+                    });
+                    const receivedItems = newOrder.items.map(i => ({
+                        item: i.item?._id || i.item,
+                        receivedQuantity: i.quantity,
+                        damagedQuantity: 0,
+                        price: i.price,
+                        batchNumber: `PO-${newOrder.orderNumber}`
+                    }));
+                    await axios.post(`${API_URL}/${newOrder._id}/receive`, {
+                        receivedItems,
+                        vendorBillNumber: newOrder.vendorBillNumber
+                    }, {
+                        headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+                    });
+                }
                 toast.success('Purchase order created successfully');
             }
             setIsModalOpen(false);
@@ -389,7 +409,7 @@ const PurchaseOrders = () => {
                 <>
                     <div className="flex justify-between items-center print:hidden">
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-800">Purchase Orders</h1>
+                            <h1 className="text-2xl font-bold text-gray-800">Purchase Entry</h1>
                         </div>
                         <div className="flex gap-4 items-end">
                             <div>
@@ -441,7 +461,7 @@ const PurchaseOrders = () => {
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
                 </div>
             ) : (
-                <div className="bg-white rounded-xl shadow-md overflow-hidden print:hidden">
+                <div className="bg-white rounded-xl shadow-md overflow-x-auto print:hidden">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-gray-50 border-bottom border-gray-100">
@@ -494,7 +514,7 @@ const PurchaseOrders = () => {
             {isModalOpen && (
                 <div className="max-w-6xl mx-auto space-y-6">
                     <div className="flex justify-between items-center border-b pb-4">
-                        <h2 className="text-2xl font-bold text-gray-800">New Purchase Order</h2>
+                        <h2 className="text-2xl font-bold text-gray-800">{editingOrder ? 'Edit Purchase Entry' : 'New Purchase Entry'}</h2>
                         <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium">
                             &larr; Back to List
                         </button>
@@ -530,157 +550,169 @@ const PurchaseOrders = () => {
 
                             <div className="space-y-4">
                                 <h3 className="font-semibold text-gray-700">Item Details</h3>
-                                <table className="w-full text-left">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-48">Item</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-center">Qty / Boxes</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-28">{!isGodown && 'Rate'}</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-20 text-center">GST%</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-20">Unit</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-right">{!isGodown && 'Taxable'}</th>
-                                            <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-right">{!isGodown && 'Total (w/Tax)'}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {formData.items.map((row, index) => {
-                                            const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0;
-                                            return (
-                                            <tr key={index}>
-                                                <td className="py-2 pr-2">
-                                                    <div className="flex gap-1 items-center">
-                                                        <div className="flex-1">
-                                                            <SearchableSelect
-                                                                value={row.item}
-                                                                onChange={(e) => handleItemChange(index, 'item', e.target.value)}
-                                                                options={items.map(i => ({ value: i._id, label: `${i.name}${i.size ? ` - ${i.size}` : ''} (${i.sku || 'No SKU'})` }))}
-                                                                placeholder="Select Item"
-                                                                searchPlaceholder="Search Item..."
-                                                                className="w-full"
-                                                            />
-                                                        </div>
-                                                        <button type="button" onClick={() => setIsQuickAddItemOpen(true)} className="p-1.5 bg-gray-100 text-gray-600 rounded hover:bg-gray-200" title="Add New Item">
-                                                            <span className="font-bold">+</span>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                                <td className="px-2 py-2">
-                                                    {isTile ? (
-                                                        <div className="flex flex-col gap-1">
-                                                            <div className="flex gap-1 items-center">
-                                                                <input type="number" step="0.5" min="0" value={row.boxCount || ''} onChange={(e) => handleItemChange(index, 'boxCount', e.target.value)} placeholder="Boxes" className="w-16 px-1 py-1 border rounded-md text-center text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none" />
-                                                                <span className="text-[10px] text-gray-400">Bx</span>
-                                                                <input type="number" step="1" min="0" value={row.totalPcs || ''} onChange={(e) => handleItemChange(index, 'piecesCount', e.target.value)} placeholder="Pcs" className="w-16 px-1 py-1 border rounded-md text-center text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none" />
-                                                                <span className="text-[10px] text-gray-400">Pc</span>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <input 
-                                                            required 
-                                                            type="number" 
-                                                            step="0.01"
-                                                            min="0" 
-                                                            value={row.quantity || ''} 
-                                                            onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} 
-                                                            placeholder="Qty"
-                                                            className="w-full px-2 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 text-center font-bold" 
-                                                        />
-                                                    )}
-                                                </td>
-                                                <td className="px-2 py-2">
-                                                    {!isGodown && <input required type="number" step="0.01" value={row.price === 0 ? '' : row.price} onChange={(e) => handleItemChange(index, 'price', e.target.value)} className="w-full px-2 py-2 border rounded-lg border-gray-200 text-right font-bold focus:ring-1 focus:ring-primary-400 outline-none" placeholder="Rate" />}
-                                                </td>
-                                                <td className="px-2 py-2">
-                                                    {row.hsnCode && (
-                                                        <div className="text-[9px] text-blue-600 font-bold mb-0.5 text-center">
-                                                            HSN: {row.hsnCode}
-                                                        </div>
-                                                    )}
-                                                    <select value={row.taxRate ?? formData.taxRate} onChange={(e) => { const newItems = [...formData.items]; newItems[index] = {...newItems[index], taxRate: Number(e.target.value)}; setFormData({...formData, items: newItems}); }} className="w-full px-1 py-1 border rounded-lg border-gray-200 text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none">
-                                                        <option value={0}>0%</option>
-                                                        <option value={5}>5%</option>
-                                                        <option value={12}>12%</option>
-                                                        <option value={18}>18%</option>
-                                                        <option value={28}>28%</option>
-                                                    </select>
-                                                    {row.hsnCode && (
-                                                        <div className="text-[9px] text-green-600 font-semibold text-center mt-0.5">✓ from HSN</div>
-                                                    )}
-                                                </td>
-                                                <td className="px-2 py-2">
-                                                    {billingSettings?.industry === 'tiles' && isTile ? (
-                                                        <select value={row.billingUnit} onChange={(e) => handleItemChange(index, 'billingUnit', e.target.value)} className="w-full px-2 py-2 border rounded-lg border-gray-200 text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none">
-                                                            <option value="boxes">Box</option>
-                                                            <option value="pieces">Pieces</option>
-                                                        </select>
-                                                    ) : (
-                                                        <div className="text-xs font-bold text-gray-400 text-center uppercase py-2">
-                                                            {billingSettings?.unitConfig?.quantityBasis || 'Pieces'}
-                                                        </div>
-                                                    )}
-                                                </td>
-                                                <td className="px-2 py-2 font-bold text-gray-700 text-right text-sm">
-                                                    {!isGodown && `₹${(row.total || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`}
-                                                </td>
-                                                <td className="px-2 py-2 font-bold text-green-700 text-right text-sm">
-                                                    {!isGodown && `₹${((row.total || 0) * (1 + (row.taxRate ?? formData.taxRate) / 100)).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`}
-                                                </td>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase min-w-[200px]">Item</th>
+                                                <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-center">Qty / Boxes</th>
+                                                {!isGodown && <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-28">Rate</th>}
+                                                {!isGodown && <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-20 text-center">GST%</th>}
+                                                <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-20">Unit</th>
+                                                {!isGodown && <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-right">Taxable</th>}
+                                                {!isGodown && <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-right">Total (w/Tax)</th>}
                                             </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {formData.items.map((row, index) => {
+                                                const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0;
+                                                return (
+                                                <tr key={index}>
+                                                    <td className="py-2 pr-2">
+                                                        <div className="flex gap-1 items-center">
+                                                            <div className="flex-1">
+                                                                <SearchableSelect
+                                                                    value={row.item}
+                                                                    onChange={(e) => handleItemChange(index, 'item', e.target.value)}
+                                                                    options={items.map(i => ({ value: i._id, label: `${i.name}${i.size ? ` - ${i.size}` : ''} (${i.sku || 'No SKU'})` }))}
+                                                                    placeholder="Select Item"
+                                                                    searchPlaceholder="Search Item..."
+                                                                    className="w-full min-w-[150px]"
+                                                                />
+                                                            </div>
+                                                            <button type="button" onClick={() => setIsQuickAddItemOpen(true)} className="p-1.5 bg-gray-100 text-gray-600 rounded hover:bg-gray-200" title="Add New Item">
+                                                                <span className="font-bold">+</span>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-2 py-2 min-w-[120px]">
+                                                        {isTile ? (
+                                                            <div className="flex flex-col gap-1">
+                                                                <div className="flex gap-1 items-center">
+                                                                    <input type="number" step="0.5" min="0" value={row.boxCount || ''} onChange={(e) => handleItemChange(index, 'boxCount', e.target.value)} placeholder="Boxes" className="w-16 px-1 py-1 border rounded-md text-center text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none" />
+                                                                    <span className="text-[10px] text-gray-400">Bx</span>
+                                                                    <input type="number" step="1" min="0" value={row.totalPcs || ''} onChange={(e) => handleItemChange(index, 'piecesCount', e.target.value)} placeholder="Pcs" className="w-16 px-1 py-1 border rounded-md text-center text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none" />
+                                                                    <span className="text-[10px] text-gray-400">Pc</span>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <input 
+                                                                required 
+                                                                type="number" 
+                                                                step="0.01"
+                                                                min="0" 
+                                                                value={row.quantity || ''} 
+                                                                onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} 
+                                                                placeholder="Qty"
+                                                                className="w-full px-2 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 text-center font-bold" 
+                                                            />
+                                                        )}
+                                                    </td>
+                                                    {!isGodown && (
+                                                        <td className="px-2 py-2 min-w-[100px]">
+                                                            <input required type="number" step="0.01" value={row.price === 0 ? '' : row.price} onChange={(e) => handleItemChange(index, 'price', e.target.value)} className="w-full px-2 py-2 border rounded-lg border-gray-200 text-right font-bold focus:ring-1 focus:ring-primary-400 outline-none" placeholder="Rate" />
+                                                        </td>
+                                                    )}
+                                                    {!isGodown && (
+                                                        <td className="px-2 py-2 min-w-[80px]">
+                                                            {row.hsnCode && (
+                                                                <div className="text-[9px] text-blue-600 font-bold mb-0.5 text-center">
+                                                                    HSN: {row.hsnCode}
+                                                                </div>
+                                                            )}
+                                                            <select value={row.taxRate ?? formData.taxRate} onChange={(e) => { const newItems = [...formData.items]; newItems[index] = {...newItems[index], taxRate: Number(e.target.value)}; setFormData({...formData, items: newItems}); }} className="w-full px-1 py-1 border rounded-lg border-gray-200 text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none">
+                                                                <option value={0}>0%</option>
+                                                                <option value={5}>5%</option>
+                                                                <option value={12}>12%</option>
+                                                                <option value={18}>18%</option>
+                                                                <option value={28}>28%</option>
+                                                            </select>
+                                                            {row.hsnCode && (
+                                                                <div className="text-[9px] text-green-600 font-semibold text-center mt-0.5">✓ from HSN</div>
+                                                            )}
+                                                        </td>
+                                                    )}
+                                                    <td className="px-2 py-2 min-w-[80px]">
+                                                        {billingSettings?.industry === 'tiles' && isTile ? (
+                                                            <select value={row.billingUnit} onChange={(e) => handleItemChange(index, 'billingUnit', e.target.value)} className="w-full px-2 py-2 border rounded-lg border-gray-200 text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none">
+                                                                <option value="boxes">Box</option>
+                                                                <option value="pieces">Pieces</option>
+                                                            </select>
+                                                        ) : (
+                                                            <div className="text-xs font-bold text-gray-400 text-center uppercase py-2">
+                                                                {billingSettings?.unitConfig?.quantityBasis || 'Pieces'}
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    {!isGodown && (
+                                                        <td className="px-2 py-2 font-bold text-gray-700 text-right text-sm min-w-[100px]">
+                                                            {`₹${(row.total || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`}
+                                                        </td>
+                                                    )}
+                                                    {!isGodown && (
+                                                        <td className="px-2 py-2 font-bold text-green-700 text-right text-sm min-w-[100px]">
+                                                            {`₹${((row.total || 0) * (1 + (row.taxRate ?? formData.taxRate) / 100)).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`}
+                                                        </td>
+                                                    )}
+                                                </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
                                 <button type="button" onClick={handleAddItem} className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center">
                                     <span className="text-lg mr-1">+</span> Add another line
                                 </button>
                             </div>
 
-                            <div className="flex justify-end pt-4 pb-2">
-                                <div className="w-80 space-y-1.5 text-right">
-                                    {(() => {
-                                        const taxableTotal = formData.items.reduce((s, i) => s + (parseFloat(i.total) || 0), 0);
-                                        const taxTotal = formData.items.reduce((s, i) => s + (parseFloat(i.total) || 0) * (parseFloat(i.taxRate ?? formData.taxRate) || 0) / 100, 0);
-                                        const roundOff = parseFloat(formData.roundOffAmount) || 0;
-                                        const grandTotal = taxableTotal + taxTotal + roundOff;
-                                        const halfTax = taxTotal / 2;
-                                        return (<>
-                                            <div className="flex justify-between text-sm text-gray-600 font-medium">
-                                                <span>Taxable Amount:</span>
-                                                <span>₹{taxableTotal.toLocaleString(undefined, {minimumFractionDigits:2,maximumFractionDigits:2})}</span>
-                                            </div>
-                                            {taxType === 'cgst' ? (
-                                                <>
-                                                    <div className="flex justify-between text-sm text-green-700 font-medium">
-                                                        <span>CGST:</span><span>₹{halfTax.toLocaleString(undefined, {minimumFractionDigits:2,maximumFractionDigits:2})}</span>
-                                                    </div>
-                                                    <div className="flex justify-between text-sm text-green-700 font-medium">
-                                                        <span>SGST:</span><span>₹{halfTax.toLocaleString(undefined, {minimumFractionDigits:2,maximumFractionDigits:2})}</span>
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <div className="flex justify-between text-sm text-orange-700 font-medium">
-                                                    <span>IGST:</span><span>₹{taxTotal.toLocaleString(undefined, {minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                            {!isGodown && (
+                                <div className="flex justify-end pt-4 pb-2">
+                                    <div className="w-80 space-y-1.5 text-right">
+                                        {(() => {
+                                            const taxableTotal = formData.items.reduce((s, i) => s + (parseFloat(i.total) || 0), 0);
+                                            const taxTotal = formData.items.reduce((s, i) => s + (parseFloat(i.total) || 0) * (parseFloat(i.taxRate ?? formData.taxRate) || 0) / 100, 0);
+                                            const roundOff = parseFloat(formData.roundOffAmount) || 0;
+                                            const grandTotal = taxableTotal + taxTotal + roundOff;
+                                            const halfTax = taxTotal / 2;
+                                            return (<>
+                                                <div className="flex justify-between text-sm text-gray-600 font-medium">
+                                                    <span>Taxable Amount:</span>
+                                                    <span>₹{taxableTotal.toLocaleString(undefined, {minimumFractionDigits:2,maximumFractionDigits:2})}</span>
                                                 </div>
-                                            )}
-                                            <div className="flex justify-between items-center text-sm text-gray-700 font-medium pt-1">
-                                                <span>Round Off (+/-):</span>
-                                                <input 
-                                                    type="number" 
-                                                    step="0.01" 
-                                                    value={formData.roundOffAmount} 
-                                                    onChange={(e) => setFormData({...formData, roundOffAmount: e.target.value})} 
-                                                    className="w-24 px-2 py-1 text-right border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 outline-none text-sm font-bold bg-gray-50" 
-                                                    placeholder="0.00" 
-                                                />
-                                            </div>
-                                            <div className="flex justify-between text-lg text-gray-900 font-bold border-t pt-2">
-                                                <span>Net Amount:</span>
-                                                <span>₹{grandTotal.toLocaleString(undefined, {minimumFractionDigits:2,maximumFractionDigits:2})}</span>
-                                            </div>
-                                        </>);
-                                    })()}
+                                                {taxType === 'cgst' ? (
+                                                    <>
+                                                        <div className="flex justify-between text-sm text-green-700 font-medium">
+                                                            <span>CGST:</span><span>₹{halfTax.toLocaleString(undefined, {minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-sm text-green-700 font-medium">
+                                                            <span>SGST:</span><span>₹{halfTax.toLocaleString(undefined, {minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <div className="flex justify-between text-sm text-orange-700 font-medium">
+                                                        <span>IGST:</span><span>₹{taxTotal.toLocaleString(undefined, {minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                                                    </div>
+                                                )}
+                                                <div className="flex justify-between items-center text-sm text-gray-700 font-medium pt-1">
+                                                    <span>Round Off (+/-):</span>
+                                                    <input 
+                                                        type="number" 
+                                                        step="0.01" 
+                                                        value={formData.roundOffAmount} 
+                                                        onChange={(e) => setFormData({...formData, roundOffAmount: e.target.value})} 
+                                                        className="w-24 px-2 py-1 text-right border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 outline-none text-sm font-bold bg-gray-50" 
+                                                        placeholder="0.00" 
+                                                    />
+                                                </div>
+                                                <div className="flex justify-between text-lg text-gray-900 font-bold border-t pt-2">
+                                                    <span>Net Amount:</span>
+                                                    <span>₹{grandTotal.toLocaleString(undefined, {minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                                                </div>
+                                            </>);
+                                        })()}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             <div className="flex justify-end gap-3 pt-4 border-t mt-8">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2.5 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium">Cancel</button>

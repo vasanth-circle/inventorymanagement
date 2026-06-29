@@ -110,6 +110,7 @@ const Settings = () => {
         workflowConfig: {
             enforcePO: false,
             allowNegativeStock: true,
+            directPurchaseInward: false,
         },
         // Credit & Locking Config
         creditConfig: {
@@ -178,6 +179,7 @@ const Settings = () => {
                 workflowConfig: {
                     enforcePO: billingSettings.workflowConfig?.enforcePO || false,
                     allowNegativeStock: billingSettings.workflowConfig?.allowNegativeStock ?? true,
+                    directPurchaseInward: billingSettings.workflowConfig?.directPurchaseInward || false,
                 },
                 creditConfig: {
                     enableAutoLock: billingSettings.creditConfig?.enableAutoLock || false,
@@ -956,6 +958,17 @@ const Settings = () => {
                                         </div>
                                         <div className={`w-12 h-6 rounded-full transition-all relative ${formData.workflowConfig.allowNegativeStock ? 'bg-green-500' : 'bg-gray-300'}`}>
                                             <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${formData.workflowConfig.allowNegativeStock ? 'left-7' : 'left-1'}`} />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl hover:border-amber-200 transition-all cursor-pointer"
+                                         onClick={() => handleNested('workflowConfig', 'directPurchaseInward', !formData.workflowConfig.directPurchaseInward)}>
+                                        <div className="space-y-1 pr-4">
+                                            <h3 className="text-sm font-bold text-gray-800">Direct Purchase Inward</h3>
+                                            <p className="text-[10px] text-gray-500 font-medium">When enabled, saving a Purchase Order will automatically confirm and convert it into an inward transaction.</p>
+                                        </div>
+                                        <div className={`w-12 h-6 rounded-full transition-all relative ${formData.workflowConfig.directPurchaseInward ? 'bg-blue-500' : 'bg-gray-300'}`}>
+                                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${formData.workflowConfig.directPurchaseInward ? 'left-7' : 'left-1'}`} />
                                         </div>
                                     </div>
 

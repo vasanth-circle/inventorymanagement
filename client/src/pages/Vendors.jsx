@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+import { BookOpenIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 const Vendors = () => {
+    const navigate = useNavigate();
     const [vendors, setVendors] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -90,6 +93,23 @@ const Vendors = () => {
         }
     };
 
+    const handleDelete = async (id, balance) => {
+        if (balance !== 0) {
+            return toast.error('Cannot delete vendor with an outstanding balance');
+        }
+        if (window.confirm('Are you sure you want to delete this vendor? This action cannot be undone.')) {
+            try {
+                await axios.delete(`${API_URL}/${id}`, {
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+                });
+                toast.success('Vendor deleted successfully');
+                fetchVendors();
+            } catch (error) {
+                toast.error(error.response?.data?.message || 'Failed to delete vendor');
+            }
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -123,12 +143,19 @@ const Vendors = () => {
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">Vendor / Company</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">Contact</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">GSTIN</th>
+                                <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-right">Balance</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {vendors.map((vendor) => (
-                                <tr key={vendor._id} className="hover:bg-gray-50 transition-colors">
+                            {vendors.map((vendor) => {
+                                const bal = vendor.currentBalance || 0;
+                                return (
+                                <tr 
+                                    key={vendor._id} 
+                                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                                    onClick={() => navigate(`/vendor-ledger/${vendor._id}`)}
+                                >
                                     <td className="px-6 py-4">
                                         <div className="font-medium text-gray-900">{vendor.name}</div>
                                         {vendor.companyName && <div className="text-xs text-gray-500">{vendor.companyName}</div>}
@@ -139,15 +166,36 @@ const Vendors = () => {
                                     </td>
                                     <td className="px-6 py-4 text-gray-600">{vendor.gstin || '-'}</td>
                                     <td className="px-6 py-4 text-right">
+                                        <span className={`inline-block px-2.5 py-1 rounded-lg text-sm font-bold ${bal > 0 ? 'bg-orange-100 text-orange-700' : bal < 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                            {bal !== 0 ? `₹${Math.abs(bal).toLocaleString('en-IN')} ${bal > 0 ? 'Cr' : 'Dr'}` : '—'}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right space-x-3" onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                            onClick={() => navigate(`/vendor-ledger/${vendor._id}`)}
+                                            className="text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 p-1.5 rounded-lg transition-colors inline-flex items-center justify-center"
+                                            title="View Vendor Ledger"
+                                        >
+                                            <BookOpenIcon className="w-5 h-5" />
+                                        </button>
                                         <button
                                             onClick={() => handleOpenModal(vendor)}
-                                            className="text-primary-600 hover:text-primary-900"
+                                            className="text-primary-500 hover:text-primary-700 hover:bg-primary-50 p-1.5 rounded-lg transition-colors inline-flex items-center justify-center"
+                                            title="Edit Vendor"
                                         >
-                                            Edit
+                                            <PencilSquareIcon className="w-5 h-5" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(vendor._id, bal)}
+                                            className={`${bal !== 0 ? 'text-gray-300 cursor-not-allowed' : 'text-red-400 hover:text-red-600 hover:bg-red-50'} p-1.5 rounded-lg transition-colors inline-flex items-center justify-center`}
+                                            title={bal !== 0 ? "Cannot delete vendor with outstanding balance" : "Delete Vendor"}
+                                            disabled={bal !== 0}
+                                        >
+                                            <TrashIcon className="w-5 h-5" />
                                         </button>
                                     </td>
                                 </tr>
-                            ))}
+                            )})}
                         </tbody>
                     </table>
                     

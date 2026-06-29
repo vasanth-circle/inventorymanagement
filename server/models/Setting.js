@@ -72,6 +72,7 @@ const settingSchema = new mongoose.Schema({
     workflowConfig: {
         enforcePO: { type: Boolean, default: false }, // If true, stock inward MUST have a PO
         allowNegativeStock: { type: Boolean, default: true }, // If false, prevent billing if stock is insufficient
+        directPurchaseInward: { type: Boolean, default: false }, // If true, Purchase Order saving allows direct inward conversion
     },
 
     // ── Credit & Locking Configuration ──────────────────────────────────

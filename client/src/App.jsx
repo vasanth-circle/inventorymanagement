@@ -44,6 +44,7 @@ import LedgerReports from './pages/LedgerReports';
 import Onboarding from './pages/Onboarding';
 import Sizes from './pages/Sizes';
 import Brands from './pages/Brands';
+import Finishes from './pages/Finishes';
 import ActionLogs from './pages/ActionLogs';
 import ProfitTracking from './pages/ProfitTracking';
 import Expenses from './pages/Expenses';
@@ -123,6 +124,7 @@ function App() {
                                             <Route path="/expenses" element={<Expenses />} />
                                             <Route path="/sizes" element={<Sizes />} />
                                             <Route path="/brands" element={<Brands />} />
+                                            <Route path="/finishes" element={<Finishes />} />
                                             <Route path="/action-logs" element={<ActionLogs />} />
                                             <Route path="/custom-reports" element={<CustomReports />} />
                                             <Route path="/locations" element={<Locations />} />

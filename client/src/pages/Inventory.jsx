@@ -8,7 +8,7 @@ const Inventory = () => {
     const {
         items, fetchItems, deleteItem, createItem, updateItem,
         categories, locations, fetchLocations, loading, confirmDelete,
-        billingSettings, activePreset, hsnCodes, fetchHsnCodes, sizes, brands
+        billingSettings, activePreset, hsnCodes, fetchHsnCodes, sizes, brands, finishes
     } = useContext(InventoryContext);
     const [filters, setFilters] = useState({
         search: '',
@@ -138,7 +138,10 @@ const Inventory = () => {
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                             >
                                 <option value="">Select {field.label}</option>
-                                {field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                {field.name === 'finish'
+                                    ? (finishes || []).map(f => <option key={f._id} value={f.name}>{f.name}</option>)
+                                    : (field.options || []).map(opt => <option key={opt} value={opt}>{opt}</option>)
+                                }
                             </select>
                         ) : field.type === 'textarea' ? (
                             <textarea

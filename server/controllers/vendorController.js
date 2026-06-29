@@ -121,6 +121,13 @@ export const updateVendor = async (req, res, next) => {
 // @access  Private/Admin
 export const deleteVendor = async (req, res, next) => {
     try {
+        const vendorCheck = await Vendor.findOne({ _id: req.params.id, ...tenantQuery(req) });
+        if (!vendorCheck) return sendError(res, 404, 'Vendor not found');
+        
+        if (vendorCheck.currentBalance && vendorCheck.currentBalance !== 0) {
+            return sendError(res, 400, `Cannot delete vendor with an outstanding balance of ₹${Math.abs(vendorCheck.currentBalance).toLocaleString('en-IN')}`);
+        }
+
         // Prevent deletion if vendor has ledger entries
         const hasLedger = await VendorLedger.findOne({ vendor: req.params.id, ...tenantQuery(req) });
         if (hasLedger) {
