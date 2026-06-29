@@ -550,7 +550,7 @@ const PurchaseOrders = () => {
 
                             <div className="space-y-4">
                                 <h3 className="font-semibold text-gray-700">Item Details</h3>
-                                <div className="overflow-x-auto">
+                                <div className="w-full">
                                     <table className="w-full text-left">
                                         <thead className="bg-gray-50">
                                             <tr>
