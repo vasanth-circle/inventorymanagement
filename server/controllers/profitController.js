@@ -22,7 +22,8 @@ export const getProfitReport = async (req, res, next) => {
         // Build query for SalesOrders
         const query = {
             ...tenantQuery(req),
-            status: { $nin: ['cancelled', 'void', 'draft', 'quotation'] }
+            status: { $nin: ['cancelled', 'void', 'draft', 'quotation'] },
+            isEstimation: { $ne: true }
         };
 
         if (from || to) {
@@ -47,6 +48,8 @@ export const getProfitReport = async (req, res, next) => {
         const billWise = [];
         const itemWiseMap = {};
         const dayWiseMap = {};
+        const salesRepWiseMap = {};
+        const monthWiseMap = {};
 
         let totalRevenue = 0;
         let totalCogs = 0;
@@ -127,6 +130,36 @@ export const getProfitReport = async (req, res, next) => {
             dayWiseMap[dateStr].cogs += orderCogs;
             dayWiseMap[dateStr].profit += orderProfit;
 
+            // Sales Rep-wise aggregation
+            const salesRepStr = order.user?.name || 'System';
+            if (!salesRepWiseMap[salesRepStr]) {
+                salesRepWiseMap[salesRepStr] = {
+                    salesRep: salesRepStr,
+                    revenue: 0,
+                    cogs: 0,
+                    profit: 0
+                };
+            }
+            salesRepWiseMap[salesRepStr].revenue += orderRevenue;
+            salesRepWiseMap[salesRepStr].cogs += orderCogs;
+            salesRepWiseMap[salesRepStr].profit += orderProfit;
+
+            // Month-wise aggregation
+            const monthStr = new Date(order.orderDate).toLocaleString('default', { month: 'short', year: 'numeric' });
+            const monthSortKey = new Date(order.orderDate).getFullYear() * 100 + new Date(order.orderDate).getMonth();
+            if (!monthWiseMap[monthStr]) {
+                monthWiseMap[monthStr] = {
+                    month: monthStr,
+                    sortKey: monthSortKey,
+                    revenue: 0,
+                    cogs: 0,
+                    profit: 0
+                };
+            }
+            monthWiseMap[monthStr].revenue += orderRevenue;
+            monthWiseMap[monthStr].cogs += orderCogs;
+            monthWiseMap[monthStr].profit += orderProfit;
+
             totalRevenue += orderRevenue;
             totalCogs += orderCogs;
         });
@@ -134,6 +167,8 @@ export const getProfitReport = async (req, res, next) => {
         // Convert Maps to Arrays and sort
         const itemWise = Object.values(itemWiseMap).sort((a, b) => b.profit - a.profit);
         const dayWise = Object.values(dayWiseMap).sort((a, b) => a.rawDate - b.rawDate);
+        const salesRepWise = Object.values(salesRepWiseMap).sort((a, b) => b.profit - a.profit);
+        const monthWise = Object.values(monthWiseMap).sort((a, b) => a.sortKey - b.sortKey);
 
         res.status(200).json({
             success: true,
@@ -146,7 +181,9 @@ export const getProfitReport = async (req, res, next) => {
                 },
                 billWise,
                 dayWise,
-                itemWise
+                itemWise,
+                salesRepWise,
+                monthWise
             }
         });
 

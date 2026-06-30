@@ -309,10 +309,10 @@ export const getTransactions = async (req, res, next) => {
         }
 
         const transactions = await Transaction.find(query)
-            .populate('item', 'name barcode category')
+            .populate('item', 'name barcode category brand size hsn unitType')
             .populate({ path: 'user', model: User, select: 'name email' })
-            .populate('customer', 'name companyName phone')
-            .populate('vendor', 'name companyName phone')
+            .populate('customer', 'name companyName phone address')
+            .populate('vendor', 'name companyName phone address')
             .sort({ createdAt: -1 })
             .limit(limit * 1)
             .skip((page - 1) * limit)

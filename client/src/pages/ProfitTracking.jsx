@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const formatCurrency = (num) => {
     return new Intl.NumberFormat('en-IN', {
@@ -43,6 +44,37 @@ const ProfitTracking = () => {
         // Optional: Fetch automatically on mount or wait for user to click Generate
     }, []);
 
+    const setQuickDate = (type) => {
+        const today = new Date();
+        let start = new Date();
+        let end = new Date();
+        if (type === 'this_week') {
+            const firstDay = today.getDate() - today.getDay();
+            start = new Date(today.setDate(firstDay));
+            end = new Date();
+        } else if (type === 'this_month') {
+            start = new Date(today.getFullYear(), today.getMonth(), 1);
+            end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        } else if (type === 'last_month') {
+            start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            end = new Date(today.getFullYear(), today.getMonth(), 0);
+        } else if (type === 'this_year') {
+            start = new Date(today.getFullYear(), 0, 1);
+            end = new Date(today.getFullYear(), 11, 31);
+        }
+        
+        const formatDate = (date) => {
+            const d = new Date(date);
+            let month = '' + (d.getMonth() + 1);
+            let day = '' + d.getDate();
+            const year = d.getFullYear();
+            if (month.length < 2) month = '0' + month;
+            if (day.length < 2) day = '0' + day;
+            return [year, month, day].join('-');
+        };
+        setFilters({ startDate: formatDate(start), endDate: formatDate(end) });
+    };
+
     const handleExport = () => {
         if (!reportData) return;
 
@@ -78,6 +110,14 @@ const ProfitTracking = () => {
                 'COGS': i.cogs,
                 'Profit': i.profit
             }));
+        } else if (activeTab === 'employee') {
+            filename = 'employee_wise_profit.csv';
+            exportData = reportData.salesRepWise.map(e => ({
+                'Employee': e.salesRep,
+                'Revenue': e.revenue,
+                'COGS': e.cogs,
+                'Profit': e.profit
+            }));
         }
 
         if (exportData.length === 0) {
@@ -103,7 +143,9 @@ const ProfitTracking = () => {
     const navTabs = [
         { id: 'bill', label: '📄 Bill-wise Profit' },
         { id: 'day', label: '📅 Day-wise Profit' },
-        { id: 'item', label: '📦 Item-wise Profit' }
+        { id: 'item', label: '📦 Item-wise Profit' },
+        { id: 'employee', label: '👤 Employee-wise Profit' },
+        { id: 'month', label: '📈 Month-on-Month Analysis' }
     ];
 
     return (
@@ -120,12 +162,20 @@ const ProfitTracking = () => {
 
             {/* Filters Bar */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row gap-4 justify-between items-center">
-                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-1 rounded">Date Range</span>
-                    <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200">
-                        <input type="date" value={filters.startDate} onChange={(e) => setFilters({ ...filters, startDate: e.target.value })} className="text-xs bg-transparent font-bold text-gray-700 outline-none" />
-                        <span className="text-[10px] text-gray-300 font-black uppercase mx-1">TO</span>
-                        <input type="date" value={filters.endDate} onChange={(e) => setFilters({ ...filters, endDate: e.target.value })} className="text-xs bg-transparent font-bold text-gray-700 outline-none" />
+                <div className="flex flex-col gap-2 w-full md:w-auto">
+                    <div className="flex gap-2">
+                        <button onClick={() => setQuickDate('this_week')} className="text-[10px] font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-colors">This Week</button>
+                        <button onClick={() => setQuickDate('this_month')} className="text-[10px] font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-colors">This Month</button>
+                        <button onClick={() => setQuickDate('last_month')} className="text-[10px] font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-colors">Last Month</button>
+                        <button onClick={() => setQuickDate('this_year')} className="text-[10px] font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-colors">This Year</button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-1 rounded">Date Range</span>
+                        <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200">
+                            <input type="date" value={filters.startDate} onChange={(e) => setFilters({ ...filters, startDate: e.target.value })} className="text-xs bg-transparent font-bold text-gray-700 outline-none" />
+                            <span className="text-[10px] text-gray-300 font-black uppercase mx-1">TO</span>
+                            <input type="date" value={filters.endDate} onChange={(e) => setFilters({ ...filters, endDate: e.target.value })} className="text-xs bg-transparent font-bold text-gray-700 outline-none" />
+                        </div>
                     </div>
                 </div>
 
@@ -261,6 +311,55 @@ const ProfitTracking = () => {
                                         ))}
                                     </tbody>
                                 </table>
+                            )}
+                            
+                            {activeTab === 'employee' && (
+                                <table className="min-w-full">
+                                    <thead className="bg-gray-50 border-b border-gray-100">
+                                        <tr>
+                                            <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Employee Name</th>
+                                            <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Revenue</th>
+                                            <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">COGS</th>
+                                            <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Net Profit</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {reportData.salesRepWise.map((emp, i) => (
+                                            <tr key={i} className="hover:bg-gray-50/50">
+                                                <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs font-bold text-gray-900 flex items-center gap-2">
+                                                    <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-black">
+                                                        {emp.salesRep.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    {emp.salesRep}
+                                                </td>
+                                                <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right text-gray-900 font-bold">{formatCurrency(emp.revenue)}</td>
+                                                <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right text-orange-600 font-medium">{formatCurrency(emp.cogs)}</td>
+                                                <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right text-emerald-600 font-black">{formatCurrency(emp.profit)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+
+                            {activeTab === 'month' && (
+                                <div className="p-4 h-[400px] w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={reportData.monthWise} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                                            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} dy={10} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} tickFormatter={(val) => `₹${(val/1000).toFixed(0)}k`} />
+                                            <Tooltip 
+                                                cursor={{ fill: '#F3F4F6' }}
+                                                contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                                formatter={(value) => formatCurrency(value)}
+                                            />
+                                            <Legend wrapperStyle={{ paddingTop: '20px' }} iconType="circle" />
+                                            <Bar dataKey="revenue" name="Revenue" fill="#3B82F6" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                                            <Bar dataKey="cogs" name="COGS" fill="#F97316" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                                            <Bar dataKey="profit" name="Net Profit" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
                             )}
                         </div>
                     </div>

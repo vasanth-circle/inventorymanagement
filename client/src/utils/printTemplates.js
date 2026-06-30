@@ -1396,90 +1396,191 @@ export const printReturnSlip = (returnTx, settings) => {
     
     const entityType = returnTx.returnType === 'customer' ? 'Customer' : 'Vendor';
     const entity = returnTx.customer || returnTx.vendor || { name: 'Unknown' };
-    const name = entity.companyName || entity.name || 'Unknown';
-    const date = new Date(returnTx.createdAt).toLocaleDateString('en-IN');
-    const qty = returnTx.quantity || 0;
-    const rate = returnTx.rate || 0;
-    const amount = qty * rate;
-    const title = returnTx.returnType === 'customer' ? 'CREDIT NOTE / RETURN SLIP' : 'DEBIT NOTE / RETURN OUTWARD';
+    const title = returnTx.returnType === 'customer' ? 'credit note' : 'debit note';
 
-    const html = `<html><head><meta charset="UTF-8"><title>Return_Slip_${name.replace(/[^a-zA-Z0-9]/g, '_')}</title>
+    // Support both `returnTx.items` (array from StockReturn) and `returnTx.item` (single from ActionLogs)
+    const itemsList = returnTx.items || (returnTx.item ? [{
+        name: returnTx.item.name || 'Unknown Item',
+        brand: returnTx.item.brand,
+        size: returnTx.item.size,
+        hsnCode: returnTx.item.hsnCode || returnTx.item.hsn || '',
+        quantity: returnTx.quantity || 0,
+        price: returnTx.rate || 0,
+        total: (returnTx.quantity || 0) * (returnTx.rate || 0),
+        taxRate: returnTx.item.taxRate || 0,
+        billingUnit: returnTx.item.billingUnit || returnTx.item.unitType || 'Nos'
+    }] : []);
+
+    // In Returns, we typically don't track tax breakdown unless fully integrated.
+    // We'll compute basic totals from the items array.
+    const itemsTotal = itemsList.reduce((sum, it) => sum + (it.total || it.quantity * it.price || 0), 0);
+    const taxAmount = 0; // If you add tax tracking to returns later, add it here
+    const grandTotal = itemsTotal + taxAmount;
+    
+    // Build item rows
+    let totQty = 0;
+    const itemRows = itemsList.map((item, i) => {
+        const subtotal = item.total || (item.quantity * item.price) || 0;
+        totQty += Number(item.quantity || 0);
+        const qtyVal = formatIndianNumber(item.quantity || 0, 3) + ' ' + (item.billingUnit || 'Nos').substring(0,3);
+        
+        const desc = (() => {
+            const b = (item.brand || '').trim();
+            const sz = (item.size || '').trim();
+            const n = (item.name || '').toUpperCase();
+            const sub = [b, sz].filter(Boolean).join(' ');
+            return sub ? `${n} - ${sub}` : n;
+        })();
+        
+        return `<tr>
+          <td style="text-align:center">${i + 1}</td>
+          <td><strong>${desc}</strong></td>
+          <td style="text-align:center">${item.hsnCode || item.hsn || ''}</td>
+          <td style="text-align:center;font-weight:bold">${qtyVal}</td>
+          <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
+          <td style="text-align:right">${formatIndianNumber(subtotal, 2)}</td>
+          <td style="text-align:center">0</td>
+          <td style="text-align:right;font-weight:bold">${formatIndianNumber(subtotal, 2)}</td>
+        </tr>`;
+    }).join('');
+
+    const taxAnalysisHtml = `<table style="width:90%; text-align:center; border:none; font-size:9.5px; margin-bottom:15px">
+        <thead><tr><th style="border:none;border-bottom:1px solid #000;text-align:left">Taxable Value</th><th style="border:none;border-bottom:1px solid #000">CGST%</th><th style="border:none;border-bottom:1px solid #000;text-align:right">AMT</th><th style="border:none;border-bottom:1px solid #000">SGST%</th><th style="border:none;border-bottom:1px solid #000;text-align:right">AMT</th><th style="border:none;border-bottom:1px solid #000">NET%</th><th style="border:none;border-bottom:1px solid #000;text-align:right">AMT</th></tr></thead>
+        <tbody><tr>
+          <td style="border:none;text-align:left">${formatIndianNumber(itemsTotal, 2)}</td>
+          <td style="border:none">0.00</td>
+          <td style="border:none;text-align:right">0.00</td>
+          <td style="border:none">0.00</td>
+          <td style="border:none;text-align:right">0.00</td>
+          <td style="border:none">0.00</td>
+          <td style="border:none;text-align:right">0.00</td>
+        </tr></tbody>
+       </table>`;
+
+    const html = `<html><head><meta charset="UTF-8"><title>Return_Slip</title>
 <style>
-  @page { size: A5 landscape; margin: 10mm; }
-  body { font-family: 'Arial', sans-serif; font-size: 11px; color: #333; margin: 0; background: #fff; }
-  .container { border: 1px solid #ccc; padding: 20px; border-radius: 8px; width: 100%; box-sizing: border-box; }
-  .header { display: flex; justify-content: space-between; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
-  .logo { max-height: 40px; max-width: 150px; object-fit: contain; }
-  .company-info { text-align: right; }
-  .company-name { font-size: 16px; font-weight: 900; color: #111; }
-  .title-band { background: #f8f9fa; padding: 10px; text-align: center; font-size: 14px; font-weight: bold; letter-spacing: 2px; margin-bottom: 15px; border: 1px solid #eee; }
-  .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-  .box { padding: 10px; border: 1px solid #eee; border-radius: 4px; }
-  .box-label { font-size: 9px; color: #888; text-transform: uppercase; margin-bottom: 4px; }
-  .box-value { font-size: 12px; font-weight: bold; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-  th { background: #f8f9fa; padding: 8px; text-align: left; font-size: 10px; border: 1px solid #eee; }
-  td { padding: 10px 8px; border: 1px solid #eee; font-size: 11px; }
-  .footer { display: flex; justify-content: space-between; margin-top: 40px; }
-  .sig { text-align: center; width: 200px; }
-  .sig-line { border-top: 1px solid #ccc; padding-top: 5px; font-size: 10px; color: #666; }
+  @page { size: A4 portrait; margin: 5mm; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Arial', sans-serif; font-size: 9.5px; color: #000; margin: 0; background: #fff; }
+  .container { border: 1.5px solid #000; width: 200mm; min-height: 285mm; margin: 0 auto; display: flex; flex-direction: column; }
+  /* Header */
+  .company-header { text-align: center; padding: 6px 5px; border-bottom: 1.5px solid #000; position: relative; min-height: 70px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+  .company-header .contact-info { position: absolute; top: 6px; right: 8px; font-size: 7.5px; font-weight: bold; text-align: right; }
+  .company-header h1 { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: 0.5px; }
+  .company-header p { margin: 1px 0; font-size: 8.5px; font-weight: bold; }
+  /* Doc title */
+  .doc-title { text-align: center; font-size: 11px; font-weight: bold; letter-spacing: 3px; padding: 4px; border-bottom: 1.5px solid #000; text-transform: uppercase; }
+  /* Meta grid */
+  .meta-grid { display: grid; grid-template-columns: 1.6fr 1fr; border-bottom: 1.5px solid #000; }
+  .meta-box { padding: 5px 8px; }
+  .meta-box:first-child { border-right: 1.5px solid #000; }
+  .meta-row { display: flex; margin-bottom: 2px; font-size: 9px; align-items: flex-start; }
+  .meta-label { min-width: 95px; font-weight: bold; }
+  /* Items table */
+  .items-table { flex: 1; display: flex; flex-direction: column; }
+  table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+  .items-table > table { flex: 1; height: 100%; min-height: 150mm; border-bottom: 1.5px solid #000; }
+  th, td { padding: 4px 5px; font-size: 9.5px; border-right: 1.5px solid #000; }
+  th:last-child, td:last-child { border-right: none; }
+  th { border-bottom: 1.5px solid #000; font-weight: bold; font-size: 9px; text-align: center; }
+  td { vertical-align: top; border-bottom: none; }
+  .filler td { height: auto; border-bottom: none; }
+  tr.filler { height: 100%; }
+  thead { display: table-header-group; }
+  /* Math section */
+  .math-section { display: flex; border-bottom: 1.5px solid #000; min-height: 60px; }
+  .math-left { flex: 1.5; padding: 6px 8px; border-right: 1.5px solid #000; display:flex; flex-direction:column; justify-content:space-between;}
+  .math-right { flex: 1; padding: 6px 15px; display:flex; flex-direction:column; justify-content:flex-end; font-size:10px; font-weight:bold; }
+  .math-row { display: flex; justify-content: space-between; margin-bottom:6px; }
+  /* Footer */
+  .words-bar { padding: 5px 8px; border-bottom: 1.5px solid #000; font-weight: bold; font-size: 9px; }
+  .footer { padding: 8px 10px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; margin-top: auto; }
 </style></head><body>
-  <div class="container">
-    <div class="header">
-      <div>
-        ${logoSrc ? `<img src="${logoSrc}" class="logo"/>` : `<div class="company-name">${s.companyName || 'OUR COMPANY'}</div>`}
-      </div>
-      <div class="company-info">
-        ${logoSrc ? `<div class="company-name">${s.companyName || 'OUR COMPANY'}</div>` : ''}
-        <div>${s.address || ''}</div>
-        <div>${s.phone1 ? `Ph: ${s.phone1}` : ''}</div>
-      </div>
+<div class="container">
+  <div class="company-header">
+    ${logoSrc ? `<div style="position:absolute;left:8px;top:50%;transform:translateY(-50%)"><img src="${logoSrc}" alt="Logo" style="max-height:55px;max-width:130px;object-fit:contain"/></div>` : ''}
+    <div class="contact-info">CELL: ${s.phone1 || ''}${s.phone2 ? ', ' + s.phone2 : ''}</div>
+    <div style="z-index:1; margin-top:15px;">
+      <h1>${s.companyName || 'YOUR COMPANY'}</h1>
+      <p>${s.address || ''}</p>
+      ${s.gstNumber ? `<p><strong>GSTIN: ${s.gstNumber}</strong></p>` : ''}
     </div>
-    
-    <div class="title-band">${title}</div>
-    
-    <div class="details-grid">
-      <div class="box">
-        <div class="box-label">${entityType}</div>
-        <div class="box-value">${name}</div>
-        ${entity.phone ? `<div style="font-size:10px;margin-top:2px;">Ph: ${entity.phone}</div>` : ''}
-      </div>
-      <div class="box" style="text-align: right;">
-        <div class="box-label">Return Date</div>
-        <div class="box-value">${date}</div>
-        ${returnTx.referenceOrder ? `<div class="box-label" style="margin-top:8px;">Ref. Order / Invoice</div><div class="box-value">${returnTx.referenceOrder}</div>` : ''}
-      </div>
+  </div>
+
+  <div class="doc-title">${title}</div>
+
+  <div class="meta-grid">
+    <div class="meta-box">
+      <div class="meta-row"><span class="meta-label" style="min-width:25px">To.</span><strong>${(entity.companyName || entity.name || 'Unknown').toUpperCase()}</strong></div>
+      ${entity.name && entity.companyName ? `<div class="meta-row"><span style="min-width:25px"></span>${entity.name}</div>` : ''}
+      ${(() => { 
+        const entityAddress = entityType === 'Customer' ? entity.address?.billing : entity.address;
+        const parts = [entityAddress?.street, entityAddress?.city, entityAddress?.state, entityAddress?.zipCode].filter(Boolean); 
+        return parts.length ? `<div class="meta-row"><span style="min-width:25px"></span><span style="font-size:8.5px">${parts.join(', ')}</span></div>` : ''; 
+      })()}
     </div>
-    
+    <div class="meta-box">
+      <div class="meta-row"><span class="meta-label">Payment Terms</span><span>: Credit</span></div>
+      ${returnTx.referenceOrder ? `<div class="meta-row"><span class="meta-label">Ref. Order / Inv</span><strong style="font-size:10px">: ${returnTx.referenceOrder}</strong></div>` : ''}
+      <div class="meta-row"><span class="meta-label">Date</span><span>: ${new Date(returnTx.createdAt).toLocaleDateString('en-GB')}</span></div>
+    </div>
+  </div>
+
+  <div class="items-table">
     <table>
       <thead>
         <tr>
-          <th width="40%">Item Description</th>
-          <th width="15%" style="text-align:center">Quantity</th>
-          <th width="15%" style="text-align:right">Rate</th>
-          <th width="15%" style="text-align:right">Amount</th>
-          <th width="15%">Reason</th>
+          <th width="5%">S.No</th>
+          <th width="38%">Description</th>
+          <th width="10%">HSN<br/>Code</th>
+          <th width="12%">Qty</th>
+          <th width="10%">Rate</th>
+          <th width="12%">Amount</th>
+          <th width="5%">Tax<br/>%</th>
+          <th width="12%">Total<br/>Amount</th>
         </tr>
       </thead>
       <tbody>
-        <tr>
-          <td><strong>${returnTx.item?.name || 'Unknown Item'}</strong></td>
-          <td style="text-align:center; font-weight:bold">${qty}</td>
-          <td style="text-align:right">${sym}${rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-          <td style="text-align:right; font-weight:bold">${sym}${amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-          <td>${returnTx.reason || 'N/A'}</td>
-        </tr>
+        ${itemRows}
+        <tr class="filler"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
       </tbody>
     </table>
-    
-    ${returnTx.notes ? `<div style="font-size:10px; color:#555; margin-bottom: 20px;"><b>Notes:</b> ${returnTx.notes}</div>` : ''}
-    
-    <div class="footer">
-      <div class="sig"><div class="sig-line">Customer / Receiver Signature</div></div>
-      <div class="sig"><div class="sig-line">Authorised Signatory</div></div>
+  </div>
+  
+  <div style="border-bottom:1.5px solid #000; border-top:1.5px solid #000; padding:2px 5px; font-weight:bold; font-size:10px; display:flex">
+    <div style="width:53%; padding-left:15px">Total</div>
+    <div style="width:12%; text-align:center">${formatIndianNumber(totQty, 3)}</div>
+    <div style="width:10%"></div>
+    <div style="width:12%; text-align:right">${formatIndianNumber(itemsTotal, 2)}</div>
+    <div style="width:5%"></div>
+    <div style="width:12%; text-align:right">${formatIndianNumber(grandTotal, 2)}</div>
+  </div>
+
+  <div class="math-section">
+    <div class="math-left">
+      ${taxAnalysisHtml}
+      <div style="font-weight:bold; font-size:10px">E. &amp; O.E.</div>
+    </div>
+    <div class="math-right">
+      <div class="math-row" style="font-size:11px; margin-top:2px"><span>Net Amount :</span><span>${formatIndianNumber(grandTotal, 2)}</span></div>
     </div>
   </div>
-</body></html>`;
+  
+  <div class="words-bar">
+    ${numberToWords(Math.round(grandTotal))}
+  </div>
+
+  <div class="footer">
+    <div style="font-size:8px; width:50%">
+      ${returnTx.notes ? `<div style="font-size:9px; margin-bottom: 5px;"><b>Notes:</b> ${returnTx.notes}</div>` : ''}
+    </div>
+    <div style="text-align:right; width:50%">
+      <div style="font-weight:bold;font-size:10px;margin-bottom:30px">For ${s.companyName || 'COMPANY'}</div>
+      <div style="font-size:9.5px">Authorised Signatory</div>
+    </div>
+  </div>
+
+</div></body></html>`;
 
     const w = window.open('', '_blank', 'width=800,height=600');
     w.document.write(html);

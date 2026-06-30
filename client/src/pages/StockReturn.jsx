@@ -193,6 +193,11 @@ const StockReturn = () => {
             const rows = invoice.items.map(lineItem => ({
                 itemId: lineItem.item?._id || lineItem.item,
                 itemName: lineItem.name || lineItem.item?.name || '',
+                brand: lineItem.brand || lineItem.item?.brand || '',
+                size: lineItem.size || lineItem.item?.size || '',
+                hsn: lineItem.hsn || lineItem.item?.hsn || lineItem.item?.hsnCode || '',
+                billingUnit: lineItem.billingUnit || lineItem.item?.unitType || lineItem.item?.billingUnit || 'Nos',
+                taxRate: lineItem.taxRate || lineItem.item?.taxRate || 0,
                 billedQty: lineItem.quantity || 0,
                 rate: lineItem.price || 0,
                 returnQty: '',
@@ -277,7 +282,17 @@ const StockReturn = () => {
                         referenceOrder,
                         reason,
                         notes,
-                        item: itemsToReturn.length === 1 ? { name: itemsToReturn[0].itemName } : { name: `Multiple Items (${itemsToReturn.length})` }
+                        items: itemsToReturn.map(r => ({
+                            name: r.itemName,
+                            brand: r.brand,
+                            size: r.size,
+                            hsnCode: r.hsn,
+                            billingUnit: r.billingUnit,
+                            taxRate: r.taxRate,
+                            quantity: parseFloat(r.returnQty),
+                            price: r.rate,
+                            total: parseFloat(r.returnQty) * r.rate
+                        }))
                     };
                     import('../utils/printTemplates').then(module => {
                         module.printReturnSlip(returnTx, billingSettings);
@@ -321,7 +336,20 @@ const StockReturn = () => {
                         referenceOrder,
                         reason,
                         notes,
-                        item: { name: allItems.find(i => i._id === vendorItem)?.name || 'Item' }
+                        items: [(() => {
+                            const selectedItem = allItems.find(i => i._id === vendorItem) || {};
+                            return {
+                                name: selectedItem.name || 'Item',
+                                brand: selectedItem.brand,
+                                size: selectedItem.size,
+                                hsnCode: selectedItem.hsn,
+                                billingUnit: selectedItem.unitType || selectedItem.billingUnit,
+                                taxRate: selectedItem.taxRate || 0,
+                                quantity: parseFloat(vendorQty),
+                                price: parseFloat(vendorRate) || 0,
+                                total: parseFloat(vendorQty) * (parseFloat(vendorRate) || 0)
+                            };
+                        })()]
                     };
                     import('../utils/printTemplates').then(module => {
                         module.printReturnSlip(returnTx, billingSettings);

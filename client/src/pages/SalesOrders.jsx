@@ -454,7 +454,9 @@ const SalesOrders = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            {!isModalOpen ? (
+                <>
+                    <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-800">Sales Orders & Estimations</h1>
                 <button
                     onClick={() => {
@@ -808,9 +810,9 @@ const SalesOrders = () => {
                 );
             })()}
 
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm overflow-hidden">
-                    <div className="bg-white rounded-2xl shadow-2xl w-[95%] max-w-5xl max-h-[95vh] flex flex-col overflow-hidden">
+                </>
+            ) : (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col mb-10 mt-2 animate-[fadeIn_0.2s_ease-out]">
                         <div className="px-8 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-2xl">
                             <div>
                                 <h2 className="text-2xl font-black text-gray-800">
@@ -1220,7 +1222,6 @@ const SalesOrders = () => {
                                 {submitting ? '⏳ Saving...' : (editingOrder ? '💾 Update Changes' : (formData.isEstimation ? '💾 Save Quotation' : '✅ Generate Final Bill'))}
                             </button>
                         </div>
-                    </div>
                 </div>
             )}
         </div>
