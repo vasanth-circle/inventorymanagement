@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { toast } from 'react-hot-toast';
 import FullScreenModal from '../components/FullScreenModal';
+import { printAccountStatement, printPaymentReceipt } from '../utils/printTemplates';
 
 const fmt = (n) => Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -92,6 +93,9 @@ const VendorLedger = () => {
     const [vendors, setVendors] = useState([]);
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [from, setFrom] = useState('');
+    const [to, setTo] = useState('');
+    const [settings, setSettings] = useState(null);
     
     // Payment modal state
     const [payModal, setPayModal] = useState(false);
@@ -115,7 +119,10 @@ const VendorLedger = () => {
         }
         try {
             setLoading(true);
-            const res = await api.get(`/vendor-ledger/${selectedVendorId}`);
+            const params = {};
+            if (from) params.from = from;
+            if (to) params.to = to;
+            const res = await api.get(`/vendor-ledger/${selectedVendorId}`, { params });
             setData(res.data?.data || null);
         } catch (err) {
             console.error('Ledger fetch error:', err);
@@ -133,11 +140,12 @@ const VendorLedger = () => {
         }).catch(err => {
             console.error('Vendors fetch error:', err);
         });
+        api.get('/settings/billing').then(r => setSettings(r.data.data)).catch(() => {});
     }, []);
 
     useEffect(() => {
         fetchLedger(); 
-    }, [fetchLedger]);
+    }, [fetchLedger, from, to]);
 
     useEffect(() => {
         if (id && id !== selectedVendorId) {
@@ -152,6 +160,23 @@ const VendorLedger = () => {
             navigate(`/vendor-ledger/${newId}`);
         } else {
             navigate(`/vendor-ledger`);
+        }
+    };
+
+    const handlePrint = async () => {
+        try {
+            // Always fetch full statement for printing
+            const res = await api.get(`/vendor-ledger/${selectedVendorId}`);
+            const { ledger, vendor } = res.data.data;
+            const summary = {
+                totalDebit: ledger.reduce((s, e) => s + e.debit, 0),
+                totalCredit: ledger.reduce((s, e) => s + e.credit, 0),
+                closingBalance: ledger.length > 0 ? ledger[ledger.length - 1].balance : vendor.openingBalance
+            };
+            const period = { from: null, to: null };
+            printAccountStatement(vendor, ledger, summary, period, settings);
+        } catch {
+            toast.error('Failed to generate statement');
         }
     };
 
@@ -269,6 +294,33 @@ const VendorLedger = () => {
                 </div>
             </div>
 
+            {/* Date Filters and Print */}
+            <div className="flex flex-wrap items-end gap-3 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">From Date</label>
+                    <input type="date" value={from} onChange={e => setFrom(e.target.value)} className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm" />
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">To Date</label>
+                    <input type="date" value={to} onChange={e => setTo(e.target.value)} className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm" />
+                </div>
+                <button
+                    onClick={() => fetchLedger()}
+                    className="px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold text-sm shadow"
+                >
+                    Apply
+                </button>
+                <div className="ml-auto flex gap-2">
+                    <button
+                        onClick={handlePrint}
+                        disabled={!selectedVendorId || !data}
+                        className="flex-1 sm:flex-none px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold text-xs shadow disabled:opacity-50"
+                    >
+                        🖨️ Statement
+                    </button>
+                </div>
+            </div>
+
             {/* Balance Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className={`rounded-xl p-5 shadow-sm border ${balance > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
@@ -364,6 +416,12 @@ const VendorLedger = () => {
                                                             title="Edit payment"
                                                             className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
                                                             ✏️
+                                                        </button>
+                                                        <button
+                                                            onClick={() => printPaymentReceipt(entry, data.vendor, settings, 'vendor')}
+                                                            title="Print Receipt"
+                                                            className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors">
+                                                            🖨️
                                                         </button>
                                                         <button 
                                                             onClick={() => setDeleteConfirm(entry)}

@@ -796,44 +796,18 @@ export const printDocument = (order, settings, docType = 'invoice') => {
 export const generatePreviewHtml = (templateNo, settings) => {
     const dummyOrder = {
         orderNumber: 'INV-0001',
-        orderDate: new Date().toISOString(),
-        customer: { name: 'Acme Corporation', companyName: 'Acme Corp', address: '123 Main St, Tech City', phone: '+91 9876543210' },
-        user: { name: 'Admin User' },
-        terms: 'Payment within 7 days. Subject to local jurisdiction.',
-        items: [
-            { name: 'Premium Ceramic Tile', brand: 'Kajaria', size: '2x2', hsn: '6907', quantity: 15, primaryQty: 15, totalSqFt: 60, boxCount: 15, price: 50, total: 3000 },
-            { name: 'Adhesive 20Kg', brand: 'Fevimate', size: '', hsn: '3506', quantity: 2, primaryQty: 2, price: 400, total: 800 },
-            { name: 'Spacer 2mm', brand: 'Generic', size: '2mm', hsn: '3926', quantity: 10, primaryQty: 10, price: 50, total: 500 },
-        ],
-        itemsTotal: 4300,
-        taxAmount: 774, // 18% of 4300
-        loadingCharges: 100,
-        unloadingCharges: 50,
-        transportCharges: 300,
-        discountAmount: 150,
-        advanceAmount: 0,
-        oldBalance: 0,
-        totalAmount: 5374
-    };
+    }
+}
 
-    let html;
-    if (templateNo === 2) html = template2(dummyOrder, settings, 'invoice');
-    else if (templateNo === 3) html = template3(dummyOrder, settings, 'invoice');
-    else if (templateNo === 4) html = template4(dummyOrder, settings, 'invoice');
-    else html = template1(dummyOrder, settings, 'invoice');
-    
-    return html;
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ACCOUNT STATEMENT PRINT — Customer Ledger
-// ─────────────────────────────────────────────────────────────────────────────
 export const printAccountStatement = (customer, entries, summary, period, settings) => {
     const s = settings || {};
     const sym = s.documentConfig?.currencySymbol || '₹';
     const companyName = s.companyName || 'Your Company';
     const fromStr = period?.from ? new Date(period.from).toLocaleDateString('en-IN') : 'Beginning';
     const toStr = period?.to ? new Date(period.to).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN');
+    const logoSrc = s.branding?.logoUrl
+        ? (s.branding.logoUrl.startsWith('http') ? s.branding.logoUrl : window.location.origin + s.branding.logoUrl)
+        : null;
 
     const rowColor = (type) => {
         if (type === 'payment') return '#f0fff4';
@@ -863,29 +837,37 @@ export const printAccountStatement = (customer, entries, summary, period, settin
     const html = `<html><head><title>Account Statement - ${customer.name}</title>
 <style>
   @page { size: A4; margin: 8mm; }
-  body { font-family: Arial, sans-serif; font-size: 10px; color: #222; margin: 0; }
-  .header { text-align: center; border-bottom: 2px solid #222; padding-bottom: 8px; margin-bottom: 8px; }
-  .header h1 { margin: 0; font-size: 20px; font-weight: 900; }
-  .header p { margin: 2px 0; font-size: 9px; color: #555; }
-  .statement-title { text-align: center; font-size: 14px; font-weight: 900; letter-spacing: 4px; background: #1a1a2e; color: #fff; padding: 6px 0; margin-bottom: 10px; }
-  .meta { display: flex; justify-content: space-between; margin-bottom: 10px; }
-  .meta-box { background: #f5f7fb; border-radius: 6px; padding: 8px 12px; flex: 1; margin: 0 4px; }
-  .meta-box:first-child { margin-left: 0; }
-  .meta-box:last-child { margin-right: 0; }
-  .meta-label { font-size: 8px; font-weight: 900; text-transform: uppercase; color: #999; }
-  .meta-value { font-size: 12px; font-weight: 700; color: #222; }
+  body { font-family: Arial, sans-serif; font-size: 12px; font-weight: bold; color: #222; margin: 0; }
+  .header { border-bottom: 2.5px solid #1a1a2e; padding-bottom: 10px; margin-bottom: 10px; display: flex; align-items: center; position: relative; min-height: 70px; }
+  .header-logo { position: absolute; left: 0; top: 50%; transform: translateY(-50%); }
+  .header-logo img { max-height: 60px; max-width: 140px; object-fit: contain; }
+  .header-center { text-align: center; flex: 1; }
+  .header-center h1 { margin: 0; font-size: 22px; font-weight: 900; color: #1a1a2e; letter-spacing: 0.5px; }
+  .header-center p { margin: 2px 0; font-size: 11px; color: #555; font-weight: normal; }
+  .header-center .gstin { font-size: 11px; font-weight: bold; color: #333; margin-top: 2px; }
+  .statement-title { text-align: center; font-size: 15px; font-weight: 900; letter-spacing: 4px; background: #1a1a2e; color: #fff; padding: 7px 0; margin-bottom: 10px; }
+  .meta { display: flex; justify-content: space-between; margin-bottom: 10px; gap: 8px; }
+  .meta-box { background: #f5f7fb; border-radius: 6px; padding: 8px 12px; flex: 1; border-left: 3px solid #1a1a2e; }
+  .meta-label { font-size: 9px; font-weight: 900; text-transform: uppercase; color: #999; margin-bottom: 3px; }
+  .meta-value { font-size: 13px; font-weight: 900; color: #222; }
+  .meta-sub { font-size: 9px; color: #666; margin-top: 2px; font-weight: normal; }
   table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-  th { background: #1a1a2e; color: #fff; padding: 6px 6px; font-size: 8px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; }
-  td { padding: 5px 6px; font-size: 9px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
-  .summary { display: flex; justify-content: flex-end; margin-top: 12px; gap: 12px; }
-  .sum-box { border: 1px solid #ddd; border-radius: 6px; padding: 8px 16px; text-align: right; min-width: 150px; }
-  .sum-label { font-size: 8px; color: #999; font-weight: 700; text-transform: uppercase; }
-  .sum-value { font-size: 14px; font-weight: 900; margin-top: 2px; }
-  .footer { margin-top: 20px; display: flex; justify-content: space-between; font-size: 8px; color: #aaa; border-top: 1px solid #eee; padding-top: 8px; }
+  th { background: #1a1a2e; color: #fff; padding: 8px 7px; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; }
+  td { padding: 6px 7px; font-size: 11px; font-weight: bold; border-bottom: 1px solid #eee; vertical-align: middle; }
+  tr:nth-child(even) td { background: #fafafa; }
+  .summary { display: flex; justify-content: flex-end; margin-top: 14px; gap: 10px; }
+  .sum-box { border: 1.5px solid #ddd; border-radius: 6px; padding: 8px 16px; text-align: right; min-width: 150px; }
+  .sum-label { font-size: 10px; color: #999; font-weight: 900; text-transform: uppercase; }
+  .sum-value { font-size: 16px; font-weight: 900; margin-top: 2px; }
+  .footer { margin-top: 20px; display: flex; justify-content: space-between; font-size: 10px; color: #aaa; border-top: 1px solid #eee; padding-top: 8px; }
 </style></head><body>
 <div class="header">
-  <h1>${companyName}</h1>
-  <p>${s.address || ''} ${s.phone1 ? '| Tel: ' + s.phone1 : ''} ${s.gstNumber ? '| GSTIN: ' + s.gstNumber : ''}</p>
+  ${logoSrc ? '<div class="header-logo"><img src="' + logoSrc + '" alt="Logo"/></div>' : ''}
+  <div class="header-center">
+    <h1>${companyName}</h1>
+    <p>${s.address || ''} ${s.phone1 ? '| Tel: ' + s.phone1 : ''}</p>
+    ${s.gstNumber ? '<div class="gstin">GSTIN: ' + s.gstNumber + '</div>' : ''}
+  </div>
 </div>
 <div class="statement-title">ACCOUNT STATEMENT</div>
 <div class="meta">
@@ -1825,3 +1807,94 @@ export const generatePurchaseOrderHtml = (order, settings) => {
 
 </div></body></html>`;
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAYMENT RECEIPT PRINTING
+// ─────────────────────────────────────────────────────────────────────────────
+export const printPaymentReceipt = (entry, entity, settings, type = 'customer') => {
+    const s = settings || {};
+    const sym = s.documentConfig?.currencySymbol || '₹';
+    const companyName = s.companyName || 'Your Company';
+    const amount = type === 'customer' ? entry.credit : entry.debit;
+    const isReceived = type === 'customer';
+    
+    // Convert number to words (simple version)
+    const toWords = (num) => {
+        const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
+        const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+        if ((num = num.toString()).length > 9) return 'overflow';
+        let n = ('000000000' + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+        if (!n) return; let str = '';
+        str += (n[1] != 0) ? (a[Number(n[1])] || b[n[1][0]] + ' ' + a[n[1][1]]) + 'Crore ' : '';
+        str += (n[2] != 0) ? (a[Number(n[2])] || b[n[2][0]] + ' ' + a[n[2][1]]) + 'Lakh ' : '';
+        str += (n[3] != 0) ? (a[Number(n[3])] || b[n[3][0]] + ' ' + a[n[3][1]]) + 'Thousand ' : '';
+        str += (n[4] != 0) ? (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) + 'Hundred ' : '';
+        str += (n[5] != 0) ? ((str != '') ? 'and ' : '') + (a[Number(n[5])] || b[n[5][0]] + ' ' + a[n[5][1]]) + 'Only ' : '';
+        return str;
+    };
+    
+    const amountInWords = toWords(Math.floor(amount)) + (amount % 1 > 0 ? ` and ${Math.round((amount % 1) * 100)} Paise Only` : '');
+
+    const html = `<html><head><meta charset="UTF-8"><title>Payment Receipt - ${entity.name}</title>
+<style>
+  @page { size: A5 landscape; margin: 10mm; }
+  body { font-family: Arial, sans-serif; font-size: 14px; color: #222; margin: 0; line-height: 1.5; }
+  .receipt-container { border: 2px solid #222; padding: 20px; border-radius: 8px; position: relative; }
+  .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #222; padding-bottom: 10px; margin-bottom: 15px; }
+  .header h1 { margin: 0; font-size: 24px; font-weight: 900; color: #1a1a2e; }
+  .header p { margin: 2px 0; font-size: 11px; color: #555; }
+  .title-box { background: #1a1a2e; color: #fff; padding: 8px 16px; font-size: 16px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; border-radius: 4px; }
+  .row { display: flex; margin-bottom: 15px; }
+  .label { width: 150px; font-weight: bold; color: #555; }
+  .value { flex: 1; border-bottom: 1px dashed #999; padding-bottom: 2px; font-weight: bold; color: #222; font-size: 15px; }
+  .amount-box { border: 2px solid #222; background: #f9f9f9; padding: 10px 20px; font-size: 20px; font-weight: 900; display: inline-block; margin-top: 10px; border-radius: 4px; }
+  .footer { display: flex; justify-content: space-between; margin-top: 40px; align-items: flex-end; }
+  .signature { text-align: center; width: 200px; }
+  .signature-line { border-bottom: 1px solid #222; margin-bottom: 5px; }
+  .signature-text { font-size: 12px; font-weight: bold; color: #555; }
+</style></head><body>
+<div class="receipt-container">
+  <div class="header">
+    <div>
+      <h1>${companyName}</h1>
+      <p>${s.address || ''} ${s.phone1 ? '| Tel: ' + s.phone1 : ''}</p>
+    </div>
+    <div class="title-box">PAYMENT RECEIPT</div>
+  </div>
+  
+  <div style="display: flex; justify-content: space-between; margin-bottom: 20px; font-weight: bold;">
+    <div>Receipt No: ${entry.refNumber || ('REC-' + Math.floor(Math.random()*10000))}</div>
+    <div>Date: ${new Date(entry.date).toLocaleDateString('en-IN')}</div>
+  </div>
+  
+  <div class="row">
+    <div class="label">${isReceived ? 'Received with thanks from:' : 'Paid to:'}</div>
+    <div class="value">${entity.companyName || entity.name}</div>
+  </div>
+  
+  <div class="row">
+    <div class="label">The sum of Rupees:</div>
+    <div class="value" style="font-style: italic;">${amountInWords}</div>
+  </div>
+  
+  <div class="row">
+    <div class="label">By ${entry.paymentMode || 'Cash'} / Ref:</div>
+    <div class="value">${entry.description || ''} ${entry.notes ? '(' + entry.notes + ')' : ''}</div>
+  </div>
+  
+  <div class="footer">
+    <div class="amount-box">${sym} ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+    <div class="signature">
+      <div class="signature-line"></div>
+      <div class="signature-text">Authorized Signatory</div>
+    </div>
+  </div>
+</div>
+</body></html>`;
+
+    const w = window.open('', '_blank', 'width=800,height=500');
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => { w.focus(); w.print(); }, 600);
+};
+

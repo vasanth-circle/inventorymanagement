@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { printAccountStatement } from '../utils/printTemplates';
+import { printAccountStatement, printPaymentReceipt } from '../utils/printTemplates';
 import { AuthContext } from '../context/AuthContext';
 import FullScreenModal from '../components/FullScreenModal';
 const api = (path, opts = {}) =>
@@ -165,15 +165,13 @@ const CustomerLedger = () => {
     };
 
     useEffect(() => {
-        api('/settings').then(r => setSettings(r.data.data)).catch(() => {});
+        api('/settings/billing').then(r => setSettings(r.data.data)).catch(() => {});
     }, []);
 
     const handlePrint = async () => {
         try {
-            const params = {};
-            if (from) params.from = from;
-            if (to) params.to = to;
-            const res = await api(`/customers/${selectedCustomerId}/statement`, { params });
+            // Always fetch full statement (no date filter) for printing
+            const res = await api(`/customers/${selectedCustomerId}/statement`);
             const { customer, entries, summary, period } = res.data.data;
             printAccountStatement(customer, entries, summary, period, settings);
         } catch {
@@ -426,6 +424,12 @@ const CustomerLedger = () => {
                                                                 title="Edit payment"
                                                                 className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
                                                                 ✏️
+                                                            </button>
+                                                            <button
+                                                                onClick={() => printPaymentReceipt(entry, data.customer, settings, 'customer')}
+                                                                title="Print Receipt"
+                                                                className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors">
+                                                                🖨️
                                                             </button>
                                                             <button
                                                                 onClick={() => setDeleteConfirm(entry)}
