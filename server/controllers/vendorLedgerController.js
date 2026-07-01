@@ -399,17 +399,31 @@ export const getVendorOutstandingSummary = async (req, res, next) => {
         if (toDate) toDate.setHours(23, 59, 59, 999);
 
         const summaries = await Promise.all(vendors.map(async (vendor) => {
-            const entryQuery = { vendor: vendor._id, ...tenantQuery(req) };
+            const baseQuery = { vendor: vendor._id, ...tenantQuery(req) };
+            const openBal = vendor.openingBalance || 0;
+
+            // All-time ledger entries
+            const allEntries = await VendorLedger.find(baseQuery).sort({ date: 1, createdAt: 1 });
+            const ledgerCredit = allEntries.reduce((s, e) => s + (e.credit || 0), 0);
+            const ledgerDebit  = allEntries.reduce((s, e) => s + (e.debit  || 0), 0);
+
+            // Opening balance for vendors: positive = company owes vendor => Credit column.
+            // Negative = vendor has advance/debit => Debit column.
+            const totalCredit = ledgerCredit + (openBal > 0 ? openBal : 0);
+            const totalDebit  = ledgerDebit  + (openBal < 0 ? Math.abs(openBal) : 0);
+
+            // Date-filtered entries for closing balance
+            const filteredQuery = { ...baseQuery };
             if (fromDate || toDate) {
-                entryQuery.date = {};
-                if (fromDate) entryQuery.date.$gte = fromDate;
-                if (toDate) entryQuery.date.$lte = toDate;
+                filteredQuery.date = {};
+                if (fromDate) filteredQuery.date.$gte = fromDate;
+                if (toDate)   filteredQuery.date.$lte = toDate;
             }
-            const entries = await VendorLedger.find(entryQuery).sort({ date: 1, createdAt: 1 });
-            const totalCredit = entries.reduce((s, e) => s + (e.credit || 0), 0); // purchases
-            const totalDebit = entries.reduce((s, e) => s + (e.debit || 0), 0);   // payments
-            const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null;
-            const closingBalance = lastEntry ? lastEntry.balance : (vendor.openingBalance || 0);
+            const filteredEntries = (fromDate || toDate)
+                ? await VendorLedger.find(filteredQuery).sort({ date: 1, createdAt: 1 })
+                : allEntries;
+            const lastEntry = filteredEntries.length > 0 ? filteredEntries[filteredEntries.length - 1] : null;
+            const closingBalance = lastEntry ? lastEntry.balance : openBal;
             return {
                 vendorId: vendor._id,
                 name: vendor.companyName || vendor.name,

@@ -8,6 +8,7 @@ const api = (path, opts = {}) =>
 const fmt = (n) => Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-IN') : '';
 const escHtml = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const fmtDateTime = () => new Date().toLocaleString('en-IN', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true });
 
 // Searchable Dropdown
 const SearchableDropdown = ({ options = [], value, onChange, placeholder = 'Search...', disabled = false }) => {
@@ -194,6 +195,7 @@ ${entityAddress ? `<div class="ea">${escHtml(entityAddress)}</div>` : ''}
 </tr>
 </tfoot>
 </table>
+<div style="margin-top:6px;font-size:8.5px;color:#666;text-align:right">Generated on: ${fmtDateTime()}</div>
 </body></html>`;
 };
 
@@ -254,6 +256,7 @@ ${rows}
 <tbody><tr class="grand"><td colspan="4">${fmt(totalPending)}</td></tr></tbody>
 </table>
 <hr/>
+<div style="font-size:9px;color:#555;margin-top:4px;text-align:right">Generated on: ${fmtDateTime()}</div>
 </body></html>`;
 };
 
@@ -270,7 +273,7 @@ const buildOSSHtml = ({ entityType, summaries, from, to, settings }) => {
 <td>${escHtml(r.name)}</td>
 <td style="text-align:right">${r.totalDebit > 0 ? fmt(r.totalDebit) : ''}</td>
 <td style="text-align:right">${r.totalCredit > 0 ? fmt(r.totalCredit) : ''}</td>
-<td style="text-align:right">${fmt(r.closingBalance)}</td>
+<td style="text-align:right">${r.closingBalance < 0 ? '-' : ''}${fmt(Math.abs(r.closingBalance))}</td>
 <td>${escHtml(r.phone)}</td>
 </tr>`).join('');
 
@@ -287,7 +290,7 @@ th{border:1px solid #888;padding:4px 5px;font-size:10px;font-weight:bold;
 th.r{text-align:right}
 td{border:1px solid #ccc;padding:3px 5px;font-size:10px;overflow:hidden}
 td.r{text-align:right;white-space:nowrap}
-tbody tr:nth-child(even) td{background:#fafafa}
+
 .sec td{font-weight:bold;background:#e8e8e8!important;border-color:#888}
 .tot td{font-weight:bold;background:#ddd!important;border:1px solid #888;font-size:11px}
 </style></head><body>
@@ -305,11 +308,12 @@ ${rows}
 <td></td>
 <td class="r">${fmt(grandDr)}</td>
 <td class="r">${fmt(grandCr)}</td>
-<td class="r">${fmt(grandBal)}</td>
+<td class="r">${fmt(Math.abs(grandBal))}</td>
 <td></td>
 </tr>
 </tbody>
 </table>
+<div style="margin-top:6px;font-size:9px;color:#555;text-align:right">Generated on: ${fmtDateTime()}</div>
 </body></html>`;
 };
 
@@ -369,6 +373,7 @@ ${rows}
 </tr>
 </tbody>
 </table>
+<div style="margin-top:6px;font-size:9px;color:#555;text-align:right">Generated on: ${fmtDateTime()}</div>
 </body></html>`;
 };
 
@@ -862,6 +867,7 @@ const OutstandingSummary = ({ settings }) => {
     const [to, setTo] = useState('');
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [search, setSearch] = useState('');
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -878,9 +884,12 @@ const OutstandingSummary = ({ settings }) => {
         finally { setLoading(false); }
     }, [entityType, from, to]);
 
-    useEffect(() => { fetchData(); }, [entityType]);
+    useEffect(() => { fetchData(); setSearch(''); }, [entityType]);
 
-    const rows = (data || []).filter(r => Math.abs(r.closingBalance) > 0.001);
+    const allRows = (data || []).filter(r => Math.abs(r.closingBalance) > 0.001);
+    const rows = search.trim()
+        ? allRows.filter(r => r.name?.toLowerCase().includes(search.trim().toLowerCase()))
+        : allRows;
     const grandDebit   = rows.reduce((s, r) => s + r.totalDebit, 0);
     const grandCredit  = rows.reduce((s, r) => s + r.totalCredit, 0);
     const grandBalance = rows.reduce((s, r) => s + r.closingBalance, 0);
@@ -931,9 +940,26 @@ const OutstandingSummary = ({ settings }) => {
             )}
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                <div className="px-5 py-3 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
                     <h2 className="font-bold text-gray-800">{entityType === 'customer' ? 'Customer' : 'Vendor'} Outstanding Summary</h2>
-                    <span className="text-sm text-gray-400">{rows.length} accounts</span>
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+                            <input
+                                type="text"
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                placeholder={`Search ${entityType === 'customer' ? 'customer' : 'vendor'}...`}
+                                className="pl-8 pr-8 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 w-56"
+                            />
+                            {search && (
+                                <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm">✕</button>
+                            )}
+                        </div>
+                        <span className="text-sm text-gray-400 whitespace-nowrap">
+                            {search ? `${rows.length} of ${allRows.length}` : `${rows.length}`} accounts
+                        </span>
+                    </div>
                 </div>
                 {loading ? <Spinner /> : !data || rows.length === 0 ? (
                     <EmptyState icon="📊" title="No data" subtitle="No outstanding balances found." />
@@ -963,7 +989,7 @@ const OutstandingSummary = ({ settings }) => {
                                         </td>
                                         <td className={`px-4 py-2.5 text-right font-bold text-xs ${row.closingBalance > 0 ? 'text-orange-600' : row.closingBalance < 0 ? 'text-blue-600' : 'text-gray-400'}`}>
                                             {row.closingBalance !== 0
-                                                ? <>{'\u20B9'}{fmt(Math.abs(row.closingBalance))}<span className="text-[10px] font-normal ml-1">{row.closingBalance > 0 ? 'Dr' : 'Cr'}</span></>
+                                                ? <>{row.closingBalance < 0 ? '-' : ''}{'\u20B9'}{fmt(Math.abs(row.closingBalance))}</>
                                                 : 'Settled'}
                                         </td>
                                         <td className="px-4 py-2.5 text-gray-500 text-xs">{row.phone || ''}</td>
@@ -976,7 +1002,7 @@ const OutstandingSummary = ({ settings }) => {
                                     <td className="px-4 py-3 text-right font-bold text-red-300">{'\u20B9'}{fmt(grandDebit)}</td>
                                     <td className="px-4 py-3 text-right font-bold text-green-300">{'\u20B9'}{fmt(grandCredit)}</td>
                                     <td className={`px-4 py-3 text-right font-bold text-lg ${grandBalance >= 0 ? 'text-orange-300' : 'text-blue-300'}`}>
-                                        {'\u20B9'}{fmt(Math.abs(grandBalance))} {grandBalance >= 0 ? 'Dr' : 'Cr'}
+                                        {grandBalance < 0 ? '-' : ''}{'\u20B9'}{fmt(Math.abs(grandBalance))}
                                     </td>
                                     <td></td>
                                 </tr>
