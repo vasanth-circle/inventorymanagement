@@ -131,7 +131,7 @@ const buildLedgerHtml = ({ entityName, entityAddress, entries, openingBalance, c
 
     const rows = allEntries.map(e => {
         if (e.isOpening) {
-            return `<tr style="background:#f8f8f8"><td></td><td colspan="4"><b>Opening Balance :</b></td><td style="text-align:right"><b>${fmt(e.amount)}</b></td><td></td></tr>`;
+            return `<tr style="background:#f8f8f8"><td colspan="5"><b>Opening Balance :</b></td><td style="text-align:right"><b>${fmt(e.amount)}</b></td><td></td></tr>`;
         }
         const vt = e.type === 'bill' ? 'Sales/Purch' : e.type === 'payment' ? 'Receipt' : e.type === 'adjustment' ? 'Journal' : escHtml(e.type);
         return `<tr>
@@ -145,36 +145,46 @@ const buildLedgerHtml = ({ entityName, entityAddress, entries, openingBalance, c
 </tr>`;
     }).join('');
 
+    const addr    = settings?.address  || '';
+    const phone1  = settings?.phone1   || '';
+    const phone2  = settings?.phone2   || '';
+    const gst     = settings?.gstNumber || '';
+    const phones  = [phone1, phone2].filter(Boolean).join(' / ');
+    const addrLine  = [addr, phones].filter(Boolean).join('  |  ');
+    const gstLine   = gst ? `GST No: ${gst}` : '';
+
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Ledger - ${escHtml(entityName)}</title>
 <style>
 ${A4}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Courier New',monospace;font-size:10px;color:#000;padding:4mm}
-.ph{display:flex;justify-content:space-between;margin-bottom:3px}
-.co{font-weight:bold;font-size:12px}
-.en{font-weight:bold;font-size:11px;margin:3px 0 1px}
-.ea{font-size:9.5px;color:#444}
-.pr{font-size:9.5px;color:#444;margin:2px 0 5px}
-hr{border:none;border-top:1.5px solid #000;margin:4px 0}
-table{width:100%;border-collapse:collapse;table-layout:fixed}
-th{font-size:9px;font-weight:bold;padding:2px 3px;text-align:left;
-   border-top:1.5px solid #000;border-bottom:1.5px solid #000;
-   white-space:nowrap;overflow:hidden}
+body{font-family:Arial,sans-serif;font-size:13px;color:#000;padding:5mm}
+.co-name{text-align:center;font-size:22px;font-weight:900;letter-spacing:0.5px;margin-bottom:2px;text-transform:uppercase}
+.co-addr{text-align:center;font-size:11px;color:#111;margin-bottom:1px}
+.co-gst{text-align:center;font-size:11px;color:#111;margin-bottom:4px}
+.rpt-title{text-align:center;font-size:14px;font-weight:bold;border-top:2px solid #000;border-bottom:2px solid #000;padding:3px 0;margin-bottom:5px}
+.en{font-weight:bold;font-size:14px;margin:3px 0 1px}
+.ea{font-size:12px;color:#444}
+.pr{font-size:12px;color:#444;margin:2px 0 5px}
+table{width:100%;border-collapse:collapse;table-layout:fixed;border:1.5px solid #000}
+th{border:1.5px solid #000;padding:5px 6px;font-size:13px;font-weight:bold;background:#d8d8d8;text-align:left;white-space:nowrap}
 th.r{text-align:right}
-td{font-size:9.5px;padding:2px 3px;vertical-align:top;overflow:hidden;word-break:break-word}
-tfoot td{border-top:1.5px solid #000;font-weight:bold}
-tfoot .cls{border-top:1.5px solid #000;border-bottom:3px double #000;text-align:right;font-size:11px}
+td{border:1px solid #444;padding:3px 6px;font-size:13px;font-weight:bold;color:#000;overflow:hidden;word-break:break-word}
+td.r{text-align:right;white-space:nowrap}
+tfoot td{font-weight:900;background:#c8c8c8!important;border:1.5px solid #000;font-size:14px}
+tfoot .cls{border-top:1.5px solid #000;border-bottom:3px double #000;text-align:right;font-size:14px}
 </style></head><body>
-<div class="ph"><div class="co">${escHtml(company)}</div><div style="font-size:9.5px">Page No: 1</div></div>
-<div class="en">Ledger of: ${escHtml(entityName)}</div>
+<div class="co-name">${escHtml(company)}</div>
+${addrLine ? `<div class="co-addr">${escHtml(addrLine)}</div>` : ''}
+${gstLine  ? `<div class="co-gst">${escHtml(gstLine)}</div>`   : ''}
+<div class="rpt-title">Ledger &nbsp;&nbsp; Date : ${period}</div>
+<div class="en">Account: ${escHtml(entityName)}</div>
 ${entityAddress ? `<div class="ea">${escHtml(entityAddress)}</div>` : ''}
-<div class="pr">Period: ${period}</div>
-<hr/>
+<div style="margin-bottom:8px"></div>
 <table>
 <colgroup>
-<col style="width:66px"/><col style="width:148px"/><col style="width:80px"/>
-<col style="width:70px"/><col style="width:55px"/>
-<col style="width:80px"/><col style="width:80px"/>
+<col style="width:80px"/><col style="width:160px"/><col style="width:90px"/>
+<col style="width:80px"/><col style="width:70px"/>
+<col style="width:90px"/><col style="width:90px"/>
 </colgroup>
 <thead><tr>
 <th>Date</th><th>Particulars</th><th>Remarks</th>
@@ -184,13 +194,13 @@ ${entityAddress ? `<div class="ea">${escHtml(entityAddress)}</div>` : ''}
 <tbody>${rows}</tbody>
 <tfoot>
 <tr>
-<td colspan="3" style="font-size:9px">Tot Cr: ${fmt(totCr)} &nbsp; Tot Dr: ${fmt(totDr)} &nbsp; Closing Balance:</td>
+<td colspan="3" style="font-size:12px">Tot Cr: ${fmt(totCr)} &nbsp; Tot Dr: ${fmt(totDr)} &nbsp; Closing Balance:</td>
 <td colspan="2"></td>
 <td style="text-align:right">${fmt(totDr)}</td>
 <td style="text-align:right">${fmt(totCr)}</td>
 </tr>
 <tr>
-<td colspan="5" style="font-weight:bold;font-size:9px;padding-top:2px">Closing Balance</td>
+<td colspan="5" style="font-weight:900;font-size:12px;padding-top:2px">Closing Balance</td>
 <td colspan="2" class="cls">${fmt(currentBalance)}</td>
 </tr>
 </tfoot>
@@ -212,30 +222,42 @@ const buildRPHtml = ({ type, entityName, entityAddress, pendingBills, totalPendi
 <td style="text-align:right">${b.osDays}</td>
 </tr>`).join('');
 
+    // Build company header lines from settings
+    const addr    = settings?.address  || '';
+    const phone1  = settings?.phone1   || '';
+    const phone2  = settings?.phone2   || '';
+    const gst     = settings?.gstNumber || '';
+    const phones  = [phone1, phone2].filter(Boolean).join(' / ');
+    const addrLine  = [addr, phones].filter(Boolean).join('  |  ');
+    const gstLine   = gst ? `GST No: ${gst}` : '';
+
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title} - ${escHtml(entityName)}</title>
 <style>
 ${A4}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Courier New',monospace;font-size:11px;color:#000;padding:6mm}
-.co{font-size:13px;font-weight:bold;margin-bottom:3px}
-.nm{font-size:11px;margin-bottom:2px}
-hr{border:none;border-top:2px solid #000;margin:5px 0}
-table{width:100%;border-collapse:collapse;table-layout:fixed}
-th{font-size:10px;font-weight:bold;padding:3px 5px;text-align:left;
-   border-top:2px solid #000;border-bottom:2px solid #000;white-space:nowrap}
+body{font-family:Arial,sans-serif;font-size:13px;color:#000;padding:5mm}
+.co-name{text-align:center;font-size:22px;font-weight:900;letter-spacing:0.5px;margin-bottom:2px;text-transform:uppercase}
+.co-addr{text-align:center;font-size:11px;color:#111;margin-bottom:1px}
+.co-gst{text-align:center;font-size:11px;color:#111;margin-bottom:4px}
+.rpt-title{text-align:center;font-size:14px;font-weight:bold;border-top:2px solid #000;border-bottom:2px solid #000;padding:3px 0;margin-bottom:5px}
+.en{font-weight:bold;font-size:14px;margin:3px 0 1px}
+.ea{font-size:12px;color:#444}
+table{width:100%;border-collapse:collapse;table-layout:fixed;border:1.5px solid #000}
+th{border:1.5px solid #000;padding:5px 6px;font-size:13px;font-weight:bold;background:#d8d8d8;text-align:left;white-space:nowrap}
 th.r{text-align:right}
-td{font-size:10.5px;padding:2.5px 5px;vertical-align:top;overflow:hidden}
-.sec td{font-weight:bold;background:#f2f2f2;padding:3px 5px}
-.tot1 td.a{border-top:1px solid #000;border-bottom:1px solid #000;text-align:right}
-.tot2 td.a{font-weight:bold;font-size:12px;text-align:right}
-.grand{border-top:2px solid #000;border-bottom:2px solid #000}
-.grand td{font-weight:bold;font-size:12px;padding:4px 5px;text-align:right}
+td{border:1px solid #444;padding:3px 6px;font-size:13px;font-weight:bold;color:#000;overflow:hidden;word-break:break-word}
+td.r{text-align:right;white-space:nowrap}
+.sec td{font-weight:900;background:#bbb!important;border:1.5px solid #000;font-size:14px}
+.tot1 td.a{border-top:1.5px solid #000;border-bottom:1.5px solid #000;text-align:right;font-weight:900}
+.tot2 td.a{font-weight:900;font-size:14px;text-align:right}
+.grand td{font-weight:900;font-size:15px;padding:5px 6px;text-align:right;background:#c8c8c8!important;border:1.5px solid #000}
 </style></head><body>
-<div class="co">${escHtml(company)}</div>
-<div class="nm"><b>${title}</b></div>
-<div class="nm">Name : <b>${escHtml(entityName)}</b></div>
-${entityAddress ? `<div style="font-size:9.5px;color:#444;margin-bottom:5px">${escHtml(entityAddress)}</div>` : ''}
-<hr/>
+<div class="co-name">${escHtml(company)}</div>
+${addrLine ? `<div class="co-addr">${escHtml(addrLine)}</div>` : ''}
+${gstLine  ? `<div class="co-gst">${escHtml(gstLine)}</div>`   : ''}
+<div class="rpt-title">${title} &nbsp;&nbsp; Date : All Dates</div>
+<div class="en">Name: ${escHtml(entityName)}</div>
+${entityAddress ? `<div class="ea" style="margin-bottom:8px">${escHtml(entityAddress)}</div>` : '<div style="margin-bottom:8px"></div>'}
 <table>
 <colgroup>
 <col style="width:120px"/><col style="width:140px"/><col style="width:110px"/><col/>
@@ -250,13 +272,12 @@ ${rows}
 <tr class="tot2"><td></td><td class="a">${fmt(totalPending)}</td><td colspan="2"></td></tr>
 </tbody>
 </table>
-<hr style="margin-top:8px"/>
+<div style="margin-top:12px"></div>
 <table>
 <colgroup><col style="width:120px"/><col style="width:140px"/><col style="width:110px"/><col/></colgroup>
-<tbody><tr class="grand"><td colspan="4">${fmt(totalPending)}</td></tr></tbody>
+<tbody><tr class="grand"><td colspan="4">Total: &nbsp; ${fmt(totalPending)}</td></tr></tbody>
 </table>
-<hr/>
-<div style="font-size:9px;color:#555;margin-top:4px;text-align:right">Generated on: ${fmtDateTime()}</div>
+<div style="margin-top:6px;font-size:9px;color:#555;text-align:right">Generated on: ${fmtDateTime()}</div>
 </body></html>`;
 };
 
@@ -354,26 +375,38 @@ const buildPurchaseHtml = ({ orders, from, to, settings }) => {
 <td class="r">${fmt(o.totalAmount)}</td>
 </tr>`).join('');
 
+    // Build company header lines from settings
+    const addr    = settings?.address  || '';
+    const phone1  = settings?.phone1   || '';
+    const phone2  = settings?.phone2   || '';
+    const gst     = settings?.gstNumber || '';
+    const phones  = [phone1, phone2].filter(Boolean).join(' / ');
+    const addrLine  = [addr, phones].filter(Boolean).join('  |  ');
+    const gstLine   = gst ? `GST No: ${gst}` : '';
+
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Purchase Report</title>
 <style>
 ${A4}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:Arial,sans-serif;font-size:10.5px;color:#000;padding:5mm}
-.hdr{text-align:center;font-size:14px;font-weight:bold;margin-bottom:1px}
-.sub{text-align:center;font-size:10px;margin-bottom:5px}
-table{width:100%;border-collapse:collapse;table-layout:fixed;border:1px solid #888}
-th{border:1px solid #888;padding:4px 5px;font-size:10px;font-weight:bold;
-   background:#ebd77b;text-align:left;white-space:nowrap}
+body{font-family:Arial,sans-serif;font-size:13px;color:#000;padding:5mm}
+.co-name{text-align:center;font-size:22px;font-weight:900;letter-spacing:0.5px;margin-bottom:2px;text-transform:uppercase}
+.co-addr{text-align:center;font-size:11px;color:#111;margin-bottom:1px}
+.co-gst{text-align:center;font-size:11px;color:#111;margin-bottom:4px}
+.rpt-title{text-align:center;font-size:14px;font-weight:bold;border-top:2px solid #000;border-bottom:2px solid #000;padding:3px 0;margin-bottom:5px}
+table{width:100%;border-collapse:collapse;table-layout:fixed;border:1.5px solid #000}
+th{border:1.5px solid #000;padding:5px 6px;font-size:13px;font-weight:bold;background:#ebd77b;text-align:left;white-space:nowrap}
 th.r{text-align:right}
-td{border:1px solid #ccc;padding:3px 5px;font-size:10px;overflow:hidden}
+td{border:1px solid #444;padding:3px 6px;font-size:13px;font-weight:bold;color:#000;overflow:hidden;word-break:break-word}
 td.r{text-align:right;white-space:nowrap}
-tbody tr:nth-child(even) td{background:#fafafa}
-.tot td{font-weight:bold;background:#ebd77b!important;border:1px solid #888;font-size:11px}
+.tot td{font-weight:900;background:#ebd77b!important;border:1.5px solid #000;font-size:14px}
 </style></head><body>
-<div class="hdr">${escHtml(company)}</div>
-<div class="sub">Purchase Display &nbsp;|&nbsp; Date: ${period}</div>
+<div class="co-name">${escHtml(company)}</div>
+${addrLine ? `<div class="co-addr">${escHtml(addrLine)}</div>` : ''}
+${gstLine  ? `<div class="co-gst">${escHtml(gstLine)}</div>`   : ''}
+<div class="rpt-title">Purchase Display &nbsp;&nbsp; Date : ${period}</div>
+<div style="margin-bottom:8px"></div>
 <table>
-<colgroup><col style="width:40px"/><col style="width:80px"/><col style="width:80px"/><col style="width:80px"/><col style="width:70px"/><col style="width:70px"/><col/><col style="width:90px"/></colgroup>
+<colgroup><col style="width:45px"/><col style="width:85px"/><col style="width:85px"/><col style="width:85px"/><col style="width:75px"/><col style="width:75px"/><col/><col style="width:95px"/></colgroup>
 <thead><tr>
 <th>S.No</th><th>Date</th><th>Inv No</th><th>Inv Date</th><th>Inv Type</th><th>Series</th><th>Party Name</th><th class="r">Net Amount</th>
 </tr></thead>

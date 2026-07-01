@@ -111,19 +111,19 @@ const template1 = (order, settings, docType = 'invoice') => {
   .company-header { text-align: center; padding: 10px; border-bottom: 1.5px solid #000; position: relative; }
   .contact-info { position: absolute; top: 8px; right: 10px; font-size: 8px; font-weight: bold; text-align: right; }
   .company-header h1 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: 0.5px; }
-  .company-header p { margin: 2px 0; font-size: 9px; }
+  .company-header p { margin: 2px 0; font-size: 11px; }
   .doc-title { text-align: center; font-size: 12px; font-weight: bold; letter-spacing: 5px; padding: 5px; border-bottom: 1.5px solid #000; }
   .meta-grid { display: grid; grid-template-columns: 1.5fr 1fr; border-bottom: 1.5px solid #000; }
   .meta-box { padding: 6px 10px; }
   .meta-box:first-child { border-right: 1.5px solid #000; }
-  .meta-row { display: flex; margin-bottom: 2px; font-size: 9.5px; }
+  .meta-row { display: flex; margin-bottom: 2px; font-size: 11px; }
   .meta-label { width: 110px; font-weight: bold; }
   .items-table { border-bottom: 1.5px solid #000; flex: 1; }
   table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
   .items-table > table { min-height: 201mm; height: 100%; }
-  th, td { padding: 5px; font-size: 9.5px; border-right: 1.5px solid #000; }
+  th, td { padding: 5px; font-size: 11px; border-right: 1.5px solid #000; }
   th:last-child, td:last-child { border-right: none; }
-  th { border-bottom: 1.5px solid #000; background: #fff; font-weight: bold; text-transform: uppercase; font-size: 8.5px; }
+  th { border-bottom: 1.5px solid #000; background: #fff; font-weight: bold; text-transform: uppercase; font-size: 11px; }
   td { vertical-align: top; border-bottom: none; }
   .filler td { height: 100%; }
   tr { page-break-inside: avoid; page-break-after: auto; }
@@ -131,11 +131,11 @@ const template1 = (order, settings, docType = 'invoice') => {
   .summary-section { display: flex; border-bottom: 1.5px solid #000; min-height: 100px; }
   .summary-left { flex: 1.8; padding: 0; display: flex; flex-direction: column; border-right: 1.5px solid #000; }
   .summary-right { flex: 1; padding: 0; }
-  .tax-table { width: 100%; border-collapse: collapse; font-size: 7.5px; }
+  .tax-table { width: 100%; border-collapse: collapse; font-size: 10px; }
   .tax-table th, .tax-table td { border: 1px solid #000; padding: 2px 4px; text-align: right; }
-  .math-row { display: flex; justify-content: space-between; padding: 3px 8px; font-size: 9px; }
+  .math-row { display: flex; justify-content: space-between; padding: 3px 8px; font-size: 11px; }
   .grand-total { background: #000; color: #fff; font-weight: bold; font-size: 12px; padding: 6px 8px; display: flex; justify-content: space-between; margin-top: auto; }
-  .footer { padding: 10px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; }
+  .footer { padding: 10px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 11px; }
 </style></head><body>
 <div class="container">
   <div class="company-header" style="min-height: 80px; display: flex; flex-direction: column; justify-content: center;">
@@ -184,7 +184,7 @@ const template1 = (order, settings, docType = 'invoice') => {
   <div class="summary-section">
     <div class="summary-left">
       <div style="padding:8px 10px;border-bottom:1px solid #000">
-        <div style="font-size:7.5px;font-weight:bold;margin-bottom:3px">TAX ANALYSIS:</div>
+        <div style="font-size: 10px;font-weight:bold;margin-bottom:3px">TAX ANALYSIS:</div>
         <table class="tax-table">
           <thead><tr><th>Taxable Value</th><th>CGST%</th><th>CGST Amt</th><th>SGST%</th><th>SGST Amt</th><th>Total Tax</th></tr></thead>
           <tbody><tr>
@@ -198,7 +198,7 @@ const template1 = (order, settings, docType = 'invoice') => {
         </table>
       </div>
       <div style="padding:8px 10px;flex:1">
-        <div style="font-size:7.5px;font-weight:bold;text-decoration:underline;margin-bottom:3px">AMOUNT IN WORDS:</div>
+        <div style="font-size: 10px;font-weight:bold;text-decoration:underline;margin-bottom:3px">AMOUNT IN WORDS:</div>
         <div style="font-weight:bold;text-transform:uppercase;font-size:8.5px">${numberToWords(Math.round(order.totalAmount || 0))}</div>
         <div style="font-size:7px;margin-top:8px;line-height:1.4">${terms.replace(/\n/g, '<br/>')}</div>
       </div>
@@ -258,7 +258,7 @@ const template2 = (order, settings, docType = 'invoice') => {
   body { font-family: 'Arial', sans-serif; font-size: 10px; color: #1a1a2e; margin: 0; background: #fff; display: flex; justify-content: center; }
   .container { width: 190mm; margin: 0 auto; }
   .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; }
-  .company-name { font-size: 20px; font-weight: 900; letter-spacing: 1px; }
+  .company-name { font-size: 24px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
   .company-sub { font-size: 8px; opacity: 0.7; margin-top: 3px; }
   .company-contact { text-align: right; font-size: 8px; opacity: 0.85; line-height: 1.8; }
   .doc-band { background: #e84393; color: white; padding: 6px 20px; display: flex; justify-content: space-between; align-items: center; }
@@ -269,7 +269,7 @@ const template2 = (order, settings, docType = 'invoice') => {
   .meta-right { flex: 1; background: #f8f9ff; border-radius: 8px; padding: 8px 12px; }
   .meta-title { font-size: 8px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 4px; }
   .meta-value { font-size: 11px; font-weight: 700; color: #1a1a2e; }
-  .meta-row2 { display: flex; justify-content: space-between; font-size: 8.5px; margin-bottom: 3px; }
+  .meta-row2 { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px; }
   .items-section { 
      border-top: 2px solid #1a1a2e; 
      min-height: 150mm;
@@ -281,9 +281,9 @@ const template2 = (order, settings, docType = 'invoice') => {
         linear-gradient(to right, transparent calc(87% - 0.5px), #f0f0f0 calc(87% - 0.5px), #f0f0f0 calc(87% + 0.5px), transparent calc(87% + 0.5px));
   }
   table { width: 100%; border-collapse: collapse; page-break-inside: auto; table-layout: fixed; }
-  th { background: #1a1a2e; color: white; padding: 6px 6px; font-size: 7.5px; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid #2d2d4e; text-align: left; }
+  th { background: #1a1a2e; color: white; padding: 6px 6px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid #2d2d4e; text-align: left; }
   th:last-child { border-right: none; }
-  td { padding: 5px 6px; font-size: 8.5px; border-bottom: 1px solid #f0f0f0; border-right: 1px solid #f0f0f0; vertical-align: top; }
+  td { padding: 5px 6px; font-size: 11px; border-bottom: 1px solid #f0f0f0; border-right: 1px solid #f0f0f0; vertical-align: top; }
   td:last-child { border-right: none; }
   tr { page-break-inside: avoid; page-break-after: auto; }
   thead { display: table-header-group; }
@@ -291,13 +291,13 @@ const template2 = (order, settings, docType = 'invoice') => {
   .totals-section { display: flex; border-top: 2px solid #1a1a2e; }
   .totals-left { flex: 1.6; padding: 12px 15px; border-right: 1px solid #e8e8e8; }
   .totals-right { flex: 1; }
-  .total-row { display: flex; justify-content: space-between; padding: 4px 12px; font-size: 9px; border-bottom: 1px solid #f5f5f5; }
+  .total-row { display: flex; justify-content: space-between; padding: 4px 12px; font-size: 11px; border-bottom: 1px solid #f5f5f5; }
   .net-total { background: #1a1a2e; color: white; font-weight: bold; font-size: 13px; padding: 7px 12px; display: flex; justify-content: space-between; }
   .footer { padding: 12px 20px; display: flex; justify-content: space-between; border-top: 1px solid #eee; }
   .sig { text-align: center; }
   .sig-label { font-size: 8px; font-weight: bold; color: #666; border-top: 1px solid #1a1a2e; padding-top: 4px; margin-top: 35px; }
-  .words-box { background: #f0f4ff; border-left: 3px solid #1a1a2e; padding: 6px 10px; margin-bottom: 8px; font-size: 8.5px; }
-  .tax-mini { font-size: 7.5px; color: #555; }
+  .words-box { background: #f0f4ff; border-left: 3px solid #1a1a2e; padding: 6px 10px; margin-bottom: 8px; font-size: 11px; }
+  .tax-mini { font-size: 10px; color: #555; }
 </style></head><body>
 <div class="container">
   <div class="header">
@@ -322,12 +322,12 @@ const template2 = (order, settings, docType = 'invoice') => {
     <div class="meta-left">
       <div class="meta-title">Bill To</div>
       <div class="meta-value">${(order.customer?.companyName || order.customer?.name || 'Cash Sales').toUpperCase()}</div>
-      ${order.customer?.name && order.customer?.companyName ? `<div style="font-size:9px;color:#555;margin-top:1px">${order.customer.name}</div>` : ''}
-      ${order.customer?.phone ? `<div style="font-size:8.5px;color:#555;margin-top:2px">📞 ${order.customer.phone}</div>` : ''}
+      ${order.customer?.name && order.customer?.companyName ? `<div style="font-size: 11px;color:#555;margin-top:1px">${order.customer.name}</div>` : ''}
+      ${order.customer?.phone ? `<div style="font-size: 11px;color:#555;margin-top:2px">📞 ${order.customer.phone}</div>` : ''}
       ${order.customer?.gstin ? `<div style="font-size:8px;color:#777">GSTIN: ${order.customer.gstin}</div>` : ''}
-      ${order.siteName ? `<div style="font-size:9px;font-weight:bold;color:#e84393;margin-top:2px">🏗️ ${order.siteName}</div>` : ''}
-      ${order.siteAddress ? `<div style="font-size:8.5px;color:#555;margin-top:1px">📍 ${order.siteAddress}</div>` : ''}
-      ${(() => { const a = order.customer?.address?.billing || {}; const parts = [a.street, a.city, a.state, a.zipCode].filter(Boolean); return parts.length ? `<div style="font-size:8.5px;color:#555;margin-top:2px">${parts.join(', ')}</div>` : ''; })()}
+      ${order.siteName ? `<div style="font-size: 11px;font-weight:bold;color:#e84393;margin-top:2px">🏗️ ${order.siteName}</div>` : ''}
+      ${order.siteAddress ? `<div style="font-size: 11px;color:#555;margin-top:1px">📍 ${order.siteAddress}</div>` : ''}
+      ${(() => { const a = order.customer?.address?.billing || {}; const parts = [a.street, a.city, a.state, a.zipCode].filter(Boolean); return parts.length ? `<div style="font-size: 11px;color:#555;margin-top:2px">${parts.join(', ')}</div>` : ''; })()}
     </div>
     <div class="meta-right">
       <div class="meta-row2"><span style="color:#999">Date:</span><strong>${new Date(docDate).toLocaleDateString()}</strong></div>
@@ -398,10 +398,10 @@ const template2 = (order, settings, docType = 'invoice') => {
   <div class="footer">
     <div class="sig"><div class="sig-label">CUSTOMER SIGNATURE</div></div>
     <div style="text-align:center">
-      ${s.branding?.bankName ? `<div style="font-size:7.5px;color:#888"><b>Bank:</b> ${s.branding.bankName}${s.branding.branchName ? ', ' + s.branding.branchName : ''} | <b>A/C:</b> ${s.branding.accountNumber || ''} | <b>IFSC:</b> ${s.branding.ifscCode || ''}</div>` : ''}
-      ${order.user?.name ? `<div style="font-size:7.5px;color:#888;margin-top:3px"><b>Created By:</b> ${order.user.name}${order.user?.phone ? ' · ' + order.user.phone : ''}</div>` : ''}
+      ${s.branding?.bankName ? `<div style="font-size: 10px;color:#888"><b>Bank:</b> ${s.branding.bankName}${s.branding.branchName ? ', ' + s.branding.branchName : ''} | <b>A/C:</b> ${s.branding.accountNumber || ''} | <b>IFSC:</b> ${s.branding.ifscCode || ''}</div>` : ''}
+      ${order.user?.name ? `<div style="font-size: 10px;color:#888;margin-top:3px"><b>Created By:</b> ${order.user.name}${order.user?.phone ? ' · ' + order.user.phone : ''}</div>` : ''}
     </div>
-    <div class="sig"><div style="font-size:7.5px;color:#777;margin-bottom:0">For ${s.companyName || 'COMPANY'}</div><div class="sig-label">AUTHORISED SIGNATORY</div></div>
+    <div class="sig"><div style="font-size: 10px;color:#777;margin-bottom:0">For ${s.companyName || 'COMPANY'}</div><div class="sig-label">AUTHORISED SIGNATORY</div></div>
   </div>
 </div></body></html>`;
 };
@@ -434,24 +434,24 @@ const template3 = (order, settings, docType = 'invoice') => {
   body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; color: #333; margin: 0; background: #fff; display: flex; justify-content: center; }
   .top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; width: 190mm; }
   .company-name { font-size: 24px; font-weight: 900; color: #111; letter-spacing: -0.5px; }
-  .company-detail { font-size: 8.5px; color: #888; margin-top: 4px; line-height: 1.7; }
+  .company-detail { font-size: 11px; color: #888; margin-top: 4px; line-height: 1.7; }
   .doc-info { text-align: right; }
   .doc-type { font-size: 22px; font-weight: 900; color: #111; }
   .doc-number { font-size: 12px; color: #888; font-weight: 600; }
-  .doc-date { font-size: 9px; color: #aaa; margin-top: 3px; }
+  .doc-date { font-size: 11px; color: #aaa; margin-top: 3px; }
   .divider { height: 2px; background: #111; margin: 12px 0; }
   .thin-divider { height: 1px; background: #eee; margin: 10px 0; }
   .bill-section { display: flex; gap: 30px; margin-bottom: 14px; }
   .bill-to { flex: 1.5; }
   .bill-to-label { font-size: 8px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #bbb; margin-bottom: 4px; }
   .bill-to-name { font-size: 13px; font-weight: 800; color: #111; }
-  .bill-to-detail { font-size: 8.5px; color: #888; margin-top: 2px; }
+  .bill-to-detail { font-size: 11px; color: #888; margin-top: 2px; }
   .bill-meta { flex: 1; }
-  .bill-meta-row { display: flex; justify-content: space-between; font-size: 9px; padding: 2px 0; }
+  .bill-meta-row { display: flex; justify-content: space-between; font-size: 11px; padding: 2px 0; }
   .bill-meta-label { color: #aaa; font-weight: 600; }
   table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
-  th { padding: 7px 6px; font-size: 7.5px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.8px; color: #999; border-bottom: 1px solid #eee; text-align: left; }
-  td { padding: 6px 6px; font-size: 8.5px; color: #333; border-bottom: 1px solid #f5f5f5; vertical-align: top; }
+  th { padding: 7px 6px; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.8px; color: #999; border-bottom: 1px solid #eee; text-align: left; }
+  td { padding: 6px 6px; font-size: 11px; color: #333; border-bottom: 1px solid #f5f5f5; vertical-align: top; }
   tr { page-break-inside: avoid; page-break-after: auto; }
   thead { display: table-header-group; }
   tr:last-child td { border-bottom: none; }
@@ -459,7 +459,7 @@ const template3 = (order, settings, docType = 'invoice') => {
   .totals-section { display: flex; gap: 20px; margin-top: 15px; }
   .totals-left { flex: 1.5; font-size: 8px; color: #888; line-height: 1.7; }
   .totals-right { flex: 1; }
-  .total-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 9px; border-bottom: 1px solid #f5f5f5; }
+  .total-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px; border-bottom: 1px solid #f5f5f5; }
   .total-row .lbl { color: #999; }
   .grand-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px; font-weight: 900; color: #111; border-top: 2px solid #111; margin-top: 4px; }
   .footer { display: flex; justify-content: space-between; margin-top: 30px; align-items: flex-end; }
@@ -494,7 +494,7 @@ const template3 = (order, settings, docType = 'invoice') => {
       ${order.customer?.name && order.customer?.companyName ? `<div class="bill-to-detail" style="font-weight:700">${order.customer.name}</div>` : ''}
       ${order.customer?.phone ? `<div class="bill-to-detail">Tel: ${order.customer.phone}</div>` : ''}
       ${order.customer?.gstin ? `<div class="bill-to-detail">GSTIN: ${order.customer.gstin}</div>` : ''}
-      ${order.siteName ? `<div style="font-size:9px;font-weight:800;color:#555;margin-top:2px">🏗️ ${order.siteName}</div>` : ''}
+      ${order.siteName ? `<div style="font-size: 11px;font-weight:800;color:#555;margin-top:2px">🏗️ ${order.siteName}</div>` : ''}
       ${order.siteAddress ? `<div class="bill-to-detail">📍 ${order.siteAddress}</div>` : ''}
       ${(() => { const a = order.customer?.address?.billing || {}; const parts = [a.street, a.city, a.state, a.zipCode].filter(Boolean); return parts.length ? `<div class="bill-to-detail">${parts.join(', ')}</div>` : ''; })()}
     </div>
@@ -566,10 +566,10 @@ const template3 = (order, settings, docType = 'invoice') => {
   <div class="footer">
     <div class="sig-block"><div class="sig-line">CUSTOMER SIGNATURE</div></div>
     <div style="text-align:center">
-      ${s.branding?.bankName ? `<div style="font-size:7.5px;color:#aaa">Bank: ${s.branding.bankName}${s.branding.branchName ? ', ' + s.branding.branchName : ''}<br/>A/C: ${s.branding.accountNumber || ''} | IFSC: ${s.branding.ifscCode || ''}</div>` : '<div></div>'}
-      ${order.user?.name ? `<div style="font-size:7.5px;color:#999;margin-top:3px"><b>Created By:</b> ${order.user.name}${order.user?.phone ? ' · ' + order.user.phone : ''}</div>` : ''}
+      ${s.branding?.bankName ? `<div style="font-size: 10px;color:#aaa">Bank: ${s.branding.bankName}${s.branding.branchName ? ', ' + s.branding.branchName : ''}<br/>A/C: ${s.branding.accountNumber || ''} | IFSC: ${s.branding.ifscCode || ''}</div>` : '<div></div>'}
+      ${order.user?.name ? `<div style="font-size: 10px;color:#999;margin-top:3px"><b>Created By:</b> ${order.user.name}${order.user?.phone ? ' · ' + order.user.phone : ''}</div>` : ''}
     </div>
-    <div class="sig-block"><div style="font-size:7.5px;color:#aaa">For ${s.companyName || ''}</div><div class="sig-line">AUTHORISED SIGNATORY</div></div>
+    <div class="sig-block"><div style="font-size: 10px;color:#aaa">For ${s.companyName || ''}</div><div class="sig-line">AUTHORISED SIGNATORY</div></div>
   </div>
 </body></html>`;
 };
@@ -606,14 +606,14 @@ const template4 = (order, settings, docType = 'invoice') => {
   .container { border: 1px solid #000; width: 200mm; min-height: 285mm; margin: 0 auto; display: flex; flex-direction: column; }
   .company-header { text-align: center; padding: 6px 5px; border-bottom: 1px solid #000; position: relative; min-height: 70px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
   .company-logo-wrap { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); }
-  .company-header h1 { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: 0.5px; }
-  .company-header .addr { margin: 2px 0; font-size: 9px; font-weight: bold; }
-  .company-header .meta { margin: 2px 0; font-size: 8.5px; }
+  .company-header h1 { margin: 0; font-size: 24px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+  .company-header .addr { margin: 2px 0; font-size: 11px; font-weight: bold; }
+  .company-header .meta { margin: 2px 0; font-size: 11px; }
   .doc-title { text-align: center; font-size: 11px; font-weight: bold; letter-spacing: 3px; padding: 4px; border-bottom: 1px solid #000; }
   .meta-grid { display: grid; grid-template-columns: 1.6fr 1fr; border-bottom: 1px solid #000; }
   .meta-box { padding: 5px 8px; }
   .meta-box:first-child { border-right: 1px solid #000; }
-  .meta-row { display: flex; margin-bottom: 2px; font-size: 9.5px; align-items: flex-start; }
+  .meta-row { display: flex; margin-bottom: 2px; font-size: 11px; align-items: flex-start; }
   .meta-label { min-width: 85px; font-weight: bold; }
   .customer-name { font-size: 12px; font-weight: 900; }
   .customer-addr { font-size: 10px; font-weight: bold; margin-top: 1px; }
@@ -622,18 +622,18 @@ const template4 = (order, settings, docType = 'invoice') => {
   .items-table > table { flex: 1; height: 100%; }
   th, td { padding: 4px 5px; border-right: 1px solid #000; word-wrap: break-word; }
   th:last-child, td:last-child { border-right: none; }
-  th { border-bottom: 1px solid #000; background: #fff; font-weight: bold; text-transform: uppercase; font-size: 9px; text-align: center; }
+  th { border-bottom: 1px solid #000; background: #fff; font-weight: bold; text-transform: uppercase; font-size: 11px; text-align: center; }
   td { vertical-align: top; border-bottom: none; font-weight: bold; font-size: 10px; }
   .filler { height: 100%; }
   .filler td { border-bottom: none; }
   .totals-section { display: flex; border-bottom: 1px solid #000; min-height: 90px; }
   .totals-left { flex: 1.6; padding: 6px 8px; border-right: 1px solid #000; display: flex; flex-direction: column; justify-content: space-between; }
   .totals-right { flex: 1; padding: 5px 8px; }
-  .total-row { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 9.5px; }
+  .total-row { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 11px; }
   .net-total { display: flex; justify-content: space-between; font-size: 13px; font-weight: 900; margin-top: 4px; padding-top: 4px; border-top: 1.5px solid #000; }
   .footer-section { padding: 5px 10px; display: flex; justify-content: space-between; align-items: flex-end; min-height: 40px; }
   .sig { text-align: center; }
-  .sig-line { margin-top: 18px; border-top: 1px solid #000; padding-top: 2px; font-size: 8.5px; font-weight: bold; }
+  .sig-line { margin-top: 18px; border-top: 1px solid #000; padding-top: 2px; font-size: 11px; font-weight: bold; }
   @media print {
     body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .container { width: 100%; border: 1px solid #000; min-height: 280mm; }
@@ -749,7 +749,7 @@ const template4 = (order, settings, docType = 'invoice') => {
   </div>
   <div class="footer-section">
     <div class="sig"><div class="sig-line">CUSTOMER SIGNATURE</div></div>
-    <div class="sig"><div style="font-size:9px;">For ${s.companyName || 'COMPANY'}</div><div class="sig-line">AUTHORISED SIGNATORY</div></div>
+    <div class="sig"><div style="font-size: 11px;">For ${s.companyName || 'COMPANY'}</div><div class="sig-line">AUTHORISED SIGNATORY</div></div>
   </div>
 </div></body></html>`;
 };
@@ -848,9 +848,9 @@ export const printAccountStatement = (customer, entries, summary, period, settin
   .statement-title { text-align: center; font-size: 15px; font-weight: 900; letter-spacing: 4px; background: #1a1a2e; color: #fff; padding: 7px 0; margin-bottom: 10px; }
   .meta { display: flex; justify-content: space-between; margin-bottom: 10px; gap: 8px; }
   .meta-box { background: #f5f7fb; border-radius: 6px; padding: 8px 12px; flex: 1; border-left: 3px solid #1a1a2e; }
-  .meta-label { font-size: 9px; font-weight: 900; text-transform: uppercase; color: #999; margin-bottom: 3px; }
+  .meta-label { font-size: 11px; font-weight: 900; text-transform: uppercase; color: #999; margin-bottom: 3px; }
   .meta-value { font-size: 13px; font-weight: 900; color: #222; }
-  .meta-sub { font-size: 9px; color: #666; margin-top: 2px; font-weight: normal; }
+  .meta-sub { font-size: 11px; color: #666; margin-top: 2px; font-weight: normal; }
   table { width: 100%; border-collapse: collapse; margin-top: 6px; }
   th { background: #1a1a2e; color: #fff; padding: 8px 7px; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; }
   td { padding: 6px 7px; font-size: 11px; font-weight: bold; border-bottom: 1px solid #eee; vertical-align: middle; }
@@ -1215,7 +1215,7 @@ export const printShippingLabels = (dispatch, fullOrder, settings) => {
   .from-section {
     padding: 8px;
     border-bottom: 2px solid #000;
-    font-size: 9px;
+    font-size: 11px;
     line-height: 1.3;
   }
   .from-section strong { font-size: 11px; }
@@ -1306,7 +1306,7 @@ export const printShippingLabels = (dispatch, fullOrder, settings) => {
   th {
     text-align: left;
     border-bottom: 2px solid #000;
-    font-size: 9px;
+    font-size: 11px;
     padding: 2px 4px;
     text-transform: uppercase;
   }
@@ -1426,7 +1426,7 @@ export const printReturnSlip = (returnTx, settings) => {
         </tr>`;
     }).join('');
 
-    const taxAnalysisHtml = `<table style="width:90%; text-align:center; border:none; font-size:9.5px; margin-bottom:15px">
+    const taxAnalysisHtml = `<table style="width:90%; text-align:center; border:none; font-size: 11px; margin-bottom:15px">
         <thead><tr><th style="border:none;border-bottom:1px solid #000;text-align:left">Taxable Value</th><th style="border:none;border-bottom:1px solid #000">CGST%</th><th style="border:none;border-bottom:1px solid #000;text-align:right">AMT</th><th style="border:none;border-bottom:1px solid #000">SGST%</th><th style="border:none;border-bottom:1px solid #000;text-align:right">AMT</th><th style="border:none;border-bottom:1px solid #000">NET%</th><th style="border:none;border-bottom:1px solid #000;text-align:right">AMT</th></tr></thead>
         <tbody><tr>
           <td style="border:none;text-align:left">${formatIndianNumber(itemsTotal, 2)}</td>
@@ -1443,28 +1443,28 @@ export const printReturnSlip = (returnTx, settings) => {
 <style>
   @page { size: A4 portrait; margin: 5mm; }
   * { box-sizing: border-box; }
-  body { font-family: 'Arial', sans-serif; font-size: 9.5px; color: #000; margin: 0; background: #fff; }
+  body { font-family: 'Arial', sans-serif; font-size: 11px; color: #000; margin: 0; background: #fff; }
   .container { border: 1.5px solid #000; width: 200mm; min-height: 285mm; margin: 0 auto; display: flex; flex-direction: column; }
   /* Header */
   .company-header { text-align: center; padding: 6px 5px; border-bottom: 1.5px solid #000; position: relative; min-height: 70px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-  .company-header .contact-info { position: absolute; top: 6px; right: 8px; font-size: 7.5px; font-weight: bold; text-align: right; }
-  .company-header h1 { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: 0.5px; }
-  .company-header p { margin: 1px 0; font-size: 8.5px; font-weight: bold; }
+  .company-header .contact-info { position: absolute; top: 6px; right: 8px; font-size: 10px; font-weight: bold; text-align: right; }
+  .company-header h1 { margin: 0; font-size: 24px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+  .company-header p { margin: 1px 0; font-size: 11px; font-weight: bold; }
   /* Doc title */
   .doc-title { text-align: center; font-size: 11px; font-weight: bold; letter-spacing: 3px; padding: 4px; border-bottom: 1.5px solid #000; text-transform: uppercase; }
   /* Meta grid */
   .meta-grid { display: grid; grid-template-columns: 1.6fr 1fr; border-bottom: 1.5px solid #000; }
   .meta-box { padding: 5px 8px; }
   .meta-box:first-child { border-right: 1.5px solid #000; }
-  .meta-row { display: flex; margin-bottom: 2px; font-size: 9px; align-items: flex-start; }
+  .meta-row { display: flex; margin-bottom: 2px; font-size: 11px; align-items: flex-start; }
   .meta-label { min-width: 95px; font-weight: bold; }
   /* Items table */
   .items-table { flex: 1; display: flex; flex-direction: column; }
   table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
   .items-table > table { flex: 1; height: 100%; min-height: 150mm; border-bottom: 1.5px solid #000; }
-  th, td { padding: 4px 5px; font-size: 9.5px; border-right: 1.5px solid #000; }
+  th, td { padding: 4px 5px; font-size: 11px; border-right: 1.5px solid #000; }
   th:last-child, td:last-child { border-right: none; }
-  th { border-bottom: 1.5px solid #000; font-weight: bold; font-size: 9px; text-align: center; }
+  th { border-bottom: 1.5px solid #000; font-weight: bold; font-size: 11px; text-align: center; }
   td { vertical-align: top; border-bottom: none; }
   .filler td { height: auto; border-bottom: none; }
   tr.filler { height: 100%; }
@@ -1475,8 +1475,8 @@ export const printReturnSlip = (returnTx, settings) => {
   .math-right { flex: 1; padding: 6px 15px; display:flex; flex-direction:column; justify-content:flex-end; font-size:10px; font-weight:bold; }
   .math-row { display: flex; justify-content: space-between; margin-bottom:6px; }
   /* Footer */
-  .words-bar { padding: 5px 8px; border-bottom: 1.5px solid #000; font-weight: bold; font-size: 9px; }
-  .footer { padding: 8px 10px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; margin-top: auto; }
+  .words-bar { padding: 5px 8px; border-bottom: 1.5px solid #000; font-weight: bold; font-size: 11px; }
+  .footer { padding: 8px 10px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 11px; margin-top: auto; }
 </style></head><body>
 <div class="container">
   <div class="company-header">
@@ -1554,7 +1554,7 @@ export const printReturnSlip = (returnTx, settings) => {
 
   <div class="footer">
     <div style="font-size:8px; width:50%">
-      ${returnTx.notes ? `<div style="font-size:9px; margin-bottom: 5px;"><b>Notes:</b> ${returnTx.notes}</div>` : ''}
+      ${returnTx.notes ? `<div style="font-size: 11px; margin-bottom: 5px;"><b>Notes:</b> ${returnTx.notes}</div>` : ''}
     </div>
     <div style="text-align:right; width:50%">
       <div style="font-weight:bold;font-size:10px;margin-bottom:30px">For ${s.companyName || 'COMPANY'}</div>
@@ -1654,7 +1654,7 @@ export const generatePurchaseOrderHtml = (order, settings) => {
     const basePct = taxAmount > 0 ? (taxAmount / itemsTotal * 100) : 0;
     
     const taxAnalysisHtml = isInterState
-        ? `<table style="width:70%; text-align:center; border:none; font-size:9.5px; margin-bottom:15px">
+        ? `<table style="width:70%; text-align:center; border:none; font-size: 11px; margin-bottom:15px">
             <thead><tr><th style="border:none;border-bottom:1px solid #000;text-align:left">Taxable Value</th><th style="border:none;border-bottom:1px solid #000">IGST%</th><th style="border:none;border-bottom:1px solid #000;text-align:right">AMT</th></tr></thead>
             <tbody><tr>
               <td style="border:none;text-align:left">${formatIndianNumber(itemsTotal, 2)}</td>
@@ -1662,7 +1662,7 @@ export const generatePurchaseOrderHtml = (order, settings) => {
               <td style="border:none;text-align:right">${formatIndianNumber(taxAmount, 2)}</td>
             </tr></tbody>
            </table>`
-        : `<table style="width:90%; text-align:center; border:none; font-size:9.5px; margin-bottom:15px">
+        : `<table style="width:90%; text-align:center; border:none; font-size: 11px; margin-bottom:15px">
             <thead><tr><th style="border:none;border-bottom:1px solid #000;text-align:left">Taxable Value</th><th style="border:none;border-bottom:1px solid #000">CGST%</th><th style="border:none;border-bottom:1px solid #000;text-align:right">AMT</th><th style="border:none;border-bottom:1px solid #000">SGST%</th><th style="border:none;border-bottom:1px solid #000;text-align:right">AMT</th><th style="border:none;border-bottom:1px solid #000">NET%</th><th style="border:none;border-bottom:1px solid #000;text-align:right">AMT</th></tr></thead>
             <tbody><tr>
               <td style="border:none;text-align:left">${formatIndianNumber(itemsTotal, 2)}</td>
@@ -1679,28 +1679,28 @@ export const generatePurchaseOrderHtml = (order, settings) => {
 <style>
   @page { size: A4 portrait; margin: 5mm; }
   * { box-sizing: border-box; }
-  body { font-family: 'Arial', sans-serif; font-size: 9.5px; color: #000; margin: 0; background: #fff; }
+  body { font-family: 'Arial', sans-serif; font-size: 11px; color: #000; margin: 0; background: #fff; }
   .container { border: 1.5px solid #000; width: 200mm; min-height: 285mm; margin: 0 auto; display: flex; flex-direction: column; }
   /* Header */
   .company-header { text-align: center; padding: 6px 5px; border-bottom: 1.5px solid #000; position: relative; min-height: 70px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-  .company-header .contact-info { position: absolute; top: 6px; right: 8px; font-size: 7.5px; font-weight: bold; text-align: right; }
-  .company-header h1 { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: 0.5px; }
-  .company-header p { margin: 1px 0; font-size: 8.5px; font-weight: bold; }
+  .company-header .contact-info { position: absolute; top: 6px; right: 8px; font-size: 10px; font-weight: bold; text-align: right; }
+  .company-header h1 { margin: 0; font-size: 24px; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase; }
+  .company-header p { margin: 1px 0; font-size: 11px; font-weight: bold; }
   /* Doc title */
-  .doc-title { text-align: center; font-size: 11px; font-weight: bold; letter-spacing: 1px; padding: 4px; border-bottom: 1.5px solid #000; }
+  .doc-title { text-align: center; font-size: 14px; font-weight: bold; letter-spacing: 1px; padding: 4px; border-bottom: 1.5px solid #000; text-transform: uppercase; }
   /* Meta grid */
   .meta-grid { display: grid; grid-template-columns: 1.6fr 1fr; border-bottom: 1.5px solid #000; }
   .meta-box { padding: 5px 8px; }
   .meta-box:first-child { border-right: 1.5px solid #000; }
-  .meta-row { display: flex; margin-bottom: 2px; font-size: 9px; align-items: flex-start; }
+  .meta-row { display: flex; margin-bottom: 2px; font-size: 11px; align-items: flex-start; }
   .meta-label { min-width: 95px; font-weight: bold; }
   /* Items table */
   .items-table { flex: 1; display: flex; flex-direction: column; }
   table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
   .items-table > table { flex: 1; height: 100%; min-height: 150mm; border-bottom: 1.5px solid #000; }
-  th, td { padding: 4px 5px; font-size: 9.5px; border-right: 1.5px solid #000; }
+  th, td { padding: 4px 5px; font-size: 11px; border-right: 1.5px solid #000; font-weight: bold; }
   th:last-child, td:last-child { border-right: none; }
-  th { border-bottom: 1.5px solid #000; font-weight: bold; font-size: 9px; text-align: center; }
+  th { border-bottom: 1.5px solid #000; font-weight: 900; font-size: 11px; text-align: center; }
   td { vertical-align: top; border-bottom: none; }
   .filler td { height: auto; border-bottom: none; }
   tr.filler { height: 100%; }
@@ -1708,11 +1708,11 @@ export const generatePurchaseOrderHtml = (order, settings) => {
   /* Math section */
   .math-section { display: flex; border-bottom: 1.5px solid #000; min-height: 60px; }
   .math-left { flex: 1.5; padding: 6px 8px; border-right: 1.5px solid #000; display:flex; flex-direction:column; justify-content:space-between;}
-  .math-right { flex: 1; padding: 6px 15px; display:flex; flex-direction:column; justify-content:flex-end; font-size:10px; font-weight:bold; }
+  .math-right { flex: 1; padding: 6px 15px; display:flex; flex-direction:column; justify-content:flex-end; font-size:12px; font-weight:900; }
   .math-row { display: flex; justify-content: space-between; margin-bottom:6px; }
   /* Footer */
-  .words-bar { padding: 5px 8px; border-bottom: 1.5px solid #000; font-weight: bold; font-size: 9px; }
-  .footer { padding: 8px 10px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; margin-top: auto; }
+  .words-bar { padding: 5px 8px; border-bottom: 1.5px solid #000; font-weight: 900; font-size: 11px; }
+  .footer { padding: 8px 10px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 11px; margin-top: auto; font-weight: bold; }
 </style></head><body>
 <div class="container">
 
@@ -1847,7 +1847,7 @@ export const printPaymentReceipt = (entry, entity, settings, type = 'customer') 
   .row { display: flex; margin-bottom: 15px; }
   .label { width: 150px; font-weight: bold; color: #555; }
   .value { flex: 1; border-bottom: 1px dashed #999; padding-bottom: 2px; font-weight: bold; color: #222; font-size: 15px; }
-  .amount-box { border: 2px solid #222; background: #f9f9f9; padding: 10px 20px; font-size: 20px; font-weight: 900; display: inline-block; margin-top: 10px; border-radius: 4px; }
+  .amount-box { border: 2px solid #222; background: #f9f9f9; padding: 10px 20px; font-size: 24px; font-weight: 900; text-transform: uppercase; display: inline-block; margin-top: 10px; border-radius: 4px; }
   .footer { display: flex; justify-content: space-between; margin-top: 40px; align-items: flex-end; }
   .signature { text-align: center; width: 200px; }
   .signature-line { border-bottom: 1px solid #222; margin-bottom: 5px; }
