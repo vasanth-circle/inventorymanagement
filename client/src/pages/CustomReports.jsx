@@ -277,27 +277,39 @@ const buildOSSHtml = ({ entityType, summaries, from, to, settings }) => {
 <td>${escHtml(r.phone)}</td>
 </tr>`).join('');
 
+    // Build company header lines from settings
+    const addr   = settings?.address   || '';
+    const phone1 = settings?.phone1    || '';
+    const phone2 = settings?.phone2    || '';
+    const gst    = settings?.gstNumber || '';
+    const phones  = [phone1, phone2].filter(Boolean).join(' / ');
+    const addrLine = [addr, phones].filter(Boolean).join('  |  ');
+    const gstLine  = gst ? `GST No: ${gst}` : '';
+
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Outstanding Summary - ${title}</title>
 <style>
 ${A4}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:Arial,sans-serif;font-size:10.5px;color:#000;padding:5mm}
-.hdr{text-align:center;font-size:14px;font-weight:bold;margin-bottom:1px}
-.sub{text-align:center;font-size:10px;margin-bottom:5px}
-table{width:100%;border-collapse:collapse;table-layout:fixed;border:1px solid #888}
-th{border:1px solid #888;padding:4px 5px;font-size:10px;font-weight:bold;
-   background:#ddd;text-align:left;white-space:nowrap}
+body{font-family:Arial,sans-serif;font-size:13px;color:#000;padding:5mm}
+.co-name{text-align:center;font-size:22px;font-weight:900;letter-spacing:0.5px;margin-bottom:2px;text-transform:uppercase}
+.co-addr{text-align:center;font-size:11px;color:#111;margin-bottom:1px}
+.co-gst{text-align:center;font-size:11px;color:#111;margin-bottom:4px}
+.rpt-title{text-align:center;font-size:14px;font-weight:bold;border-top:2px solid #000;border-bottom:2px solid #000;padding:3px 0;margin-bottom:5px}
+table{width:100%;border-collapse:collapse;table-layout:fixed;border:1.5px solid #000}
+th{border:1.5px solid #000;padding:5px 6px;font-size:13px;font-weight:bold;
+   background:#d8d8d8;text-align:left;white-space:nowrap}
 th.r{text-align:right}
-td{border:1px solid #ccc;padding:3px 5px;font-size:10px;overflow:hidden}
+td{border:1px solid #444;padding:3px 6px;font-size:13px;font-weight:bold;color:#000;overflow:hidden}
 td.r{text-align:right;white-space:nowrap}
-
-.sec td{font-weight:bold;background:#e8e8e8!important;border-color:#888}
-.tot td{font-weight:bold;background:#ddd!important;border:1px solid #888;font-size:11px}
+.sec td{font-weight:900;background:#bbb!important;border:1.5px solid #000;font-size:14px}
+.tot td{font-weight:900;background:#c8c8c8!important;border:1.5px solid #000;font-size:14px}
 </style></head><body>
-<div class="hdr">${escHtml(company)}</div>
-<div class="sub">${title} &nbsp;|&nbsp; Date: ${period}</div>
+<div class="co-name">${escHtml(company)}</div>
+${addrLine ? `<div class="co-addr">${escHtml(addrLine)}</div>` : ''}
+${gstLine  ? `<div class="co-gst">${escHtml(gstLine)}</div>`   : ''}
+<div class="rpt-title">${title} &nbsp;&nbsp; Date : ${period}</div>
 <table>
-<colgroup><col/><col style="width:95px"/><col style="width:95px"/><col style="width:95px"/><col style="width:110px"/></colgroup>
+<colgroup><col/><col style="width:100px"/><col style="width:100px"/><col style="width:100px"/><col style="width:115px"/></colgroup>
 <thead><tr>
 <th>Particulars</th><th class="r">Debit</th><th class="r">Credit</th><th class="r">Closing</th><th>Cell</th>
 </tr></thead>
@@ -308,7 +320,7 @@ ${rows}
 <td></td>
 <td class="r">${fmt(grandDr)}</td>
 <td class="r">${fmt(grandCr)}</td>
-<td class="r">${fmt(Math.abs(grandBal))}</td>
+<td class="r">${grandBal < 0 ? '-' : ''}${fmt(Math.abs(grandBal))}</td>
 <td></td>
 </tr>
 </tbody>
@@ -1144,7 +1156,7 @@ const CustomReports = () => {
     const [settings, setSettings] = useState(null);
 
     useEffect(() => {
-        api('/settings').then(r => setSettings(r.data.data)).catch(() => {});
+        api('/settings/billing').then(r => setSettings(r.data.data)).catch(() => {});
     }, []);
 
     return (
