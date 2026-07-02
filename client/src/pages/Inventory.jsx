@@ -626,7 +626,7 @@ const Inventory = () => {
                                                 <div className="flex items-end justify-between">
                                                     <div>
                                                         <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Current Stock</div>
-                                                        <div className="text-xl font-black text-gray-900">{item.quantity} <span className="text-[10px] font-bold text-gray-400">PCS</span></div>
+                                                        <div className="text-xl font-black text-gray-900">{item.quantity} <span className="text-[10px] font-bold text-gray-400">{item.unitType?.toUpperCase() || (billingSettings?.industry === 'tiles' ? 'BOX' : 'PCS')}</span></div>
                                                     </div>
                                                     <div className="text-right">
                                                         <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Price</div>
