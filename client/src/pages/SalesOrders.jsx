@@ -527,7 +527,7 @@ const SalesOrders = () => {
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Customer</th>
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Date</th>
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Created By</th>
-                                    <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Net Amount</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Total Amount</th>
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Status</th>
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase text-right">Actions</th>
                                 </tr>
@@ -542,7 +542,7 @@ const SalesOrders = () => {
                                         <td className="px-6 py-4 text-gray-900 font-medium">{order.customer?.companyName || order.customer?.name}</td>
                                         <td className="px-6 py-4 text-gray-600 text-sm">{new Date(order.orderDate).toLocaleDateString()}</td>
                                         <td className="px-6 py-4 text-sm font-semibold text-gray-600">{order.user?.name || 'System'}</td>
-                                        <td className="px-6 py-4 font-bold text-gray-900">₹{order.totalAmount?.toLocaleString() || 0}</td>
+                                        <td className="px-6 py-4 font-bold text-gray-900">₹{((order.totalAmount || 0) + (order.advanceAmount || 0)).toLocaleString()}</td>
                                         <td className="px-6 py-4">
                                             <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${getStatusColor(order.status)}`}>
                                                 {order.status.replace('_', ' ')}
@@ -623,8 +623,8 @@ const SalesOrders = () => {
                                     {/* Amount row */}
                                     <div className="flex justify-between items-center mb-3">
                                         <div className="flex flex-col">
-                                            <span className="text-[9px] font-black text-primary-300 uppercase tracking-tighter">Amount Due</span>
-                                            <span className="text-xl font-black text-white">₹{order.totalAmount?.toLocaleString() || 0}</span>
+                                            <span className="text-[9px] font-black text-primary-300 uppercase tracking-tighter">Total Amount</span>
+                                            <span className="text-xl font-black text-white">₹{((order.totalAmount || 0) + (order.advanceAmount || 0)).toLocaleString()}</span>
                                         </div>
                                         {/* Print button always visible */}
                                         <button onClick={() => handlePrint(order)} className="w-9 h-9 bg-primary-800 hover:bg-primary-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors flex-shrink-0" title="Print/PDF Bill">📄</button>
@@ -740,7 +740,7 @@ const SalesOrders = () => {
                                     <div>
                                         <p className="text-[10px] font-black text-primary-600 uppercase tracking-widest">{order.orderNumber}</p>
                                         <h3 className="text-base font-extrabold text-gray-900">{order.customer?.companyName || order.customer?.name}</h3>
-                                        <p className="text-xs text-gray-500 mt-0.5">₹{(order.totalAmount || 0).toLocaleString('en-IN')} · {docLabel}</p>
+                                        <p className="text-xs text-gray-500 mt-0.5">₹{((order.totalAmount || 0) + (order.advanceAmount || 0)).toLocaleString('en-IN')} · {docLabel}</p>
                                     </div>
                                     <button onClick={() => setShareMenuOrder(null)} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200">✕</button>
                                 </div>
