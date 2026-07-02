@@ -17,7 +17,7 @@ const BulkImport = () => {
     const [mapping, setMapping] = useState({});
     const [loading, setLoading] = useState(false);
     const [mode, setMode] = useState('template'); // 'template' or 'mapping'
-    const [importType, setImportType] = useState('full'); // 'full' or 'stock'
+    const [importType, setImportType] = useState('full'); // 'full', 'stock', or 'fields'
     const [updateMode, setUpdateMode] = useState('add'); // 'add' or 'overwrite'
     const [resetStock, setResetStock] = useState(false); // force qty=0 on overwrite when no qty column
 
@@ -28,6 +28,7 @@ const BulkImport = () => {
         { key: 'category', label: 'Category', required: false, synonyms: ['category', 'type', 'group'] },
         { key: 'brand', label: 'Brand', required: false, synonyms: ['brand', 'make', 'manufacturer'] },
         { key: 'size', label: 'Size', required: false, synonyms: ['size', 'dimension'] },
+        { key: 'finish', label: 'Finish', required: false, synonyms: ['finish', 'surface finish', 'texture', 'surface'] },
         { key: 'quantity', label: 'Quantity (Stock)', required: false, synonyms: ['qty', 'quantity', 'stock qty', 'opening stock', 'stock quantity', 'available stock'] },
         { key: 'sqFtPerPc', label: 'SQFT / Tile (per pc)', required: false, synonyms: ['sqft/tile', 'sqft/pc', 'sqfttile', 'sqft per tile'] },
         { key: 'sqFtPerBox', label: 'SQFT / Box', required: false, synonyms: ['sqft/box', 'sqftbox', 'sqft per box'] },
@@ -178,21 +179,29 @@ const BulkImport = () => {
                     <div className="flex bg-gray-100 p-1 rounded-xl">
                         <button
                             onClick={() => setImportType('full')}
-                            className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all ${importType === 'full' ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-bold transition-all ${importType === 'full' ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                         >
                             Full Item Master
                         </button>
                         <button
                             onClick={() => setImportType('stock')}
-                            className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all ${importType === 'stock' ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-bold transition-all ${importType === 'stock' ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                         >
-                            Stock Only Update
+                            Stock Only
+                        </button>
+                        <button
+                            onClick={() => setImportType('fields')}
+                            className={`flex-1 py-2 px-3 rounded-lg text-sm font-bold transition-all ${importType === 'fields' ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Fields Only
                         </button>
                     </div>
                     <p className="text-[10px] text-gray-400 mt-3 italic px-1">
                         {importType === 'full' 
                             ? 'Creates new items or updates all fields of existing items.' 
-                            : 'Optimized for fast stock updates. Only name and quantity are required.'}
+                            : importType === 'stock'
+                            ? 'Optimized for fast stock updates. Only name and quantity are required.'
+                            : '⚠️ Updates metadata fields only (Finish, Brand, Size, Price…). Stock is NEVER changed, even if Quantity is in your file.'}
                     </p>
                 </div>
 
@@ -201,25 +210,39 @@ const BulkImport = () => {
                         <span className="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xs">B</span>
                         Update Logic
                     </h3>
-                    <div className="flex bg-gray-100 p-1 rounded-xl">
-                        <button
-                            onClick={() => setUpdateMode('add')}
-                            className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all ${updateMode === 'add' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                        >
-                            Add to Current
-                        </button>
-                        <button
-                            onClick={() => setUpdateMode('overwrite')}
-                            className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all ${updateMode === 'overwrite' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                        >
-                            Overwrite Current
-                        </button>
-                    </div>
-                    <p className="text-[10px] text-gray-400 mt-3 italic px-1">
-                        {updateMode === 'add' 
-                            ? 'New quantities will be ADDED to whatever you currently have in stock.' 
-                            : 'Current stock levels will be COMPLETELY REPLACED by the values in your file.'}
-                    </p>
+                    {importType === 'fields' ? (
+                        <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                            <span className="text-blue-500 text-lg flex-shrink-0">🔒</span>
+                            <div>
+                                <p className="text-sm font-black text-blue-800">Stock Locked — No Changes</p>
+                                <p className="text-[11px] text-blue-600 mt-0.5">
+                                    Fields Only mode never modifies stock quantities. Only metadata (Finish, Brand, Size, Price, etc.) will be updated on matching items.
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="flex bg-gray-100 p-1 rounded-xl">
+                                <button
+                                    onClick={() => setUpdateMode('add')}
+                                    className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all ${updateMode === 'add' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    Add to Current
+                                </button>
+                                <button
+                                    onClick={() => setUpdateMode('overwrite')}
+                                    className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all ${updateMode === 'overwrite' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    Overwrite Current
+                                </button>
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-3 italic px-1">
+                                {updateMode === 'add' 
+                                    ? 'New quantities will be ADDED to whatever you currently have in stock.' 
+                                    : 'Current stock levels will be COMPLETELY REPLACED by the values in your file.'}
+                            </p>
+                        </>
+                    )}
                 </div>
             </div>
 

@@ -3,6 +3,7 @@ import Item from '../models/Item.js';
 import Category from '../models/Category.js';
 import Brand from '../models/Brand.js';
 import Size from '../models/Size.js';
+import Finish from '../models/Finish.js';
 import Transaction from '../models/Transaction.js';
 import Location from '../models/Location.js';
 import HSN from '../models/HSN.js';
@@ -404,6 +405,7 @@ export const importBulkMapped = async (req, res, next) => {
 
         const options = JSON.parse(req.body.options || '{}');
         const updateMode = options.updateMode || 'add'; // 'add' or 'overwrite'
+        const importType = options.importType || 'full'; // 'full', 'stock', or 'fields'
         const resetStock = options.resetStock === true; // force qty=0 on overwrite even if no qty column
         const mapping = JSON.parse(req.body.mapping || '{}');
         const headerRowIdx = parseInt(req.body.headerRowIdx || '0', 10);
@@ -430,7 +432,7 @@ export const importBulkMapped = async (req, res, next) => {
             return colIdx >= 0 ? row[colIdx] : undefined;
         };
 
-        const results = { success: [], failed: [], updated: [] };
+        const results = { success: [], failed: [], updated: [], skipped: [] };
 
 
         // ─── In-memory caches (per import batch) ───────────────────────────
@@ -497,6 +499,21 @@ export const importBulkMapped = async (req, res, next) => {
             }
             hsnCache[key] = true;
         };
+
+        // Helper: resolve or create a Finish (cached)
+        const finishCache = {};
+        const resolveFinish = async (finishName) => {
+            const key = finishName.toLowerCase().trim();
+            if (finishCache[key] !== undefined) return;
+            const existing = await Finish.findOne({
+                name: { $regex: new RegExp(`^${finishName}$`, 'i') },
+                ...tenantQuery(req)
+            });
+            if (!existing) {
+                await Finish.create({ name: finishName, tenantId: req.tenantId });
+            }
+            finishCache[key] = true;
+        };
         // ───────────────────────────────────────────────────────────────────
 
         for (const row of dataRows) {
@@ -512,6 +529,7 @@ export const importBulkMapped = async (req, res, next) => {
                     category: mapping.category ? String(getCell(row, mapping.category) || '').trim() : '',
                     brand: mapping.brand ? String(getCell(row, mapping.brand) || '').trim() : '',
                     size: mapping.size ? String(getCell(row, mapping.size) || '').trim() : '',
+                    finish: mapping.finish ? String(getCell(row, mapping.finish) || '').trim() : '',
                     hsn: mapping.hsn ? String(getCell(row, mapping.hsn) || '').trim() : '',
                     quantity: parseFloat(getCell(row, mapping.quantity)) || 0,
                     price: parseFloat(getCell(row, mapping.price)) || 0,
@@ -551,6 +569,10 @@ export const importBulkMapped = async (req, res, next) => {
                 let hsnCode = itemData.hsn || '';
                 if (hsnCode) await resolveHsn(hsnCode);
 
+                // --- Resolve / auto-create Finish (uses cache) ---
+                let finishName = itemData.finish || '';
+                if (finishName) await resolveFinish(finishName);
+
                 // --- Check for existing item by SKU or name ---
                 let item = null;
                 if (itemData.sku) {
@@ -566,45 +588,51 @@ export const importBulkMapped = async (req, res, next) => {
 
                 if (item) {
                     // --- Update existing item ---
-                    if (hasQuantityMapping && stockQty !== null) {
-                        // User mapped a quantity column — apply it
-                        const previousQuantity = item.quantity;
-                        if (updateMode === 'overwrite') {
-                            item.quantity = stockQty;
-                        } else {
-                            item.quantity += stockQty;
-                        }
-                        await item.save();
-                        if (stockQty > 0) {
+                    const fieldsOnly = importType === 'fields';
+
+                    if (!fieldsOnly) {
+                        // Stock logic — only runs in 'full' or 'stock' import types
+                        if (hasQuantityMapping && stockQty !== null) {
+                            // User mapped a quantity column — apply it
+                            const previousQuantity = item.quantity;
+                            if (updateMode === 'overwrite') {
+                                item.quantity = stockQty;
+                            } else {
+                                item.quantity += stockQty;
+                            }
+                            await item.save();
+                            if (stockQty > 0) {
+                                await Transaction.create({
+                                    item: item._id,
+                                    type: 'inward',
+                                    quantity: stockQty,
+                                    previousQuantity,
+                                    newQuantity: item.quantity,
+                                    reason: 'Bulk Mapping Import',
+                                    location: itemData.location || item.location,
+                                    user: req.user._id,
+                                    ...tenantQuery(req)
+                                });
+                            }
+                        } else if (!hasQuantityMapping && updateMode === 'overwrite' && resetStock && item.quantity > 0) {
+                            // No quantity column mapped, but user explicitly asked to reset stock to 0
+                            const previousQuantity = item.quantity;
+                            item.quantity = 0;
+                            await item.save();
                             await Transaction.create({
                                 item: item._id,
-                                type: 'inward',
-                                quantity: stockQty,
+                                type: 'adjustment',
+                                quantity: previousQuantity,
                                 previousQuantity,
-                                newQuantity: item.quantity,
-                                reason: 'Bulk Mapping Import',
+                                newQuantity: 0,
+                                reason: 'Stock Reset via Bulk Import (Overwrite)',
                                 location: itemData.location || item.location,
                                 user: req.user._id,
                                 ...tenantQuery(req)
                             });
                         }
-                    } else if (!hasQuantityMapping && updateMode === 'overwrite' && resetStock && item.quantity > 0) {
-                        // No quantity column mapped, but user explicitly asked to reset stock to 0
-                        const previousQuantity = item.quantity;
-                        item.quantity = 0;
-                        await item.save();
-                        await Transaction.create({
-                            item: item._id,
-                            type: 'adjustment',
-                            quantity: previousQuantity,
-                            previousQuantity,
-                            newQuantity: 0,
-                            reason: 'Stock Reset via Bulk Import (Overwrite)',
-                            location: itemData.location || item.location,
-                            user: req.user._id,
-                            ...tenantQuery(req)
-                        });
                     }
+                    // (If fieldsOnly === true, stock is never touched)
 
                     // Always update item master fields (no stock touched)
                     if (itemData.price) item.price = itemData.price;
@@ -616,6 +644,12 @@ export const importBulkMapped = async (req, res, next) => {
                     if (brandName) item.brand = brandName;
                     if (sizeName) item.size = sizeName;
                     if (hsnCode) item.hsn = hsnCode;
+                    if (finishName) {
+                        // finish is stored as a customFields entry (same pattern as Inventory form)
+                        const existingCustomFields = item.customFields ? Object.fromEntries(item.customFields) : {};
+                        existingCustomFields.finish = finishName;
+                        item.customFields = existingCustomFields;
+                    }
                     if (itemData.sqFtPerPc > 0) item.sqFtPerPc = itemData.sqFtPerPc;
                     if (itemData.sqFtPerBox > 0) item.sqFtPerBox = itemData.sqFtPerBox;
                     if (itemData.pcsPerBox !== null) item.pcsPerBox = itemData.pcsPerBox;
@@ -626,49 +660,59 @@ export const importBulkMapped = async (req, res, next) => {
 
                     results.updated.push({ name: item.name, sku: item.sku });
                 } else {
-                    // --- Create new item (mirrors item create controller) ---
-                    const fallbackCategory = await resolveCategory('Uncategorized');
-                    const newItemPayload = {
-                        name: itemData.name,
-                        category: categoryId || fallbackCategory._id,
-                        quantity: hasQuantityMapping ? (stockQty || 0) : 0, // 0 if no qty column
-                        price: itemData.price,
-                        minStockThreshold: itemData.minStockThreshold,
-                        pcsPerBox: itemData.pcsPerBox !== null ? itemData.pcsPerBox : 1,
-                        sqFtPerPc: itemData.sqFtPerPc,
-                        sqFtPerBox: itemData.sqFtPerBox,
-                        unitType: itemData.unitType !== null ? itemData.unitType : 'box',
-                        tenantId: req.tenantId,
-                    };
+                    // Item not found
+                    if (importType === 'fields') {
+                        // Fields Only mode: skip new item creation — just log it
+                        results.skipped.push({ name: itemData.name, reason: 'Item not found in inventory' });
+                    } else {
+                        // --- Create new item (mirrors item create controller) ---
+                        const fallbackCategory = await resolveCategory('Uncategorized');
+                        const newItemPayload = {
+                            name: itemData.name,
+                            category: categoryId || fallbackCategory._id,
+                            quantity: hasQuantityMapping ? (stockQty || 0) : 0, // 0 if no qty column
+                            price: itemData.price,
+                            minStockThreshold: itemData.minStockThreshold,
+                            pcsPerBox: itemData.pcsPerBox !== null ? itemData.pcsPerBox : 1,
+                            sqFtPerPc: itemData.sqFtPerPc,
+                            sqFtPerBox: itemData.sqFtPerBox,
+                            unitType: itemData.unitType !== null ? itemData.unitType : 'box',
+                            tenantId: req.tenantId,
+                        };
 
-                    if (itemData.sku) newItemPayload.sku = itemData.sku;
-                    if (itemData.barcode) newItemPayload.barcode = itemData.barcode;
-                    if (itemData.partNumber) newItemPayload.partNumber = itemData.partNumber;
-                    if (itemData.purchasePrice) newItemPayload.purchasePrice = itemData.purchasePrice;
-                    if (itemData.location) newItemPayload.location = itemData.location;
-                    if (itemData.description) newItemPayload.description = itemData.description;
-                    if (brandName) newItemPayload.brand = brandName;
-                    if (sizeName) newItemPayload.size = sizeName;
-                    if (itemData.hsn) newItemPayload.hsn = itemData.hsn;
+                        if (itemData.sku) newItemPayload.sku = itemData.sku;
+                        if (itemData.barcode) newItemPayload.barcode = itemData.barcode;
+                        if (itemData.partNumber) newItemPayload.partNumber = itemData.partNumber;
+                        if (itemData.purchasePrice) newItemPayload.purchasePrice = itemData.purchasePrice;
+                        if (itemData.location) newItemPayload.location = itemData.location;
+                        if (itemData.description) newItemPayload.description = itemData.description;
+                        if (brandName) newItemPayload.brand = brandName;
+                        if (sizeName) newItemPayload.size = sizeName;
+                        if (itemData.hsn) newItemPayload.hsn = itemData.hsn;
+                        if (finishName) {
+                            // finish is stored as a customFields entry (same pattern as Inventory form)
+                            newItemPayload.customFields = { finish: finishName };
+                        }
 
-                    item = await Item.create(newItemPayload);
+                        item = await Item.create(newItemPayload);
 
-                    // Only create an inward transaction if there's actual stock to record
-                    if (hasQuantityMapping && stockQty > 0) {
-                        await Transaction.create({
-                            item: item._id,
-                            type: 'inward',
-                            quantity: stockQty,
-                            previousQuantity: 0,
-                            newQuantity: item.quantity,
-                            reason: 'Bulk Mapping Import',
-                            location: itemData.location || '',
-                            user: req.user._id,
-                            ...tenantQuery(req)
-                        });
+                        // Only create an inward transaction if there's actual stock to record
+                        if (hasQuantityMapping && stockQty > 0) {
+                            await Transaction.create({
+                                item: item._id,
+                                type: 'inward',
+                                quantity: stockQty,
+                                previousQuantity: 0,
+                                newQuantity: item.quantity,
+                                reason: 'Bulk Mapping Import',
+                                location: itemData.location || '',
+                                user: req.user._id,
+                                ...tenantQuery(req)
+                            });
+                        }
+
+                        results.success.push({ name: item.name, sku: item.sku });
                     }
-
-                    results.success.push({ name: item.name, sku: item.sku });
                 }
             } catch (error) {
                 const rowName = mapping.name ? String(getCell(row, mapping.name) || 'Unknown').trim() : 'Unknown';
@@ -681,6 +725,7 @@ export const importBulkMapped = async (req, res, next) => {
             totalProcessed: dataRows.length,
             successCount: results.success.length,
             updatedCount: results.updated.length,
+            skippedCount: results.skipped.length,
             failedCount: results.failed.length,
             results
         });
