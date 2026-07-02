@@ -11,6 +11,24 @@ const formatCurrency = (num) => {
     }).format(num || 0);
 };
 
+// Renders profit/loss cell with color + badge based on sign
+const renderProfitLoss = (value) => {
+    const isLoss = value < 0;
+    return (
+        <span className={`inline-flex items-center gap-1 font-black ${
+            isLoss ? 'text-red-600' : 'text-emerald-600'
+        }`}>
+            {formatCurrency(value)}
+            {isLoss
+                ? <span className="text-[8px] font-black bg-red-100 text-red-600 px-1 py-0.5 rounded uppercase tracking-wide">▼ Loss</span>
+                : value > 0
+                    ? <span className="text-[8px] font-black bg-emerald-100 text-emerald-600 px-1 py-0.5 rounded uppercase tracking-wide">▲ Profit</span>
+                    : null
+            }
+        </span>
+    );
+};
+
 const ProfitTracking = () => {
     const [loading, setLoading] = useState(false);
     const [reportData, setReportData] = useState(null);
@@ -204,15 +222,37 @@ const ProfitTracking = () => {
                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest relative z-10">Total COGS</p>
                             <p className="text-xl font-black text-orange-600 mt-1 relative z-10">{formatCurrency(reportData.summary.totalCogs)}</p>
                         </div>
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-emerald-200 relative overflow-hidden group">
-                            <div className="absolute -right-4 -top-4 w-16 h-16 bg-emerald-50 rounded-full group-hover:scale-150 transition-transform"></div>
-                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest relative z-10">Net Profit</p>
-                            <p className="text-xl font-black text-emerald-700 mt-1 relative z-10">{formatCurrency(reportData.summary.totalProfit)}</p>
+                        <div className={`bg-white p-4 rounded-xl shadow-sm border relative overflow-hidden group ${
+                            reportData.summary.totalProfit < 0
+                                ? 'border-red-200'
+                                : 'border-emerald-200'
+                        }`}>
+                            <div className={`absolute -right-4 -top-4 w-16 h-16 rounded-full group-hover:scale-150 transition-transform ${
+                                reportData.summary.totalProfit < 0 ? 'bg-red-50' : 'bg-emerald-50'
+                            }`}></div>
+                            <p className={`text-[10px] font-black uppercase tracking-widest relative z-10 ${
+                                reportData.summary.totalProfit < 0 ? 'text-red-500' : 'text-emerald-600'
+                            }`}>
+                                {reportData.summary.totalProfit < 0 ? '⚠️ Net Loss' : 'Net Profit'}
+                            </p>
+                            <p className={`text-xl font-black mt-1 relative z-10 ${
+                                reportData.summary.totalProfit < 0 ? 'text-red-700' : 'text-emerald-700'
+                            }`}>
+                                {formatCurrency(reportData.summary.totalProfit)}
+                            </p>
                         </div>
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-purple-200 relative overflow-hidden group">
-                            <div className="absolute -right-4 -top-4 w-16 h-16 bg-purple-50 rounded-full group-hover:scale-150 transition-transform"></div>
-                            <p className="text-[10px] font-black text-purple-600 uppercase tracking-widest relative z-10">Avg Margin</p>
-                            <p className="text-xl font-black text-purple-700 mt-1 relative z-10">{reportData.summary.marginPercent}%</p>
+                        <div className={`bg-white p-4 rounded-xl shadow-sm border relative overflow-hidden group ${
+                            parseFloat(reportData.summary.marginPercent) < 0 ? 'border-red-200' : 'border-purple-200'
+                        }`}>
+                            <div className={`absolute -right-4 -top-4 w-16 h-16 rounded-full group-hover:scale-150 transition-transform ${
+                                parseFloat(reportData.summary.marginPercent) < 0 ? 'bg-red-50' : 'bg-purple-50'
+                            }`}></div>
+                            <p className={`text-[10px] font-black uppercase tracking-widest relative z-10 ${
+                                parseFloat(reportData.summary.marginPercent) < 0 ? 'text-red-500' : 'text-purple-600'
+                            }`}>Avg Margin</p>
+                            <p className={`text-xl font-black mt-1 relative z-10 ${
+                                parseFloat(reportData.summary.marginPercent) < 0 ? 'text-red-700' : 'text-purple-700'
+                            }`}>{reportData.summary.marginPercent}%</p>
                         </div>
                     </div>
 
@@ -244,7 +284,7 @@ const ProfitTracking = () => {
                                             <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Sales Rep</th>
                                             <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Revenue</th>
                                             <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">COGS</th>
-                                            <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Profit</th>
+                                            <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Profit / Loss</th>
                                             <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Margin</th>
                                         </tr>
                                     </thead>
@@ -257,8 +297,10 @@ const ProfitTracking = () => {
                                                 <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-gray-500 font-medium">{b.user}</td>
                                                 <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right text-gray-900 font-bold">{formatCurrency(b.revenue)}</td>
                                                 <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right text-orange-600 font-medium">{formatCurrency(b.cogs)}</td>
-                                                <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right text-emerald-600 font-black">{formatCurrency(b.profit)}</td>
-                                                <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right text-purple-600 font-bold">{b.margin}%</td>
+                                                <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right">{renderProfitLoss(b.profit)}</td>
+                                                <td className={`px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right font-bold ${
+                                                    parseFloat(b.margin) < 0 ? 'text-red-600' : parseFloat(b.margin) === 0 ? 'text-gray-500' : 'text-purple-600'
+                                                }`}>{b.margin}%</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -272,7 +314,7 @@ const ProfitTracking = () => {
                                             <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Date</th>
                                             <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Revenue</th>
                                             <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">COGS</th>
-                                            <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Net Profit</th>
+                                            <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Profit / Loss</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
@@ -281,7 +323,7 @@ const ProfitTracking = () => {
                                                 <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs font-bold text-gray-900">{d.date}</td>
                                                 <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right text-gray-900 font-bold">{formatCurrency(d.revenue)}</td>
                                                 <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right text-orange-600 font-medium">{formatCurrency(d.cogs)}</td>
-                                                <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right text-emerald-600 font-black">{formatCurrency(d.profit)}</td>
+                                                <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right">{renderProfitLoss(d.profit)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -296,7 +338,7 @@ const ProfitTracking = () => {
                                             <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Qty Sold</th>
                                             <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Revenue</th>
                                             <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">COGS</th>
-                                            <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Net Profit</th>
+                                            <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Profit / Loss</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
@@ -306,7 +348,7 @@ const ProfitTracking = () => {
                                                 <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right text-blue-600 font-bold">{item.qtySold}</td>
                                                 <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right text-gray-900 font-bold">{formatCurrency(item.revenue)}</td>
                                                 <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right text-orange-600 font-medium">{formatCurrency(item.cogs)}</td>
-                                                <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right text-emerald-600 font-black">{formatCurrency(item.profit)}</td>
+                                                <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right">{renderProfitLoss(item.profit)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -320,7 +362,7 @@ const ProfitTracking = () => {
                                             <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Employee Name</th>
                                             <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Revenue</th>
                                             <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">COGS</th>
-                                            <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Net Profit</th>
+                                            <th className="px-3 py-2 sm:px-4 sm:py-3 text-right text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Profit / Loss</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
@@ -334,7 +376,7 @@ const ProfitTracking = () => {
                                                 </td>
                                                 <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right text-gray-900 font-bold">{formatCurrency(emp.revenue)}</td>
                                                 <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right text-orange-600 font-medium">{formatCurrency(emp.cogs)}</td>
-                                                <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right text-emerald-600 font-black">{formatCurrency(emp.profit)}</td>
+                                                <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-right">{renderProfitLoss(emp.profit)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
