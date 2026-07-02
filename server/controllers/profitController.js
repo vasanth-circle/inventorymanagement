@@ -8,14 +8,23 @@ export const getProfitReport = async (req, res, next) => {
         const { from, to } = req.query;
 
         // Fetch all items to map their current purchase price
-        const items = await Item.find({ ...tenantQuery(req) }).select('_id name purchasePrice purchasePriceSqFt category');
+        const items = await Item.find({ ...tenantQuery(req) }).select('_id name purchasePrice purchasePriceSqFt category unitType pcsPerBox sqFtPerPc');
         const itemMap = {};
         items.forEach(item => {
+            let derivedPurchasePriceSqFt = item.purchasePriceSqFt || 0;
+            // Dynamically calculate sqft price if it's missing but we have box dimensions
+            if (!derivedPurchasePriceSqFt && item.pcsPerBox > 0 && item.sqFtPerPc > 0) {
+                const sqftPerBox = item.pcsPerBox * item.sqFtPerPc;
+                derivedPurchasePriceSqFt = item.purchasePrice / sqftPerBox;
+            }
+
             itemMap[item._id.toString()] = {
                 name: item.name,
                 purchasePrice: item.purchasePrice || 0,
-                purchasePriceSqFt: item.purchasePriceSqFt || 0,
-                categoryId: item.category
+                purchasePriceSqFt: derivedPurchasePriceSqFt,
+                categoryId: item.category,
+                unitType: item.unitType,
+                sqftPerBox: (item.pcsPerBox || 1) * (item.sqFtPerPc || 0)
             };
         });
 
@@ -71,8 +80,42 @@ export const getProfitReport = async (req, res, next) => {
                 const itemRevenue = orderItem.total || (quantityToUse * orderItem.price);
                 // Calculate COGS using batchAllocations if available (FIFO)
                 let itemCogs = 0;
+                
                 if (orderItem.batchAllocations && orderItem.batchAllocations.length > 0) {
-                    itemCogs = orderItem.batchAllocations.reduce((sum, alloc) => sum + (alloc.quantity * (alloc.purchasePrice || itemData.purchasePrice)), 0);
+                    // Check if allocations match physical stock quantity (Boxes) but billed in SqFt
+                    const totalAllocatedQty = orderItem.batchAllocations.reduce((sum, alloc) => sum + alloc.quantity, 0);
+                    let isAllocatedInBoxesButBilledInSqft = false;
+                    
+                    if (orderItem.billingUnit === 'sqft' || orderItem.totalSqFt > 0) {
+                        const expectedBoxQty = orderItem.stockQty || orderItem.boxCount || 0;
+                        if (expectedBoxQty > 0 && Math.abs(totalAllocatedQty - expectedBoxQty) < 1) {
+                            isAllocatedInBoxesButBilledInSqft = true;
+                        }
+                    }
+
+                    itemCogs = orderItem.batchAllocations.reduce((sum, alloc) => {
+                        let allocPrice = alloc.purchasePrice || itemData.purchasePrice;
+                        
+                        // If alloc.quantity is in SqFt (e.g. they mistakenly recorded stockQty as SqFt, which is common in older records)
+                        // Or if we know the physical qty allocated was Boxes but we want to know the total value,
+                        // Wait, alloc.quantity * alloc.purchasePrice is ALWAYS correct if alloc.quantity is in the same unit as purchasePrice!
+                        // If purchasePrice is per Box, and alloc.quantity is Boxes, then it's correct.
+                        // BUT if they sold 240 sqft, and alloc.quantity was erroneously saved as 240 (sqft) because stockQty was 0,
+                        // then alloc.quantity (240) * purchasePrice (800) = 192,000 (MASSIVE ERROR).
+                        // How to detect this? If alloc.quantity is close to totalSqFt and WAY larger than what stockQty should be.
+                        let isAllocatedInSqftErronously = false;
+                        if ((orderItem.billingUnit === 'sqft' || orderItem.totalSqFt > 0) && itemData.sqftPerBox > 0) {
+                            if (Math.abs(totalAllocatedQty - (orderItem.totalSqFt || orderItem.quantity)) < 1) {
+                                isAllocatedInSqftErronously = true;
+                            }
+                        }
+
+                        if (isAllocatedInSqftErronously && itemData.purchasePriceSqFt > 0) {
+                            allocPrice = itemData.purchasePriceSqFt;
+                        }
+
+                        return sum + (alloc.quantity * allocPrice);
+                    }, 0);
                 } else {
                     // Fallback to legacy logic for old invoices without allocations
                     if ((orderItem.billingUnit === 'sqft' || orderItem.totalSqFt > 0) && itemData.purchasePriceSqFt > 0) {
