@@ -38,8 +38,10 @@ const StockOutward = () => {
         }
 
         if (parseFloat(formData.quantity) > selectedItem.quantity) {
-            toast.error(`Insufficient stock. Available: ${selectedItem.quantity}`);
-            return;
+            if (billingSettings?.workflowConfig?.allowNegativeStock === false) {
+                toast.error(`Insufficient stock. Available: ${selectedItem.quantity}`);
+                return;
+            }
         }
 
         setLoading(true);

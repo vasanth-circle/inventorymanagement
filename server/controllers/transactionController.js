@@ -3,6 +3,7 @@ import Transaction from '../models/Transaction.js';
 import User from '../models/User.js';
 import VendorLedger from '../models/VendorLedger.js';
 import CustomerLedger from '../models/CustomerLedger.js';
+import Setting from '../models/Setting.js';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -158,7 +159,10 @@ export const stockOutward = async (req, res, next) => {
         }
 
         const qtyToSubtract = parseInt(quantity);
-        if (itemDoc.quantity < qtyToSubtract) {
+        const settings = await Setting.findOne({ tenantId: req.tenantId });
+        const allowNegativeStock = settings?.workflowConfig?.allowNegativeStock !== false;
+
+        if (!allowNegativeStock && itemDoc.quantity < qtyToSubtract) {
             return sendError(res, 400, 'Insufficient total stock available');
         }
 
@@ -170,8 +174,8 @@ export const stockOutward = async (req, res, next) => {
 
         // Handle Batch deduction
         if (batchId) {
-            const batch = itemDoc.batches.id(batchId);
-            if (!batch || batch.quantity < qtyToSubtract) {
+            const batch = itemDoc.batches ? itemDoc.batches.id(batchId) : null;
+            if (!batch || (!allowNegativeStock && batch.quantity < qtyToSubtract)) {
                 return sendError(res, 400, 'Insufficient stock in selected batch');
             }
             batch.quantity -= qtyToSubtract;

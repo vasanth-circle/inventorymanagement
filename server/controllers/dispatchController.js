@@ -3,6 +3,7 @@ import SalesOrder from '../models/SalesOrder.js';
 import Item from '../models/Item.js';
 import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
+import Setting from '../models/Setting.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
 import { allocateFIFO } from '../utils/stock.js';
@@ -79,6 +80,9 @@ export const fulfillDispatch = async (req, res, next) => {
         const order = await SalesOrder.findOne({ _id: dispatch.order, ...tenantQuery(req) });
         if (!order) return sendError(res, 404, 'Sales order not found');
 
+        const settings = await Setting.findOne({ tenantId: req.tenantId });
+        const allowNegativeStock = settings?.workflowConfig?.allowNegativeStock !== false;
+
         // Update inventory and create transactions
         for (const dispatchItem of dispatch.items) {
             const itemDoc = await Item.findOne({ _id: dispatchItem.item, ...tenantQuery(req) });
@@ -87,7 +91,7 @@ export const fulfillDispatch = async (req, res, next) => {
                 const dispatchQty = Number(dispatchItem.quantity);
 
                 // PHYSICAL STOCK CHECK
-                if (previousQuantity < dispatchQty) {
+                if (!allowNegativeStock && previousQuantity < dispatchQty) {
                     return sendError(res, 400, `Insufficient physical stock for ${itemDoc.name}. Available: ${previousQuantity}, Trying to load: ${dispatchQty}`);
                 }
                 
