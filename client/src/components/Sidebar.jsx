@@ -211,12 +211,12 @@ const Sidebar = ({ isOpen, onClose }) => {
                             className="flex items-center space-x-3 cursor-pointer hover:bg-slate-800 p-2 -ml-2 rounded-lg transition-colors group"
                             onClick={() => setShowAppSwitcher(!showAppSwitcher)}
                         >
-                            <div className={`w-9 h-9 flex-shrink-0 rounded-lg flex items-center justify-center text-white text-xl shadow-inner overflow-hidden ${activeApp === 'assets' ? 'bg-blue-600' : 'bg-primary-600'}`}>
-                                {activeApp === 'assets' ? '🖥️' : '📦'}
+                            <div className={`w-9 h-9 flex-shrink-0 rounded-lg flex items-center justify-center text-white text-xl shadow-inner overflow-hidden ${activeApp === 'assets' ? 'bg-blue-600' : 'bg-white p-1'}`}>
+                                {activeApp === 'assets' ? '🖥️' : <img src="/favicon.png" alt="CoSlive Logo" className="w-full h-full object-contain" />}
                             </div>
                             <div className="flex flex-col flex-1 min-w-0">
                                 <h1 className="text-base lg:text-lg font-bold text-white tracking-tight leading-none group-hover:text-blue-400 transition-colors truncate">
-                                    {activeApp === 'assets' ? 'Asset Management' : 'InventoryPro'}
+                                    {activeApp === 'assets' ? 'Asset Management' : 'CoSlive Inventory'}
                                 </h1>
                                 <span className="text-[10px] text-slate-400 font-semibold tracking-wide flex items-center mt-0.5">
                                     CHANGE APP <span className="ml-1 opacity-50 text-[8px]">▼</span>
@@ -237,9 +237,11 @@ const Sidebar = ({ isOpen, onClose }) => {
                                         }}
                                         className={`w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center space-x-3 transition-colors ${activeApp === 'inventory' ? 'bg-primary-50' : ''}`}
                                     >
-                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${activeApp === 'inventory' ? 'bg-primary-100' : 'bg-gray-100'}`}>📦</div>
+                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl overflow-hidden ${activeApp === 'inventory' ? 'bg-primary-100' : 'bg-gray-100'} p-1`}>
+                                            <img src="/favicon.png" alt="CoSlive Logo" className="w-full h-full object-contain" />
+                                        </div>
                                         <div>
-                                            <div className={`text-sm font-bold ${activeApp === 'inventory' ? 'text-primary-700' : 'text-gray-900'}`}>InventoryPro</div>
+                                            <div className={`text-sm font-bold ${activeApp === 'inventory' ? 'text-primary-700' : 'text-gray-900'}`}>CoSlive Inventory</div>
                                             <div className="text-xs text-gray-500">Manage Stocks & Sales</div>
                                         </div>
                                     </button>

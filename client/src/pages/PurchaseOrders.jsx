@@ -40,6 +40,7 @@ const PurchaseOrders = () => {
         items: [{ 
             item: '', 
             quantity: '', 
+            damagedQuantity: '',
             price: '', 
             taxRate: 18,
             boxCount: '', 
@@ -128,6 +129,7 @@ const PurchaseOrders = () => {
             items: [...formData.items, { 
                 item: '', 
                 quantity: '', 
+                damagedQuantity: '',
                 price: '', 
                 taxRate: formData.taxRate,
                 boxCount: '', 
@@ -138,6 +140,12 @@ const PurchaseOrders = () => {
                 billingUnit: billingSettings?.industry === 'tiles' ? 'boxes' : 'pieces'
             }]
         });
+    };
+
+    const handleRemoveItem = (index) => {
+        if (formData.items.length === 1) return; // Keep at least one row
+        const newItems = formData.items.filter((_, i) => i !== index);
+        setFormData({ ...formData, items: newItems });
     };
 
     const handleQuickAddItemSubmit = async (e) => {
@@ -193,13 +201,14 @@ const PurchaseOrders = () => {
                     // Initial calculation
                     newItems[index].total = 0;
                 }
-            } else if (field === 'piecesCount' || field === 'boxCount' || field === 'price' || field === 'billingUnit' || field === 'quantity') {
+            } else if (field === 'piecesCount' || field === 'boxCount' || field === 'price' || field === 'billingUnit' || field === 'quantity' || field === 'damagedQuantity') {
                 const row = newItems[index];
                 if (field === 'piecesCount') row.totalPcs = Number(value || 0);
                 if (field === 'boxCount') row.boxCount = Number(value || 0);
                 if (field === 'price') row.price = Number(value || 0);
                 if (field === 'billingUnit') row.billingUnit = value;
                 if (field === 'quantity') row.quantity = Number(value || 0);
+                if (field === 'damagedQuantity') row.damagedQuantity = Number(value || 0);
 
                 if (billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0) {
                     if (field === 'piecesCount') {
@@ -262,10 +271,10 @@ const PurchaseOrders = () => {
                     await axios.patch(`${API_URL}/${newOrder._id}/status`, { status: 'issued' }, {
                         headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
                     });
-                    const receivedItems = newOrder.items.map(i => ({
+                    const receivedItems = newOrder.items.map((i, idx) => ({
                         item: i.item?._id || i.item,
                         receivedQuantity: i.quantity,
-                        damagedQuantity: 0,
+                        damagedQuantity: formData.items[idx]?.damagedQuantity || i.damagedQuantity || 0,
                         price: i.price,
                         batchNumber: `PO-${newOrder.orderNumber}`
                     }));
@@ -298,6 +307,7 @@ const PurchaseOrders = () => {
             items: order.items.map(i => ({
                 item: i.item?._id || i.item,
                 quantity: i.quantity,
+                damagedQuantity: i.damagedQuantity || '',
                 price: i.price,
                 taxRate: i.taxRate || order.taxRate || 18,
                 boxCount: i.boxCount || '',
@@ -437,6 +447,7 @@ const PurchaseOrders = () => {
                                     items: [{ 
                                         item: '', 
                                         quantity: '', 
+                                        damagedQuantity: '',
                                         price: '', 
                                         taxRate: 18,
                                         boxCount: '', 
@@ -556,11 +567,13 @@ const PurchaseOrders = () => {
                                             <tr>
                                                 <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase min-w-[200px]">Item</th>
                                                 <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-center">Qty / Boxes</th>
+                                                <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-center text-red-600">Damaged</th>
                                                 {!isGodown && <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-28">Rate</th>}
                                                 {!isGodown && <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-20 text-center">GST%</th>}
                                                 <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-20">Unit</th>
                                                 {!isGodown && <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-right">Taxable</th>}
                                                 {!isGodown && <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-right">Total (w/Tax)</th>}
+                                                <th className="px-3 py-2 w-10"></th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
@@ -608,6 +621,17 @@ const PurchaseOrders = () => {
                                                             />
                                                         )}
                                                     </td>
+                                                    <td className="px-2 py-2 min-w-[100px]">
+                                                        <input 
+                                                            type="number" 
+                                                            step="0.01" 
+                                                            min="0" 
+                                                            value={row.damagedQuantity || ''} 
+                                                            onChange={(e) => handleItemChange(index, 'damagedQuantity', e.target.value)} 
+                                                            placeholder="Damaged"
+                                                            className="w-full px-2 py-2 border rounded-lg border-red-200 outline-none focus:ring-1 focus:ring-red-400 text-center font-bold text-red-600" 
+                                                        />
+                                                    </td>
                                                     {!isGodown && (
                                                         <td className="px-2 py-2 min-w-[100px]">
                                                             <input required type="number" step="0.01" value={row.price === 0 ? '' : row.price} onChange={(e) => handleItemChange(index, 'price', e.target.value)} className="w-full px-2 py-2 border rounded-lg border-gray-200 text-right font-bold focus:ring-1 focus:ring-primary-400 outline-none" placeholder="Rate" />
@@ -654,6 +678,13 @@ const PurchaseOrders = () => {
                                                             {`₹${((row.total || 0) * (1 + (row.taxRate ?? formData.taxRate) / 100)).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`}
                                                         </td>
                                                     )}
+                                                    <td className="px-2 py-2 text-center align-middle">
+                                                        {formData.items.length > 1 && (
+                                                            <button type="button" onClick={() => handleRemoveItem(index)} className="text-red-400 hover:text-red-600 text-lg font-bold w-6 h-6 inline-flex items-center justify-center rounded-full hover:bg-red-50" title="Remove Line">
+                                                                &times;
+                                                            </button>
+                                                        )}
+                                                    </td>
                                                 </tr>
                                                 );
                                             })}

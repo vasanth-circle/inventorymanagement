@@ -41,9 +41,9 @@ const Login = () => {
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-2xl">
                 <div className="flex flex-col items-center justify-center mt-6">
-                    <img src="/favicon.png" alt="Cosliv Logo" className="w-14 h-14 object-contain mb-3" />
+                    <img src="/favicon.png" alt="CoSlive Logo" className="w-14 h-14 object-contain mb-3" />
                     <h2 className="text-center text-3xl font-extrabold text-gray-900">
-                        Cosliv Inventory Pro
+                        CoSlive Inventory Pro
                     </h2>
                     <p className="mt-2 text-center text-sm text-gray-600">
                         Sign in to your account

@@ -45,6 +45,10 @@ const purchaseOrderSchema = new mongoose.Schema({
             type: Number,
             default: 0,
         },
+        damagedQuantity: {
+            type: Number,
+            default: 0,
+        },
         price: { // Rate per SqFt
             type: Number,
             required: true,
