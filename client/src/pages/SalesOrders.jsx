@@ -519,7 +519,7 @@ const SalesOrders = () => {
             ) : (
                 <div className="space-y-4">
                     {/* Desktop Table View */}
-                    <div className="hidden lg:block bg-white rounded-xl shadow-md overflow-hidden">
+                    <div className="hidden lg:block bg-white rounded-xl shadow-md overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-gray-50 border-bottom border-gray-100">
