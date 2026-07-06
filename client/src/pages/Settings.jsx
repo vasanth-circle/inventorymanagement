@@ -111,6 +111,7 @@ const Settings = () => {
             enforcePO: false,
             allowNegativeStock: true,
             directPurchaseInward: false,
+            enableAutoDispatch: false,
         },
         // Credit & Locking Config
         creditConfig: {
@@ -180,6 +181,7 @@ const Settings = () => {
                     enforcePO: billingSettings.workflowConfig?.enforcePO || false,
                     allowNegativeStock: billingSettings.workflowConfig?.allowNegativeStock ?? true,
                     directPurchaseInward: billingSettings.workflowConfig?.directPurchaseInward || false,
+                    enableAutoDispatch: billingSettings.workflowConfig?.enableAutoDispatch || false,
                 },
                 creditConfig: {
                     enableAutoLock: billingSettings.creditConfig?.enableAutoLock || false,
@@ -969,6 +971,17 @@ const Settings = () => {
                                         </div>
                                         <div className={`w-12 h-6 rounded-full transition-all relative ${formData.workflowConfig.directPurchaseInward ? 'bg-blue-500' : 'bg-gray-300'}`}>
                                             <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${formData.workflowConfig.directPurchaseInward ? 'left-7' : 'left-1'}`} />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl hover:border-amber-200 transition-all cursor-pointer"
+                                         onClick={() => handleNested('workflowConfig', 'enableAutoDispatch', !formData.workflowConfig.enableAutoDispatch)}>
+                                        <div className="space-y-1 pr-4">
+                                            <h3 className="text-sm font-bold text-gray-800">Auto-Dispatch Confirmed Invoices</h3>
+                                            <p className="text-[10px] text-gray-500 font-medium">When enabled, confirming a sales order will automatically dispatch the items and reduce stock.</p>
+                                        </div>
+                                        <div className={`w-12 h-6 rounded-full transition-all relative ${formData.workflowConfig.enableAutoDispatch ? 'bg-teal-500' : 'bg-gray-300'}`}>
+                                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${formData.workflowConfig.enableAutoDispatch ? 'left-7' : 'left-1'}`} />
                                         </div>
                                     </div>
 

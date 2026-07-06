@@ -229,6 +229,11 @@ export const autoDispatchConfirmedOrder = async (orderId, tenantId, userId) => {
         // Only auto-dispatch if it's confirmed
         if (order.status !== 'confirmed') return;
 
+        // Check if auto-dispatch is enabled in settings
+        const settings = await Setting.findOne({ tenantId });
+        if (!settings?.workflowConfig?.enableAutoDispatch) return;
+
+
         let fullyDispatchedItemsCount = 0;
         const dispatchItems = [];
 
