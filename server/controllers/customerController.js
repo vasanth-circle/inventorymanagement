@@ -138,6 +138,14 @@ export const updateCustomer = async (req, res, next) => {
         if (!customer) {
             return sendError(res, 404, 'Customer not found');
         }
+
+        if (payload.openingBalance !== undefined) {
+            await recalculateCustomerBalance(customer._id, req.tenantId);
+            // Refresh customer to get the correct currentBalance after recalculation
+            const updatedCustomer = await Customer.findById(customer._id);
+            return sendResponse(res, 200, updatedCustomer, 'Customer updated successfully');
+        }
+
         sendResponse(res, 200, customer, 'Customer updated successfully');
     } catch (error) {
         next(error);
