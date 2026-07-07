@@ -567,11 +567,11 @@ const SalesOrders = () => {
                                                         🔄
                                                     </button>
                                                 )}
-                                                {!['dispatched', 'partially_dispatched'].includes(order.status) && (
+                                                {order.status !== 'dispatched' && (
                                                     <button 
                                                         onClick={() => handleEdit(order)} 
                                                         className="text-amber-600 hover:text-amber-800 text-lg font-bold border-2 border-amber-100 w-9 h-9 flex items-center justify-center rounded-lg bg-amber-50 transition-all"
-                                                        title="Edit"
+                                                        title={order.status === 'partially_dispatched' ? 'Edit (Partial Dispatch)' : 'Edit'}
                                                     >
                                                         ✏️
                                                     </button>
@@ -651,8 +651,8 @@ const SalesOrders = () => {
                                             <button onClick={() => handleStatusUpdate(order._id, 'confirmed')} className="flex-shrink-0 w-9 h-9 bg-teal-500 hover:bg-teal-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Convert to Bill">🔄</button>
                                         )}
                                         {/* Edit */}
-                                        {!['dispatched', 'partially_dispatched'].includes(order.status) && (
-                                            <button onClick={() => handleEdit(order)} className="flex-shrink-0 w-9 h-9 bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Edit">✏️</button>
+                                        {order.status !== 'dispatched' && (
+                                            <button onClick={() => handleEdit(order)} className="flex-shrink-0 w-9 h-9 bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title={order.status === 'partially_dispatched' ? 'Edit (Partial Dispatch)' : 'Edit'}>✏️</button>
                                         )}
                                         {/* Delete */}
                                         <button onClick={() => handleDelete(order._id)} className="flex-shrink-0 w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Delete">🗑️</button>

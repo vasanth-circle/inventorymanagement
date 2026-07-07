@@ -102,7 +102,7 @@ const CustomerLedger = () => {
     const [settings, setSettings] = useState(null);
 
     const effectiveRole = user?.appRoles?.inventory || user?.role;
-    const canRecordPayment = ['admin', 'manager', 'tenant_owner', 'tenant_admin', 'accounts'].includes(effectiveRole) || ['admin', 'manager', 'tenant_owner', 'tenant_admin', 'super_admin'].includes(user?.role);
+    const canRecordPayment = ['admin', 'manager', 'tenant_owner', 'tenant_admin', 'accounts', 'sales_person', 'sales person', 'sales_user', 'sales user'].includes(effectiveRole) || ['admin', 'manager', 'tenant_owner', 'tenant_admin', 'super_admin', 'sales_person'].includes(user?.role);
     const canEditPayment = ['admin', 'manager', 'tenant_owner', 'tenant_admin'].includes(effectiveRole) || ['admin', 'manager', 'tenant_owner', 'tenant_admin', 'super_admin'].includes(user?.role);
 
     // New Payment modal state
