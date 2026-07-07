@@ -65,16 +65,30 @@ const DispatchManagement = () => {
     const fetchPendingOrders = async () => {
         try {
             setLoading(true);
-            const [confirmedRes, partialRes] = await Promise.all([
-                api.get('/sales-orders?status=confirmed&limit=1000'),
-                api.get('/sales-orders?status=partially_dispatched&limit=1000')
+            // Fetch only real invoices (type=invoice excludes estimations at API level)
+            const [confirmedRes, partialRes, pendingDispatchRes] = await Promise.all([
+                api.get('/sales-orders?status=confirmed&type=invoice&limit=1000'),
+                api.get('/sales-orders?status=partially_dispatched&type=invoice&limit=1000'),
+                api.get('/dispatches') // fetch all dispatches to detect pending_loading ones
             ]);
             
             const confirmedOrders = confirmedRes.data?.data?.orders || [];
-            const partialOrders = partialRes.data?.data?.orders || [];
-            
-            // Exclude estimations from the dispatch list
-            const allOrders = [...confirmedOrders, ...partialOrders].filter(order => !order.isEstimation);
+            const partialOrders   = partialRes.data?.data?.orders || [];
+            const allDispatches   = pendingDispatchRes.data?.data || pendingDispatchRes.data || [];
+
+            // Build set of order IDs that already have a pending_loading dispatch request
+            // — those orders belong in the Pending Loading tab, not here
+            const pendingLoadingOrderIds = new Set(
+                allDispatches
+                    .filter(d => d.status === 'pending_loading')
+                    .map(d => String(d.order?._id || d.order))
+            );
+
+            // Exclude estimations (double-safety) and orders already in loading queue
+            const allOrders = [...confirmedOrders, ...partialOrders].filter(order =>
+                !order.isEstimation &&
+                !pendingLoadingOrderIds.has(String(order._id))
+            );
             setOrders(allOrders);
         } catch (error) {
             console.error('Fetch orders error:', error);
