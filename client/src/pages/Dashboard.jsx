@@ -34,41 +34,43 @@ const relDate = (d) => {
 // ─── Sub-components ────────────────────────────────────────────────────────────
 const KpiCard = ({ icon, label, value, sub, color = 'indigo', onClick, urgent }) => {
     const colors = {
-        indigo: 'border-indigo-100 bg-indigo-50 text-indigo-600',
-        emerald:'border-emerald-100 bg-emerald-50 text-emerald-600',
-        amber:  'border-amber-100 bg-amber-50 text-amber-600',
-        rose:   'border-rose-100 bg-rose-50 text-rose-600',
-        sky:    'border-sky-100 bg-sky-50 text-sky-600',
-        violet: 'border-violet-100 bg-violet-50 text-violet-600',
-        slate:  'border-slate-100 bg-slate-50 text-slate-600',
-        orange: 'border-orange-100 bg-orange-50 text-orange-600',
+        indigo: 'border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
+        emerald:'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+        amber:  'border-amber-200 dark:border-amber-500/30 bg-amber-50/50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400',
+        rose:   'border-rose-200 dark:border-rose-500/30 bg-rose-50/50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400',
+        sky:    'border-sky-200 dark:border-sky-500/30 bg-sky-50/50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400',
+        violet: 'border-violet-200 dark:border-violet-500/30 bg-violet-50/50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400',
+        slate:  'border-slate-200 dark:border-slate-500/30 bg-slate-50/50 dark:bg-slate-500/10 text-slate-600 dark:text-slate-400',
+        orange: 'border-orange-200 dark:border-orange-500/30 bg-orange-50/50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400',
     };
     return (
         <div
             onClick={onClick}
-            className={`bg-white rounded-xl border shadow-sm p-3 sm:p-4 flex flex-col gap-2 transition-all hover:shadow-md ${onClick ? 'cursor-pointer hover:scale-[1.02]' : ''} ${urgent ? 'ring-2 ring-rose-300' : 'border-gray-100'}`}
+            className={`group relative overflow-hidden backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 rounded-2xl border shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] p-4 sm:p-5 flex flex-col gap-3 transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] ${onClick ? 'cursor-pointer hover:-translate-y-1' : ''} ${urgent ? 'border-rose-300 dark:border-rose-500/50 ring-4 ring-rose-500/10' : 'border-gray-200/50 dark:border-slate-700/50'}`}
         >
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-base ${colors[color] || colors.indigo}`}>
+            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-gradient-to-br from-white/40 to-transparent dark:from-white/5 rounded-full blur-2xl pointer-events-none"></div>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-inner ${colors[color] || colors.indigo}`}>
                 {icon}
             </div>
-            <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">{label}</p>
-                <p className="text-xl sm:text-2xl font-black text-gray-900 leading-none">{value}</p>
-                {sub && <p className="text-[10px] text-gray-400 mt-1 font-medium">{sub}</p>}
+            <div className="z-10">
+                <p className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest leading-none mb-1.5">{label}</p>
+                <p className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 leading-none">{value}</p>
+                {sub && <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 font-medium truncate">{sub}</p>}
             </div>
         </div>
     );
 };
 
 const SectionCard = ({ title, icon, children, action, noPad }) => (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50/50">
-            <h3 className="text-[11px] font-black text-gray-700 uppercase tracking-widest flex items-center gap-2">
-                <span className="text-base">{icon}</span>{title}
+    <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 rounded-2xl border border-gray-200/50 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] overflow-hidden transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100/50 dark:border-slate-700/50 bg-gradient-to-r from-gray-50/50 to-white/50 dark:from-slate-800/50 dark:to-slate-900/50">
+            <h3 className="text-xs font-black text-gray-800 dark:text-gray-200 uppercase tracking-widest flex items-center gap-2.5">
+                <span className="text-lg p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-100 dark:border-slate-700">{icon}</span>
+                {title}
             </h3>
             {action}
         </div>
-        <div className={noPad ? '' : 'p-4'}>
+        <div className={noPad ? '' : 'p-5'}>
             {children}
         </div>
     </div>
@@ -207,16 +209,16 @@ const Dashboard = () => {
     return (
         <div className="space-y-5 pb-24 lg:pb-8 max-w-[1600px] mx-auto">
             {/* ─── Header ─────────────────────────────────────────── */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-200">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white shadow-sm border border-gray-200 rounded-xl flex items-center justify-center overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-gray-200/50 dark:border-slate-800">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white dark:bg-slate-800 shadow-[0_4px_20px_rgb(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgb(0,0,0,0.2)] border border-gray-100 dark:border-slate-700 rounded-2xl flex items-center justify-center overflow-hidden">
                         {billingSettings?.branding?.logoUrl
                             ? <img src={billingSettings.branding.logoUrl} alt="Logo" className="w-full h-full object-contain" />
-                            : <span className="text-xl">🏢</span>}
+                            : <span className="text-2xl">🏢</span>}
                     </div>
                     <div>
-                        <h1 className="text-lg font-black text-gray-900 leading-tight">Inventory Dashboard</h1>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{oldStats?.companyName || 'Overview'}</p>
+                        <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 leading-tight">Inventory Dashboard</h1>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest">{oldStats?.companyName || 'Overview'}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">

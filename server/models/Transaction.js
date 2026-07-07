@@ -30,12 +30,14 @@ const transactionSchema = new mongoose.Schema({
         type: String,
         trim: true,
     },
-    batchId: {
-        type: String, // Tracks the _id of the batch in the Item object
-    },
-    batchNumber: {
-        type: String, // Human readable batch number
-    },
+    batches: [{
+        batchId: { type: mongoose.Schema.Types.ObjectId },
+        batchNumber: { type: String },
+        quantity: { type: Number, required: true }
+    }],
+    serials: [{
+        serialNumber: { type: String, required: true }
+    }],
     fromLocation: {
         type: String,
         trim: true,

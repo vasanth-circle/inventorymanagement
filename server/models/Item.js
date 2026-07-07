@@ -34,6 +34,32 @@ const itemSchema = new mongoose.Schema({
         required: true,
         default: 0,
     },
+    isBatchTracked: {
+        type: Boolean,
+        default: false,
+    },
+    isSerialTracked: {
+        type: Boolean,
+        default: false,
+    },
+    batches: [{
+        batchNumber: { type: String, required: true, trim: true },
+        manufacturingDate: { type: Date },
+        expiryDate: { type: Date },
+        quantity: { type: Number, required: true, default: 0, min: 0 },
+        binLocation: { type: String, trim: true },
+        costPrice: { type: Number, default: 0, min: 0 },
+    }],
+    serials: [{
+        serialNumber: { type: String, required: true, trim: true },
+        status: { 
+            type: String, 
+            enum: ['available', 'sold', 'in-transit', 'returned', 'damaged'], 
+            default: 'available' 
+        },
+        binLocation: { type: String, trim: true },
+        batchId: { type: mongoose.Schema.Types.ObjectId } // Link to batch if both are tracked
+    }],
     damagedQuantity: {
         type: Number,
         default: 0,
