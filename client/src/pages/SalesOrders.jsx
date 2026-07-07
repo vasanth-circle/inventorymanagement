@@ -823,7 +823,7 @@ const SalesOrders = () => {
                             <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600 text-3xl transition-colors">&times;</button>
                         </div>
                         <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
-                            <form id="salesOrderForm" onSubmit={handleSubmit} className="space-y-8 pb-4">
+                            <form id="salesOrderForm" onSubmit={handleSubmit} className="space-y-8 pb-48">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                                     <div className="md:col-span-1">
                                         <label className="block text-sm font-bold text-gray-700 mb-2">Select Customer *</label>
@@ -933,7 +933,7 @@ const SalesOrders = () => {
                                         </h3>
                                     </div>
                                     {/* Items List - Desktop Table */}
-                                    <div className="hidden md:block overflow-visible border rounded-xl shadow-sm">
+                                    <div className="hidden lg:block overflow-visible border rounded-xl shadow-sm">
                                         <table className="w-full text-left min-w-[800px]">
                                             <thead>
                                                 <tr className="bg-gray-50 border-b border-gray-100">
@@ -1049,7 +1049,7 @@ const SalesOrders = () => {
                                     </div>
 
                                     {/* Items List - Mobile Cards */}
-                                    <div className="md:hidden space-y-4">
+                                    <div className="lg:hidden space-y-4">
                                         {formData.items.map((row, index) => {
                                             const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0;
                                             return (
