@@ -38,6 +38,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 { name: 'Stock Returns', path: '/stock-return', id: 'stock-return' },
                 { name: 'Stock Returns List', path: '/stock-returns-list', id: 'stock-returns-list' },
                 { name: 'Make Adjustment', path: '/stock-adjustment', id: 'stock-adjustment' },
+                { name: 'Warehouse Transfers', path: '/warehouse-transfers', id: 'warehouse-transfers' },
             ]
         },
         {
@@ -50,6 +51,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 // { name: 'Quotations', path: '/quotations', id: 'quotations' },
                 { name: 'Sales Orders', path: '/sales-orders', id: 'sales-orders' },
                 { name: activePreset?.terminology?.outward || 'Dispatch Management', path: '/dispatch-management', id: 'dispatch-management' },
+                { name: 'Credit Notes', path: '/credit-notes', id: 'credit-notes' },
             ]
         },
         {
@@ -61,6 +63,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 { name: 'Vendor Ledgers', path: '/vendor-ledger', id: 'vendor-ledger' },
                 { name: 'Purchase Entry', path: '/purchase-orders', id: 'purchase-orders' },
                 { name: activePreset?.terminology?.inward || 'Stock Inward', path: '/stock-inward', id: 'stock-inward' },
+                { name: 'Goods Receipt (GRN)', path: '/grn', id: 'grn' },
             ]
         },
         {
@@ -95,7 +98,38 @@ const Sidebar = ({ isOpen, onClose }) => {
                 items: [
                     { name: 'Users', path: '/users', id: 'users' },
                     { name: 'Billing Settings', path: '/settings', id: 'settings' },
-                    { name: 'Action Logs', path: '/action-logs', id: 'action-logs' }
+                    { name: 'Action Logs', path: '/action-logs', id: 'action-logs' },
+                    { name: 'API & Webhooks', path: '/api-settings', id: 'api-settings' },
+                    { name: 'Workflow Rules', path: '/workflow-rules', id: 'workflow-rules' },
+                    { name: 'Scheduled Reports', path: '/report-schedules', id: 'report-schedules' }
+                ]
+            });
+            navGroups.push({
+                name: 'Integrations',
+                id: 'integrations',
+                icon: '🔌',
+                items: [
+                    { name: 'Shipping (Shiprocket)', path: '/shipping', id: 'shipping' },
+                    { name: 'E-commerce Sync', path: '/ecommerce', id: 'ecommerce' }
+                ]
+            });
+            navGroups.push({
+                name: 'Manufacturing',
+                id: 'manufacturing',
+                icon: '🏭',
+                items: [
+                    { name: 'Warehouse Bins', path: '/warehouse-layout', id: 'warehouse-layout' },
+                    { name: 'Bill of Materials', path: '/bom', id: 'bom' },
+                    { name: 'Production Orders', path: '/production', id: 'production' }
+                ]
+            });
+            navGroups.push({
+                name: 'Intelligence',
+                id: 'intelligence',
+                icon: '🧠',
+                items: [
+                    { name: 'BI Dashboard', path: '/bi-dashboard', id: 'bi-dashboard' },
+                    { name: 'AI Insights', path: '/ai-insights', id: 'ai-insights' }
                 ]
             });
         }

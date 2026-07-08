@@ -1,16 +1,18 @@
 import express from 'express';
-import {
+import { 
+    createPurchaseOrder,
     getPurchaseOrders,
     getPurchaseOrder,
-    createPurchaseOrder,
     updatePOStatus,
     receivePurchaseOrder,
     updatePurchaseOrder,
     deletePurchaseOrder
 } from '../controllers/purchaseOrderController.js';
-// import { protect } from '../middleware/authMiddleware.js';
+import { processOcrBill } from '../controllers/phase2Controller.js';
 import { checkMenuAccess } from '../middleware/accessMiddleware.js';
+import multer from 'multer';
 
+const upload = multer({ storage: multer.memoryStorage() });
 const router = express.Router();
 
 // router.use(protect); // Global middleware handles this now
@@ -19,6 +21,8 @@ router.use(checkMenuAccess('purchases'));
 router.route('/')
     .get(getPurchaseOrders)
     .post(createPurchaseOrder);
+
+router.post('/ocr-scan', upload.single('billImage'), processOcrBill);
 
 router.route('/:id')
     .get(getPurchaseOrder)

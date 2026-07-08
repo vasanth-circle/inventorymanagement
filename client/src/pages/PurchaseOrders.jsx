@@ -148,6 +148,39 @@ const PurchaseOrders = () => {
         setFormData({ ...formData, items: newItems });
     };
 
+    const handleOcrScan = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('billImage', file);
+
+        toast.loading('Scanning bill via OCR...', { id: 'ocr' });
+        try {
+            const res = await axios.post(`${API_URL}/ocr-scan`, formData, {
+                headers: { 
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${sessionStorage.getItem('token')}` 
+                }
+            });
+            const data = res.data.data;
+            
+            // Try to set vendor, bill no, date etc.
+            setFormData(prev => ({
+                ...prev,
+                vendorBillNumber: data.invoiceNumber || prev.vendorBillNumber,
+                billDate: data.date || prev.billDate
+            }));
+            
+            toast.success('Bill scanned! Verify extracted details.', { id: 'ocr' });
+        } catch (error) {
+            toast.error('Failed to scan bill', { id: 'ocr' });
+        }
+        
+        // reset input
+        e.target.value = null;
+    };
+
     const handleQuickAddItemSubmit = async (e) => {
         e.preventDefault();
         try {
@@ -526,9 +559,15 @@ const PurchaseOrders = () => {
                 <div className="max-w-6xl mx-auto space-y-6">
                     <div className="flex justify-between items-center border-b pb-4">
                         <h2 className="text-2xl font-bold text-gray-800">{editingOrder ? 'Edit Purchase Entry' : 'New Purchase Entry'}</h2>
-                        <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium">
-                            &larr; Back to List
-                        </button>
+                        <div className="flex gap-3">
+                            <label className="cursor-pointer px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors font-medium">
+                                📷 Scan Bill
+                                <input type="file" accept="image/*" className="hidden" onChange={handleOcrScan} />
+                            </label>
+                            <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium">
+                                &larr; Back to List
+                            </button>
+                        </div>
                     </div>
                     <div className="bg-white rounded-xl shadow-md p-6">
                         <form onSubmit={handleSubmit} className="space-y-6">

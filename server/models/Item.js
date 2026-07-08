@@ -60,10 +60,31 @@ const itemSchema = new mongoose.Schema({
         binLocation: { type: String, trim: true },
         batchId: { type: mongoose.Schema.Types.ObjectId } // Link to batch if both are tracked
     }],
+    reservedQuantity: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
     damagedQuantity: {
         type: Number,
         default: 0,
         min: 0,
+    },
+    // ─── Phase 3: Bin/Rack Tracking ─────────────────────────────────
+    binStock: [{
+        binLocation: { type: mongoose.Schema.Types.ObjectId, ref: 'BinLocation' },
+        quantity: { type: Number, default: 0, min: 0 }
+    }],
+    // ─── Product Variants ───────────────────────────────────────────────
+    parentItem: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Item',
+        default: null,
+    },
+    variantAttributes: {
+        type: Map,
+        of: String,
+        default: {},
     },
     minStockThreshold: {
         type: Number,

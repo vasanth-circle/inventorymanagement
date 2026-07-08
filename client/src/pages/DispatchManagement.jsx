@@ -121,6 +121,17 @@ const DispatchManagement = () => {
         }
     };
 
+    const handleBookShipment = async (dispatchId) => {
+        toast.loading('Booking shipment with Shiprocket...', { id: 'ship' });
+        try {
+            await api.post(`/dispatches/${dispatchId}/book-shipment`);
+            toast.success('Shipment booked successfully! AWB assigned.', { id: 'ship' });
+            fetchData();
+        } catch (e) {
+            toast.error(e.response?.data?.message || 'Failed to book shipment', { id: 'ship' });
+        }
+    };
+
     const handleOpenRequestModal = async (order) => {
         setSelectedOrder(order);
         setRequestData({ notes: '', items: [] }); 
@@ -796,6 +807,74 @@ const DispatchManagement = () => {
                                         )}
 
                                         <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
+                                            {!dh.shipping?.awbNumber && dh.status === 'dispatched' && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleBookShipment(dh._id)}
+                                                    className="px-4 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 font-semibold rounded-lg text-sm transition-colors"
+                                                >
+                                                    Book Shipment
+                                                </button>
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    // ── Delivery Challan Print (Phase 1: No GST amounts) ──
+                                                    const w = window.open('', '_blank');
+                                                    w.document.write(`<html><head><title>Delivery Challan ${dh.dispatchNumber}</title>
+                                                    <style>
+                                                        body{font-family:Arial,sans-serif;padding:32px;color:#1a1a2e;max-width:800px;margin:auto}
+                                                        .header{display:flex;justify-content:space-between;border-bottom:2px solid #4f46e5;padding-bottom:16px;margin-bottom:20px}
+                                                        h1{color:#4f46e5;margin:0;font-size:22px} h4{margin:0;color:#555;font-weight:normal}
+                                                        .badge{display:inline-block;padding:3px 12px;border-radius:4px;background:#eef2ff;color:#4f46e5;font-weight:700;font-size:12px;letter-spacing:1px}
+                                                        table{width:100%;border-collapse:collapse;margin-top:20px}
+                                                        th{background:#eef2ff;padding:10px;text-align:left;font-size:12px;color:#4f46e5}
+                                                        td{padding:9px 10px;border-bottom:1px solid #eee;font-size:13px}
+                                                        .footer{margin-top:40px;border-top:1px solid #eee;padding-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:12px;color:#666}
+                                                        @media print{body{padding:10px}}
+                                                    </style></head><body>
+                                                    <div class="header">
+                                                        <div><h1>DELIVERY CHALLAN</h1><h4>${dh.dispatchNumber}</h4></div>
+                                                        <div style="text-align:right">
+                                                            <div class="badge">DC</div>
+                                                            <div style="margin-top:8px;font-size:12px"><strong>Date:</strong> ${new Date(dh.dispatchDate || dh.createdAt).toLocaleDateString('en-IN')}</div>
+                                                            <div style="font-size:12px"><strong>Order Ref:</strong> ${dh.order?.orderNumber || 'N/A'}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:13px;margin-bottom:20px">
+                                                        <div>
+                                                            <strong>Consignee:</strong><br/>
+                                                            ${dh.order?.customer?.companyName || dh.order?.customer?.name || 'Walk-in Customer'}<br/>
+                                                            ${dh.order?.siteName ? `<em>Site: ${dh.order.siteName}</em>` : ''}
+                                                        </div>
+                                                        <div>
+                                                            <strong>Vehicle No:</strong> ${dh.vehicleNumber || 'N/A'}<br/>
+                                                            <strong>Driver Phone:</strong> ${dh.driverPhone || 'N/A'}<br/>
+                                                            ${dh.notes ? `<strong>Notes:</strong> ${dh.notes}` : ''}
+                                                        </div>
+                                                    </div>
+                                                    <table>
+                                                        <thead><tr><th>#</th><th>Item Description</th><th>Qty (Boxes)</th><th>Remarks</th></tr></thead>
+                                                        <tbody>
+                                                        ${(dh.items || []).map((di, i) => `
+                                                            <tr><td>${i+1}</td>
+                                                            <td><strong>${di.item?.name || ''}</strong><br/><small style="color:#999">${di.item?.brand || ''} ${di.item?.size || ''}</small></td>
+                                                            <td style="font-weight:700">${di.quantity}</td>
+                                                            <td></td></tr>`).join('')}
+                                                        </tbody>
+                                                    </table>
+                                                    <div class="footer">
+                                                        <div><strong>Prepared By:</strong> _______________________<br/><br/><strong>Signature:</strong> _______________________</div>
+                                                        <div style="text-align:right"><strong>Receiver's Signature:</strong><br/><br/><br/>_______________________<br/><small>Name, Date & Stamp</small></div>
+                                                    </div>
+                                                    <p style="text-align:center;font-size:10px;margin-top:20px;color:#999">This is a Delivery Challan only — Not a Tax Invoice</p>
+                                                    </body></html>`);
+                                                    w.document.close(); w.print();
+                                                }}
+                                                className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2"
+                                            >
+                                                🚛 Print DC
+                                            </button>
                                             <button
                                                 type="button"
                                                 onClick={() => handlePrintLabels(dh)}

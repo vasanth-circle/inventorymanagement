@@ -32,9 +32,24 @@ import hsnRoutes from './routes/hsnRoutes.js';
 import sizeRoutes from './routes/sizeRoutes.js';
 import brandRoutes from './routes/brandRoutes.js';
 import finishRoutes from './routes/finishRoutes.js';
-import logRoutes from './routes/logRoutes.js';
-import profitRoutes from './routes/profitRoutes.js';
+import profitTrackingRoutes from './routes/profitRoutes.js';
 import expenseRoutes from './routes/expenseRoutes.js';
+import actionLogRoutes from './routes/logRoutes.js';
+import creditNoteRoutes from './routes/creditNoteRoutes.js';
+import grnRoutes from './routes/grnRoutes.js';
+import warehouseTransferRoutes from './routes/warehouseTransferRoutes.js';
+
+// Phase 2 Routes
+import workflowRoutes from './routes/workflowRoutes.js';
+import publicApiRoutes from './routes/publicApiRoutes.js';
+import ecommerceRoutes from './routes/ecommerceRoutes.js';
+
+// Phase 3 Routes
+import phase3Routes from './routes/phase3Routes.js';
+
+// Background services
+import { initScheduledJobs } from './services/scheduledJobs.js';
+
 import fixLegacyIndexes from './utils/fixIndexes.js';
 // Ensure User model is registered on appConn for cross-connection populate
 import { AppUser } from './models/User.js';
@@ -103,9 +118,23 @@ app.use('/api/hsn', hsnRoutes);
 app.use('/api/sizes', sizeRoutes);
 app.use('/api/brands', brandRoutes);
 app.use('/api/finishes', finishRoutes);
-app.use('/api/logs', logRoutes);
-app.use('/api/profit', profitRoutes);
+app.use('/api/logs', actionLogRoutes);
+app.use('/api/profit', profitTrackingRoutes);
 app.use('/api/expenses', expenseRoutes);
+app.use('/api/credit-notes', creditNoteRoutes);
+app.use('/api/grn', grnRoutes);
+app.use('/api/warehouse-transfers', warehouseTransferRoutes);
+
+// Phase 2 Endpoints
+app.use('/api/v1', publicApiRoutes); // Public API has its own auth middleware inside
+app.use('/api/workflows', workflowRoutes);
+app.use('/api/ecommerce', ecommerceRoutes);
+
+// Phase 3 Endpoints
+app.use('/api/phase3', phase3Routes);
+
+// Initialize scheduled background jobs
+initScheduledJobs();
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -175,3 +204,5 @@ if (process.env.NODE_ENV !== 'test') {
 
 export default app;
 // Server restart triggered by role update
+
+// trigger restart

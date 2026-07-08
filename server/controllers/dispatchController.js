@@ -108,6 +108,10 @@ export const fulfillDispatch = async (req, res, next) => {
                 }
 
                 itemDoc.quantity -= dispatchQty;
+                // ── [Phase1] Release reserved qty on actual dispatch ──────────────
+                if ((itemDoc.reservedQuantity || 0) > 0) {
+                    itemDoc.reservedQuantity = Math.max(0, (itemDoc.reservedQuantity || 0) - dispatchQty);
+                }
                 await itemDoc.save();
 
                 // Record transactions for each allocation
@@ -160,6 +164,14 @@ export const fulfillDispatch = async (req, res, next) => {
         if (order.customer) {
             const { syncSalesOrderLedger } = await import('./salesOrderController.js');
             await syncSalesOrderLedger(order._id, req.tenantId, req.user._id);
+        }
+        
+        // ── [Phase2] Trigger Webhook ─────────────────────────────────────
+        try {
+            const { dispatchWebhook } = await import('../services/webhookDispatcher.js');
+            await dispatchWebhook(req.tenantId, 'stock_updated', { dispatchId: dispatch._id, orderId: order._id, status: 'dispatched' });
+        } catch(e) {
+            console.error('Webhook trigger failed', e);
         }
 
         sendResponse(res, 200, dispatch, 'Dispatch fulfilled successfully');

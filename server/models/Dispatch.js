@@ -49,6 +49,13 @@ const dispatchSchema = new mongoose.Schema({
         }],
     }],
     notes: String,
+    shipping: {
+        carrier: String,
+        awbNumber: String,
+        trackingUrl: String,
+        status: String,
+        bookedAt: Date
+    },
     status: {
         type: String,
         enum: ['pending', 'pending_loading', 'dispatched', 'cancelled'],

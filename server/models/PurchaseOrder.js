@@ -105,6 +105,20 @@ const purchaseOrderSchema = new mongoose.Schema({
     },
     expectedDeliveryDate: Date,
     notes: String,
+    // ─── Landed Costs ─────────────────────────────────────────────────────
+    landedCosts: [{
+        type: { type: String, enum: ['freight', 'customs', 'insurance', 'handling', 'other'], default: 'other' },
+        description: { type: String, trim: true },
+        amount: { type: Number, default: 0, min: 0 },
+        allocationMethod: { type: String, enum: ['proportional', 'quantity', 'manual'], default: 'proportional' },
+    }],
+    // ─── GRN Linkage ───────────────────────────────────────────────────
+    grnIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'GoodsReceiptNote' }],
+    receivedStatus: {
+        type: String,
+        enum: ['not_received', 'partially_received', 'fully_received'],
+        default: 'not_received',
+    },
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

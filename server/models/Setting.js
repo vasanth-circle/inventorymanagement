@@ -95,6 +95,18 @@ const settingSchema = new mongoose.Schema({
         branchName: { type: String, default: '' },
         termsAndConditions: { type: String, default: '1. Goods once sold will not be taken back.\n2. No responsibility for breakages after leaving premises.\n3. E. & O.E.' },
     },
+
+    // ── Integrations ─────────────────────────────────────────────────────
+    integrations: {
+        shiprocket: {
+            enabled: { type: Boolean, default: false },
+            email: { type: String, default: '' },
+            password: { type: String, default: '' } // Needs encryption in real prod
+        },
+        shopify: {
+            enabled: { type: Boolean, default: false }
+        }
+    }
 }, { timestamps: true });
 
 const Setting = appConn.model('Setting', settingSchema);

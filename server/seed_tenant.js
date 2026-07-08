@@ -46,13 +46,16 @@ async function seedData() {
         if (!user) {
             console.log(`User ${TARGET_EMAIL} not found. Creating new User and Tenant...`);
             
-            tenant = new Tenant({
+            tenant = await Tenant.create({
                 businessName: 'Techath Ceramics',
                 slug: 'techath-ceramics',
                 contactEmail: TARGET_EMAIL,
-                status: 'Active'
+                status: 'Active',
+                apps: {
+                    inventory: true,
+                    crm: false
+                }
             });
-            await tenant.save();
 
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash('password123', salt);
@@ -221,7 +224,7 @@ async function seedData() {
         const customer1 = await Customer.create({ name: 'Apex Builders Ltd', phone: '9876543210', tenantId });
         const customer2 = await Customer.create({ name: 'Rajesh Home Construction', phone: '9876543211', tenantId });
         
-        const vendor1 = await Vendor.create({ name: 'Kajaria Ceramics Ltd', tenantId });
+        const vendor1 = await Vendor.create({ name: 'Kajaria Ceramics Ltd', phone: '9876543212', tenantId });
 
         // Seed Vendor Ledger opening balance
         console.log('Seeding Vendor Ledger...');

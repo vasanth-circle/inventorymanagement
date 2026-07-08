@@ -49,6 +49,20 @@ import ActionLogs from './pages/ActionLogs';
 import ProfitTracking from './pages/ProfitTracking';
 import Expenses from './pages/Expenses';
 import CustomReports from './pages/CustomReports';
+import CreditNotes from './pages/CreditNotes';
+import GoodsReceiptNotes from './pages/GoodsReceiptNotes';
+import WarehouseTransfers from './pages/WarehouseTransfers';
+import WorkflowRules from './pages/WorkflowRules';
+import ReportSchedules from './pages/ReportSchedules';
+import ApiSettings from './pages/ApiSettings';
+import ShippingIntegration from './pages/ShippingIntegration';
+import EcommerceChannels from './pages/EcommerceChannels';
+
+import WarehouseLayout from './pages/WarehouseLayout';
+import BOM from './pages/BOM';
+import Production from './pages/Production';
+import BiDashboard from './pages/BiDashboard';
+import AiInsights from './pages/AiInsights';
 
 function AppLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -131,6 +145,20 @@ function App() {
                                             <Route path="/dispatch-management" element={<DispatchManagement />} />
                                             <Route path="/settings" element={<Settings />} />
                                             <Route path="/quotations" element={<Quotations />} />
+                                            <Route path="/credit-notes" element={<CreditNotes />} />
+                                            <Route path="/grn" element={<GoodsReceiptNotes />} />
+                                            <Route path="/warehouse-transfers" element={<WarehouseTransfers />} />
+                                            <Route path="/workflow-rules" element={<WorkflowRules />} />
+                                            <Route path="/report-schedules" element={<ReportSchedules />} />
+                                            <Route path="/api-settings" element={<ApiSettings />} />
+                                            <Route path="/shipping" element={<ShippingIntegration />} />
+                                            <Route path="/ecommerce" element={<EcommerceChannels />} />
+
+                                            <Route path="/warehouse-layout" element={<WarehouseLayout />} />
+                                            <Route path="/bom" element={<BOM />} />
+                                            <Route path="/production" element={<Production />} />
+                                            <Route path="/bi-dashboard" element={<BiDashboard />} />
+                                            <Route path="/ai-insights" element={<AiInsights />} />
                                             <Route path="/assets" element={<Assets />} />
                                             <Route path="/assets/dashboard" element={<AssetDashboard />} />
                                             <Route path="/assets/reports" element={<AssetReports />} />

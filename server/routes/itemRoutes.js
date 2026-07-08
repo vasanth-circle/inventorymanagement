@@ -7,12 +7,25 @@ import {
     deleteItem,
     upload,
 } from '../controllers/itemController.js';
+import {
+    createVariant,
+    getVariantsByParent,
+    getParentItems,
+    getReservedStock,
+} from '../controllers/phase1Controller.js';
 import { authorize } from '../middleware/authMiddleware.js';
 import { checkMenuAccess } from '../middleware/accessMiddleware.js';
 import { validateRequest, schemas } from '../middleware/validateRequest.js';
 
 const router = express.Router();
 
+// ─── Variant & Reservation Routes ────────────────────────────────────────────
+router.get('/parent-items', checkMenuAccess('items'), getParentItems);
+router.get('/reserved-stock', checkMenuAccess('items'), getReservedStock);
+router.get('/:parentId/variants', checkMenuAccess('items'), getVariantsByParent);
+router.post('/:parentId/variants', checkMenuAccess('items'), createVariant);
+
+// ─── Standard CRUD ───────────────────────────────────────────────────────────
 router
     .route('/')
     .get(checkMenuAccess('items'), getItems)
@@ -25,3 +38,4 @@ router
     .delete(authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), checkMenuAccess('items'), deleteItem);
 
 export default router;
+

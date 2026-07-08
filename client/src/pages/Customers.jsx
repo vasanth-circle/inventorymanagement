@@ -452,6 +452,35 @@ const Customers = () => {
                                     <input type="number" step="0.01" value={formData.openingBalance} onChange={(e) => setFormData({ ...formData, openingBalance: e.target.value === '' ? '' : parseFloat(e.target.value) })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" placeholder="e.g. 5000 (Owed by customer) or -100 (Advance paid)" />
                                     <p className="text-[10px] text-gray-500 mt-1">Positive = Owed to you. Negative = Advance paid.</p>
                                 </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Credit Limit (₹)
+                                        <span className="ml-1 text-gray-400 text-xs font-normal">(0 = unlimited)</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="100"
+                                        value={formData.creditLimit ?? 0}
+                                        onChange={(e) => setFormData({ ...formData, creditLimit: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                        placeholder="e.g. 50000"
+                                    />
+                                    {(formData.creditLimit > 0 && formData.currentBalance > 0) && (
+                                        <div className="mt-2">
+                                            <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+                                                <span>Used: ₹{(formData.currentBalance || 0).toLocaleString('en-IN')}</span>
+                                                <span>Limit: ₹{formData.creditLimit.toLocaleString('en-IN')}</span>
+                                            </div>
+                                            <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                                <div
+                                                    className={`h-1.5 rounded-full transition-all ${(formData.currentBalance / formData.creditLimit) >= 0.9 ? 'bg-red-500' : (formData.currentBalance / formData.creditLimit) >= 0.7 ? 'bg-yellow-400' : 'bg-green-500'}`}
+                                                    style={{ width: `${Math.min(100, (formData.currentBalance / formData.creditLimit) * 100)}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             {/* ── Billing Address ── */}

@@ -521,6 +521,20 @@ export const createSalesOrder = async (req, res, next) => {
             await autoDispatchConfirmedOrder(order._id, req.tenantId, req.user._id);
         }
 
+        // ── [Phase1] Reserve stock for confirmed orders ───────────────────────
+        if (!order.isEstimation && !['cancelled', 'void'].includes(order.status)) {
+            const { reserveStockForOrder } = await import('./phase1Controller.js');
+            await reserveStockForOrder(order._id, req.tenantId);
+        }
+        
+        // ── [Phase2] Trigger Workflow Rules ─────────────────────────────────────
+        try {
+            const { evaluateRules } = await import('../services/workflowEngine.js');
+            await evaluateRules(req.tenantId, 'so_created', order._id, order);
+        } catch(e) {
+            console.error('Workflow trigger failed', e);
+        }
+
         sendResponse(res, 201, order, isEstimation ? 'Estimation created successfully' : 'Sales order created successfully');
     } catch (error) {
         next(error);
@@ -586,6 +600,14 @@ export const updateSOStatus = async (req, res, next) => {
         }
         if (order.status === 'confirmed' && !order.isEstimation) {
             await autoDispatchConfirmedOrder(order._id, req.tenantId, req.user._id);
+        }
+
+        // ── [Phase1] Manage reservation on status change ──────────────────────
+        const { reserveStockForOrder, releaseReservationForOrder } = await import('./phase1Controller.js');
+        if (['cancelled', 'void'].includes(status)) {
+            await releaseReservationForOrder(order._id, req.tenantId);
+        } else if (!order.isEstimation) {
+            await reserveStockForOrder(order._id, req.tenantId);
         }
 
         sendResponse(res, 200, order, `Sales order status updated to ${status}`);
