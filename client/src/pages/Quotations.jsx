@@ -181,6 +181,12 @@ const Quotations = () => {
     /* ── CRUD ──────────────────────────────────────────────────────── */
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (!formData.items || formData.items.length === 0) {
+            toast.error('Cannot save an empty quotation. Please add at least one item.');
+            return;
+        }
+
         const { itemsTotal, taxAmount, net } = calcTotals();
         
         // Clean numeric payloads to avoid Mongoose CastErrors with empty strings

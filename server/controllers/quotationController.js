@@ -48,7 +48,11 @@ export const getQuotation = async (req, res, next) => {
 // @access  Private
 export const createQuotation = async (req, res, next) => {
     try {
-        let { quotationNumber } = req.body;
+        let { quotationNumber, items } = req.body;
+
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return sendError(res, 400, 'Cannot create an empty quotation. Please add at least one item.');
+        }
         
         // Auto-generate quotation number if not provided
         if (!quotationNumber) {
@@ -92,6 +96,10 @@ export const createQuotation = async (req, res, next) => {
 // @access  Private
 export const updateQuotation = async (req, res, next) => {
     try {
+        if (req.body.items && (!Array.isArray(req.body.items) || req.body.items.length === 0)) {
+            return sendError(res, 400, 'Cannot save an empty quotation. Please add at least one item.');
+        }
+
         const quotation = await Quotation.findOneAndUpdate(
             { _id: req.params.id, ...tenantQuery(req) },
             req.body,

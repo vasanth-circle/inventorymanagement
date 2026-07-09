@@ -323,6 +323,12 @@ const SalesOrders = () => {
         if (submitting) return; // Guard against double-click
         setSubmitting(true);
         try {
+            if (!formData.items || formData.items.length === 0) {
+                toast.error('Cannot save an empty bill. Please add at least one item.');
+                setSubmitting(false);
+                return;
+            }
+
             const { netTotal, roundOffAmount } = calculateTotals();
             const submissionData = { ...formData, totalAmount: netTotal, roundOffAmount };
 

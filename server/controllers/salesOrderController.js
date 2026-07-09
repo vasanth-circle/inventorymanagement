@@ -406,6 +406,11 @@ export const createSalesOrder = async (req, res, next) => {
             customerType, referredBy
         } = req.body;
 
+        // ── Items Validation ──
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return sendError(res, 400, 'Cannot create an empty bill. Please add at least one item.');
+        }
+
         // ── Pricing & Stock Validation ──
         const settings = await Setting.findOne({ tenantId: req.tenantId });
         const preventBelowPurchase = settings?.pricingConfig?.preventSellingBelowPurchase;
@@ -618,6 +623,11 @@ export const updateSalesOrder = async (req, res, next) => {
             siteName, siteAddress, discountAmount, roundOffAmount,
             customerType, referredBy
         } = req.body;
+
+        // ── Items Validation ──
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return sendError(res, 400, 'Cannot save an empty bill. Please add at least one item.');
+        }
 
         const settings = await Setting.findOne({ tenantId: req.tenantId });
         const preventBelowPurchase = settings?.pricingConfig?.preventSellingBelowPurchase;
