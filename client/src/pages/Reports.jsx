@@ -150,14 +150,17 @@ const Reports = () => {
                 'Received By': transaction.user?.name || 'N/A',
             }));
         } else if (reportType === 'sales') {
-            exportData = reportData.map(order => ({
-                'Date': formatDateTime(order.orderDate),
-                'Order No': order.orderNumber,
-                'Customer': order.customer?.companyName || order.customer?.name || 'N/A',
-                'Net Amount': formatCurrency(order.totalAmount),
-                'Status': order.status,
-                'Sales Rep': order.user?.name || 'System'
-            }));
+            exportData = reportData.map(order => {
+                const netAmount = (order.totalAmount || 0) - (order.oldBalance || 0) + (order.advanceAmount || 0);
+                return {
+                    'Date': formatDateTime(order.orderDate),
+                    'Order No': order.orderNumber,
+                    'Customer': order.customer?.companyName || order.customer?.name || 'N/A',
+                    'Net Amount': formatCurrency(netAmount),
+                    'Status': order.status,
+                    'Sales Rep': order.user?.name || 'System'
+                };
+            });
         } else if (reportType === 'performance') {
             exportData = reportData.map(user => ({
                 'Sales Person': user.name,
@@ -285,15 +288,28 @@ const Reports = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50 font-medium">
-                            {reportData.map((order) => (
-                                <tr key={order._id} className="hover:bg-gray-50/50">
-                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs text-gray-900">{new Date(order.orderDate).toLocaleDateString()}</td>
-                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs font-bold text-primary-600">{order.orderNumber}</td>
-                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs text-gray-800">{order.customer?.companyName || order.customer?.name || '-'}</td>
-                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs font-black text-gray-900 text-right">{formatCurrency(order.totalAmount)}</td>
-                                </tr>
-                            ))}
+                            {reportData.map((order) => {
+                                const netAmount = (order.totalAmount || 0) - (order.oldBalance || 0) + (order.advanceAmount || 0);
+                                return (
+                                    <tr key={order._id} className="hover:bg-gray-50/50">
+                                        <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs text-gray-900">{new Date(order.orderDate).toLocaleDateString()}</td>
+                                        <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs font-bold text-primary-600">{order.orderNumber}</td>
+                                        <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs text-gray-800">{order.customer?.companyName || order.customer?.name || '-'}</td>
+                                        <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs font-black text-gray-900 text-right">{formatCurrency(netAmount)}</td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
+                        <tfoot className="bg-gray-50/80 border-t-2 border-gray-200">
+                            <tr>
+                                <td colSpan="3" className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs font-black text-gray-700 text-right uppercase tracking-widest">
+                                    Total Sales Amount
+                                </td>
+                                <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[12px] sm:text-sm font-black text-primary-600 text-right">
+                                    {formatCurrency(reportData.reduce((sum, order) => sum + ((order.totalAmount || 0) - (order.oldBalance || 0) + (order.advanceAmount || 0)), 0))}
+                                </td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             );

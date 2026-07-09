@@ -311,7 +311,7 @@ export const autoDispatchConfirmedOrder = async (orderId, tenantId, userId) => {
 // @access  Private
 export const getSalesOrders = async (req, res, next) => {
     try {
-        const { status = '', customer = '', type = '', search = '', page = 1, limit = 10 } = req.query;
+        const { status = '', customer = '', type = '', search = '', page = 1, limit = 10, startDate, endDate } = req.query;
         const query = { ...tenantQuery(req) };
 
         if (status) {
@@ -326,6 +326,18 @@ export const getSalesOrders = async (req, res, next) => {
             query.isEstimation = true;
         } else if (type === 'invoice') {
             query.isEstimation = false;
+        }
+
+        if (startDate || endDate) {
+            query.orderDate = {};
+            if (startDate) {
+                query.orderDate.$gte = new Date(startDate);
+            }
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                query.orderDate.$lte = end;
+            }
         }
 
         if (search) {
