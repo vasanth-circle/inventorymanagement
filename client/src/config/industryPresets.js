@@ -116,6 +116,36 @@ export const INDUSTRY_PRESETS = {
             inward: 'Batch Entry'
         },
         dashboard: ['expiry_alerts', 'batch_tracking', 'prescriptions']
+    },
+    machinery: {
+        name: "Machinery & Spare Parts",
+        description: "Built for machine dealers, spare parts suppliers, and industrial equipment businesses.",
+        productFields: [
+            { name: 'machineType', label: 'Machine Type / Category', type: 'text', placeholder: 'e.g. Lathe, CNC, Compressor' },
+            { name: 'modelNumber', label: 'Model Number', type: 'text', placeholder: 'e.g. CNC-5000X' },
+            { name: 'serialNumber', label: 'Serial Number', type: 'text', placeholder: 'Unique serial / chassis no', isUnique: true },
+            { name: 'manufacturer', label: 'Make / Manufacturer', type: 'text', placeholder: 'e.g. Kirloskar, Atlas Copco' },
+            { name: 'horsePower', label: 'Horse Power / KW', type: 'text', placeholder: 'e.g. 5 HP or 3.7 KW' },
+            { name: 'capacity', label: 'Capacity / Specification', type: 'text', placeholder: 'e.g. 500 kg/hr, 200 PSI' },
+            { name: 'sparePartNo', label: 'Spare Part Number', type: 'text', placeholder: 'OEM Part No' },
+            { name: 'condition', label: 'Condition', type: 'select', options: ['New', 'Refurbished', 'Used - Good', 'Used - Fair', 'For Parts'] }
+        ],
+        billing: {
+            quantityBasis: 'pieces',
+            secondaryUnit: 'none',
+            rateBasis: 'per_piece',
+            labels: { quantity: 'Qty / Pcs', secondary: '', rate: 'Unit Rate' }
+        },
+        terminology: {
+            items: 'Machines & Parts',
+            customers: 'Clients',
+            vendors: 'Suppliers',
+            inward: 'Parts Receipt',
+            outward: 'Delivery / Dispatch',
+            salesOrder: 'Work Order / Sale',
+            purchaseOrder: 'Parts Purchase Order'
+        },
+        dashboard: ['machine_parts_stock', 'low_parts_alert', 'parts_movement']
     }
 };
 

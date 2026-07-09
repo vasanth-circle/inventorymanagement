@@ -262,11 +262,19 @@ const StockInward = () => {
     return (
         <div className="max-w-4xl mx-auto space-y-4 pb-24 lg:pb-8">
             <div className="flex items-center space-x-3 pb-2 border-b border-gray-100">
-                <div className="w-10 h-10 bg-white shadow-sm border border-gray-100 rounded-lg flex items-center justify-center text-xl">📥</div>
+                <div className="w-10 h-10 bg-white shadow-sm border border-gray-100 rounded-lg flex items-center justify-center text-xl">
+                    {billingSettings?.industry === 'machinery' ? '⚙️' : '📥'}
+                </div>
                 <div>
-                    <h1 className="text-xl font-bold text-gray-900 leading-tight">Stock Inward</h1>
+                    <h1 className="text-xl font-bold text-gray-900 leading-tight">
+                        {activePreset?.terminology?.inward || 'Stock Inward'}
+                    </h1>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                        {billingSettings?.workflowConfig?.enforcePO ? 'Receive Stock via Purchase Order' : 'Add or Restock Items'}
+                        {billingSettings?.industry === 'machinery'
+                            ? 'Receive machinery parts & components into stock'
+                            : billingSettings?.workflowConfig?.enforcePO
+                                ? 'Receive Stock via Purchase Order'
+                                : 'Add or Restock Items'}
                     </p>
                 </div>
             </div>
@@ -694,7 +702,7 @@ const StockInward = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Vendor <span className="text-red-500">*</span>
+                                    {billingSettings?.industry === 'machinery' ? 'Supplier' : 'Vendor'} <span className="text-red-500">*</span>
                                 </label>
                                 <select
                                     name="vendor"
@@ -703,7 +711,7 @@ const StockInward = () => {
                                     required={!isOpeningStock}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                                 >
-                                    <option value="">-- Select Vendor --</option>
+                                    <option value="">-- Select {billingSettings?.industry === 'machinery' ? 'Supplier' : 'Vendor'} --</option>
                                     {vendors.map(v => (
                                         <option key={v._id} value={v._id}>{v.name}</option>
                                     ))}
@@ -711,7 +719,7 @@ const StockInward = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Vendor Bill / Invoice Number <span className="text-red-500">*</span>
+                                    {billingSettings?.industry === 'machinery' ? 'Supplier Invoice No' : 'Vendor Bill / Invoice Number'} <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="text"
@@ -720,7 +728,7 @@ const StockInward = () => {
                                     onChange={handleChange}
                                     required={!isOpeningStock}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                    placeholder="Enter Bill Number"
+                                    placeholder="Enter Invoice Number"
                                 />
                             </div>
                         </div>
@@ -789,7 +797,7 @@ const StockInward = () => {
 
                         <div className="md:col-span-1">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Batch / Lot Number
+                                {billingSettings?.industry === 'machinery' ? 'Part Lot / Batch No' : 'Batch / Lot Number'}
                             </label>
                             <input
                                 type="text"
@@ -797,7 +805,7 @@ const StockInward = () => {
                                 value={formData.batchNumber}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                placeholder="e.g. B-01 or Date"
+                                placeholder={billingSettings?.industry === 'machinery' ? 'e.g. LOT-001 or PO Ref' : 'e.g. B-01 or Date'}
                             />
                         </div>
 
@@ -836,7 +844,7 @@ const StockInward = () => {
 
                         <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Reason
+                                {billingSettings?.industry === 'machinery' ? 'Receipt Reason' : 'Reason'}
                             </label>
                             <input
                                 type="text"
@@ -844,7 +852,7 @@ const StockInward = () => {
                                 value={formData.reason}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                placeholder="Purchase, Return, etc."
+                                placeholder={billingSettings?.industry === 'machinery' ? 'e.g. Parts Purchase, Machine Repair Stock, etc.' : 'Purchase, Return, etc.'}
                             />
                         </div>
                     </div>
@@ -869,7 +877,7 @@ const StockInward = () => {
                             disabled={loading}
                             className="flex-1 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
                         >
-                            {loading ? 'Processing...' : '📥 Add Stock'}
+                            {loading ? 'Processing...' : billingSettings?.industry === 'machinery' ? '⚙️ Add to Parts Stock' : '📥 Add Stock'}
                         </button>
                         <button
                             type="button"

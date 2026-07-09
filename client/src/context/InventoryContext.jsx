@@ -26,7 +26,19 @@ export const InventoryProvider = ({ children }) => {
     // Sync activePreset when billingSettings change
     useEffect(() => {
         if (billingSettings?.industry) {
-            setActivePreset(getIndustryPreset(billingSettings.industry));
+            const basePreset = getIndustryPreset(billingSettings.industry);
+            // Merge custom fields from settings if they exist
+            if (billingSettings.customProductFields && billingSettings.customProductFields.length > 0) {
+                setActivePreset({
+                    ...basePreset,
+                    productFields: [
+                        ...(basePreset.productFields || []),
+                        ...billingSettings.customProductFields
+                    ]
+                });
+            } else {
+                setActivePreset(basePreset);
+            }
         }
     }, [billingSettings]);
 
@@ -247,12 +259,14 @@ export const InventoryProvider = ({ children }) => {
             updatedRow.total = Number((updatedRow.totalSqFt * price).toFixed(2));
         } else {
             // Standard Logic: Qty * Price
+            // Covers: generic, retail, electronics, medical, machinery — all piece-based industries
             if (field === 'quantity') {
                 updatedRow.quantity = value === '' ? '' : value;
             }
             const qtyNum = Number(updatedRow.quantity) || 0;
             updatedRow.stockQty = qtyNum;
-            updatedRow.stockUnit = 'units';
+            // Machinery uses pieces/sets, label reflects that
+            updatedRow.stockUnit = industry === 'machinery' ? 'pieces' : 'units';
             updatedRow.total = Number((qtyNum * price).toFixed(2));
         }
 

@@ -419,7 +419,9 @@ const PurchaseOrders = () => {
                 <>
                     <div className="flex justify-between items-center print:hidden">
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-800">Purchase Entry</h1>
+                            <h1 className="text-2xl font-bold text-gray-800">
+                                {billingSettings?.industry === 'machinery' ? 'Parts Purchase Order' : 'Purchase Entry'}
+                            </h1>
                         </div>
                         <div className="flex gap-4 items-end">
                             <div>

@@ -148,6 +148,8 @@ const Dashboard = () => {
     const [trendData, setTrendData] = useState([]);
 
     const isFinancialAdmin = ['super_admin','admin','tenant_owner','tenant_admin','manager','accounts'].includes(user?.role);
+    // Machinery-specific adaptations — only affects machinery industry
+    const isMachinery = billingSettings?.industry === 'machinery';
 
     useEffect(() => {
         if (!settingsLoading && billingSettings && (!billingSettings.industry || billingSettings.industry === 'generic')) {
@@ -212,10 +214,12 @@ const Dashboard = () => {
                     <div className="w-10 h-10 bg-white shadow-sm border border-gray-200 rounded-xl flex items-center justify-center overflow-hidden">
                         {billingSettings?.branding?.logoUrl
                             ? <img src={billingSettings.branding.logoUrl} alt="Logo" className="w-full h-full object-contain" />
-                            : <span className="text-xl">🏢</span>}
+                            : <span className="text-xl">{isMachinery ? '⚙️' : '🏢'}</span>}
                     </div>
                     <div>
-                        <h1 className="text-lg font-black text-gray-900 leading-tight">Inventory Dashboard</h1>
+                        <h1 className="text-lg font-black text-gray-900 leading-tight">
+                            {isMachinery ? 'Machinery & Parts Dashboard' : 'Inventory Dashboard'}
+                        </h1>
                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{oldStats?.companyName || 'Overview'}</p>
                     </div>
                 </div>
@@ -234,7 +238,7 @@ const Dashboard = () => {
                         Refresh
                     </button>
                     <Link to="/inventory" className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition-all shadow-sm">
-                        Manage Stock →
+                        {isMachinery ? 'Manage Parts →' : 'Manage Stock →'}
                     </Link>
                 </div>
             </div>
@@ -256,18 +260,47 @@ const Dashboard = () => {
 
             {/* ─── KPI Cards ───────────────────────────────────────── */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3">
-                <KpiCard icon="📦" label="Total Products" value={kpi.totalProducts?.toLocaleString() ?? '—'} sub="Unique items in catalog" color="indigo" onClick={() => navigate('/inventory')} />
+                <KpiCard
+                    icon={isMachinery ? '⚙️' : '📦'}
+                    label={isMachinery ? 'Machines & Parts' : 'Total Products'}
+                    value={kpi.totalProducts?.toLocaleString() ?? '—'}
+                    sub={isMachinery ? 'Unique machines & spares' : 'Unique items in catalog'}
+                    color="indigo" onClick={() => navigate('/inventory')} />
                 <KpiCard icon="🏷️" label="Total SKUs" value={kpi.totalSKUs?.toLocaleString() ?? '—'} sub="Items with SKU codes" color="sky" />
-                {isFinancialAdmin && <KpiCard icon="💰" label="Inventory Value" value={fmtCompact(kpi.inventoryValue)} sub="Based on purchase price" color="emerald" />}
-                <KpiCard icon="📊" label="Available Stock" value={kpi.availableStock?.toLocaleString() ?? '—'} sub="Total units in hand" color="violet" />
-                <KpiCard icon="⚠️" label="Low Stock" value={kpi.lowStockCount ?? '—'} sub="At or below threshold" color="amber" urgent={kpi.lowStockCount > 0} onClick={() => setStockTab('low')} />
-                <KpiCard icon="🔴" label="Out of Stock" value={kpi.outOfStockCount ?? '—'} sub="Zero quantity items" color="rose" urgent={kpi.outOfStockCount > 0} onClick={() => setStockTab('out')} />
+                {isFinancialAdmin && <KpiCard icon="💰" label={isMachinery ? 'Parts Stock Value' : 'Inventory Value'} value={fmtCompact(kpi.inventoryValue)} sub="Based on purchase price" color="emerald" />}
+                <KpiCard
+                    icon={isMachinery ? '🔩' : '📊'}
+                    label={isMachinery ? 'Parts in Stock' : 'Available Stock'}
+                    value={kpi.availableStock?.toLocaleString() ?? '—'}
+                    sub={isMachinery ? 'Total parts in hand' : 'Total units in hand'}
+                    color="violet" />
+                <KpiCard
+                    icon="⚠️"
+                    label={isMachinery ? 'Low Parts Alert' : 'Low Stock'}
+                    value={kpi.lowStockCount ?? '—'}
+                    sub="At or below threshold" color="amber" urgent={kpi.lowStockCount > 0} onClick={() => setStockTab('low')} />
+                <KpiCard
+                    icon="🔴"
+                    label={isMachinery ? 'Parts Out of Stock' : 'Out of Stock'}
+                    value={kpi.outOfStockCount ?? '—'}
+                    sub="Zero quantity items" color="rose" urgent={kpi.outOfStockCount > 0} onClick={() => setStockTab('out')} />
                 <KpiCard icon="📈" label="Overstocked" value={kpi.overStockedCount ?? '—'} sub="3x above threshold" color="orange" />
-                {isFinancialAdmin && <KpiCard icon="🔧" label="Damaged Units" value={kpi.damagedTotal?.toLocaleString() ?? '—'} sub={kpi.damagedValue > 0 ? `Value: ${fmtCompact(kpi.damagedValue)} · ${kpi.damagedCount ?? 0} items` : `Total damaged qty · ${kpi.damagedCount ?? 0} items`} color="slate" onClick={() => setStockTab('damaged')} />}
-                {isFinancialAdmin && <KpiCard icon="🛒" label="Pending POs" value={kpi.pendingPOs ?? '—'} sub="Awaiting delivery" color="indigo" onClick={() => navigate('/purchase-orders')} />}
-                {isFinancialAdmin && <KpiCard icon="📅" label="Purchase This Month" value={fmtCompact(kpi.purchaseThisMonth)} sub="Current month spend" color="sky" />}
-                <KpiCard icon="📥" label="Today Stock In" value={oldStats?.todayInward?.total ?? '—'} sub={`${oldStats?.todayInward?.count ?? 0} transactions`} color="emerald" />
-                <KpiCard icon="📤" label="Today Stock Out" value={oldStats?.todayOutward?.total ?? '—'} sub={`${oldStats?.todayOutward?.count ?? 0} transactions`} color="rose" />
+                {isFinancialAdmin && <KpiCard icon="🔧" label={isMachinery ? 'Damaged Parts' : 'Damaged Units'} value={kpi.damagedTotal?.toLocaleString() ?? '—'} sub={kpi.damagedValue > 0 ? `Value: ${fmtCompact(kpi.damagedValue)} · ${kpi.damagedCount ?? 0} items` : `Total damaged qty · ${kpi.damagedCount ?? 0} items`} color="slate" onClick={() => setStockTab('damaged')} />}
+                {isFinancialAdmin && <KpiCard
+                    icon={isMachinery ? '🔩' : '🛒'}
+                    label={isMachinery ? 'Pending Part Orders' : 'Pending POs'}
+                    value={kpi.pendingPOs ?? '—'} sub="Awaiting delivery" color="indigo" onClick={() => navigate('/purchase-orders')} />}
+                {isFinancialAdmin && <KpiCard icon="📅" label={isMachinery ? 'Parts Purchase This Month' : 'Purchase This Month'} value={fmtCompact(kpi.purchaseThisMonth)} sub="Current month spend" color="sky" />}
+                <KpiCard
+                    icon="📥"
+                    label={isMachinery ? 'Parts Received Today' : 'Today Stock In'}
+                    value={oldStats?.todayInward?.total ?? '—'}
+                    sub={`${oldStats?.todayInward?.count ?? 0} transactions`} color="emerald" />
+                <KpiCard
+                    icon="📤"
+                    label={isMachinery ? 'Parts Dispatched Today' : 'Today Stock Out'}
+                    value={oldStats?.todayOutward?.total ?? '—'}
+                    sub={`${oldStats?.todayOutward?.count ?? 0} transactions`} color="rose" />
             </div>
 
             {/* ─── Analytics Row ───────────────────────────────────── */}

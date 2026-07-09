@@ -68,6 +68,7 @@ const Settings = () => {
         invoicePrefix: 'INV',
         estimatePrefix: 'EST',
         industry: 'generic',
+        customProductFields: [],
         // Unit config
         unitConfig: {
             quantityBasis: 'units',
@@ -142,6 +143,7 @@ const Settings = () => {
                 invoicePrefix: billingSettings.invoicePrefix || 'INV',
                 estimatePrefix: billingSettings.estimatePrefix || 'EST',
                 industry: billingSettings.industry || 'generic',
+                customProductFields: billingSettings.customProductFields || [],
                 unitConfig: {
                     quantityBasis: billingSettings.unitConfig?.quantityBasis || 'units',
                     secondaryUnit: billingSettings.unitConfig?.secondaryUnit || 'none',
@@ -247,6 +249,15 @@ const Settings = () => {
                 secondaryLabel: 'Packing',
                 rateLabel: 'Rate'
             };
+        } else if (industry === 'machinery') {
+            unitConfig = {
+                quantityBasis: 'pieces',
+                secondaryUnit: 'none',
+                rateBasis: 'per_piece',
+                quantityLabel: 'Qty / Pcs',
+                secondaryLabel: '',
+                rateLabel: 'Unit Rate'
+            };
         }
 
         setFormData(prev => ({ 
@@ -269,6 +280,36 @@ const Settings = () => {
             ...prev,
             [category]: { ...prev[category], [field]: value }
         }));
+    };
+
+    const handleAddCustomField = () => {
+        setFormData(prev => ({
+            ...prev,
+            customProductFields: [
+                ...(prev.customProductFields || []),
+                { name: '', label: '', type: 'text', placeholder: '' }
+            ]
+        }));
+    };
+
+    const handleUpdateCustomField = (index, key, value) => {
+        setFormData(prev => {
+            const fields = [...(prev.customProductFields || [])];
+            fields[index] = { ...fields[index], [key]: value };
+            // Auto-generate name based on label if name is empty
+            if (key === 'label' && !fields[index].name) {
+                fields[index].name = value.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            }
+            return { ...prev, customProductFields: fields };
+        });
+    };
+
+    const handleRemoveCustomField = (index) => {
+        setFormData(prev => {
+            const fields = [...(prev.customProductFields || [])];
+            fields.splice(index, 1);
+            return { ...prev, customProductFields: fields };
+        });
     };
 
     const handleLogoUpload = async (e) => {
@@ -427,6 +468,7 @@ const Settings = () => {
                                                 { value: 'generic', label: 'Generic (Manual Config)' },
                                                 { value: 'retail', label: 'Fancy Store / Retail' },
                                                 { value: 'tiles', label: 'Tiles & Sanitary Ware' },
+                                                { value: 'machinery', label: 'Machinery & Spare Parts' },
                                                 { value: 'machine_shop', label: 'Machine Shop / Fabrication' },
                                                 { value: 'electronics', label: 'Electronics / Appliances' },
                                                 { value: 'medical', label: 'Pharmacy / Medical' },
@@ -436,7 +478,7 @@ const Settings = () => {
                                         <div className="space-y-1">
                                             <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Industry Template</label>
                                             <div className="flex items-center gap-3 px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl">
-                                                <span className="text-lg">{formData.industry === 'tiles' ? '🧱' : formData.industry === 'electronics' ? '⚡' : formData.industry === 'retail' ? '👕' : formData.industry === 'medical' ? '💊' : '📦'}</span>
+                                                <span className="text-lg">{formData.industry === 'tiles' ? '🧱' : formData.industry === 'electronics' ? '⚡' : formData.industry === 'retail' ? '👕' : formData.industry === 'medical' ? '💊' : formData.industry === 'machinery' ? '⚙️' : '📦'}</span>
                                                 <div>
                                                     <div className="font-black text-gray-800 capitalize">{formData.industry.replace('_', ' ')}</div>
                                                     <div className="text-[10px] text-gray-400 font-medium">🔒 Industry is locked. Contact admin to change.</div>
@@ -524,6 +566,59 @@ const Settings = () => {
                                         ].map((col, i) => (
                                             <span key={i} className="px-2 py-1 bg-white border border-gray-200 rounded text-[10px]">{col}</span>
                                         ))}
+                                    </div>
+                                </div>
+
+                                {/* ── Custom Product Fields ── */}
+                                <div className="pt-4 border-t border-gray-100 mt-6">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="text-sm font-black text-gray-700 flex items-center gap-2">
+                                            <span className="w-7 h-7 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center text-sm">✨</span>
+                                            Custom Product Fields
+                                        </h2>
+                                        <button
+                                            type="button"
+                                            onClick={handleAddCustomField}
+                                            className="px-3 py-1.5 bg-purple-50 text-purple-600 rounded-lg text-xs font-bold hover:bg-purple-100 transition-colors"
+                                        >
+                                            + Add Field
+                                        </button>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {formData.customProductFields?.length === 0 ? (
+                                            <p className="text-xs text-gray-400 font-medium italic">No custom fields defined. Click '+ Add Field' to create one.</p>
+                                        ) : (
+                                            formData.customProductFields?.map((field, index) => (
+                                                <div key={index} className="flex flex-wrap md:flex-nowrap items-start gap-3 p-3 bg-gray-50 border border-gray-200 rounded-xl relative">
+                                                    <div className="flex-1 min-w-[150px]">
+                                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Label</label>
+                                                        <input type="text" value={field.label} onChange={(e) => handleUpdateCustomField(index, 'label', e.target.value)} placeholder="e.g. Warranty Period" className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-purple-500 outline-none" required />
+                                                    </div>
+                                                    <div className="flex-1 min-w-[100px]">
+                                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Type</label>
+                                                        <select value={field.type} onChange={(e) => handleUpdateCustomField(index, 'type', e.target.value)} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-purple-500 outline-none">
+                                                            <option value="text">Text</option>
+                                                            <option value="number">Number</option>
+                                                            <option value="select">Dropdown (Select)</option>
+                                                        </select>
+                                                    </div>
+                                                    {field.type === 'select' ? (
+                                                        <div className="flex-1 min-w-[150px]">
+                                                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Options (comma separated)</label>
+                                                            <input type="text" value={field.options ? field.options.join(', ') : ''} onChange={(e) => handleUpdateCustomField(index, 'options', e.target.value.split(',').map(s => s.trim()))} placeholder="e.g. Yes, No" className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-purple-500 outline-none" />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex-1 min-w-[150px]">
+                                                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Placeholder</label>
+                                                            <input type="text" value={field.placeholder || ''} onChange={(e) => handleUpdateCustomField(index, 'placeholder', e.target.value)} placeholder="e.g. 1 Year" className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-purple-500 outline-none" />
+                                                        </div>
+                                                    )}
+                                                    <button type="button" onClick={() => handleRemoveCustomField(index)} className="mt-5 p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Remove Field">
+                                                        🗑️
+                                                    </button>
+                                                </div>
+                                            ))
+                                        )}
                                     </div>
                                 </div>
                             </>

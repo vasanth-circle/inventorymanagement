@@ -457,7 +457,9 @@ const SalesOrders = () => {
             {!isModalOpen ? (
                 <>
                     <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-800">Sales Orders & Estimations</h1>
+                <h1 className="text-2xl font-bold text-gray-800">
+                    {billingSettings?.industry === 'machinery' ? 'Work Orders & Estimations' : 'Sales Orders & Estimations'}
+                </h1>
                 <button
                     onClick={() => {
                         setEditingOrder(null);
@@ -465,7 +467,7 @@ const SalesOrders = () => {
                     }}
                     className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-bold shadow-md"
                 >
-                    + Create New (Order/Quote)
+                    {billingSettings?.industry === 'machinery' ? '+ New Work Order' : '+ Create New (Order/Quote)'}
                 </button>
             </div>
 
@@ -524,7 +526,9 @@ const SalesOrders = () => {
                             <thead>
                                 <tr className="bg-gray-50 border-bottom border-gray-100">
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Order #</th>
-                                    <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Customer</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">
+                                        {billingSettings?.industry === 'machinery' ? 'Client' : 'Customer'}
+                                    </th>
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Date</th>
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Created By</th>
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Total Amount</th>

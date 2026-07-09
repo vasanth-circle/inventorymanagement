@@ -32,6 +32,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 { name: 'Brands', path: '/brands', id: 'brands' },
                 { name: 'Finishes', path: '/finishes', id: 'finishes' },
                 ...(billingSettings?.industry === 'tiles' ? [{ name: 'Manage Sizes', path: '/sizes', id: 'sizes' }] : []),
+                ...(billingSettings?.industry === 'machinery' ? [{ name: 'Parts Config', path: '/sizes', id: 'sizes' }] : []),
                 { name: 'Locations', path: '/locations', id: 'locations' },
                 { name: 'Bulk Import', path: '/bulk-import', id: 'bulk-import' },
                 { name: 'Stock Summary', path: '/stocks', id: 'stocks' },
@@ -41,25 +42,25 @@ const Sidebar = ({ isOpen, onClose }) => {
             ]
         },
         {
-            name: 'Sales',
+            name: billingSettings?.industry === 'machinery' ? 'Sales & Work Orders' : 'Sales',
             id: 'sales',
-            icon: '🛒',
+            icon: billingSettings?.industry === 'machinery' ? '🏭' : '🛒',
             items: [
                 { name: activePreset?.terminology?.customers || 'Customers', path: '/customers', id: 'customers' },
                 { name: 'Customer Ledgers', path: '/customer-ledger', id: 'customer-ledger' },
                 // { name: 'Quotations', path: '/quotations', id: 'quotations' },
-                { name: 'Sales Orders', path: '/sales-orders', id: 'sales-orders' },
+                { name: activePreset?.terminology?.salesOrder || 'Sales Orders', path: '/sales-orders', id: 'sales-orders' },
                 { name: activePreset?.terminology?.outward || 'Dispatch Management', path: '/dispatch-management', id: 'dispatch-management' },
             ]
         },
         {
-            name: 'Purchases',
+            name: billingSettings?.industry === 'machinery' ? 'Procurement' : 'Purchases',
             id: 'purchases',
-            icon: '🎫',
+            icon: billingSettings?.industry === 'machinery' ? '🔩' : '🎫',
             items: [
-                { name: 'Vendors', path: '/vendors', id: 'vendors' },
+                { name: activePreset?.terminology?.vendors || 'Vendors', path: '/vendors', id: 'vendors' },
                 { name: 'Vendor Ledgers', path: '/vendor-ledger', id: 'vendor-ledger' },
-                { name: 'Purchase Entry', path: '/purchase-orders', id: 'purchase-orders' },
+                { name: activePreset?.terminology?.purchaseOrder || 'Purchase Entry', path: '/purchase-orders', id: 'purchase-orders' },
                 { name: activePreset?.terminology?.inward || 'Stock Inward', path: '/stock-inward', id: 'stock-inward' },
             ]
         },

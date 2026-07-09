@@ -20,6 +20,14 @@ const settingSchema = new mongoose.Schema({
         type: String,
         default: 'generic'
     },
+    customProductFields: [{
+        name: { type: String, required: true },
+        label: { type: String, required: true },
+        type: { type: String, enum: ['text', 'number', 'select'], default: 'text' },
+        placeholder: { type: String, default: '' },
+        options: [{ type: String }], // Used only if type is 'select'
+        isUnique: { type: Boolean, default: false }
+    }],
 
     // ── Unit & Measurement Configuration ─────────────────────────────────
     unitConfig: {
