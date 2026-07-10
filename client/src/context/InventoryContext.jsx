@@ -166,7 +166,10 @@ export const InventoryProvider = ({ children }) => {
         const price = Math.max(0, Number(updatedRow.price) || 0);
         const billingUnit = updatedRow.billingUnit || 'boxes';
 
-        if (industry === 'tiles' && sqFtPerPc > 0) {
+        const unitType = (updatedRow.unitType || '').toLowerCase();
+        const isPieceBased = ['pieces', 'pcs', 'nos', 'piece'].includes(unitType);
+
+        if (industry === 'tiles' && sqFtPerPc > 0 && !isPieceBased) {
             if (field === 'quantity') {
                 updatedRow.quantity = value === '' ? '' : value;
                 const qty = Number(value || 0);

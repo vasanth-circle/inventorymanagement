@@ -130,7 +130,8 @@ const Quotations = () => {
                 if (found.batches?.length) row.batchId = found.batches[0]._id;
                 
                 // Default to 'boxes' for tiles (matches inward unit), 'pieces' for others
-                if (row.sqFtPerPc > 0) {
+                const isPieceBased = ['pieces', 'pcs', 'nos', 'piece'].includes((row.unitType || '').toLowerCase());
+                if (row.sqFtPerPc > 0 && !isPieceBased) {
                     row.billingUnit = 'boxes';
                     row.stockUnit = 'boxes';
                 } else {
@@ -273,7 +274,7 @@ const Quotations = () => {
                 const itemId = i.item?._id || i.item;
                 const foundItem = allItems.find(x => x._id === itemId);
                 const sqFtPerPc = foundItem?.sqFtPerPc || 0;
-                const isTile = sqFtPerPc > 0;
+                const isTile = sqFtPerPc > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((foundItem.unitType || '').toLowerCase());
                 return {
                     ...i,
                     item: itemId,
@@ -624,7 +625,7 @@ const Quotations = () => {
                                     {/* Desktop view */}
                                     <div className="hidden md:block space-y-3">
                                         {formData.items.map((row, idx) => {
-                                            const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0;
+                                            const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((row.unitType || '').toLowerCase());
                                             const qtyLabel = isTile
                                                 ? (row.billingUnit === 'boxes' ? 'Boxes (0.5 ok)' : row.billingUnit === 'qty' ? 'Pieces' : 'Sq.Ft')
                                                 : (billingSettings?.unitConfig?.quantityLabel || 'Qty');
@@ -724,7 +725,7 @@ const Quotations = () => {
                                                 <button type="button" onClick={() => setFormData(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) }))} className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-red-50 text-red-500 rounded-full font-bold">✕</button>
 
                                                 {(() => {
-                                                    const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0;
+                                                    const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((row.unitType || '').toLowerCase());
                                                     return (<>
                                                         <div className="space-y-1">
                                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Item</label>

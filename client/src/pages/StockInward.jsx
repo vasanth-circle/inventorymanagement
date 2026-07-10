@@ -162,7 +162,7 @@ const StockInward = () => {
             // Calculate actual submission quantity (e.g. for tiles, convert boxes to sqft)
             let actualQuantity = parseFloat(formData.quantity) || 0;
             let actualDamaged = parseFloat(formData.damagedQuantity) || 0;
-            const isTile = activePreset?.id === 'tiles';
+            const isTile = activePreset?.id === 'tiles' && !['pieces', 'pcs', 'nos', 'piece'].includes((item.unitType || '').toLowerCase());
             
             if (isTile) {
                 const pcsPerBox = parseFloat(formData.pcsPerBox) || 1;

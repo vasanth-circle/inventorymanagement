@@ -33,7 +33,7 @@ const BulkImport = () => {
         { key: 'sqFtPerPc', label: 'SQFT / Tile (per pc)', required: false, synonyms: ['sqft/tile', 'sqft/pc', 'sqfttile', 'sqft per tile'] },
         { key: 'sqFtPerBox', label: 'SQFT / Box', required: false, synonyms: ['sqft/box', 'sqftbox', 'sqft per box'] },
         { key: 'pcsPerBox', label: 'No. of Pcs / Box', required: false, synonyms: ['no.of.pcs/box', 'pcs/box', 'pcsperbox', 'pieces per box', 'pcs per box'] },
-        { key: 'unitType', label: 'Unit', required: false, synonyms: ['unit', 'uom', 'units'] },
+        { key: 'unitType', label: 'Unit', required: false, synonyms: ['unit', 'uom', 'units', 'unittype'] },
         { key: 'price', label: 'Selling Price (per sqft)', required: false, synonyms: ['price', 'selling price', 'cost', 'rate', 'mrp'] },
         { key: 'purchasePrice', label: 'Purchase Price', required: false, synonyms: ['purchase price', 'buy price', 'purchase cost', 'cost price'] },
         { key: 'barcode', label: 'Barcode', required: false, synonyms: ['barcode', 'upc', 'ean'] },

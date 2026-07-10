@@ -195,7 +195,7 @@ const PurchaseOrders = () => {
                         unitType: selectedItem.unitType || 'pieces',
                         sqFtPerPc: Number(selectedItem.sqFtPerPc) || 0,
                         pcsPerBox: Math.max(1, Number(selectedItem.pcsPerBox) || 1),
-                        billingUnit: (billingSettings?.industry === 'tiles' && Number(selectedItem.sqFtPerPc) > 0) ? 'boxes' : (['box', 'boxes'].includes((selectedItem.unitType || '').toLowerCase()) ? 'boxes' : 'pieces')
+                        billingUnit: (billingSettings?.industry === 'tiles' && Number(selectedItem.sqFtPerPc) > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((selectedItem.unitType || '').toLowerCase())) ? 'boxes' : (['box', 'boxes'].includes((selectedItem.unitType || '').toLowerCase()) ? 'boxes' : 'pieces')
                     };
                     
                     // Initial calculation
@@ -580,7 +580,7 @@ const PurchaseOrders = () => {
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
                                             {formData.items.map((row, index) => {
-                                                const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0;
+                                                const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((row.unitType || '').toLowerCase());
                                                 return (
                                                 <tr key={index}>
                                                     <td className="py-2 pr-2">

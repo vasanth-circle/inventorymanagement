@@ -3,7 +3,7 @@ import { InventoryContext } from '../context/InventoryContext';
 import toast from 'react-hot-toast';
 
 const Sizes = () => {
-    const { sizes, addSize, editSize, removeSize, loading, confirmDelete } = useContext(InventoryContext);
+    const { sizes, addSize, editSize, removeSize, loading, confirmDelete, billingSettings } = useContext(InventoryContext);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingSize, setEditingSize] = useState(null);
     const [search, setSearch] = useState('');
@@ -51,7 +51,9 @@ const Sizes = () => {
         <div className="space-y-4">
             {/* Header */}
             <div className="flex flex-wrap gap-3 items-center justify-between">
-                <h1 className="text-2xl font-bold text-gray-800">Manage Tile Sizes</h1>
+                <h1 className="text-2xl font-bold text-gray-800">
+                    {billingSettings?.industry === 'machinery' ? 'Manage Part Sizes' : 'Manage Tile Sizes'}
+                </h1>
                 <button
                     onClick={openCreateModal}
                     className="px-3 py-1.5 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition-colors font-medium flex items-center gap-1.5 shadow-sm"
