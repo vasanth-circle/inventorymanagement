@@ -259,9 +259,7 @@ const DispatchManagement = () => {
 
     const handleSubmitFulfill = async (e) => {
         e.preventDefault();
-        if (!fulfillData.vehicleNumber) {
-            return toast.error('Vehicle Number is required');
-        }
+        // Vehicle number is optional now
 
         try {
             await api.put(`/dispatches/${selectedDispatch._id}/fulfill`, {
@@ -961,8 +959,8 @@ const DispatchManagement = () => {
                         
                         <form onSubmit={handleSubmitFulfill} className="p-6 space-y-5">
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1.5">Vehicle Number <span className="text-red-500">*</span></label>
-                                <input required type="text" value={fulfillData.vehicleNumber} onChange={(e) => setFulfillData({ ...fulfillData, vehicleNumber: e.target.value.toUpperCase() })} placeholder="e.g. TN 01 AB 1234" className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:bg-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all text-gray-900 uppercase sm:text-sm" />
+                                <label className="block text-xs font-medium text-gray-700 mb-1.5">Vehicle Number (Optional)</label>
+                                <input type="text" value={fulfillData.vehicleNumber} onChange={(e) => setFulfillData({ ...fulfillData, vehicleNumber: e.target.value.toUpperCase() })} placeholder="e.g. TN 01 AB 1234" className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:bg-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all text-gray-900 uppercase sm:text-sm" />
                             </div>
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1.5">Driver Phone</label>
