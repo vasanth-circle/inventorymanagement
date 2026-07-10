@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { printAccountStatement, printPaymentReceipt } from '../utils/printTemplates';
+import { printTallyLedger, printPaymentReceipt } from '../utils/printTemplates';
 import { AuthContext } from '../context/AuthContext';
 import FullScreenModal from '../components/FullScreenModal';
 const api = (path, opts = {}) =>
@@ -173,7 +173,7 @@ const CustomerLedger = () => {
             // Always fetch full statement (no date filter) for printing
             const res = await api(`/customers/${selectedCustomerId}/statement`);
             const { customer, entries, summary, period } = res.data.data;
-            printAccountStatement(customer, entries, summary, period, settings);
+            printTallyLedger(customer, entries, summary);
         } catch {
             toast.error('Failed to generate statement');
         }

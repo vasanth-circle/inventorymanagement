@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { toast } from 'react-hot-toast';
 import FullScreenModal from '../components/FullScreenModal';
-import { printAccountStatement, printPaymentReceipt } from '../utils/printTemplates';
+import { printTallyLedger, printPaymentReceipt } from '../utils/printTemplates';
 
 const fmt = (n) => Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -173,8 +173,7 @@ const VendorLedger = () => {
                 totalCredit: ledger.reduce((s, e) => s + e.credit, 0),
                 closingBalance: ledger.length > 0 ? ledger[ledger.length - 1].balance : vendor.openingBalance
             };
-            const period = { from: null, to: null };
-            printAccountStatement(vendor, ledger, summary, period, settings);
+            printTallyLedger(vendor, ledger, summary);
         } catch {
             toast.error('Failed to generate statement');
         }
