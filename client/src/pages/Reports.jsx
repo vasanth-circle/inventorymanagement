@@ -7,7 +7,7 @@ import { printTallyLedger, printTallyReceivables } from '../utils/printTemplates
 import FullScreenModal from '../components/FullScreenModal';
 
 const Reports = () => {
-    const { fetchTransactions, fetchSalesOrders, fetchItems } = useContext(InventoryContext);
+    const { fetchTransactions, fetchSalesOrders, fetchItems, billingSettings } = useContext(InventoryContext);
     const [reportType, setReportType] = useState('stock');
     const [filters, setFilters] = useState({
         startDate: '',
@@ -478,6 +478,26 @@ const Reports = () => {
 
     return (
         <div className="space-y-4 pb-24 lg:pb-8">
+            <style>
+                {`
+                    @media print {
+                        @page { margin: 0; }
+                        body * {
+                            visibility: hidden;
+                        }
+                        .print-container, .print-container * {
+                            visibility: visible;
+                        }
+                        .print-container {
+                            position: absolute;
+                            left: 0;
+                            top: 0;
+                            width: 100%;
+                            padding: 10mm;
+                        }
+                    }
+                `}
+            </style>
             <div className="flex justify-between items-center pb-2 border-b border-gray-100">
                 <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-white shadow-sm border border-gray-100 rounded flex items-center justify-center text-lg">📊</div>
@@ -542,6 +562,10 @@ const Reports = () => {
                         Export CSV
                     </button>
                     
+                    <button onClick={() => window.print()} disabled={reportData.length === 0} className="whitespace-nowrap bg-blue-50 text-blue-600 border border-blue-200 px-4 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-blue-100 transition-all disabled:opacity-50 disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200 shadow-sm flex items-center gap-2">
+                        <span>🖨️</span> Print
+                    </button>
+                    
                     {(reportType === 'daywise_receivables' || reportType === 'detailed_ledger') && (
                         <button onClick={handlePrintTally} disabled={reportData.length === 0} className="whitespace-nowrap bg-indigo-50 text-indigo-600 border border-indigo-200 px-4 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-indigo-100 transition-all disabled:opacity-50 shadow-sm flex items-center gap-2">
                             <span>🖨️</span> Print Tally Format
@@ -551,7 +575,13 @@ const Reports = () => {
             </div>
 
             {/* Results Area */}
-            <div>
+            <div className="print-container bg-white">
+                <div className="hidden print:block text-center mb-6 pb-4 border-b-2 border-gray-800">
+                    <h1 className="text-2xl font-black uppercase tracking-wider">{billingSettings?.companyName || 'Reports'}</h1>
+                    <p className="text-sm font-bold text-gray-600 uppercase mt-1">
+                        {navButtons.find(b => b.id === reportType)?.label?.replace(/[^a-zA-Z\s/]/g, '').trim()} Data
+                    </p>
+                </div>
                 {reportData.length > 0 ? (
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                         <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">

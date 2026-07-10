@@ -460,21 +460,46 @@ const SalesOrders = () => {
 
     return (
         <div className="space-y-6">
+            <style>
+                {`
+                    @media print {
+                        @page { margin: 0; }
+                        body * {
+                            visibility: hidden;
+                        }
+                        .print-container, .print-container * {
+                            visibility: visible;
+                        }
+                        .print-container {
+                            position: absolute;
+                            left: 0;
+                            top: 0;
+                            width: 100%;
+                            padding: 10mm;
+                        }
+                    }
+                `}
+            </style>
             {!isModalOpen ? (
                 <>
                     <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-800">
                     {billingSettings?.industry === 'machinery' ? 'Work Orders & Estimations' : 'Sales Orders & Estimations'}
                 </h1>
-                <button
-                    onClick={() => {
-                        setEditingOrder(null);
-                        setIsModalOpen(true);
-                    }}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-bold shadow-md"
-                >
-                    {billingSettings?.industry === 'machinery' ? '+ New Work Order' : '+ Create New (Order/Quote)'}
-                </button>
+                <div className="flex items-center gap-3">
+                    <button onClick={() => window.print()} className="px-4 py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors font-bold shadow-md flex items-center gap-2">
+                        <span>🖨️</span> Print
+                    </button>
+                    <button
+                        onClick={() => {
+                            setEditingOrder(null);
+                            setIsModalOpen(true);
+                        }}
+                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-bold shadow-md"
+                    >
+                        {billingSettings?.industry === 'machinery' ? '+ New Work Order' : '+ Create New (Order/Quote)'}
+                    </button>
+                </div>
             </div>
 
             <div className="flex gap-3 flex-wrap">
@@ -527,7 +552,13 @@ const SalesOrders = () => {
             ) : (
                 <div className="space-y-4">
                     {/* Desktop Table View */}
-                    <div className="hidden lg:block bg-white rounded-xl shadow-md overflow-x-auto">
+                    <div className="hidden lg:block print:block bg-white rounded-xl shadow-md overflow-x-auto print-container">
+                        <div className="hidden print:block text-center mb-6 pb-4 border-b-2 border-gray-800 bg-white w-full">
+                            <h1 className="text-2xl font-black uppercase tracking-wider">{billingSettings?.companyName || 'Company Name'}</h1>
+                            <p className="text-sm font-bold text-gray-600 uppercase mt-1">
+                                {billingSettings?.industry === 'machinery' ? 'Work Orders & Estimations' : 'Sales Orders & Estimations'}
+                            </p>
+                        </div>
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-gray-50 border-bottom border-gray-100">
@@ -539,7 +570,7 @@ const SalesOrders = () => {
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Created By</th>
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Total Amount</th>
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Status</th>
-                                    <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase text-right">Actions</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase text-right print:hidden">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
@@ -558,7 +589,7 @@ const SalesOrders = () => {
                                                 {order.status.replace('_', ' ')}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-right space-x-2">
+                                        <td className="px-6 py-4 text-right space-x-2 print:hidden">
                                             <div className="flex justify-end gap-2">
                                                 <button onClick={() => handlePrint(order)} className="text-primary-600 hover:text-primary-800 text-lg font-bold border-2 border-primary-100 w-9 h-9 flex items-center justify-center rounded-lg bg-primary-50 transition-all" title="Bill">
                                                     📄

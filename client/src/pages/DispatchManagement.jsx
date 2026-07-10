@@ -210,6 +210,16 @@ const DispatchManagement = () => {
         setRequestData({ ...requestData, items: newItems });
     };
 
+    const handleSelectAllItems = () => {
+        const allSelected = requestData.items.length > 0 && requestData.items.every(i => i.selected);
+        const newItems = requestData.items.map(item => ({
+            ...item,
+            selected: !allSelected,
+            quantity: !allSelected ? item.pendingQuantity : ''
+        }));
+        setRequestData({ ...requestData, items: newItems });
+    };
+
     const handleSubmitRequest = async (e) => {
         e.preventDefault();
         const selectedItems = requestData.items.filter(i => i.selected && Number(i.quantity) > 0);
@@ -858,7 +868,18 @@ const DispatchManagement = () => {
                         <form onSubmit={handleSubmitRequest} className="flex-1 overflow-y-auto p-6 space-y-8">
                             <div>
                                 <div className="flex justify-between items-center border-b border-gray-100 pb-3 mb-4">
-                                    <h3 className="text-sm font-semibold text-gray-900">Select Items to Request</h3>
+                                    <div className="flex items-center gap-4">
+                                        <h3 className="text-sm font-semibold text-gray-900">Select Items to Request</h3>
+                                        {requestData.items.length > 0 && (
+                                            <button 
+                                                type="button"
+                                                onClick={handleSelectAllItems}
+                                                className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+                                            >
+                                                {requestData.items.every(i => i.selected) ? 'Deselect All' : 'Select All'}
+                                            </button>
+                                        )}
+                                    </div>
                                     <span className="text-xs text-gray-500">{requestData.items.filter(i => i.selected).length} selected</span>
                                 </div>
                                 
