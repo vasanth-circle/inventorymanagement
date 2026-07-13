@@ -36,11 +36,12 @@ export const createDispatch = async (req, res, next) => {
                 return sum + (match ? match.quantity : 0);
             }, 0);
 
-            const targetedStockLimit = orderItem.stockQty || orderItem.quantity;
-            const pendingQty = targetedStockLimit - pastDispatchedQty;
+            const targetedStockLimit = Number((orderItem.stockQty || orderItem.quantity).toFixed(2));
+            const pendingQty = Number((targetedStockLimit - pastDispatchedQty).toFixed(2));
+            const reqQty = Number(Number(dispatchItem.quantity).toFixed(2));
             
-            if (dispatchItem.quantity > pendingQty) {
-                return sendError(res, 400, `Cannot request dispatch of ${dispatchItem.quantity} units. Only ${pendingQty} pending for this item.`);
+            if (reqQty > pendingQty) {
+                return sendError(res, 400, `Cannot request dispatch of ${reqQty} units. Only ${pendingQty} pending for this item.`);
             }
         }
 

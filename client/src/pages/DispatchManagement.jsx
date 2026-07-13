@@ -182,7 +182,7 @@ const DispatchManagement = () => {
 
                 const stockLimit = Number(item.stockQty) || 0;
                 const billedQty = Number(item.quantity) || 0;
-                const targetedStockLimit = stockLimit > 0 ? stockLimit : billedQty;
+                const targetedStockLimit = Number((stockLimit > 0 ? stockLimit : billedQty).toFixed(2));
 
                 const dispatchedSum = activeDispatches.reduce((sum, d) => {
                     const dMatch = d.items.find(di => {
