@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { toast } from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
-import { LockOpenIcon, BookOpenIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { KeyIcon, BookOpenIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 const Customers = () => {
     const navigate = useNavigate();
@@ -14,6 +14,7 @@ const Customers = () => {
     const [totalPages, setTotalPages] = useState(1);
     const [totalCustomers, setTotalCustomers] = useState(0);
     const [balances, setBalances] = useState({}); // { customerId: balance }
+    const [lockedStatuses, setLockedStatuses] = useState({}); // { customerId: boolean }
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState(null);
@@ -62,15 +63,21 @@ const Customers = () => {
             
             // Fetch balances in parallel (non-blocking, silent on individual failures)
             const balanceMap = {};
+            const lockStatusMap = {};
             await Promise.allSettled(
                 list.map(async (c) => {
                     try {
                         const r = await api.get(`${API_URL}/${c._id}/balance`);
                         balanceMap[c._id] = r.data.data.balance;
-                    } catch { balanceMap[c._id] = c.currentBalance || 0; }
+                        lockStatusMap[c._id] = r.data.data.isLocked || false;
+                    } catch { 
+                        balanceMap[c._id] = c.currentBalance || 0; 
+                        lockStatusMap[c._id] = false;
+                    }
                 })
             );
             setBalances(balanceMap);
+            setLockedStatuses(lockStatusMap);
         } catch (error) {
             toast.error('Failed to fetch customers');
         } finally {
@@ -248,11 +255,15 @@ const Customers = () => {
                                     <td className="px-6 py-4">
                                         <div className="font-medium text-gray-900 flex items-center gap-2">
                                             {customer.companyName || customer.name}
-                                            {customer.unlockedUntil && new Date(customer.unlockedUntil) > new Date() && (
+                                            {customer.unlockedUntil && new Date(customer.unlockedUntil) > new Date() ? (
                                                 <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full" title={`Unlocked until ${new Date(customer.unlockedUntil).toLocaleString()}`}>
                                                     🔓 Unlocked
                                                 </span>
-                                            )}
+                                            ) : lockedStatuses[customer._id] ? (
+                                                <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full" title="Locked due to pending balance over limit">
+                                                    🔒 Locked
+                                                </span>
+                                            ) : null}
                                         </div>
                                         {customer.companyName && <div className="text-xs text-gray-500">{customer.name}</div>}
                                     </td>
@@ -564,6 +575,22 @@ const Customers = () => {
                                     </div>
                                 )}
                             </div>
+
+                            {editingCustomer && lockedStatuses[editingCustomer._id] && (
+                                <div className="flex justify-between items-center bg-yellow-50 p-4 rounded-xl border border-yellow-200 mt-6 mb-2">
+                                    <div>
+                                        <div className="font-bold text-sm text-yellow-800">Credit Lock Bypass</div>
+                                        <div className="text-xs text-yellow-700 mt-1">Temporarily allow billing for 24 hours if this customer is locked due to pending balances.</div>
+                                    </div>
+                                    <button 
+                                        type="button"
+                                        onClick={() => { setUnlockCustomerData(editingCustomer); setUnlockModalOpen(true); setIsModalOpen(false); }}
+                                        className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-sm rounded-lg whitespace-nowrap ml-4 transition-colors"
+                                    >
+                                        Unlock for 24h
+                                    </button>
+                                </div>
+                            )}
 
                             <div className="flex justify-end gap-3 pt-4 border-t">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>

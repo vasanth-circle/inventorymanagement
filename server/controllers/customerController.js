@@ -1,6 +1,7 @@
 import Customer from '../models/Customer.js';
 import CustomerLedger from '../models/CustomerLedger.js';
 import User from '../models/User.js';
+import Setting from '../models/Setting.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
 import { recalculateCustomerBalance } from './salesOrderController.js';
@@ -195,7 +196,58 @@ export const getCustomerBalance = async (req, res, next) => {
         }).sort({ date: -1, createdAt: -1 });
 
         const balance = lastEntry ? lastEntry.balance : (customer.openingBalance || 0);
-        sendResponse(res, 200, { balance, customer }, 'Balance fetched');
+
+        let isLocked = false;
+        let isManuallyUnlocked = false;
+
+        if (customer.unlockedUntil && new Date(customer.unlockedUntil) > new Date()) {
+            isManuallyUnlocked = true;
+        }
+
+        const settings = await Setting.findOne({ tenantId: req.tenantId });
+        if (settings?.creditConfig?.enableAutoLock && !isManuallyUnlocked) {
+            const creditLimit = settings.creditConfig.customerCreditLimit || 0;
+            const creditDays = settings.creditConfig.customerCreditDays || 0;
+            
+            if (creditLimit > 0 && balance > creditLimit) {
+                isLocked = true;
+            } else if (creditDays > 0 && balance > 0) {
+                const allLedgerEntries = await CustomerLedger.find({ customer: customer._id, tenantId: req.tenantId }).sort({ date: 1, createdAt: 1 });
+                let totalPayments = 0;
+                const bills = [];
+
+                if (customer.openingBalance > 0) {
+                    bills.push({ date: customer.createdAt || new Date(0), amount: customer.openingBalance });
+                } else if (customer.openingBalance < 0) {
+                    totalPayments += Math.abs(customer.openingBalance);
+                }
+
+                allLedgerEntries.forEach(entry => {
+                    if (entry.debit > 0) bills.push({ date: entry.date, amount: entry.debit });
+                    if (entry.credit > 0) totalPayments += entry.credit;
+                });
+
+                let oldestUnpaidBillDate = null;
+                for (const bill of bills) {
+                    if (totalPayments >= bill.amount) {
+                        totalPayments -= bill.amount;
+                    } else {
+                        oldestUnpaidBillDate = bill.date;
+                        break;
+                    }
+                }
+
+                if (oldestUnpaidBillDate) {
+                    const diffTime = Math.abs(new Date() - new Date(oldestUnpaidBillDate));
+                    const daysPending = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    if (daysPending > creditDays) {
+                        isLocked = true;
+                    }
+                }
+            }
+        }
+
+        sendResponse(res, 200, { balance, customer, isLocked, isManuallyUnlocked }, 'Balance fetched');
     } catch (error) {
         next(error);
     }

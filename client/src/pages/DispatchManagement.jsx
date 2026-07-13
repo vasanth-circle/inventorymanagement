@@ -77,18 +77,47 @@ const DispatchManagement = () => {
             const allDispatches   = pendingDispatchRes.data?.data || pendingDispatchRes.data || [];
 
             // Build set of order IDs that already have a pending_loading dispatch request
-            // — those orders belong in the Pending Loading tab, not here
-            const pendingLoadingOrderIds = new Set(
-                allDispatches
-                    .filter(d => d.status === 'pending_loading')
-                    .map(d => String(d.order?._id || d.order))
+            // We no longer completely hide these orders, because the user might want to request the remaining items.
+            // The remaining quantity calculation below naturally filters out fully requested items.
+
+            // Exclude estimations (double-safety)
+            let allOrders = [...confirmedOrders, ...partialOrders].filter(order =>
+                !order.isEstimation
             );
 
-            // Exclude estimations (double-safety) and orders already in loading queue
-            const allOrders = [...confirmedOrders, ...partialOrders].filter(order =>
-                !order.isEstimation &&
-                !pendingLoadingOrderIds.has(String(order._id))
-            );
+            // Filter out items that are already fully dispatched and show only pending quantity
+            allOrders = allOrders.map(order => {
+                const orderDispatches = allDispatches.filter(d => 
+                    String(d.order?._id || d.order) === String(order._id) && d.status !== 'cancelled'
+                );
+
+                const pendingItems = order.items.map(item => {
+                    const itemId = item.item?._id || item.item;
+                    if (!itemId) return null;
+
+                    const stockLimit = Number(item.stockQty) || 0;
+                    const billedQty = Number(item.quantity) || 0;
+                    const targetedStockLimit = stockLimit > 0 ? stockLimit : billedQty;
+
+                    const dispatchedSum = orderDispatches.reduce((sum, d) => {
+                        const dMatch = d.items.find(di => String(di.item?._id || di.item) === String(itemId));
+                        return sum + (dMatch ? Number(dMatch.quantity) || 0 : 0);
+                    }, 0);
+
+                    const pending = Math.max(0, targetedStockLimit - dispatchedSum);
+                    return {
+                        ...item,
+                        quantity: Number(pending.toFixed(2)) // Display the remaining pending quantity
+                    };
+                }).filter(i => i !== null && i.quantity > 0);
+
+                return { 
+                    ...order, 
+                    items: pendingItems,
+                    isPartiallyRequested: orderDispatches.length > 0
+                };
+            }).filter(order => order.items.length > 0);
+
             setOrders(allOrders);
         } catch (error) {
             console.error('Fetch orders error:', error);
@@ -512,8 +541,8 @@ const DispatchManagement = () => {
                                                 <p className="text-xs font-medium text-indigo-600 uppercase tracking-wider mb-1">Order</p>
                                                 <h3 className="text-lg font-semibold text-gray-900">{order.orderNumber}</h3>
                                             </div>
-                                            <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${order.status === 'confirmed' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                                                {order.status.replace('_', ' ')}
+                                            <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${(order.status === 'confirmed' && !order.isPartiallyRequested) ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                                                {(order.status === 'partially_dispatched' || order.isPartiallyRequested) ? 'partial dispatch' : order.status.replace('_', ' ')}
                                             </span>
                                         </div>
                                         
@@ -528,16 +557,20 @@ const DispatchManagement = () => {
                                                 </div>
                                             </div>
                                             
-                                            <div className="space-y-3 mb-8 flex-1">
-                                                <p className="text-xs text-gray-500 font-medium">Pending Items</p>
-                                                <div className="space-y-2">
-                                                    {order.items.slice(0, 3).map((item, idx) => (
-                                                        <div key={idx} className="flex justify-between items-center text-sm">
-                                                            <span className="text-gray-700 truncate pr-4">{item.name}</span>
-                                                            <span className="font-medium text-gray-900">x{item.quantity}</span>
+                                            <div className="space-y-3 mb-6 flex-1 flex flex-col">
+                                                <div className="flex justify-between items-center">
+                                                    <p className="text-xs text-gray-500 font-medium">Pending Items</p>
+                                                    {(order.status === 'partially_dispatched' || order.isPartiallyRequested) && (
+                                                        <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 uppercase tracking-wider">Partial Dispatch</span>
+                                                    )}
+                                                </div>
+                                                <div className="space-y-2 max-h-56 overflow-y-auto pr-2 custom-scrollbar flex-1">
+                                                    {order.items.map((item, idx) => (
+                                                        <div key={idx} className="flex justify-between items-start text-sm">
+                                                            <span className="text-gray-700 pr-4">{item.name}</span>
+                                                            <span className="font-medium text-gray-900 whitespace-nowrap bg-gray-50 px-1.5 py-0.5 rounded">x {item.quantity}</span>
                                                         </div>
                                                     ))}
-                                                    {order.items.length > 3 && <p className="text-xs text-indigo-600 font-medium mt-2">+{order.items.length - 3} more items</p>}
                                                 </div>
                                             </div>
                                             
