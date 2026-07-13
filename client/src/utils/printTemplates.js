@@ -988,26 +988,26 @@ export const printTallyLedger = (customer, entries, summary) => {
 <div class="line"></div>
 <table>
   <tr>
-    <th style="width:12%">Date</th>
+    <th style="width:10%">Date</th>
     <th style="width:25%">Particulars</th>
-    <th style="width:15%">Remarks</th>
-    <th style="width:12%">Vch Type</th>
+    <th style="width:10%">Vch Type</th>
     <th style="width:10%">Vch No</th>
     <th style="width:13%;text-align:right">Debit</th>
     <th style="width:13%;text-align:right">Credit</th>
+    <th style="width:19%;text-align:right">Balance</th>
   </tr>
 </table>
 <div class="line"></div>
 
 <table style="margin-bottom: 10px;">
   <tr>
-    <td style="width:12%"></td>
+    <td style="width:10%"></td>
     <td style="width:25%"><b>Opening Balance :</b></td>
-    <td style="width:15%"></td>
-    <td style="width:12%"></td>
+    <td style="width:10%"></td>
     <td style="width:10%"></td>
     <td style="width:13%;text-align:right"><b>${openingBal >= 0 ? formatAmt(openingBal) : ''}</b></td>
     <td style="width:13%;text-align:right"><b>${openingBal < 0 ? formatAmt(Math.abs(openingBal)) : ''}</b></td>
+    <td style="width:19%;text-align:right"><b>${openingBal !== 0 ? formatAmt(Math.abs(openingBal)) + (openingBal > 0 ? ' Dr' : ' Cr') : ''}</b></td>
   </tr>
 </table>
 
@@ -1018,25 +1018,25 @@ export const printTallyLedger = (customer, entries, summary) => {
 <div class="line" style="margin-top:20px;"></div>
 <table>
   <tr>
-    <td style="width:12%"></td>
+    <td style="width:10%"></td>
     <td style="width:25%"><b>Closing Balance :</b></td>
-    <td style="width:15%"></td>
-    <td style="width:12%"></td>
+    <td style="width:10%"></td>
     <td style="width:10%"></td>
     <td style="width:13%;text-align:right"><b>${closeBal < 0 ? formatAmt(Math.abs(closeBal)) : ''}</b></td>
     <td style="width:13%;text-align:right"><b>${closeBal >= 0 ? formatAmt(closeBal) : ''}</b></td>
+    <td style="width:19%;text-align:right"><b>${closeBal !== 0 ? formatAmt(Math.abs(closeBal)) + (closeBal > 0 ? ' Dr' : ' Cr') : ''}</b></td>
   </tr>
 </table>
 <div class="line"></div>
 <table>
   <tr>
-    <td style="width:12%"></td>
+    <td style="width:10%"></td>
     <td style="width:25%"></td>
-    <td style="width:15%"></td>
-    <td style="width:12%"></td>
+    <td style="width:10%"></td>
     <td style="width:10%"></td>
     <td style="width:13%;text-align:right"><b>${formatAmt(totalDr + (openingBal > 0 ? openingBal : 0) + (closeBal < 0 ? Math.abs(closeBal) : 0))}</b></td>
     <td style="width:13%;text-align:right"><b>${formatAmt(totalCr + (openingBal < 0 ? Math.abs(openingBal) : 0) + (closeBal > 0 ? closeBal : 0))}</b></td>
+    <td style="width:19%"></td>
   </tr>
 </table>
 <div class="line"></div>

@@ -286,14 +286,14 @@ const buildOSSHtml = ({ entityType, summaries, from, to, settings }) => {
     const company = settings?.companyName || 'Company';
     const period = from && to ? `${fmtDate(from)} To ${fmtDate(to)}` : from ? `From ${fmtDate(from)}` : to ? `Till ${fmtDate(to)}` : 'All Dates';
     const title = entityType === 'customer' ? 'Customer' : 'Vendor';
-    const grandDr  = summaries.reduce((s, r) => s + r.totalDebit, 0);
-    const grandCr  = summaries.reduce((s, r) => s + r.totalCredit, 0);
+    const grandDr  = summaries.reduce((s, r) => s + (r.closingBalance > 0 ? r.closingBalance : 0), 0);
+    const grandCr  = summaries.reduce((s, r) => s + (r.closingBalance < 0 ? Math.abs(r.closingBalance) : 0), 0);
     const grandBal = summaries.reduce((s, r) => s + r.closingBalance, 0);
 
     const rows = summaries.map(r => `<tr>
 <td>${escHtml(r.name)}</td>
-<td style="text-align:right">${r.totalDebit > 0 ? fmt(r.totalDebit) : ''}</td>
-<td style="text-align:right">${r.totalCredit > 0 ? fmt(r.totalCredit) : ''}</td>
+<td style="text-align:right">${r.closingBalance > 0 ? fmt(r.closingBalance) : ''}</td>
+<td style="text-align:right">${r.closingBalance < 0 ? fmt(Math.abs(r.closingBalance)) : ''}</td>
 <td style="text-align:right">${r.closingBalance < 0 ? '-' : ''}${fmt(Math.abs(r.closingBalance))}</td>
 <td>${escHtml(r.phone)}</td>
 </tr>`).join('');
@@ -332,7 +332,7 @@ ${gstLine  ? `<div class="co-gst">${escHtml(gstLine)}</div>`   : ''}
 <table>
 <colgroup><col/><col style="width:100px"/><col style="width:100px"/><col style="width:100px"/><col style="width:115px"/></colgroup>
 <thead><tr>
-<th>Particulars</th><th class="r">Debit</th><th class="r">Credit</th><th class="r">Closing</th><th>Cell</th>
+<th>Particulars</th><th class="r">Pending (Dr)</th><th class="r">Advance (Cr)</th><th class="r">Closing</th><th>Cell</th>
 </tr></thead>
 <tbody>
 <tr class="sec"><td colspan="5"><b>${title}</b></td></tr>
@@ -578,11 +578,11 @@ const LedgerReport = ({ settings }) => {
                         <p className="text-xs mt-1 text-gray-500">{currentBalance > 0 ? 'Dr (Outstanding)' : currentBalance < 0 ? 'Cr (Advance)' : 'Settled'}</p>
                     </div>
                     <div className="bg-red-50 border border-red-200 rounded-xl p-4 shadow-sm">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Debit</p>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Pending (Dr)</p>
                         <p className="text-2xl font-black mt-1 text-red-600">{'\u20B9'}{fmt(totDr)}</p>
                     </div>
                     <div className="bg-green-50 border border-green-200 rounded-xl p-4 shadow-sm">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Credit</p>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Advance (Cr)</p>
                         <p className="text-2xl font-black mt-1 text-green-600">{'\u20B9'}{fmt(totCr)}</p>
                     </div>
                 </div>
@@ -935,8 +935,8 @@ const OutstandingSummary = ({ settings }) => {
     const rows = search.trim()
         ? allRows.filter(r => r.name?.toLowerCase().includes(search.trim().toLowerCase()))
         : allRows;
-    const grandDebit   = rows.reduce((s, r) => s + r.totalDebit, 0);
-    const grandCredit  = rows.reduce((s, r) => s + r.totalCredit, 0);
+    const grandDebit   = rows.reduce((s, r) => s + (r.closingBalance > 0 ? r.closingBalance : 0), 0);
+    const grandCredit  = rows.reduce((s, r) => s + (r.closingBalance < 0 ? Math.abs(r.closingBalance) : 0), 0);
     const grandBalance = rows.reduce((s, r) => s + r.closingBalance, 0);
     const printOpts = { entityType, summaries: rows, from, to, settings };
 
@@ -970,11 +970,11 @@ const OutstandingSummary = ({ settings }) => {
             {data && rows.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="bg-red-50 border border-red-200 rounded-xl p-4 shadow-sm">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Debit</p>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Pending (Dr)</p>
                         <p className="text-2xl font-black mt-1 text-red-600">{'\u20B9'}{fmt(grandDebit)}</p>
                     </div>
                     <div className="bg-green-50 border border-green-200 rounded-xl p-4 shadow-sm">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Credit</p>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Advance (Cr)</p>
                         <p className="text-2xl font-black mt-1 text-green-600">{'\u20B9'}{fmt(grandCredit)}</p>
                     </div>
                     <div className={`rounded-xl p-4 shadow-sm border ${grandBalance > 0 ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-200'}`}>
@@ -1015,8 +1015,8 @@ const OutstandingSummary = ({ settings }) => {
                                 <tr className="bg-gray-50 border-b border-gray-100">
                                     <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase">#</th>
                                     <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase">Particulars</th>
-                                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase text-right">Debit</th>
-                                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase text-right">Credit</th>
+                                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase text-right">Debit (Dr)</th>
+                                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase text-right">Credit (Cr)</th>
                                     <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase text-right">Closing Balance</th>
                                     <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase">Contact</th>
                                 </tr>
@@ -1027,10 +1027,10 @@ const OutstandingSummary = ({ settings }) => {
                                         <td className="px-4 py-2.5 text-gray-400 text-xs">{i + 1}</td>
                                         <td className="px-4 py-2.5 font-semibold text-gray-800 text-sm">{row.name}</td>
                                         <td className="px-4 py-2.5 text-right text-red-600 font-semibold text-xs">
-                                            {row.totalDebit > 0 ? <>{'\u20B9'}{fmt(row.totalDebit)}</> : <span className="text-gray-300">-</span>}
+                                            {row.closingBalance > 0 ? <>{'\u20B9'}{fmt(row.closingBalance)}</> : <span className="text-gray-300">-</span>}
                                         </td>
                                         <td className="px-4 py-2.5 text-right text-green-600 font-semibold text-xs">
-                                            {row.totalCredit > 0 ? <>{'\u20B9'}{fmt(row.totalCredit)}</> : <span className="text-gray-300">-</span>}
+                                            {row.closingBalance < 0 ? <>{'\u20B9'}{fmt(Math.abs(row.closingBalance))}</> : <span className="text-gray-300">-</span>}
                                         </td>
                                         <td className={`px-4 py-2.5 text-right font-bold text-xs ${row.closingBalance > 0 ? 'text-orange-600' : row.closingBalance < 0 ? 'text-blue-600' : 'text-gray-400'}`}>
                                             {row.closingBalance !== 0

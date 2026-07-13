@@ -40,7 +40,7 @@ const Reports = () => {
                     toast.success('Inward Flow report generated');
                 }
             } else if (reportType === 'sales') {
-                const data = await fetchSalesOrders({ ...filters, limit: 5000 });
+                const data = await fetchSalesOrders({ ...filters, type: 'invoice', limit: 5000 });
                 if (data && data.orders) {
                     setReportData(data.orders);
                     toast.success('Sales report generated');
@@ -299,9 +299,7 @@ const Reports = () => {
                                     </tr>
                                 );
                             })}
-                        </tbody>
-                        <tfoot className="bg-gray-50/80 border-t-2 border-gray-200">
-                            <tr>
+                            <tr className="bg-gray-50/80 border-t-2 border-gray-200">
                                 <td colSpan="3" className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs font-black text-gray-700 text-right uppercase tracking-widest">
                                     Total Sales Amount
                                 </td>
@@ -309,7 +307,7 @@ const Reports = () => {
                                     {formatCurrency(reportData.reduce((sum, order) => sum + ((order.totalAmount || 0) - (order.oldBalance || 0) + (order.advanceAmount || 0)), 0))}
                                 </td>
                             </tr>
-                        </tfoot>
+                        </tbody>
                     </table>
                 </div>
             );
@@ -478,27 +476,7 @@ const Reports = () => {
 
     return (
         <div className="space-y-4 pb-24 lg:pb-8">
-            <style>
-                {`
-                    @media print {
-                        @page { margin: 0; }
-                        body * {
-                            visibility: hidden;
-                        }
-                        .print-container, .print-container * {
-                            visibility: visible;
-                        }
-                        .print-container {
-                            position: absolute;
-                            left: 0;
-                            top: 0;
-                            width: 100%;
-                            padding: 10mm;
-                        }
-                    }
-                `}
-            </style>
-            <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+            <div className="flex justify-between items-center pb-2 border-b border-gray-100 print:hidden">
                 <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-white shadow-sm border border-gray-100 rounded flex items-center justify-center text-lg">📊</div>
                     <div>
@@ -509,7 +487,7 @@ const Reports = () => {
             </div>
 
             {/* Report Selection Tabs */}
-            <div className="bg-white p-2 rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+            <div className="bg-white p-2 rounded-xl shadow-sm border border-gray-200 overflow-x-auto print:hidden">
                 <div className="flex space-x-2 min-w-max">
                     {navButtons.map(btn => (
                         <button
@@ -524,7 +502,7 @@ const Reports = () => {
             </div>
 
             {/* Filters & Actions Bar */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row gap-4 justify-between items-center">
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row gap-4 justify-between items-center print:hidden">
                 
                 {/* Left Side: Parameters */}
                 <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
@@ -575,7 +553,7 @@ const Reports = () => {
             </div>
 
             {/* Results Area */}
-            <div className="print-container bg-white">
+            <div className="print-container bg-white print:m-0 print:p-0 print:w-full">
                 <div className="hidden print:block text-center mb-6 pb-4 border-b-2 border-gray-800">
                     <h1 className="text-2xl font-black uppercase tracking-wider">{billingSettings?.companyName || 'Reports'}</h1>
                     <p className="text-sm font-bold text-gray-600 uppercase mt-1">
@@ -583,21 +561,21 @@ const Reports = () => {
                     </p>
                 </div>
                 {reportData.length > 0 ? (
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 print:border-none print:shadow-none overflow-hidden print:overflow-visible">
+                        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center print:bg-white print:p-0 print:mb-4">
                             <h2 className="text-xs font-black text-gray-700 uppercase tracking-wider">
                                 {navButtons.find(b => b.id === reportType)?.label} Data
                             </h2>
-                            <span className="text-[10px] font-bold bg-white px-2 py-1 rounded text-gray-500 border border-gray-200">
+                            <span className="text-[10px] font-bold bg-white px-2 py-1 rounded text-gray-500 border border-gray-200 print:hidden">
                                 {reportData.length} records found
                             </span>
                         </div>
-                        <div className="overflow-x-auto w-full">
+                        <div className="overflow-x-auto w-full print:overflow-visible">
                             {renderTable()}
                         </div>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-lg border border-dashed border-gray-300 flex flex-col items-center justify-center p-12 text-center h-[50vh]">
+                    <div className="bg-white rounded-lg border border-dashed border-gray-300 flex flex-col items-center justify-center p-12 text-center h-[50vh] print:hidden">
                         <div className="text-4xl mb-4 grayscale opacity-20">📊</div>
                         <h3 className="text-sm font-black text-gray-600 uppercase tracking-widest">No Intelligence Generated</h3>
                         <p className="text-xs text-gray-400 max-w-xs mt-2">Select your report type and click generate to view data.</p>

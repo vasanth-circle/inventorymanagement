@@ -664,8 +664,27 @@ export const updateSalesOrder = async (req, res, next) => {
         if (expectedShipmentDate) order.expectedShipmentDate = expectedShipmentDate;
         if (notes !== undefined) order.notes = notes;
         if (terms !== undefined) order.terms = terms;
+        
+        const wasEstimation = order.isEstimation;
         if (isEstimation !== undefined) order.isEstimation = isEstimation;
         if (status) order.status = status;
+
+        // If converted from estimation to invoice, assign new invoice number
+        if (wasEstimation && !order.isEstimation) {
+            let retries = 0;
+            let assigned = false;
+            while (!assigned && retries < 10) {
+                try {
+                    const seq = await getNextSequenceValue('INV', req.tenantId);
+                    order.orderNumber = `${seq}`;
+                    assigned = true;
+                } catch (err) {
+                    if (err.code === 11000) retries++;
+                    else throw err;
+                }
+            }
+            if (!assigned) return sendError(res, 500, 'Failed to generate a unique invoice number');
+        }
         
         if (loadingCharges !== undefined) order.loadingCharges = loadingCharges;
         if (unloadingCharges !== undefined) order.unloadingCharges = unloadingCharges;
@@ -698,6 +717,10 @@ export const updateSalesOrder = async (req, res, next) => {
 
         if (order.customer) {
             await syncSalesOrderLedger(order._id, req.tenantId, req.user._id);
+        }
+
+        if (order.status === 'confirmed' && !order.isEstimation) {
+            await autoDispatchConfirmedOrder(order._id, req.tenantId, req.user._id);
         }
 
         // Log the edit action
