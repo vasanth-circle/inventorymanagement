@@ -60,7 +60,7 @@ const buildItemRows = (items, settings, taxPct, isQuotation) => {
         const isTile = isTileItem(item);
         let qtyCell;
         if (isTile) {
-            qtyCell = item.boxCount ? Number(item.boxCount).toString() : '';
+            qtyCell = item.boxCount ? parseFloat(Number(item.boxCount).toFixed(2)).toString() : '';
         } else {
             const u = getUnitLabel(item);
             const unitSuffix = u ? ` (${u})` : '';
@@ -352,7 +352,7 @@ const template2 = (order, settings, docType = 'invoice') => {
           const isTile = isTileItem(item);
           let qtyCell;
           if (isTile) {
-              qtyCell = item.boxCount ? Number(item.boxCount).toString() : '';
+              qtyCell = item.boxCount ? parseFloat(Number(item.boxCount).toFixed(2)).toString() : '';
           } else {
               const u = getUnitLabel(item);
               const unitSuffix = u ? ` (${u})` : '';
@@ -519,7 +519,7 @@ const template3 = (order, settings, docType = 'invoice') => {
         const isTile = isTileItem(item);
         let qtyCell;
         if (isTile) {
-            qtyCell = item.boxCount ? Number(item.boxCount).toString() : '';
+            qtyCell = item.boxCount ? parseFloat(Number(item.boxCount).toFixed(2)).toString() : '';
         } else {
             const u = getUnitLabel(item);
             const unitSuffix = u ? ` (${u})` : '';
@@ -696,7 +696,7 @@ const template4 = (order, settings, docType = 'invoice') => {
           const isTile4 = isTileItem(item);
           let qtyCell;
           if (isTile4) {
-              qtyCell = item.boxCount ? Number(item.boxCount).toString() : '';
+              qtyCell = item.boxCount ? parseFloat(Number(item.boxCount).toFixed(2)).toString() : '';
           } else {
               const u = getUnitLabel(item);
               const unitSuffix = u ? ` (${u})` : '';
@@ -1623,7 +1623,7 @@ export const generatePurchaseOrderHtml = (order, settings) => {
         let qtyVal;
         if (isTile) {
             totQty += Number(item.boxCount || 0);
-            qtyVal = item.boxCount ? `${Number(item.boxCount)} Nos` : '';
+            qtyVal = item.boxCount ? `${parseFloat(Number(item.boxCount).toFixed(2))} Nos` : '';
         } else {
             totQty += Number(item.quantity || 0);
             qtyVal = formatIndianNumber(item.quantity || 0, 3) + ' ' + (item.billingUnit || 'Nos').substring(0,3);
