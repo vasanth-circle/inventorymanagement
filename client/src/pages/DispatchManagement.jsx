@@ -20,6 +20,15 @@ const DispatchManagement = () => {
     });
     const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
     
+    // For editing a pending loading request
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editDispatchData, setEditDispatchData] = useState({
+        id: null,
+        dispatchNumber: '',
+        notes: '',
+        items: []
+    });
+    
     // For Godown Fulfilling Dispatch
     const [selectedDispatch, setSelectedDispatch] = useState(null);
     const [fulfillData, setFulfillData] = useState({
@@ -41,6 +50,16 @@ const DispatchManagement = () => {
     const [pendingSearch, setPendingSearch] = useState('');
     const [loadingSearch, setLoadingSearch] = useState('');
     const [historySearch, setHistorySearch] = useState('');
+
+    // Pagination states
+    const [pendingPage, setPendingPage] = useState(1);
+    const [loadingPage, setLoadingPage] = useState(1);
+    const [historyPage, setHistoryPage] = useState(1);
+    const ITEMS_PER_PAGE = 20;
+
+    useEffect(() => { setPendingPage(1); }, [pendingSearch, activeTab]);
+    useEffect(() => { setLoadingPage(1); }, [loadingSearch, activeTab]);
+    useEffect(() => { setHistoryPage(1); }, [historySearch, activeTab]);
 
     useEffect(() => {
         if (!isStrictlyGodown) {
@@ -276,6 +295,132 @@ const DispatchManagement = () => {
         }
     };
 
+    const handleOpenEditModal = async (dh) => {
+        // We need the full order to build the item list
+        const orderId = dh.order?._id || dh.order;
+        let order = orders.find(o => String(o._id) === String(orderId));
+        
+        if (!order) {
+            try {
+                const res = await api.get(`/sales-orders/${orderId}`);
+                order = res.data?.data;
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        if (!order) {
+            return toast.error('Cannot edit: order details not found in pending list');
+        }
+        
+        try {
+            const res = await api.get(`/dispatches/order/${order._id}`);
+            const pastDispatches = res.data?.data || [];
+            const activeDispatches = pastDispatches.filter(d => d.status !== 'cancelled' && String(d._id) !== String(dh._id));
+
+            const mappedItems = order.items.map(item => {
+                const itemId = item.item?._id || item.item;
+                if (!itemId) return null;
+
+                const stockLimit = Number(item.stockQty) || 0;
+                const billedQty = Number(item.quantity) || 0;
+                const targetedStockLimit = Number((stockLimit > 0 ? stockLimit : billedQty).toFixed(2));
+
+                const dispatchedSum = activeDispatches.reduce((sum, d) => {
+                    const dMatch = d.items.find(di => String(di.item?._id || di.item) === String(itemId));
+                    return sum + (dMatch ? Number(dMatch.quantity) || 0 : 0);
+                }, 0);
+
+                const pending = Math.max(0, targetedStockLimit - dispatchedSum);
+
+                const existingItem = dh.items.find(i => String(i.item?._id || i.item) === String(itemId));
+                const currentQty = existingItem ? Number(existingItem.quantity) : '';
+
+                return {
+                    item: itemId,
+                    name: item.name || item.item?.name,
+                    brand: item.brand || item.item?.brand,
+                    size: item.size || item.item?.size,
+                    orderedQuantity: targetedStockLimit,
+                    previouslyDispatched: dispatchedSum,
+                    pendingQuantity: Number(pending.toFixed(2)),
+                    quantity: currentQty,
+                    selected: !!existingItem,
+                    stockUnit: item.stockUnit || (item.sqFtPerPc ? 'Boxes' : 'Boxes')
+                };
+            }).filter(i => i !== null && i.pendingQuantity > 0);
+
+            setEditDispatchData({
+                id: dh._id,
+                dispatchNumber: dh.dispatchNumber,
+                notes: dh.notes || '',
+                items: mappedItems
+            });
+            
+            setIsEditModalOpen(true);
+        } catch (err) {
+            console.error('Dispatch edit load error:', err);
+            toast.error('Failed to load dispatch details for editing');
+        }
+    };
+
+    const handleEditItemToggle = (index) => {
+        const newItems = [...editDispatchData.items];
+        newItems[index].selected = !newItems[index].selected;
+        if (newItems[index].selected && (newItems[index].quantity === '' || newItems[index].quantity === 0)) {
+            newItems[index].quantity = newItems[index].pendingQuantity;
+        }
+        setEditDispatchData({ ...editDispatchData, items: newItems });
+    };
+
+    const handleEditQtyChange = (index, value) => {
+        const newItems = [...editDispatchData.items];
+        let parsed = value === '' ? '' : parseFloat(value);
+        if (parsed > newItems[index].pendingQuantity) {
+            parsed = newItems[index].pendingQuantity;
+        }
+        newItems[index].quantity = parsed;
+        setEditDispatchData({ ...editDispatchData, items: newItems });
+    };
+
+    const handleSubmitEdit = async (e) => {
+        e.preventDefault();
+        const selectedItems = editDispatchData.items.filter(i => i.selected && Number(i.quantity) > 0);
+        
+        if (selectedItems.length === 0) {
+            return toast.error('Please select at least one item and enter a valid quantity');
+        }
+
+        try {
+            await api.put(`/dispatches/${editDispatchData.id}`, {
+                notes: editDispatchData.notes,
+                items: selectedItems.map(i => ({
+                    item: i.item,
+                    quantity: Number(i.quantity)
+                }))
+            });
+
+            toast.success('Dispatch request updated successfully');
+            setIsEditModalOpen(false);
+            fetchPendingOrders();
+            fetchDispatches();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Error updating dispatch request');
+        }
+    };
+
+    const handleDeleteDispatch = async (dispatchId) => {
+        if (!window.confirm('Are you sure you want to cancel this dispatch request?')) return;
+        try {
+            await api.delete(`/dispatches/${dispatchId}`);
+            toast.success('Dispatch request cancelled');
+            fetchPendingOrders();
+            fetchDispatches();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Error cancelling dispatch request');
+        }
+    };
+
     const handleOpenFulfillModal = (dispatchLog) => {
         setSelectedDispatch(dispatchLog);
         setFulfillData({
@@ -446,8 +591,20 @@ const DispatchManagement = () => {
         }
     };
 
-    // Filter dispatches by status
-    const pendingLoadingDispatches = dispatches.filter(d => {
+    // ---------------- PAGINATION & FILTERING LOGIC ----------------
+    
+    // 1. Pending Shipments
+    const filteredOrders = orders.filter(order => {
+        const q = pendingSearch.toLowerCase();
+        const cName = (order.customer?.companyName || order.customer?.name || '').toLowerCase();
+        const oNum = (order.orderNumber || '').toLowerCase();
+        return cName.includes(q) || oNum.includes(q);
+    });
+    const paginatedOrders = filteredOrders.slice((pendingPage - 1) * ITEMS_PER_PAGE, pendingPage * ITEMS_PER_PAGE);
+    const totalPendingPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
+
+    // 2. Pending Loading Dispatches
+    const filteredLoadingDispatches = dispatches.filter(d => {
         if (d.status !== 'pending_loading') return false;
         if (!loadingSearch) return true;
         const query = loadingSearch.toLowerCase();
@@ -456,8 +613,28 @@ const DispatchManagement = () => {
         const custName = (d.order?.customer?.companyName || d.order?.customer?.name || '').toLowerCase();
         return dispatchNum.includes(query) || orderNum.includes(query) || custName.includes(query);
     });
-    const completedDispatches = dispatches.filter(d => d.status === 'dispatched');
-    
+    const paginatedLoadingDispatches = filteredLoadingDispatches.slice((loadingPage - 1) * ITEMS_PER_PAGE, loadingPage * ITEMS_PER_PAGE);
+    const totalLoadingPages = Math.ceil(filteredLoadingDispatches.length / ITEMS_PER_PAGE);
+
+    // 3. Dispatch Logs (History)
+    const completedDispatches = dispatches.filter(d => d.status === 'dispatched'); // Keep for summary prints etc
+    const filteredHistoryDispatches = completedDispatches.filter(dh => {
+        const query = historySearch.toLowerCase();
+        const dispatchNum = dh.dispatchNumber?.toLowerCase() || '';
+        const orderNum = dh.order?.orderNumber?.toLowerCase() || '';
+        const vehicleNum = dh.vehicleNumber?.toLowerCase() || '';
+        const driverPh = dh.driverPhone?.toLowerCase() || '';
+        const custName = (dh.order?.customer?.companyName || dh.order?.customer?.name || '').toLowerCase();
+        
+        return dispatchNum.includes(query) || 
+               orderNum.includes(query) || 
+               vehicleNum.includes(query) || 
+               driverPh.includes(query) ||
+               custName.includes(query);
+    });
+    const paginatedHistoryDispatches = filteredHistoryDispatches.slice((historyPage - 1) * ITEMS_PER_PAGE, historyPage * ITEMS_PER_PAGE);
+    const totalHistoryPages = Math.ceil(filteredHistoryDispatches.length / ITEMS_PER_PAGE);
+
     // Check if user is godown staff or admin
     const isGodownStaff = ['admin', 'manager', 'tenant_owner', 'godown_staff', 'godown staff'].includes(user?.role);
 
@@ -492,7 +669,7 @@ const DispatchManagement = () => {
                             : 'border-transparent text-gray-500 hover:text-gray-700'
                     }`}
                 >
-                    🚚 Pending Loading ({pendingLoadingDispatches.length})
+                    🚚 Pending Loading ({filteredLoadingDispatches.length})
                 </button>
                 <button
                     onClick={() => setActiveTab('history')}
@@ -522,19 +699,10 @@ const DispatchManagement = () => {
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {orders.filter(order => {
-                                const q = pendingSearch.toLowerCase();
-                                const cName = (order.customer?.companyName || order.customer?.name || '').toLowerCase();
-                                const oNum = (order.orderNumber || '').toLowerCase();
-                                return cName.includes(q) || oNum.includes(q);
-                            }).length > 0 ? (
-                                orders.filter(order => {
-                                    const q = pendingSearch.toLowerCase();
-                                    const cName = (order.customer?.companyName || order.customer?.name || '').toLowerCase();
-                                    const oNum = (order.orderNumber || '').toLowerCase();
-                                    return cName.includes(q) || oNum.includes(q);
-                                }).map((order) => (
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {filteredOrders.length > 0 ? (
+                                    paginatedOrders.map((order) => (
                                     <div key={order._id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:border-gray-300 transition-colors flex flex-col group">
                                         <div className="p-6 border-b border-gray-100 flex justify-between items-start">
                                             <div>
@@ -604,9 +772,33 @@ const DispatchManagement = () => {
                                     </div>
                                 ))
                             ) : (
-                                <div className="col-span-full py-20 px-6 bg-white rounded-2xl border border-gray-200 text-center flex flex-col items-center justify-center">
-                                    <h3 className="text-lg font-medium text-gray-900">No Pending Dispatches found</h3>
-                                    <p className="text-sm text-gray-500 mt-1 max-w-sm">No orders match your search.</p>
+                                    <div className="col-span-full py-20 px-6 bg-white rounded-2xl border border-gray-200 text-center flex flex-col items-center justify-center">
+                                        <h3 className="text-lg font-medium text-gray-900">No Pending Dispatches found</h3>
+                                        <p className="text-sm text-gray-500 mt-1 max-w-sm">No orders match your search.</p>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {/* Pagination Controls */}
+                            {totalPendingPages > 0 && (
+                                <div className="flex justify-between items-center bg-white px-4 py-3 border border-gray-200 rounded-xl">
+                                    <button
+                                        disabled={pendingPage === 1}
+                                        onClick={() => setPendingPage(p => Math.max(1, p - 1))}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Previous
+                                    </button>
+                                    <span className="text-sm text-gray-700">
+                                        Page <span className="font-medium">{pendingPage}</span> of <span className="font-medium">{totalPendingPages}</span>
+                                    </span>
+                                    <button
+                                        disabled={pendingPage === totalPendingPages}
+                                        onClick={() => setPendingPage(p => Math.min(totalPendingPages, p + 1))}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Next
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -630,9 +822,10 @@ const DispatchManagement = () => {
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {pendingLoadingDispatches.length > 0 ? (
-                                pendingLoadingDispatches.map((dh) => (
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {filteredLoadingDispatches.length > 0 ? (
+                                    paginatedLoadingDispatches.map((dh) => (
                                     <div key={dh._id} className="bg-white rounded-2xl shadow-sm border border-amber-200 overflow-hidden hover:border-amber-400 hover:shadow-md transition-all flex flex-col p-6 space-y-4">
                                         <div className="flex justify-between items-start border-b border-gray-100 pb-4">
                                             <div>
@@ -666,7 +859,7 @@ const DispatchManagement = () => {
 
                                         <div>
                                             <span className="text-xs font-bold text-gray-700 block mb-2">Items to Load</span>
-                                            <div className="border border-gray-100 rounded-xl overflow-hidden text-xs">
+                                            <div className="border border-gray-100 rounded-xl overflow-y-auto max-h-60 custom-scrollbar text-xs">
                                                 <table className="w-full text-left">
                                                     <thead>
                                                         <tr className="bg-gray-50 text-gray-500 font-bold border-b border-gray-100">
@@ -700,19 +893,39 @@ const DispatchManagement = () => {
                                             </div>
                                         )}
 
-                                        <div className="pt-3 border-t border-gray-100">
+                                        <div className="pt-3 border-t border-gray-100 flex gap-2">
                                             {isGodownStaff ? (
                                                 <button
                                                     type="button"
                                                     onClick={() => handleOpenFulfillModal(dh)}
-                                                    className="w-full bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2"
+                                                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2"
                                                 >
-                                                    🚚 Load Vehicle & Dispatch
+                                                    🚚 Load Vehicle
                                                 </button>
                                             ) : (
-                                                <div className="text-center text-xs text-gray-500 py-2">
-                                                    Waiting for Godown staff to load vehicle...
+                                                <div className="flex-1 text-center text-xs text-gray-500 py-2">
+                                                    Waiting for Godown...
                                                 </div>
+                                            )}
+                                            {(!isStrictlyGodown || user?.role === 'admin') && (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleOpenEditModal(dh)}
+                                                        className="px-3 py-2.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-xl transition-colors text-xs font-bold flex items-center justify-center"
+                                                        title="Edit Request"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteDispatch(dh._id)}
+                                                        className="px-3 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl transition-colors text-xs font-bold flex items-center justify-center"
+                                                        title="Cancel Request"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    </button>
+                                                </>
                                             )}
                                         </div>
                                     </div>
@@ -724,6 +937,30 @@ const DispatchManagement = () => {
                                     </div>
                                     <h3 className="text-lg font-medium text-gray-900">No Pending Loading</h3>
                                     <p className="text-sm text-gray-500 mt-1 max-w-sm">No dispatch requests from sales team.</p>
+                                </div>
+                            )}
+                            </div>
+                            
+                            {/* Pagination Controls */}
+                            {totalLoadingPages > 0 && (
+                                <div className="flex justify-between items-center bg-white px-4 py-3 border border-gray-200 rounded-xl">
+                                    <button
+                                        disabled={loadingPage === 1}
+                                        onClick={() => setLoadingPage(p => Math.max(1, p - 1))}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Previous
+                                    </button>
+                                    <span className="text-sm text-gray-700">
+                                        Page <span className="font-medium">{loadingPage}</span> of <span className="font-medium">{totalLoadingPages}</span>
+                                    </span>
+                                    <button
+                                        disabled={loadingPage === totalLoadingPages}
+                                        onClick={() => setLoadingPage(p => Math.min(totalLoadingPages, p + 1))}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Next
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -748,35 +985,10 @@ const DispatchManagement = () => {
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {completedDispatches.filter(dh => {
-                                const query = historySearch.toLowerCase();
-                                const dispatchNum = dh.dispatchNumber?.toLowerCase() || '';
-                                const orderNum = dh.order?.orderNumber?.toLowerCase() || '';
-                                const vehicleNum = dh.vehicleNumber?.toLowerCase() || '';
-                                const driverPh = dh.driverPhone?.toLowerCase() || '';
-                                const custName = (dh.order?.customer?.companyName || dh.order?.customer?.name || '').toLowerCase();
-                                
-                                return dispatchNum.includes(query) || 
-                                       orderNum.includes(query) || 
-                                       vehicleNum.includes(query) || 
-                                       driverPh.includes(query) ||
-                                       custName.includes(query);
-                            }).length > 0 ? (
-                                completedDispatches.filter(dh => {
-                                    const query = historySearch.toLowerCase();
-                                    const dispatchNum = dh.dispatchNumber?.toLowerCase() || '';
-                                    const orderNum = dh.order?.orderNumber?.toLowerCase() || '';
-                                    const vehicleNum = dh.vehicleNumber?.toLowerCase() || '';
-                                    const driverPh = dh.driverPhone?.toLowerCase() || '';
-                                    const custName = (dh.order?.customer?.companyName || dh.order?.customer?.name || '').toLowerCase();
-                                    
-                                    return dispatchNum.includes(query) || 
-                                           orderNum.includes(query) || 
-                                           vehicleNum.includes(query) || 
-                                           driverPh.includes(query) ||
-                                           custName.includes(query);
-                                }).map((dh) => (
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {filteredHistoryDispatches.length > 0 ? (
+                                    paginatedHistoryDispatches.map((dh) => (
                                     <div key={dh._id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:border-indigo-300 hover:shadow-md transition-all flex flex-col p-6 space-y-4">
                                         <div className="flex justify-between items-start border-b border-gray-100 pb-4">
                                             <div>
@@ -816,7 +1028,7 @@ const DispatchManagement = () => {
 
                                         <div>
                                             <span className="text-xs font-bold text-gray-700 block mb-2">Dispatched Items</span>
-                                            <div className="border border-gray-100 rounded-xl overflow-hidden text-xs">
+                                            <div className="border border-gray-100 rounded-xl overflow-y-auto max-h-60 custom-scrollbar text-xs">
                                                 <table className="w-full text-left">
                                                     <thead>
                                                         <tr className="bg-gray-50 text-gray-500 font-bold border-b border-gray-100">
@@ -875,6 +1087,30 @@ const DispatchManagement = () => {
                                     </div>
                                     <h3 className="text-lg font-medium text-gray-900">No matching logs found</h3>
                                     <p className="text-sm text-gray-500 mt-1 max-w-sm">No dispatches match your search filters.</p>
+                                </div>
+                            )}
+                            </div>
+
+                            {/* Pagination Controls */}
+                            {totalHistoryPages > 0 && (
+                                <div className="flex justify-between items-center bg-white px-4 py-3 border border-gray-200 rounded-xl">
+                                    <button
+                                        disabled={historyPage === 1}
+                                        onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Previous
+                                    </button>
+                                    <span className="text-sm text-gray-700">
+                                        Page <span className="font-medium">{historyPage}</span> of <span className="font-medium">{totalHistoryPages}</span>
+                                    </span>
+                                    <button
+                                        disabled={historyPage === totalHistoryPages}
+                                        onClick={() => setHistoryPage(p => Math.min(totalHistoryPages, p + 1))}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Next
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -970,6 +1206,88 @@ const DispatchManagement = () => {
                             <button type="submit" onClick={handleSubmitRequest} className="px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors text-sm flex items-center justify-center gap-2">
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                                 Send to Godown
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Dispatch Request Modal */}
+            {isEditModalOpen && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-0 sm:p-6">
+                    <div className="bg-white sm:rounded-2xl shadow-xl w-full h-full sm:h-auto sm:max-h-[90vh] max-w-3xl flex flex-col animate-[fadeIn_0.15s_ease-out]">
+                        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-white sm:rounded-t-2xl z-10 shrink-0">
+                            <div>
+                                <h2 className="text-lg font-semibold text-gray-900">Edit Dispatch Request</h2>
+                                <p className="text-xs text-gray-500 mt-1">{editDispatchData.dispatchNumber}</p>
+                            </div>
+                            <button onClick={() => setIsEditModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors p-2 -mr-2">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleSubmitEdit} className="flex-1 overflow-y-auto p-6 space-y-8">
+                            <div>
+                                <div className="flex justify-between items-center border-b border-gray-100 pb-3 mb-4">
+                                    <h3 className="text-sm font-semibold text-gray-900">Edit Items</h3>
+                                    <span className="text-xs text-gray-500">{editDispatchData.items.filter(i => i.selected).length} selected</span>
+                                </div>
+                                
+                                <div className="space-y-3">
+                                    {editDispatchData.items.map((item, index) => (
+                                        <div key={index} className={`flex flex-col sm:flex-row gap-4 p-4 rounded-xl border transition-colors cursor-pointer ${item.selected ? 'border-indigo-500 bg-indigo-50/30' : 'border-gray-200 hover:border-gray-300 bg-white'}`} onClick={(e) => { if (e.target.tagName !== 'INPUT') handleEditItemToggle(index); }}>
+                                            <div className="flex items-start gap-4 flex-1">
+                                                <div className="mt-0.5">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                        checked={item.selected}
+                                                        onChange={() => handleEditItemToggle(index)}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="font-medium text-gray-900 text-sm">{item.name}</p>
+                                                    <p className="text-xs text-gray-500 mt-0.5">{item.brand} • {item.size}</p>
+                                                    <div className="mt-2 flex gap-4 text-xs">
+                                                        <span className="text-gray-500">Ordered: {item.orderedQuantity} Boxes</span>
+                                                        <span className="text-emerald-600 font-medium">Done: {item.previouslyDispatched} Boxes</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="sm:w-32 flex flex-col justify-center" onClick={e => e.stopPropagation()}>
+                                                <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5 flex justify-between">
+                                                    <span>Req Qty</span>
+                                                </label>
+                                                <div className="relative">
+                                                    <input 
+                                                        type="number" 
+                                                        step="any"
+                                                        disabled={!item.selected}
+                                                        value={item.quantity} 
+                                                        max={item.pendingQuantity}
+                                                        onChange={(e) => handleEditQtyChange(index, e.target.value)}
+                                                        className={`w-full px-3 py-2 rounded-lg border outline-none text-right transition-colors sm:text-sm ${item.selected ? 'border-gray-300 focus:border-indigo-500 text-gray-900 bg-white' : 'bg-gray-50 border-gray-100 text-gray-400 cursor-not-allowed'}`}
+                                                    />
+                                                </div>
+                                                <div className="text-[10px] text-gray-400 mt-1 text-right">Max: {item.pendingQuantity} Boxes</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1.5">Request Notes (Optional)</label>
+                                <textarea rows="2" value={editDispatchData.notes} onChange={(e) => setEditDispatchData({ ...editDispatchData, notes: e.target.value })} placeholder="Instructions for godown staff" className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-sm"></textarea>
+                            </div>
+                        </form>
+                        
+                        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex flex-col-reverse sm:flex-row justify-end gap-3 sm:rounded-b-2xl shrink-0">
+                            <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-6 py-2.5 text-gray-700 bg-white border border-gray-300 font-medium rounded-xl hover:bg-gray-50 transition-colors text-sm">Cancel</button>
+                            <button type="submit" onClick={handleSubmitEdit} className="px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors text-sm flex items-center justify-center gap-2">
+                                Save Changes
                             </button>
                         </div>
                     </div>

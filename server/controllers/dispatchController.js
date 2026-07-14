@@ -208,3 +208,85 @@ export const getOrderDispatches = async (req, res, next) => {
         next(error);
     }
 };
+
+// @desc    Update a pending dispatch request
+// @route   PUT /api/dispatches/:id
+// @access  Private
+export const updateDispatch = async (req, res, next) => {
+    try {
+        const { items, notes } = req.body;
+        
+        const dispatch = await Dispatch.findOne({ _id: req.params.id, ...tenantQuery(req) });
+        if (!dispatch) {
+            return sendError(res, 404, 'Dispatch request not found');
+        }
+
+        if (dispatch.status !== 'pending_loading') {
+            return sendError(res, 400, 'Only pending dispatch requests can be edited');
+        }
+
+        const order = await SalesOrder.findOne({ _id: dispatch.order, ...tenantQuery(req) });
+        if (!order) {
+            return sendError(res, 404, 'Sales order not found');
+        }
+
+        // Validate over-dispatch
+        const pastDispatches = await Dispatch.find({ 
+            order: order._id, 
+            status: { $ne: 'cancelled' },
+            _id: { $ne: dispatch._id }, // Exclude current dispatch from past calculations
+            ...tenantQuery(req) 
+        });
+
+        for (const dispatchItem of items) {
+            const orderItem = order.items.find(oi => oi.item.toString() === dispatchItem.item.toString());
+            if (!orderItem) return sendError(res, 400, `Item ${dispatchItem.item} not found in order`);
+
+            const pastDispatchedQty = pastDispatches.reduce((sum, d) => {
+                const match = d.items.find(di => di.item.toString() === dispatchItem.item.toString());
+                return sum + (match ? match.quantity : 0);
+            }, 0);
+
+            const targetedStockLimit = Number((orderItem.stockQty || orderItem.quantity).toFixed(2));
+            const pendingQty = Number((targetedStockLimit - pastDispatchedQty).toFixed(2));
+            const reqQty = Number(Number(dispatchItem.quantity).toFixed(2));
+            
+            if (reqQty > pendingQty) {
+                return sendError(res, 400, `Cannot request dispatch of ${reqQty} units. Only ${pendingQty} pending for this item.`);
+            }
+        }
+
+        dispatch.items = items;
+        if (notes !== undefined) dispatch.notes = notes;
+        
+        await dispatch.save();
+
+        sendResponse(res, 200, dispatch, 'Dispatch request updated successfully');
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Cancel a pending dispatch request
+// @route   DELETE /api/dispatches/:id
+// @access  Private
+export const deleteDispatch = async (req, res, next) => {
+    try {
+        const dispatch = await Dispatch.findOne({ _id: req.params.id, ...tenantQuery(req) });
+        
+        if (!dispatch) {
+            return sendError(res, 404, 'Dispatch request not found');
+        }
+
+        if (dispatch.status !== 'pending_loading') {
+            return sendError(res, 400, 'Only pending dispatch requests can be cancelled');
+        }
+
+        dispatch.status = 'cancelled';
+        await dispatch.save();
+
+        sendResponse(res, 200, null, 'Dispatch request cancelled successfully');
+    } catch (error) {
+        next(error);
+    }
+};

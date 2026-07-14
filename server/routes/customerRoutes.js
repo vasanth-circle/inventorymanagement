@@ -12,6 +12,7 @@ import {
     deletePayment,
     getCustomerStatement,
     getCustomerOverallStatement,
+    getLockedCustomers,
     unlockCustomer,
     getCustomerReceivables,
     getCustomerOutstandingSummary,
@@ -29,6 +30,7 @@ router.route('/')
     .post(createCustomer);
 
 router.get('/statements/overall', getCustomerOverallStatement);
+router.get('/reports/locked', authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), getLockedCustomers);
 router.get('/reports/receivables', getCustomerReceivables);
 router.get('/reports/outstanding-summary', getCustomerOutstandingSummary);
 

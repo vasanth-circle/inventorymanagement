@@ -527,12 +527,103 @@ export const getCustomerOverallStatement = async (req, res, next) => {
     }
 };
 
+// @desc    Get locked customers
+// @route   GET /api/customers/reports/locked
+// @access  Private
+export const getLockedCustomers = async (req, res, next) => {
+    try {
+        const settings = await Setting.findOne({ tenantId: req.tenantId });
+        if (!settings?.creditConfig?.enableAutoLock) {
+            return sendResponse(res, 200, [], 'Auto-lock is disabled');
+        }
+
+        const creditLimit = settings.creditConfig.customerCreditLimit || 0;
+        const creditDays = settings.creditConfig.customerCreditDays || 0;
+
+        const query = { ...tenantQuery(req), isActive: true };
+        const customers = await Customer.find(query).sort({ name: 1 });
+
+        const lockedCustomers = [];
+
+        await Promise.all(customers.map(async (customer) => {
+            try {
+                // Check manual unlock first
+                if (customer.unlockedUntil && new Date(customer.unlockedUntil) > new Date()) {
+                    return; // Skip manually unlocked
+                }
+
+                const entries = await CustomerLedger.find({ customer: customer._id, ...tenantQuery(req) }).sort({ date: 1, createdAt: 1 });
+                
+                let currentBalance = customer.openingBalance || 0;
+                let totalPayments = 0;
+                const bills = [];
+
+                if (customer.openingBalance > 0) {
+                    bills.push({ date: customer.createdAt || new Date(0), amount: customer.openingBalance });
+                } else if (customer.openingBalance < 0) {
+                    totalPayments += Math.abs(customer.openingBalance);
+                }
+
+                for (const entry of entries) {
+                    if (entry.debit > 0) bills.push({ date: entry.date, amount: entry.debit });
+                    if (entry.credit > 0) totalPayments += entry.credit;
+                    currentBalance = entry.balance;
+                }
+
+                let oldestUnpaidBillDate = null;
+                for (const bill of bills) {
+                    if (totalPayments >= bill.amount) {
+                        totalPayments -= bill.amount;
+                    } else {
+                        oldestUnpaidBillDate = bill.date;
+                        break;
+                    }
+                }
+
+                let isLocked = false;
+                let oldestPendingDays = 0;
+
+                if (creditLimit > 0 && currentBalance > creditLimit) {
+                    isLocked = true;
+                } else if (creditDays > 0 && currentBalance > 0 && oldestUnpaidBillDate) {
+                    const diffTime = Math.abs(new Date() - new Date(oldestUnpaidBillDate));
+                    oldestPendingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    if (oldestPendingDays > creditDays) {
+                        isLocked = true;
+                    }
+                }
+
+                if (isLocked) {
+                    lockedCustomers.push({
+                        _id: customer._id,
+                        name: customer.companyName || customer.name,
+                        phone: customer.phone,
+                        email: customer.email,
+                        currentBalance,
+                        oldestPendingDays,
+                        creditLimit,
+                        creditDays,
+                        unlockedUntil: customer.unlockedUntil
+                    });
+                }
+            } catch (innerError) {
+                console.error(`Error processing locked status for customer ${customer._id}:`, innerError);
+            }
+        }));
+
+        sendResponse(res, 200, lockedCustomers, 'Locked customers fetched');
+    } catch (error) {
+        console.error('Error in getLockedCustomers:', error);
+        next(error);
+    }
+};
+
 // @desc    Manually unlock a customer for billing
 // @route   POST /api/customers/:id/unlock
 // @access  Private (Admin/Manager)
 export const unlockCustomer = async (req, res, next) => {
     try {
-        const { unlockComment } = req.body;
+        const { unlockComment, days = 1 } = req.body;
         if (!unlockComment) {
             return sendError(res, 400, 'Unlock comment/reason is required');
         }
@@ -542,9 +633,14 @@ export const unlockCustomer = async (req, res, next) => {
             return sendError(res, 404, 'Customer not found');
         }
 
-        // Unlock for 24 hours from now
+        const unlockDays = Number(days);
+        if (isNaN(unlockDays) || unlockDays <= 0) {
+            return sendError(res, 400, 'Invalid number of days for unlock');
+        }
+
+        // Unlock for specified days from now
         const unlockedUntil = new Date();
-        unlockedUntil.setHours(unlockedUntil.getHours() + 24);
+        unlockedUntil.setHours(unlockedUntil.getHours() + (24 * unlockDays));
 
         customer.unlockedUntil = unlockedUntil;
         customer.unlockComment = unlockComment;
@@ -552,7 +648,7 @@ export const unlockCustomer = async (req, res, next) => {
         
         await customer.save();
 
-        sendResponse(res, 200, customer, 'Customer temporarily unlocked for 24 hours');
+        sendResponse(res, 200, customer, `Customer temporarily unlocked for ${unlockDays} days`);
     } catch (error) {
         next(error);
     }

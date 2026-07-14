@@ -24,6 +24,11 @@ const Customers = () => {
     const [unlockModalOpen, setUnlockModalOpen] = useState(false);
     const [unlockCustomerData, setUnlockCustomerData] = useState(null);
     const [unlockComment, setUnlockComment] = useState('');
+    const [unlockDays, setUnlockDays] = useState(1);
+
+    const [activeTab, setActiveTab] = useState('all');
+    const [lockedCustomers, setLockedCustomers] = useState([]);
+    const [loadingLocked, setLoadingLocked] = useState(false);
 
     // New-site inline form state
     const [newSiteName, setNewSiteName] = useState('');
@@ -84,6 +89,24 @@ const Customers = () => {
             setLoading(false);
         }
     };
+
+    const fetchLockedCustomers = async () => {
+        try {
+            setLoadingLocked(true);
+            const res = await api.get('/customers/reports/locked');
+            setLockedCustomers(res.data.data);
+        } catch (error) {
+            toast.error('Failed to fetch locked customers');
+        } finally {
+            setLoadingLocked(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'locked') {
+            fetchLockedCustomers();
+        }
+    }, [activeTab]);
 
 
     const handleOpenModal = (customer = null) => {
@@ -175,11 +198,15 @@ const Customers = () => {
         if (!unlockComment.trim()) return toast.error('Unlock comment is required');
         
         try {
-            await api.post(`${API_URL}/${unlockCustomerData._id}/unlock`, { unlockComment });
-            toast.success(`${unlockCustomerData.companyName || unlockCustomerData.name} has been unlocked for 24 hours.`);
+            await api.post(`${API_URL}/${unlockCustomerData._id}/unlock`, { unlockComment, days: unlockDays });
+            toast.success(`${unlockCustomerData.companyName || unlockCustomerData.name} has been unlocked for ${unlockDays} days.`);
             setUnlockModalOpen(false);
             setUnlockComment('');
-            fetchCustomers();
+            setUnlockDays(1);
+            if (activeTab === 'locked') {
+                fetchLockedCustomers();
+            }
+            fetchCustomers(currentPage, searchQuery, itemsPerPage);
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to unlock customer');
         }
@@ -202,7 +229,7 @@ const Customers = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center mb-2">
                 <h1 className="text-2xl font-bold text-gray-800">Customers</h1>
                 <div className="flex gap-3">
                     <div className="relative">
@@ -224,6 +251,24 @@ const Customers = () => {
                 </div>
             </div>
 
+            <div className="flex border-b border-gray-200">
+                <button 
+                    className={`py-3 px-6 text-sm font-medium border-b-2 transition-colors ${activeTab === 'all' ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                    onClick={() => setActiveTab('all')}
+                >
+                    All Customers
+                </button>
+                <button 
+                    className={`py-3 px-6 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'locked' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                    onClick={() => setActiveTab('locked')}
+                >
+                    {lockedCustomers.length > 0 && <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-[10px] font-bold">{lockedCustomers.length}</span>}
+                    Locked Customers
+                </button>
+            </div>
+
+            {activeTab === 'all' && (
+                <>
             {loading ? (
                 <div className="flex justify-center items-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
@@ -405,6 +450,71 @@ const Customers = () => {
                     )}
                 </div>
             )}
+            </>
+            )}
+
+            {activeTab === 'locked' && (
+                <div className="space-y-4">
+                    {loadingLocked ? (
+                        <div className="flex justify-center items-center h-64">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+                        </div>
+                    ) : lockedCustomers.length === 0 ? (
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center flex flex-col items-center">
+                            <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center text-green-500 mb-4">
+                                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" /></svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900">No Locked Customers</h3>
+                            <p className="text-gray-500 text-sm mt-1 max-w-sm">All customers are within their credit limits and payment terms.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {lockedCustomers.map(customer => (
+                                <div key={customer._id} className="bg-white rounded-2xl shadow-sm border border-red-200 overflow-hidden flex flex-col p-6 hover:shadow-md transition-shadow">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <span className="text-[10px] font-bold text-red-600 uppercase tracking-widest bg-red-50 px-2 py-0.5 rounded-full inline-flex items-center gap-1 mb-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                                                Billing Locked
+                                            </span>
+                                            <h3 className="text-base font-black text-gray-900">{customer.name}</h3>
+                                            <p className="text-xs text-gray-500 mt-1">{customer.phone} • {customer.email}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-gray-50 rounded-xl p-4 mb-4 grid grid-cols-2 gap-4">
+                                        <div>
+                                            <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-1">Current Balance</span>
+                                            <span className="font-bold text-red-600 text-sm">₹{customer.currentBalance?.toLocaleString('en-IN') || 0} Dr</span>
+                                            {customer.creditLimit > 0 && <span className="block text-[10px] text-gray-400 mt-0.5">Limit: ₹{customer.creditLimit.toLocaleString('en-IN')}</span>}
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-1">Oldest Pending</span>
+                                            <span className="font-bold text-gray-900 text-sm">{customer.oldestPendingDays} Days</span>
+                                            {customer.creditDays > 0 && <span className="block text-[10px] text-gray-400 mt-0.5">Limit: {customer.creditDays} Days</span>}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mt-auto pt-4 border-t border-gray-100 flex gap-3">
+                                        <button
+                                            onClick={() => navigate(`/customer-ledger/${customer._id}`)}
+                                            className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 font-bold text-xs rounded-xl hover:bg-gray-200 transition-colors"
+                                        >
+                                            View Ledger
+                                        </button>
+                                        <button
+                                            onClick={() => { setUnlockCustomerData(customer); setUnlockModalOpen(true); }}
+                                            className="flex-1 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            🔓 Unlock
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
 
 
             {isModalOpen && (
@@ -580,14 +690,14 @@ const Customers = () => {
                                 <div className="flex justify-between items-center bg-yellow-50 p-4 rounded-xl border border-yellow-200 mt-6 mb-2">
                                     <div>
                                         <div className="font-bold text-sm text-yellow-800">Credit Lock Bypass</div>
-                                        <div className="text-xs text-yellow-700 mt-1">Temporarily allow billing for 24 hours if this customer is locked due to pending balances.</div>
+                                        <div className="text-xs text-yellow-700 mt-1">Temporarily allow billing if this customer is locked due to pending balances.</div>
                                     </div>
                                     <button 
                                         type="button"
                                         onClick={() => { setUnlockCustomerData(editingCustomer); setUnlockModalOpen(true); setIsModalOpen(false); }}
                                         className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-sm rounded-lg whitespace-nowrap ml-4 transition-colors"
                                     >
-                                        Unlock for 24h
+                                        Unlock Temporarily
                                     </button>
                                 </div>
                             )}
@@ -615,10 +725,22 @@ const Customers = () => {
                         </div>
                         
                         <p className="text-sm text-gray-600 mb-4">
-                            You are temporarily unlocking <strong>{unlockCustomerData.companyName || unlockCustomerData.name}</strong> for billing for the next 24 hours.
+                            You are temporarily unlocking <strong>{unlockCustomerData.companyName || unlockCustomerData.name}</strong> for billing.
                         </p>
                         
                         <form onSubmit={handleUnlockSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Days to Unlock *</label>
+                                <input 
+                                    type="number"
+                                    min="1"
+                                    max="365"
+                                    required
+                                    value={unlockDays}
+                                    onChange={(e) => setUnlockDays(Number(e.target.value))}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm"
+                                />
+                            </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Reason for Unlock (Required) *</label>
                                 <textarea 
