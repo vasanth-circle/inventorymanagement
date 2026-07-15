@@ -1028,18 +1028,6 @@ export const printTallyLedger = (customer, entries, summary) => {
   </tr>
 </table>
 <div class="line"></div>
-<table>
-  <tr>
-    <td style="width:10%"></td>
-    <td style="width:25%"></td>
-    <td style="width:10%"></td>
-    <td style="width:10%"></td>
-    <td style="width:13%;text-align:right"><b>${formatAmt(totalDr + (openingBal > 0 ? openingBal : 0) + (closeBal < 0 ? Math.abs(closeBal) : 0))}</b></td>
-    <td style="width:13%;text-align:right"><b>${formatAmt(totalCr + (openingBal < 0 ? Math.abs(openingBal) : 0) + (closeBal > 0 ? closeBal : 0))}</b></td>
-    <td style="width:19%"></td>
-  </tr>
-</table>
-<div class="line"></div>
 
 </body></html>`;
 

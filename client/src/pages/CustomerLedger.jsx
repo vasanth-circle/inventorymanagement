@@ -449,16 +449,17 @@ const CustomerLedger = () => {
                             </tbody>
                             <tfoot>
                                 <tr className="bg-gray-800 text-white">
-                                    <td colSpan={canEditPayment ? 5 : 4} className="px-4 py-3 font-bold text-sm">TOTAL</td>
+                                    <td colSpan={4} className="px-4 py-3 font-bold text-sm">TOTAL</td>
                                     <td className="px-4 py-3 text-right font-bold text-red-300">
                                         ₹{fmt(entries.reduce((s, e) => s + e.debit, 0))}
                                     </td>
                                     <td className="px-4 py-3 text-right font-bold text-green-300">
                                         ₹{fmt(entries.reduce((s, e) => s + e.credit, 0))}
                                     </td>
-                                    <td colSpan={canEditPayment ? 2 : 1} className={`px-4 py-3 text-right font-bold text-lg ${balance >= 0 ? 'text-orange-300' : 'text-green-300'}`}>
+                                    <td className={`px-4 py-3 text-right font-bold text-lg ${balance >= 0 ? 'text-orange-300' : 'text-green-300'}`}>
                                         ₹{fmt(Math.abs(balance))} {balance >= 0 ? 'Dr' : 'Cr'}
                                     </td>
+                                    {canEditPayment && <td className="px-4 py-3"></td>}
                                 </tr>
                             </tfoot>
                         </table>
