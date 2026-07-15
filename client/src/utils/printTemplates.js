@@ -1,4 +1,47 @@
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared print execution utility (fixes iOS Safari popup blocker issues)
+// ─────────────────────────────────────────────────────────────────────────────
+export const executePrint = (html) => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile || isIOS) {
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+
+        iframe.contentWindow.document.open();
+        iframe.contentWindow.document.write(html);
+        iframe.contentWindow.document.close();
+
+        setTimeout(() => {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+            setTimeout(() => {
+                if (document.body.contains(iframe)) {
+                    document.body.removeChild(iframe);
+                }
+            }, 60000); // 1 minute cleanup
+        }, 800);
+    } else {
+        const w = window.open('', '_blank', 'width=900,height=700');
+        if (w) {
+            w.document.write(html);
+            w.document.close();
+            setTimeout(() => { w.focus(); w.print(); }, 600);
+        } else {
+            alert('Popup blocker prevented printing. Please allow popups for this site.');
+        }
+    }
+};
+
 // Shared Indian number formatting utility
 // ─────────────────────────────────────────────────────────────────────────────
 export const formatIndianNumber = (num, decimals = 2) => {
@@ -784,10 +827,7 @@ export const printDocument = (order, settings, docType = 'invoice') => {
     else if (templateNo === 4) html = template4(order, settings, docType);
     else html = template1(order, settings, docType);
 
-    const w = window.open('', '_blank', 'width=950,height=750');
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => { w.focus(); w.print(); }, 600);
+    executePrint(html);
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -917,10 +957,7 @@ export const printAccountStatement = (customer, entries, summary, period, settin
 </div>
 </body></html>`;
 
-    const w = window.open('', '_blank', 'width=950,height=750');
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => { w.focus(); w.print(); }, 600);
+    executePrint(html);
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1031,10 +1068,7 @@ export const printTallyLedger = (customer, entries, summary) => {
 
 </body></html>`;
 
-    const w = window.open('', '_blank', 'width=900,height=700');
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => { w.focus(); w.print(); }, 600);
+    executePrint(html);
 };
 
 export const printTallyReceivables = (receivablesData) => {
@@ -1114,10 +1148,7 @@ ${content}
 
 </body></html>`;
 
-    const w = window.open('', '_blank', 'width=900,height=700');
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => { w.focus(); w.print(); }, 600);
+    executePrint(html);
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1348,10 +1379,7 @@ export const printShippingLabels = (dispatch, fullOrder, settings) => {
     </div>
 </body></html>`;
 
-    const w = window.open('', '_blank', 'width=450,height=650');
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => { w.focus(); w.print(); }, 600);
+    executePrint(html);
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1552,10 +1580,7 @@ export const printReturnSlip = (returnTx, settings) => {
 
 </div></body></html>`;
 
-    const w = window.open('', '_blank', 'width=800,height=600');
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => { w.focus(); w.print(); }, 600);
+    executePrint(html);
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1880,9 +1905,6 @@ export const printPaymentReceipt = (entry, entity, settings, type = 'customer') 
 </div>
 </body></html>`;
 
-    const w = window.open('', '_blank', 'width=800,height=500');
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => { w.focus(); w.print(); }, 600);
+    executePrint(html);
 };
 
