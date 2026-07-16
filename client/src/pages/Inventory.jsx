@@ -815,7 +815,7 @@ const Inventory = () => {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Unit Type</label>
                                     <select
                                         name="unitType"
-                                        value={editFormData.unitType}
+                                        value={['pieces', 'pcs'].includes(editFormData.unitType?.toLowerCase()) ? 'pieces' : editFormData.unitType?.toLowerCase() || 'box'}
                                         onChange={handleEditChange}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                                     >
@@ -972,7 +972,7 @@ const Inventory = () => {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Unit Type</label>
                                     <select
                                         name="unitType"
-                                        value={createFormData.unitType}
+                                        value={['pieces', 'pcs'].includes(createFormData.unitType?.toLowerCase()) ? 'pieces' : createFormData.unitType?.toLowerCase() || 'box'}
                                         onChange={handleCreateChange}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                                     >
