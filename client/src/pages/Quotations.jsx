@@ -10,10 +10,10 @@ import { shareViaWhatsApp, shareViaEmail, shareInvoiceAsPdf } from '../utils/sha
 import SearchableSelect from '../components/SearchableSelect';
 
 const STATUS_COLORS = {
-    draft:     'bg-gray-100 text-gray-600',
-    sent:      'bg-blue-100 text-blue-700',
-    accepted:  'bg-green-100 text-green-700',
-    rejected:  'bg-red-100 text-red-600',
+    draft: 'bg-gray-100 text-gray-600',
+    sent: 'bg-blue-100 text-blue-700',
+    accepted: 'bg-green-100 text-green-700',
+    rejected: 'bg-red-100 text-red-600',
     converted: 'bg-purple-100 text-purple-700',
 };
 
@@ -128,7 +128,7 @@ const Quotations = () => {
                 row.availableBatches = found.batches || [];
                 row.price = found.batches?.length ? (Number(found.batches[0].price) || 0) : (Number(found.price) || 0);
                 if (found.batches?.length) row.batchId = found.batches[0]._id;
-                
+
                 // Default to 'boxes' for tiles (matches inward unit), 'pieces' for others
                 const isPieceBased = ['pieces', 'pcs', 'nos', 'piece'].includes((row.unitType || '').toLowerCase());
                 if (row.sqFtPerPc > 0 && !isPieceBased) {
@@ -158,11 +158,11 @@ const Quotations = () => {
 
     const calcTotals = () => {
         const itemsTotal = formData.items.reduce((s, i) => s + (parseFloat(i.total) || 0), 0);
-        
+
         // Auto-calculate tax amount if taxRate is provided
         const taxRate = parseFloat(formData.taxRate) || 0;
         let taxAmt = parseFloat(formData.taxAmount) || 0;
-        
+
         if (taxRate > 0) {
             taxAmt = parseFloat((itemsTotal * taxRate / 100).toFixed(2));
         }
@@ -189,10 +189,10 @@ const Quotations = () => {
         }
 
         const { itemsTotal, taxAmount, net } = calcTotals();
-        
+
         // Clean numeric payloads to avoid Mongoose CastErrors with empty strings
-        const payload = { 
-            ...formData, 
+        const payload = {
+            ...formData,
             items: formData.items.map(i => {
                 const qVal = Number(i.quantity) || 0;
                 return {
@@ -204,17 +204,17 @@ const Quotations = () => {
                 };
             }),
             taxRate: Number(formData.taxRate) || 0,
-            taxAmount, 
+            taxAmount,
             loadingCharges: Number(formData.loadingCharges) || 0,
             unloadingCharges: Number(formData.unloadingCharges) || 0,
             transportCharges: Number(formData.transportCharges) || 0,
             oldBalance: Number(formData.oldBalance) || 0,
             discountAmount: Number(formData.discountAmount) || 0,
-            itemsTotal, 
+            itemsTotal,
             totalAmount: net,
             roundOffAmount
         };
-        
+
         try {
             if (editingQuotation) {
                 await api.put(`/quotations/${editingQuotation._id}`, payload);
@@ -391,9 +391,8 @@ const Quotations = () => {
 
                     {/* Result count + clear */}
                     <div className="flex items-center gap-2 ml-auto">
-                        <span className={`px-3 py-1.5 rounded-full text-xs font-black ${
-                            hasActiveFilters ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-500'
-                        }`}>
+                        <span className={`px-3 py-1.5 rounded-full text-xs font-black ${hasActiveFilters ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-500'
+                            }`}>
                             {filtered.length} result{filtered.length !== 1 ? 's' : ''}
                         </span>
                         {hasActiveFilters && (
@@ -555,7 +554,7 @@ const Quotations = () => {
                                             <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">Total Amount</span>
                                             <span className="text-xl font-black text-rose-400">₹{(q.totalAmount || 0).toLocaleString()}</span>
                                         </div>
-                                        
+
                                         {/* Action Buttons */}
                                         <div className="flex gap-2">
                                             <button onClick={() => handlePrint(q)} className="w-9 h-9 bg-gray-800 hover:bg-gray-700 text-white rounded-xl flex items-center justify-center text-sm shadow-md transition-colors" title="Print">🖨️</button>
@@ -568,9 +567,9 @@ const Quotations = () => {
 
                                     {/* Conversion Button (Floating if accepted) */}
                                     {q.status === 'accepted' && (
-                                        <button 
-                                            onClick={() => handleConvert(q)} 
-                                            disabled={convertingId === q._id} 
+                                        <button
+                                            onClick={() => handleConvert(q)}
+                                            disabled={convertingId === q._id}
                                             className="absolute top-1/2 right-4 -translate-y-12 bg-green-500 text-white px-3 py-1.5 rounded-full text-[9px] font-black uppercase shadow-lg animate-bounce"
                                         >
                                             {convertingId === q._id ? '...' : '✅ Convert to Bill'}
@@ -633,8 +632,8 @@ const Quotations = () => {
                                                 <div key={idx} className="grid grid-cols-12 gap-2 items-start bg-gray-50 p-3 rounded-lg">
                                                     {/* Item select — col-span-4 */}
                                                     <div className="col-span-4">
-                                                        <SearchableSelect 
-                                                            value={row.item} 
+                                                        <SearchableSelect
+                                                            value={row.item}
                                                             onChange={e => handleItemChange(idx, 'item', e.target.value)}
                                                             options={allItems.map(i => ({ value: i._id, label: `${i.name}${i.size ? ` [${i.size}]` : ''}` }))}
                                                             placeholder="-- Item --"
@@ -659,7 +658,7 @@ const Quotations = () => {
                                                     {isTile ? (
                                                         <div className="col-span-3">
                                                             <div className="flex rounded-lg overflow-hidden border border-gray-200 mb-1">
-                                                                {[{v:'boxes',l:'📦 Box'},{v:'qty',l:'🧩 Pcs'},{v:'sqft',l:'📐 SqFt'}].map(u => (
+                                                                {[{ v: 'boxes', l: '📦 Box' }, { v: 'qty', l: '🧩 Pcs' }, { v: 'sqft', l: '📐 SqFt' }].map(u => (
                                                                     <button type="button" key={u.v}
                                                                         onClick={() => handleItemChange(idx, 'billingUnit', u.v)}
                                                                         className={`flex-1 py-1 text-[8px] font-black uppercase transition-all ${row.billingUnit === u.v ? 'bg-rose-600 text-white' : 'bg-white text-gray-500 hover:bg-rose-50'}`}>
@@ -729,8 +728,8 @@ const Quotations = () => {
                                                     return (<>
                                                         <div className="space-y-1">
                                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Item</label>
-                                                            <SearchableSelect 
-                                                                value={row.item} 
+                                                            <SearchableSelect
+                                                                value={row.item}
                                                                 onChange={e => handleItemChange(idx, 'item', e.target.value)}
                                                                 options={allItems.map(i => ({ value: i._id, label: `${i.name}${i.size ? ` [${i.size}]` : ''}` }))}
                                                                 placeholder="-- Item --"
@@ -756,7 +755,7 @@ const Quotations = () => {
                                                             <div className="space-y-1">
                                                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Billing Mode</label>
                                                                 <div className="flex rounded-xl overflow-hidden border border-gray-200">
-                                                                    {[{v:'boxes',l:'📦 Box'},{v:'qty',l:'🧩 Pieces'},{v:'sqft',l:'📐 SqFt'}].map(u => (
+                                                                    {[{ v: 'boxes', l: '📦 Box' }, { v: 'qty', l: '🧩 Pieces' }, { v: 'sqft', l: '📐 SqFt' }].map(u => (
                                                                         <button type="button" key={u.v}
                                                                             onClick={() => handleItemChange(idx, 'billingUnit', u.v)}
                                                                             className={`flex-1 py-2.5 text-[10px] font-black uppercase transition-all ${row.billingUnit === u.v ? 'bg-rose-600 text-white' : 'bg-white text-gray-500'}`}>
@@ -907,11 +906,11 @@ const Quotations = () => {
                                 <span className="text-lg">📄</span>
                                 <h3 className="font-extrabold text-sm uppercase tracking-wider">Convert to Invoice</h3>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => {
                                     setConvertModalOpen(false);
                                     setQuotationToConvert(null);
-                                }} 
+                                }}
                                 className="text-white/80 hover:text-white text-xl font-bold transition-colors"
                             >
                                 ✕
@@ -931,9 +930,9 @@ const Quotations = () => {
                                 </label>
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 font-bold text-sm">₹</span>
-                                    <input 
+                                    <input
                                         id="conversion-advance"
-                                        type="number" 
+                                        type="number"
                                         min="0"
                                         step="0.01"
                                         placeholder="0.00"
@@ -950,18 +949,18 @@ const Quotations = () => {
 
                         {/* Modal Footer */}
                         <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-                            <button 
-                                type="button" 
+                            <button
+                                type="button"
                                 onClick={() => {
                                     setConvertModalOpen(false);
                                     setQuotationToConvert(null);
-                                }} 
+                                }}
                                 className="px-5 py-2.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-500 rounded-xl text-xs font-black uppercase tracking-wider transition-colors shadow-sm"
                             >
                                 Cancel
                             </button>
-                            <button 
-                                type="button" 
+                            <button
+                                type="button"
                                 onClick={confirmConversion}
                                 className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md active:scale-95"
                             >

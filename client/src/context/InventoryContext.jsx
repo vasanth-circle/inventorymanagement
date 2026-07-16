@@ -169,7 +169,7 @@ export const InventoryProvider = ({ children }) => {
         const unitType = (updatedRow.unitType || '').toLowerCase();
         const isPieceBased = ['pieces', 'pcs', 'nos', 'piece'].includes(unitType);
 
-        if (industry === 'tiles' && sqFtPerPc > 0 && !isPieceBased) {
+        if (industry === 'tiles' && sqFtPerPc > 0) {
             if (field === 'quantity') {
                 updatedRow.quantity = value === '' ? '' : value;
                 const qty = Number(value || 0);
@@ -198,7 +198,7 @@ export const InventoryProvider = ({ children }) => {
                 const boxes = Number(value || 0);
                 updatedRow.totalPcs = boxes * pcsPerBox;
                 updatedRow.totalSqFt = Number((updatedRow.totalPcs * sqFtPerPc).toFixed(4));
-                
+
                 if (billingUnit === 'sqft') {
                     updatedRow.quantity = updatedRow.totalSqFt;
                     updatedRow.stockQty = boxes;
@@ -594,7 +594,7 @@ export const InventoryProvider = ({ children }) => {
             formData.append('mapping', JSON.stringify(mapping));
             formData.append('options', JSON.stringify(options));
             formData.append('headerRowIdx', String(headerRowIdx));
-            
+
             const { data } = await api.post('/excel/import-mapped', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
@@ -663,15 +663,15 @@ export const InventoryProvider = ({ children }) => {
                 addSize,
                 editSize,
                 removeSize,
-                brands, 
+                brands,
                 setBrands,
-                finishes, 
+                finishes,
                 setFinishes,
-                addBrand, 
-                editBrand, 
+                addBrand,
+                editBrand,
                 removeBrand,
-                addFinish, 
-                editFinish, 
+                addFinish,
+                editFinish,
                 removeFinish,
                 fetchBillingSettings,
                 updateBillingSettings,
