@@ -62,32 +62,40 @@ const Inventory = () => {
     const [createCustomFields, setCreateCustomFields] = useState([]);
     const [createLoading, setCreateLoading] = useState(false);
 
-    // Auto-calculate SqFt from Size (e.g. 2x4 -> 8)
+    // Auto-calculate SqFt from Size text ONLY when no managed size selected
+    // (Only applies to small numbers that are likely in feet, e.g. '2x4' = 8 sqft)
+    // For mm/cm sizes like '2400X800', user should use managed sizes list or enter sqFtPerPc manually
     useEffect(() => {
-        if (activePreset?.id === 'tiles' && createFormData.size) {
+        if (billingSettings?.industry === 'tiles' && createFormData.size) {
+            // Skip auto-calc if a managed size matches (dropdown already handled it)
+            if (sizes.find(s => s.name === createFormData.size)) return;
             const parts = createFormData.size.split(/[x*]/i);
             if (parts.length === 2) {
                 const w = parseFloat(parts[0]);
                 const h = parseFloat(parts[1]);
-                if (!isNaN(w) && !isNaN(h)) {
+                // Only auto-calc for feet-range values (< 50), skip mm/cm values like 2400, 800
+                if (!isNaN(w) && !isNaN(h) && w < 50 && h < 50) {
                     setCreateFormData(prev => ({ ...prev, sqFtPerPc: (w * h).toFixed(3) }));
                 }
             }
         }
-    }, [createFormData.size, activePreset?.id]);
+    }, [createFormData.size, billingSettings?.industry]);
 
     useEffect(() => {
-        if (activePreset?.id === 'tiles' && editFormData.size) {
+        if (billingSettings?.industry === 'tiles' && editFormData.size) {
+            // Skip auto-calc if a managed size matches (dropdown already handled it)
+            if (sizes.find(s => s.name === editFormData.size)) return;
             const parts = editFormData.size.split(/[x*]/i);
             if (parts.length === 2) {
                 const w = parseFloat(parts[0]);
                 const h = parseFloat(parts[1]);
-                if (!isNaN(w) && !isNaN(h)) {
+                // Only auto-calc for feet-range values (< 50), skip mm/cm values like 2400, 800
+                if (!isNaN(w) && !isNaN(h) && w < 50 && h < 50) {
                     setEditFormData(prev => ({ ...prev, sqFtPerPc: (w * h).toFixed(3) }));
                 }
             }
         }
-    }, [editFormData.size, activePreset?.id]);
+    }, [editFormData.size, billingSettings?.industry]);
 
     useEffect(() => {
         loadItems();
@@ -114,23 +122,55 @@ const Inventory = () => {
                 {activePreset.productFields.map((field) => (
                     <div key={field.name}>
                         <label className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
-                        {field.name === 'size' && activePreset.id === 'tiles' && sizes.length > 0 ? (
-                            <select
-                                value={formData[field.name] || ''}
-                                onChange={(e) => {
-                                    const val = e.target.value;
-                                    handleChange(field.name, val);
-                                    // Auto-calculate sqft if size is from managed list
-                                    const selectedSize = sizes.find(s => s.name === val);
-                                    if (selectedSize) {
-                                        handleChange('sqFtPerPc', (selectedSize.width * selectedSize.height).toFixed(3));
-                                    }
-                                }}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none font-bold"
-                            >
-                                <option value="">Select Size</option>
-                                {sizes.map(s => <option key={s._id} value={s.name}>{s.name} ({s.width}x{s.height})</option>)}
-                            </select>
+                        {field.name === 'size' && billingSettings?.industry === 'tiles' ? (
+                            <div className="space-y-2">
+                                <select
+                                    value={sizes.find(s => s.name.replace(/[x*]/gi, 'x').toLowerCase() === (formData[field.name] || '').replace(/[x*]/gi, 'x').toLowerCase()) ? sizes.find(s => s.name.replace(/[x*]/gi, 'x').toLowerCase() === (formData[field.name] || '').replace(/[x*]/gi, 'x').toLowerCase())?.name : (formData[field.name] ? '__custom__' : '')}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === '__custom__') {
+                                            // Keep existing custom value, just switch to custom mode
+                                            return;
+                                        }
+                                        handleChange(field.name, val);
+                                        // Auto-calculate sqFtPerPc from managed size with unit conversion
+                                        const selectedSize = sizes.find(s => s.name === val);
+                                        if (selectedSize) {
+                                            const w = Number(selectedSize.width);
+                                            const h = Number(selectedSize.height);
+                                            const unit = (selectedSize.unit || 'inches').toLowerCase();
+                                            let sqft = 0;
+                                            if (unit === 'feet') {
+                                                sqft = w * h;
+                                            } else if (unit === 'inches') {
+                                                sqft = (w * h) / 144;
+                                            } else if (unit === 'cm') {
+                                                sqft = (w * h) / 929.03;
+                                            } else if (unit === 'mm') {
+                                                sqft = (w * h) / 92903;
+                                            } else {
+                                                sqft = w * h;
+                                            }
+                                            handleChange('sqFtPerPc', sqft.toFixed(3));
+                                        }
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none font-bold"
+                                >
+                                    <option value="">Select Size</option>
+                                    {sizes.map(s => <option key={s._id} value={s.name}>{s.name} ({s.width}×{s.height} {s.unit})</option>)}
+                                    <option value="__custom__">✏️ Custom Size...</option>
+                                </select>
+                                {/* Show text input when no managed size matches (using normalized comparison) */}
+                                {(!sizes.find(s => s.name.replace(/[x*]/gi, 'x').toLowerCase() === (formData[field.name] || '').replace(/[x*]/gi, 'x').toLowerCase())) && (
+                                    <input
+                                        type="text"
+                                        value={formData[field.name] || ''}
+                                        onChange={(e) => handleChange(field.name, e.target.value)}
+                                        className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-sm"
+                                        placeholder="Type custom size (e.g. 2400X800)"
+                                    />
+                                )}
+                            </div>
                         ) : field.type === 'select' ? (
                             <select
                                 value={formData[field.name] || ''}

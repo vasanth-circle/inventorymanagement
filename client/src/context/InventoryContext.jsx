@@ -169,7 +169,7 @@ export const InventoryProvider = ({ children }) => {
         const unitType = (updatedRow.unitType || '').toLowerCase();
         const isPieceBased = ['pieces', 'pcs', 'nos', 'piece'].includes(unitType);
 
-        if (industry === 'tiles' && sqFtPerPc > 0) {
+        if (industry === 'tiles' && sqFtPerPc > 0 && !isPieceBased) {
             if (field === 'quantity') {
                 updatedRow.quantity = value === '' ? '' : value;
                 const qty = Number(value || 0);

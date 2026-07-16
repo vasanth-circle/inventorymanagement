@@ -211,8 +211,7 @@ const SalesOrders = () => {
                 row.pcsPerBox = selectedItem.pcsPerBox || 1;
                 row.purchasePrice = selectedItem.purchasePrice || 0;
                 row.physicalStock = selectedItem.quantity || 0;
-                // If sqFtPerPc > 0 in tiles industry, always use sqft billing regardless of unitType
-                row.billingUnit = (row.sqFtPerPc > 0 && billingSettings?.industry === 'tiles') ? (billingSettings?.unitConfig?.quantityBasis || 'sqft') : 'pieces';
+                row.billingUnit = (row.sqFtPerPc > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((row.unitType || '').toLowerCase())) ? (billingSettings?.unitConfig?.quantityBasis || 'sqft') : 'pieces';
                 row.availableBatches = selectedItem.batches || [];
                 if (row.availableBatches.length > 0) {
                     row.batchId = row.availableBatches[0]._id;
@@ -995,7 +994,7 @@ const SalesOrders = () => {
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
                                             {formData.items.map((row, index) => {
-                                                const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0;
+                                                const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((row.unitType || '').toLowerCase());
                                                 return (
                                                     <tr key={index} className="hover:bg-gray-50">
                                                         <td className="px-4 py-3">
@@ -1093,7 +1092,7 @@ const SalesOrders = () => {
                                 {/* Items List - Mobile Cards */}
                                 <div className="lg:hidden space-y-4">
                                     {formData.items.map((row, index) => {
-                                        const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0;
+                                        const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((row.unitType || '').toLowerCase());
                                         return (
                                             <div key={index} className="bg-white border-2 border-gray-100 rounded-2xl p-4 shadow-sm relative space-y-4">
                                                 <button type="button" onClick={() => handleRemoveItem(index)} className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-red-50 text-red-500 rounded-full font-bold">✕</button>
