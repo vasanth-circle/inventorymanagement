@@ -88,13 +88,18 @@ export const getPurchaseOrders = async (req, res, next) => {
         }
 
         if (from || to) {
-            query.orderDate = {};
-            if (from) query.orderDate.$gte = new Date(from);
+            const dateQuery = {};
+            if (from) dateQuery.$gte = new Date(from);
             if (to) {
                 const toDate = new Date(to);
                 toDate.setHours(23, 59, 59, 999);
-                query.orderDate.$lte = toDate;
+                dateQuery.$lte = toDate;
             }
+            query.$or = [
+                { orderDate: dateQuery },
+                { billDate: dateQuery },
+                { createdAt: dateQuery }
+            ];
         }
 
         const orders = await PurchaseOrder.find(query)

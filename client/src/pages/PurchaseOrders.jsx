@@ -24,6 +24,8 @@ const PurchaseOrders = () => {
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [editingOrder, setEditingOrder] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
     const [receiveData, setReceiveData] = useState([]);
     const [receiveVendorBillNo, setReceiveVendorBillNo] = useState('');
     const [taxType, setTaxType] = useState('cgst'); // 'cgst' (intra) or 'igst' (inter)
@@ -88,10 +90,10 @@ const PurchaseOrders = () => {
         fetchVendorsAndItems();
     }, []);
 
-    const fetchOrders = async () => {
+    const fetchOrders = async (page = 1) => {
         try {
             setLoading(true);
-            const params = {};
+            const params = { page, limit: 10 };
             if (from) params.from = from;
             if (to) params.to = to;
             const res = await axios.get(API_URL, {
@@ -99,6 +101,8 @@ const PurchaseOrders = () => {
                 headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
             });
             setOrders(res.data.data.orders);
+            setTotalPages(res.data.data.totalPages || 1);
+            setCurrentPage(res.data.data.currentPage || 1);
         } catch (error) {
             toast.error('Failed to fetch purchase orders');
         } finally {
@@ -434,7 +438,7 @@ const PurchaseOrders = () => {
                                 <input type="date" value={to} onChange={e => setTo(e.target.value)}
                                     className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" />
                             </div>
-                            <button onClick={fetchOrders} className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors">
+                            <button onClick={() => fetchOrders(1)} className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors">
                                 Filter
                             </button>
                             <button
@@ -519,6 +523,33 @@ const PurchaseOrders = () => {
                             ))}
                         </tbody>
                     </table>
+                    
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200 bg-gray-50">
+                            <div>
+                                <p className="text-sm text-gray-700">
+                                    Showing page <span className="font-medium">{currentPage}</span> of <span className="font-medium">{totalPages}</span>
+                                </p>
+                            </div>
+                            <div className="flex space-x-2">
+                                <button
+                                    onClick={() => fetchOrders(Math.max(1, currentPage - 1))}
+                                    disabled={currentPage === 1}
+                                    className={`relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                    Previous
+                                </button>
+                                <button
+                                    onClick={() => fetchOrders(Math.min(totalPages, currentPage + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className={`relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
             </>
