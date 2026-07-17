@@ -1,0 +1,1 @@
+import mongoose from 'mongoose'; import dotenv from 'dotenv'; dotenv.config(); import { appConn } from './server/config/db.js'; import Dispatch from './server/models/Dispatch.js'; async function run() { await mongoose.connect(process.env.MONGODB_URI); const dispatch = await Dispatch.findOne({ dispatchNumber: 'REQ-20260716-O6A4' }); console.log(dispatch); process.exit(0); } run();
