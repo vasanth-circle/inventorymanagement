@@ -335,8 +335,8 @@ export const recordPayment = async (req, res, next) => {
             date: date ? new Date(date) : new Date(),
             type: 'payment',
             refType: 'Manual',
-            refNumber: refNumber || `PMT-${Date.now()}`,
-            description: `Payment Received${paymentMode ? ` (${paymentMode.replace('_', ' ')})` : ''}`,
+            refNumber: refNumber || (paymentMode === 'discount' ? `DISC-${Date.now()}` : `PMT-${Date.now()}`),
+            description: paymentMode === 'discount' ? 'Discount / Write-off' : `Payment Received${paymentMode ? ` (${paymentMode.replace('_', ' ')})` : ''}`,
             debit: 0,
             credit: amount,
             balance: 0, // Will be set by recalculate
@@ -380,7 +380,7 @@ export const updatePayment = async (req, res, next) => {
         }
         if (paymentMode !== undefined) {
             entry.paymentMode = paymentMode;
-            entry.description = `Payment Received (${paymentMode.replace('_', ' ')})`;
+            entry.description = paymentMode === 'discount' ? 'Discount / Write-off' : `Payment Received (${paymentMode.replace('_', ' ')})`;
         }
         if (date !== undefined) entry.date = new Date(date);
         if (notes !== undefined) entry.notes = notes;

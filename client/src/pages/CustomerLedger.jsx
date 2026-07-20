@@ -15,6 +15,7 @@ const PAYMENT_MODES = [
     { value: 'cheque', label: '🏦 Cheque' },
     { value: 'upi', label: '📱 UPI' },
     { value: 'bank_transfer', label: '🏛️ Bank Transfer' },
+    { value: 'discount', label: '🏷️ Discount / Write-off' },
     { value: 'other', label: '⚙️ Other' },
 ];
 
