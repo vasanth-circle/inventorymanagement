@@ -5,6 +5,7 @@ import {
     createItem,
     updateItem,
     deleteItem,
+    getItemHistory,
     upload,
 } from '../controllers/itemController.js';
 import { authorize } from '../middleware/authMiddleware.js';
@@ -23,5 +24,7 @@ router
     .get(checkMenuAccess('items'), getItem)
     .put(checkMenuAccess('items'), upload.single('image'), updateItem)
     .delete(authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), checkMenuAccess('items'), deleteItem);
+
+router.get('/:id/history', checkMenuAccess('items'), getItemHistory);
 
 export default router;

@@ -1,4 +1,6 @@
 import Item from '../models/Item.js';
+import PurchaseOrder from '../models/PurchaseOrder.js';
+import SalesOrder from '../models/SalesOrder.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import multer from 'multer';
 import path from 'path';
@@ -251,6 +253,56 @@ export const deleteItem = async (req, res, next) => {
         await Item.findOneAndDelete({ _id: req.params.id, ...tenantQuery(req) });
 
         res.json({ message: 'Item deleted successfully' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Get item history (Purchases and Sales)
+// @route   GET /api/items/:id/history
+// @access  Private
+export const getItemHistory = async (req, res, next) => {
+    try {
+        const itemId = req.params.id;
+        
+        // Fetch purchases containing this item
+        const purchases = await PurchaseOrder.find({ 
+            'items.item': itemId,
+            ...tenantQuery(req) 
+        }).populate('vendor', 'name companyName').sort({ orderDate: -1 });
+
+        // Fetch sales containing this item
+        const sales = await SalesOrder.find({ 
+            'items.item': itemId,
+            ...tenantQuery(req) 
+        }).populate('customer', 'name companyName').sort({ orderDate: -1 });
+
+        const history = {
+            purchases: purchases.map(po => {
+                const itemData = po.items.find(i => i.item.toString() === itemId);
+                return {
+                    id: po._id,
+                    date: po.orderDate,
+                    billNumber: po.vendorBillNumber || po.orderNumber,
+                    partyName: po.vendor?.companyName || po.vendor?.name || 'Unknown',
+                    quantity: itemData ? itemData.quantity : 0,
+                    rate: itemData ? itemData.price : 0,
+                };
+            }),
+            sales: sales.map(so => {
+                const itemData = so.items.find(i => i.item.toString() === itemId);
+                return {
+                    id: so._id,
+                    date: so.orderDate,
+                    billNumber: so.orderNumber,
+                    partyName: so.customer?.companyName || so.customer?.name || 'Unknown',
+                    quantity: itemData ? itemData.quantity : 0,
+                    rate: itemData ? itemData.price : 0,
+                };
+            })
+        };
+
+        sendResponse(res, 200, history, 'Item history fetched successfully');
     } catch (error) {
         next(error);
     }

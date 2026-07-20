@@ -8,6 +8,7 @@ import { tenantQuery } from '../utils/tenantQuery.js';
 import VendorLedger from '../models/VendorLedger.js';
 import Vendor from '../models/Vendor.js';
 import { recalculateVendorBalance } from './vendorLedgerController.js';
+import Setting from '../models/Setting.js';
 
 const revertPurchaseOrder = async (orderId, vendorId, tenantId, orderNumber) => {
     try {
@@ -188,6 +189,9 @@ export const createPurchaseOrder = async (req, res, next) => {
             return sendError(res, 400, `A Purchase Order with Vendor Bill Number '${vendorBillNumber}' already exists for this vendor.`);
         }
 
+        const setting = await Setting.findOne({ tenantId: req.tenantId });
+        const isDirectInward = setting?.workflowConfig?.directPurchaseInward || false;
+
         // Generate Order Number with retry logic
         let order;
         let retries = 0;
@@ -208,6 +212,7 @@ export const createPurchaseOrder = async (req, res, next) => {
                     orderDate,
                     expectedDeliveryDate,
                     notes,
+                    status: isDirectInward ? 'received' : 'draft',
                     user: req.user._id,
                     ...tenantQuery(req),
                 });
@@ -225,6 +230,66 @@ export const createPurchaseOrder = async (req, res, next) => {
             return sendError(res, 500, 'Failed to generate a unique order number after multiple attempts');
         }
 
+        if (isDirectInward) {
+            for (const item of items) {
+                const itemId = item.item?._id || item.item;
+                const itemDoc = await Item.findOne({ _id: itemId, ...tenantQuery(req) });
+                if (itemDoc) {
+                    const recQty = parseFloat(item.quantity) || 0;
+                    const dmgQty = 0; 
+                    const batchNum = `PO-${order.orderNumber}`;
+                    const rate = parseFloat(item.price) || itemDoc.price;
+
+                    if (recQty > 0) {
+                        const previousQuantity = itemDoc.quantity || 0;
+                        itemDoc.quantity = (itemDoc.quantity || 0) + recQty;
+
+                        if (!itemDoc.batches) itemDoc.batches = [];
+                        let batch = itemDoc.batches.find(b => b.price === rate && b.batchNumber === batchNum);
+                        
+                        if (batch) {
+                            batch.quantity += recQty;
+                        } else {
+                            itemDoc.batches.push({
+                                batchNumber: batchNum,
+                                quantity: recQty,
+                                price: rate,
+                                receivedDate: Date.now()
+                            });
+                            batch = itemDoc.batches[itemDoc.batches.length - 1];
+                        }
+                        itemDoc.purchasePrice = rate;
+                        await itemDoc.save();
+
+                        await Transaction.create({
+                            item: itemId,
+                            type: 'inward',
+                            quantity: recQty,
+                            damagedQuantity: dmgQty,
+                            reason: `PO ${order.orderNumber} Received`,
+                            user: req.user._id,
+                            previousQuantity,
+                            newQuantity: itemDoc.quantity,
+                            batchId: batch._id,
+                            batchNumber: batch.batchNumber,
+                            ...tenantQuery(req),
+                        });
+                    }
+                }
+            }
+
+            await createPurchaseLedgerEntry({
+                orderId: order._id,
+                orderNumber: order.orderNumber,
+                vendorId: order.vendor,
+                amount: order.totalAmount,
+                tenantId: req.tenantId,
+                userId: req.user._id,
+                orderDate: order.orderDate,
+            });
+            await recalculateVendorBalance(order.vendor, req.tenantId);
+        }
+
         sendResponse(res, 201, order, 'Purchase order created successfully');
     } catch (error) {
         next(error);
@@ -240,6 +305,9 @@ export const updatePurchaseOrder = async (req, res, next) => {
         if (!order) {
             return sendError(res, 404, 'Purchase order not found');
         }
+
+        const setting = await Setting.findOne({ tenantId: req.tenantId });
+        const isDirectInward = setting?.workflowConfig?.directPurchaseInward || false;
 
         const wasReceived = order.status === 'received' || order.status === 'billed';
         if (wasReceived) {
@@ -259,9 +327,13 @@ export const updatePurchaseOrder = async (req, res, next) => {
         order.totalAmount = totalAmount;
         if (roundOffAmount !== undefined) order.roundOffAmount = roundOffAmount;
 
+        if (isDirectInward) {
+            order.status = 'received';
+        }
+
         await order.save();
 
-        if (wasReceived) {
+        if (wasReceived || isDirectInward) {
             for (const item of items) {
                 const itemId = item.item?._id || item.item;
                 const itemDoc = await Item.findOne({ _id: itemId, ...tenantQuery(req) });

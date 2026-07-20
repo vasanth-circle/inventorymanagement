@@ -4,7 +4,9 @@ import { formatCurrency, formatDateTime, exportToCSV } from '../utils/helpers';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 import { printTallyLedger, printTallyReceivables } from '../utils/printTemplates';
+import { printDocument, generatePurchaseOrderHtml, executePrint } from '../utils/printTemplates';
 import FullScreenModal from '../components/FullScreenModal';
+import SearchableSelect from '../components/SearchableSelect';
 
 const Reports = () => {
     const { fetchTransactions, fetchSalesOrders, fetchItems, billingSettings } = useContext(InventoryContext);
@@ -19,9 +21,12 @@ const Reports = () => {
     const [selectedCustomer, setSelectedCustomer] = useState('');
     const [summary, setSummary] = useState(null); // For detailed ledger summary
     const [selectedUser, setSelectedUser] = useState(null); // For Sales by User details
+    const [itemsList, setItemsList] = useState([]);
+    const [selectedItem, setSelectedItem] = useState('');
 
     useEffect(() => {
-        api.get('/customers?limit=1000').then(res => setCustomers(res.data.data.customers)).catch(() => {});
+        api.get('/customers?limit=1000').then(res => setCustomers(res.data.data?.customers || res.data.customers || [])).catch(() => {});
+        api.get('/items?limit=5000').then(res => setItemsList(res.data.items || res.data.data?.items || [])).catch(() => {});
     }, []);
 
     const handleGenerateReport = async () => {
@@ -116,6 +121,23 @@ const Reports = () => {
                     setReportData(data.transactions);
                     toast.success('Stock Returns report generated');
                 }
+            } else if (reportType === 'item_history') {
+                if (!selectedItem) {
+                    toast.error('Please select an item first');
+                    return;
+                }
+                const response = await api.get(`/items/${selectedItem}/history`);
+                if (response.data && response.data.data) {
+                    // Combine purchases and sales for the export, but for UI we might want to store the whole object or an array. Let's store an array of both, with a type field.
+                    const { purchases, sales } = response.data.data;
+                    const combined = [
+                        ...purchases.map(p => ({ ...p, type: 'Purchase' })),
+                        ...sales.map(s => ({ ...s, type: 'Sale' }))
+                    ].sort((a, b) => new Date(b.date) - new Date(a.date));
+                    
+                    setReportData(combined);
+                    toast.success('Item History report generated');
+                }
             }
         } catch (error) {
             toast.error('Failed to generate report');
@@ -208,10 +230,49 @@ const Reports = () => {
                 'Amount': formatCurrency((tx.quantity || 0) * (tx.rate || 0)),
                 'Reason': tx.reason || 'N/A'
             }));
+        } else if (reportType === 'item_history') {
+            exportData = reportData.map(tx => ({
+                'Date': formatDateTime(tx.date),
+                'Type': tx.type,
+                'Party': tx.partyName,
+                'Bill / Ref No': tx.billNumber,
+                'Quantity': tx.quantity,
+                'Rate': formatCurrency(tx.rate || 0),
+                'Total': formatCurrency((tx.quantity || 0) * (tx.rate || 0))
+            }));
         }
 
         exportToCSV(exportData, `report-${reportType}-${new Date().toISOString().split('T')[0]}`);
         toast.success(`${reportType} report exported`);
+    };
+
+    const handlePrintRow = async (tx) => {
+        try {
+            const toastId = toast.loading('Loading bill...');
+            if (tx.type === 'Sale') {
+                const res = await api.get(`/sales-orders?limit=5000`);
+                const order = (res.data.data?.orders || res.data.orders || []).find(o => String(o._id) === String(tx.id));
+                if (order) {
+                    printDocument(order, billingSettings, 'invoice');
+                    toast.dismiss(toastId);
+                } else {
+                    toast.error('Bill not found', { id: toastId });
+                }
+            } else {
+                const res = await api.get(`/purchase-orders?limit=5000`);
+                const order = (res.data.data?.orders || res.data.orders || []).find(o => String(o._id) === String(tx.id));
+                if (order) {
+                    executePrint(generatePurchaseOrderHtml(order, billingSettings));
+                    toast.dismiss(toastId);
+                } else {
+                    toast.error('Bill not found', { id: toastId });
+                }
+            }
+        } catch (error) {
+            toast.dismiss();
+            toast.error('Failed to print bill');
+            console.error('Print Error:', error);
+        }
     };
 
     const handlePrintTally = () => {
@@ -460,6 +521,43 @@ const Reports = () => {
                     </table>
                 </div>
             );
+        } else if (reportType === 'item_history') {
+            return (
+                <div className="overflow-x-auto">
+                    <table className="min-w-full">
+                        <thead className="bg-white border-b border-gray-100">
+                            <tr>
+                                <th className="px-3 py-2 sm:px-6 sm:py-4 text-left text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Date</th>
+                                <th className="px-3 py-2 sm:px-6 sm:py-4 text-left text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Type</th>
+                                <th className="px-3 py-2 sm:px-6 sm:py-4 text-left text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Party</th>
+                                <th className="px-3 py-2 sm:px-6 sm:py-4 text-left text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Bill / Ref No</th>
+                                <th className="px-3 py-2 sm:px-6 sm:py-4 text-center text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Qty</th>
+                                <th className="px-3 py-2 sm:px-6 sm:py-4 text-right text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Rate</th>
+                                <th className="px-3 py-2 sm:px-6 sm:py-4 text-right text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 font-medium">
+                            {reportData.map((tx, idx) => (
+                                <tr key={idx} className="hover:bg-gray-50/50 cursor-pointer" onClick={() => handlePrintRow(tx)}>
+                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs text-gray-900">{formatDateTime(tx.date)}</td>
+                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs font-bold">
+                                        <span className={`px-2 py-0.5 rounded ${tx.type === 'Purchase' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                            {tx.type}
+                                        </span>
+                                    </td>
+                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs text-gray-800 font-bold">{tx.partyName}</td>
+                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs font-black text-indigo-600">
+                                        {tx.billNumber}
+                                    </td>
+                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-center text-[11px] sm:text-xs font-black text-gray-900">{tx.quantity}</td>
+                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-right text-[11px] sm:text-xs text-gray-900">{formatCurrency(tx.rate)}</td>
+                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-right text-[11px] sm:text-xs font-bold text-gray-900">{formatCurrency((tx.quantity || 0) * (tx.rate || 0))}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
         }
     };
 
@@ -467,6 +565,7 @@ const Reports = () => {
         { id: 'stock', label: '📦 Current Stock' },
         { id: 'inward', label: '📥 Inward / Purchases' },
         { id: 'sales', label: '📤 Outward / Sales' },
+        { id: 'item_history', label: '🔍 Item History' },
         { id: 'performance', label: '👤 Sales by User' },
         { id: 'daywise_receivables', label: '💸 Daywise Receivables' },
         { id: 'detailed_ledger', label: '📒 Detailed Ledger' },
@@ -520,8 +619,19 @@ const Reports = () => {
                             ))}
                         </select>
                     )}
+
+                    {reportType === 'item_history' && (
+                        <div className="w-[300px]">
+                            <SearchableSelect
+                                options={itemsList.map(item => ({ value: item._id, label: item.name + (item.sku ? ` (${item.sku})` : '') }))}
+                                value={selectedItem}
+                                onChange={(e) => setSelectedItem(e?.target?.value || e)}
+                                placeholder="Search & Select Item..."
+                            />
+                        </div>
+                    )}
                     
-                    {reportType !== 'stock' && (
+                    {reportType !== 'stock' && reportType !== 'item_history' && (
                         <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200">
                             <input type="date" value={filters.startDate} onChange={(e) => setFilters({ ...filters, startDate: e.target.value })} className="text-xs bg-transparent font-bold text-gray-700 outline-none" />
                             <span className="text-[10px] text-gray-300 font-black uppercase mx-1">TO</span>
