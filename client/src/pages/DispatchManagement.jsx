@@ -516,7 +516,8 @@ const DispatchManagement = () => {
                                     <td>
                                         ${d.items.map(i => {
                                             const itemDoc = order.items.find(oi => String(oi.item._id || oi.item) === String(i.item?._id || i.item));
-                                            return `<div>- ${i.item?.name || itemDoc?.name || 'Unknown Item'}</div>`;
+                                            const sizeStr = itemDoc?.size || i.item?.size || '';
+                                            return `<div>- ${i.item?.name || itemDoc?.name || 'Unknown Item'} ${sizeStr ? `(${sizeStr})` : ''}</div>`;
                                         }).join('')}
                                     </td>
                                     <td>
@@ -535,6 +536,7 @@ const DispatchManagement = () => {
                         <thead>
                             <tr>
                                 <th>Item Name</th>
+                                <th>Size</th>
                                 <th>Total Ordered (Stock)</th>
                                 <th>Total Dispatched</th>
                                 <th>Balance Pending</th>
@@ -551,6 +553,7 @@ const DispatchManagement = () => {
                                 return `
                                     <tr>
                                         <td>${oi.name || oi.item?.name || 'Unknown Item'}</td>
+                                        <td>${oi.size || oi.item?.size || '-'}</td>
                                         <td>${targetedStockLimit} ${oi.stockUnit || (oi.sqFtPerPc > 0 ? 'Boxes' : 'Boxes')}</td>
                                         <td>${totalDisp}</td>
                                         <td style="font-weight:bold; color:${targetedStockLimit - totalDisp > 0 ? 'red' : 'green'}">${(targetedStockLimit - totalDisp).toFixed(2)}</td>

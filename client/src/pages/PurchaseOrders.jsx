@@ -31,6 +31,7 @@ const PurchaseOrders = () => {
     const [taxType, setTaxType] = useState('cgst'); // 'cgst' (intra) or 'igst' (inter)
     const [from, setFrom] = useState('');
     const [to, setTo] = useState('');
+    const [search, setSearch] = useState('');
     const [isQuickAddItemOpen, setIsQuickAddItemOpen] = useState(false);
     const [quickAddItemData, setQuickAddItemData] = useState({ name: '', sku: '', purchasePrice: '', category: '', hsn: '', unitType: 'pieces', size: '', pcsPerBox: '', sqFtPerPc: '' });
     const [formData, setFormData] = useState({
@@ -86,9 +87,15 @@ const PurchaseOrders = () => {
     const API_URL = '/api/purchase-orders';
 
     useEffect(() => {
-        fetchOrders();
         fetchVendorsAndItems();
     }, []);
+
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(() => {
+            fetchOrders(1);
+        }, 500);
+        return () => clearTimeout(delayDebounceFn);
+    }, [search, from, to]);
 
     const fetchOrders = async (page = 1) => {
         try {
@@ -96,6 +103,7 @@ const PurchaseOrders = () => {
             const params = { page, limit: 10 };
             if (from) params.from = from;
             if (to) params.to = to;
+            if (search) params.search = search;
             const res = await axios.get(API_URL, {
                 params,
                 headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
@@ -306,14 +314,14 @@ const PurchaseOrders = () => {
             vendorBillNumber: order.vendorBillNumber || '',
             billDate: order.billDate ? new Date(order.billDate).toISOString().split('T')[0] : (order.orderDate ? new Date(order.orderDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
             roundOffAmount: order.roundOffAmount !== undefined && order.roundOffAmount !== null && order.roundOffAmount !== 0 ? order.roundOffAmount : '',
-            taxRate: order.taxRate || 18,
+            taxRate: order.taxRate ?? 18,
             notes: order.notes || '',
             items: order.items.map(i => ({
                 item: i.item?._id || i.item,
                 quantity: i.quantity,
                 damagedQuantity: i.damagedQuantity || '',
                 price: i.price,
-                taxRate: i.taxRate || order.taxRate || 18,
+                taxRate: i.taxRate ?? order.taxRate ?? 18,
                 boxCount: i.boxCount || '',
                 totalPcs: i.totalPcs || '',
                 brand: i.item?.brand || i.brand || '',
@@ -429,6 +437,11 @@ const PurchaseOrders = () => {
                         </div>
                         <div className="flex gap-4 items-end">
                             <div>
+                                <label className="block text-xs font-semibold text-gray-500 mb-1">Search</label>
+                                <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, bill no..."
+                                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none w-48" />
+                            </div>
+                            <div>
                                 <label className="block text-xs font-semibold text-gray-500 mb-1">From Date</label>
                                 <input type="date" value={from} onChange={e => setFrom(e.target.value)}
                                     className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" />
@@ -482,6 +495,7 @@ const PurchaseOrders = () => {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-gray-50 border-bottom border-gray-100">
+                                <th className="px-6 py-4 text-sm font-semibold text-gray-600">S.No</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">PO #</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">Bill No</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">Bill Date</th>
@@ -494,10 +508,11 @@ const PurchaseOrders = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {orders.map((order) => (
+                            {orders.map((order, index) => (
                                 <tr key={order._id} className="hover:bg-gray-50 transition-colors">
+                                    <td className="px-6 py-4 text-gray-900 text-sm">{(currentPage - 1) * 10 + index + 1}</td>
                                     <td className="px-6 py-4 font-medium text-primary-600 cursor-pointer hover:underline" onClick={() => openViewModal(order)}>{order.orderNumber}</td>
-                                    <td className="px-6 py-4 text-gray-900 font-mono text-xs">{order.vendorBillNumber || '-'}</td>
+                                    <td className="px-6 py-4 text-gray-900 font-mono text-base font-bold">{order.vendorBillNumber || '-'}</td>
                                     <td className="px-6 py-4 text-gray-600 whitespace-nowrap text-sm">{order.billDate ? new Date(order.billDate).toLocaleDateString() : '-'}</td>
                                     <td className="px-6 py-4 text-gray-900">{order.vendor?.name}</td>
                                     <td className="px-6 py-4 text-gray-600 font-semibold text-sm">Credit</td>
@@ -598,6 +613,7 @@ const PurchaseOrders = () => {
                                     <table className="w-full text-left">
                                         <thead className="bg-gray-50">
                                             <tr>
+                                                <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-12 text-center">S.No</th>
                                                 <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase min-w-[200px]">Item</th>
                                                 <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-center">Qty / Boxes</th>
                                                 <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase w-24 text-center text-red-600">Damaged</th>
@@ -614,6 +630,7 @@ const PurchaseOrders = () => {
                                                 const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((row.unitType || '').toLowerCase());
                                                 return (
                                                 <tr key={index}>
+                                                    <td className="px-2 py-2 text-center font-bold text-gray-700">{index + 1}</td>
                                                     <td className="py-2 pr-2">
                                                         <div className="flex gap-1 items-center">
                                                             <div className="flex-1">
@@ -738,7 +755,14 @@ const PurchaseOrders = () => {
                                             const roundOff = parseFloat(formData.roundOffAmount) || 0;
                                             const grandTotal = taxableTotal + taxTotal + roundOff;
                                             const halfTax = taxTotal / 2;
+                                            const totalBoxes = formData.items.reduce((s, i) => s + (parseFloat(i.boxCount) || 0), 0);
                                             return (<>
+                                                {billingSettings?.industry === 'tiles' && totalBoxes > 0 && (
+                                                    <div className="flex justify-between text-sm text-gray-800 font-bold mb-2 pb-2 border-b border-gray-100">
+                                                        <span>Total Boxes:</span>
+                                                        <span>{totalBoxes}</span>
+                                                    </div>
+                                                )}
                                                 <div className="flex justify-between text-sm text-gray-600 font-medium">
                                                     <span>Taxable Amount:</span>
                                                     <span>₹{taxableTotal.toLocaleString(undefined, {minimumFractionDigits:2,maximumFractionDigits:2})}</span>
@@ -910,6 +934,7 @@ const PurchaseOrders = () => {
                                     <table className="w-full text-left">
                                         <thead className="bg-gray-50">
                                             <tr>
+                                                <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase w-12 text-center">S.No</th>
                                                 <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase">Item Description</th>
                                                 <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase text-center w-24">Boxes</th>
                                                 <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase text-center w-28">Quantity</th>
@@ -920,6 +945,7 @@ const PurchaseOrders = () => {
                                         <tbody className="divide-y divide-gray-100 text-sm">
                                             {selectedOrder.items?.map((row, index) => (
                                                 <tr key={index} className="hover:bg-gray-50/50">
+                                                    <td className="px-4 py-3 text-center font-bold text-gray-700">{index + 1}</td>
                                                     <td className="px-4 py-3">
                                                         <div className="font-medium text-gray-800">{row.item?.name || row.name || 'Unknown Item'}</div>
                                                         {(row.item?.sku || row.sku) && <div className="text-[10px] text-gray-400">SKU: {row.item?.sku || row.sku}</div>}
@@ -949,6 +975,15 @@ const PurchaseOrders = () => {
                                     )}
                                 </div>
                                 <div className="w-64 space-y-1.5 text-right">
+                                    {(() => {
+                                        const viewTotalBoxes = selectedOrder.items?.reduce((sum, item) => sum + (parseFloat(item.boxCount) || 0), 0) || 0;
+                                        return billingSettings?.industry === 'tiles' && viewTotalBoxes > 0 ? (
+                                            <div className="flex justify-between text-xs font-bold text-gray-800 pb-2 mb-2 border-b border-gray-100">
+                                                <span>Total Boxes</span>
+                                                <span>{viewTotalBoxes}</span>
+                                            </div>
+                                        ) : null;
+                                    })()}
                                     <div className="flex justify-between text-xs text-gray-500">
                                         <span>Subtotal</span>
                                         <span>₹{(selectedOrder.totalAmount - (selectedOrder.roundOffAmount || 0)).toLocaleString()}</span>

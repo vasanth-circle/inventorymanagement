@@ -80,7 +80,7 @@ export const createPurchaseLedgerEntry = async ({ orderId, orderNumber, vendorId
 // @access  Private
 export const getPurchaseOrders = async (req, res, next) => {
     try {
-        const { status = '', page = 1, limit = 10, from, to } = req.query;
+        const { status = '', page = 1, limit = 10, from, to, search = '' } = req.query;
         const query = { ...tenantQuery(req) };
 
         if (status) {
@@ -100,6 +100,28 @@ export const getPurchaseOrders = async (req, res, next) => {
                 { billDate: dateQuery },
                 { createdAt: dateQuery }
             ];
+        }
+
+        if (search) {
+            const vendorMatch = await Vendor.find({
+                name: { $regex: search, $options: 'i' },
+                ...tenantQuery(req)
+            }).select('_id');
+            const vendorIds = vendorMatch.map(v => v._id);
+
+            // If query already has an $or from date filter, we use $and
+            const searchOr = [
+                { orderNumber: { $regex: search, $options: 'i' } },
+                { vendorBillNumber: { $regex: search, $options: 'i' } },
+                { vendor: { $in: vendorIds } }
+            ];
+
+            if (query.$or) {
+                query.$and = [{ $or: query.$or }, { $or: searchOr }];
+                delete query.$or;
+            } else {
+                query.$or = searchOr;
+            }
         }
 
         const orders = await PurchaseOrder.find(query)
