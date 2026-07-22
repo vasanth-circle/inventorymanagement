@@ -652,7 +652,7 @@ const PurchaseOrders = () => {
                                                         {isTile ? (
                                                             <div className="flex flex-col gap-1">
                                                                 <div className="flex gap-1 items-center">
-                                                                    <input type="number" step="0.01" min="0" value={row.boxCount || ''} onChange={(e) => handleItemChange(index, 'boxCount', e.target.value)} placeholder="Boxes" className="w-16 px-1 py-1 border rounded-md text-center text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none" />
+                                                                    <input type="number" step="any" min="0" value={row.boxCount || ''} onChange={(e) => handleItemChange(index, 'boxCount', e.target.value)} placeholder="Boxes" className="w-16 px-1 py-1 border rounded-md text-center text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none" />
                                                                     <span className="text-[10px] text-gray-400">Bx</span>
                                                                     <input type="number" step="1" min="0" value={row.totalPcs || ''} onChange={(e) => handleItemChange(index, 'piecesCount', e.target.value)} placeholder="Pcs" className="w-16 px-1 py-1 border rounded-md text-center text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none" />
                                                                     <span className="text-[10px] text-gray-400">Pc</span>
@@ -662,7 +662,7 @@ const PurchaseOrders = () => {
                                                             <input 
                                                                 required 
                                                                 type="number" 
-                                                                step="0.01"
+                                                                step="any"
                                                                 min="0" 
                                                                 value={row.quantity || ''} 
                                                                 onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} 
@@ -674,7 +674,7 @@ const PurchaseOrders = () => {
                                                     <td className="px-2 py-2 min-w-[100px]">
                                                         <input 
                                                             type="number" 
-                                                            step="0.01" 
+                                                            step="any" 
                                                             min="0" 
                                                             value={row.damagedQuantity || ''} 
                                                             onChange={(e) => handleItemChange(index, 'damagedQuantity', e.target.value)} 
@@ -684,7 +684,7 @@ const PurchaseOrders = () => {
                                                     </td>
                                                     {!isGodown && (
                                                         <td className="px-2 py-2 min-w-[100px]">
-                                                            <input required type="number" step="0.01" value={row.price === 0 ? '' : row.price} onChange={(e) => handleItemChange(index, 'price', e.target.value)} className="w-full px-2 py-2 border rounded-lg border-gray-200 text-right font-bold focus:ring-1 focus:ring-primary-400 outline-none" placeholder="Rate" />
+                                                            <input required type="number" step="any" value={row.price === 0 ? '' : row.price} onChange={(e) => handleItemChange(index, 'price', e.target.value)} className="w-full px-2 py-2 border rounded-lg border-gray-200 text-right font-bold focus:ring-1 focus:ring-primary-400 outline-none" placeholder="Rate" />
                                                         </td>
                                                     )}
                                                     {!isGodown && (

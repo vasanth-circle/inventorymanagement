@@ -61,7 +61,7 @@ const customerLedgerSchema = new mongoose.Schema({
     },
     paymentMode: {
         type: String,
-        enum: ['cash', 'cheque', 'upi', 'bank_transfer', 'other'],
+        enum: ['cash', 'cheque', 'upi', 'bank_transfer', 'other', 'discount'],
         default: 'cash',
     },
     notes: {
