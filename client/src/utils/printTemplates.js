@@ -836,7 +836,54 @@ export const printDocument = (order, settings, docType = 'invoice') => {
 export const generatePreviewHtml = (templateNo, settings) => {
     const dummyOrder = {
         orderNumber: 'INV-0001',
-    }
+        orderDate: new Date().toISOString(),
+        customer: {
+            name: 'Sample Customer',
+            address: '123 Dummy Street, Sample City, 123456',
+            phone: '+91-9876543210',
+            email: 'sample@example.com'
+        },
+        items: [
+            {
+                name: 'Sample Product 1',
+                hsnCode: '1234',
+                quantity: 10,
+                price: 1500,
+                total: 15000,
+                unitType: 'nos',
+                brand: 'DummyBrand',
+                size: 'Large'
+            },
+            {
+                name: 'Sample Product 2',
+                hsnCode: '5678',
+                quantity: 5,
+                price: 200,
+                total: 1000,
+                unitType: 'nos',
+                brand: 'DummyBrand',
+                size: 'Small'
+            }
+        ],
+        subTotal: 16000,
+        taxAmount: 2880,
+        taxRate: 18,
+        totalAmount: 18880,
+        discountAmount: 0,
+        loadingCharges: 0,
+        unloadingCharges: 0,
+        transportCharges: 0,
+        amountPaid: 0,
+        balanceDue: 18880,
+    };
+
+    let html = '';
+    if (templateNo === 2) html = template2(dummyOrder, settings, 'TAX INVOICE');
+    else if (templateNo === 3) html = template3(dummyOrder, settings, 'TAX INVOICE');
+    else if (templateNo === 4) html = template4(dummyOrder, settings, 'TAX INVOICE');
+    else html = template1(dummyOrder, settings, 'TAX INVOICE');
+
+    return html;
 }
 
 export const printAccountStatement = (customer, entries, summary, period, settings) => {

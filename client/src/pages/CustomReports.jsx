@@ -1075,7 +1075,7 @@ const PurchaseReport = ({ settings }) => {
             if (to) params.to = to;
             params.limit = 5000;
             const r = await api('/purchase-orders', { params });
-            setData(r.data.data.orders);
+            setData(r.data.data.orders.filter(o => o.totalAmount > 0));
         } catch { toast.error('Failed to fetch purchase orders'); }
         finally { setLoading(false); }
     }, [from, to]);
