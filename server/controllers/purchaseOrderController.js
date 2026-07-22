@@ -191,6 +191,7 @@ export const createPurchaseOrder = async (req, res, next) => {
 
         const setting = await Setting.findOne({ tenantId: req.tenantId });
         const isDirectInward = setting?.workflowConfig?.directPurchaseInward || false;
+        const shouldReceive = isDirectInward && (totalAmount > 0);
 
         // Generate Order Number with retry logic
         let order;
@@ -212,7 +213,7 @@ export const createPurchaseOrder = async (req, res, next) => {
                     orderDate,
                     expectedDeliveryDate,
                     notes,
-                    status: isDirectInward ? 'received' : 'draft',
+                    status: shouldReceive ? 'received' : 'draft',
                     user: req.user._id,
                     ...tenantQuery(req),
                 });
@@ -230,7 +231,7 @@ export const createPurchaseOrder = async (req, res, next) => {
             return sendError(res, 500, 'Failed to generate a unique order number after multiple attempts');
         }
 
-        if (isDirectInward) {
+        if (shouldReceive) {
             for (const item of items) {
                 const itemId = item.item?._id || item.item;
                 const itemDoc = await Item.findOne({ _id: itemId, ...tenantQuery(req) });
@@ -327,13 +328,12 @@ export const updatePurchaseOrder = async (req, res, next) => {
         order.totalAmount = totalAmount;
         if (roundOffAmount !== undefined) order.roundOffAmount = roundOffAmount;
 
-        if (isDirectInward) {
-            order.status = 'received';
-        }
+        const shouldReceive = (isDirectInward || wasReceived) && (totalAmount > 0);
+        order.status = shouldReceive ? 'received' : 'draft';
 
         await order.save();
 
-        if (wasReceived || isDirectInward) {
+        if (shouldReceive) {
             for (const item of items) {
                 const itemId = item.item?._id || item.item;
                 const itemDoc = await Item.findOne({ _id: itemId, ...tenantQuery(req) });
