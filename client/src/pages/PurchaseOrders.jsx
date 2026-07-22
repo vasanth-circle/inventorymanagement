@@ -652,7 +652,7 @@ const PurchaseOrders = () => {
                                                         {isTile ? (
                                                             <div className="flex flex-col gap-1">
                                                                 <div className="flex gap-1 items-center">
-                                                                    <input type="number" step="0.5" min="0" value={row.boxCount || ''} onChange={(e) => handleItemChange(index, 'boxCount', e.target.value)} placeholder="Boxes" className="w-16 px-1 py-1 border rounded-md text-center text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none" />
+                                                                    <input type="number" step="0.01" min="0" value={row.boxCount || ''} onChange={(e) => handleItemChange(index, 'boxCount', e.target.value)} placeholder="Boxes" className="w-16 px-1 py-1 border rounded-md text-center text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none" />
                                                                     <span className="text-[10px] text-gray-400">Bx</span>
                                                                     <input type="number" step="1" min="0" value={row.totalPcs || ''} onChange={(e) => handleItemChange(index, 'piecesCount', e.target.value)} placeholder="Pcs" className="w-16 px-1 py-1 border rounded-md text-center text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none" />
                                                                     <span className="text-[10px] text-gray-400">Pc</span>
