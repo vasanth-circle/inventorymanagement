@@ -311,7 +311,7 @@ export const autoDispatchConfirmedOrder = async (orderId, tenantId, userId) => {
 // @access  Private
 export const getSalesOrders = async (req, res, next) => {
     try {
-        const { status = '', customer = '', type = '', search = '', page = 1, limit = 10, startDate, endDate } = req.query;
+        const { status = '', customer = '', type = '', search = '', page = 1, limit = 10, startDate, endDate, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
         const query = { ...tenantQuery(req) };
 
         if (status) {
@@ -357,7 +357,7 @@ export const getSalesOrders = async (req, res, next) => {
             .populate('customer', 'name companyName phone gstin address')
             .populate({ path: 'user', model: User, select: 'name phone' })
             .populate('items.item', 'name brand size hsn sku barcode unitType sqFtPerPc pcsPerBox')
-            .sort({ createdAt: -1 })
+            .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 })
             .limit(limit * 1)
             .skip((page - 1) * limit);
 

@@ -32,6 +32,8 @@ const PurchaseOrders = () => {
     const [from, setFrom] = useState('');
     const [to, setTo] = useState('');
     const [search, setSearch] = useState('');
+    const [sortBy, setSortBy] = useState('createdAt');
+    const [sortOrder, setSortOrder] = useState('desc');
     const [isQuickAddItemOpen, setIsQuickAddItemOpen] = useState(false);
     const [quickAddItemData, setQuickAddItemData] = useState({ name: '', sku: '', purchasePrice: '', category: '', hsn: '', unitType: 'pieces', size: '', pcsPerBox: '', sqFtPerPc: '' });
     const [formData, setFormData] = useState({
@@ -95,12 +97,12 @@ const PurchaseOrders = () => {
             fetchOrders(1);
         }, 500);
         return () => clearTimeout(delayDebounceFn);
-    }, [search, from, to]);
+    }, [search, from, to, sortBy, sortOrder]);
 
     const fetchOrders = async (page = 1) => {
         try {
             setLoading(true);
-            const params = { page, limit: 10 };
+            const params = { page, limit: 10, sortBy, sortOrder };
             if (from) params.from = from;
             if (to) params.to = to;
             if (search) params.search = search;
@@ -425,6 +427,20 @@ const PurchaseOrders = () => {
         }
     };
 
+    const handleSort = (field) => {
+        if (sortBy === field) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortBy(field);
+            setSortOrder('desc');
+        }
+    };
+
+    const renderSortIcon = (field) => {
+        if (sortBy !== field) return null;
+        return <span className="ml-1 inline-block">{sortOrder === 'asc' ? '↑' : '↓'}</span>;
+    };
+
     return (
         <div className="space-y-6 print:space-y-0 print:m-0 print:p-0">
             {!isModalOpen && (
@@ -496,14 +512,14 @@ const PurchaseOrders = () => {
                         <thead>
                             <tr className="bg-gray-50 border-bottom border-gray-100">
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">S.No</th>
-                                <th className="px-6 py-4 text-sm font-semibold text-gray-600">PO #</th>
-                                <th className="px-6 py-4 text-sm font-semibold text-gray-600">Bill No</th>
-                                <th className="px-6 py-4 text-sm font-semibold text-gray-600">Bill Date</th>
+                                <th onClick={() => handleSort('orderNumber')} className="px-6 py-4 text-sm font-semibold text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors">PO #{renderSortIcon('orderNumber')}</th>
+                                <th onClick={() => handleSort('vendorBillNumber')} className="px-6 py-4 text-sm font-semibold text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors">Bill No{renderSortIcon('vendorBillNumber')}</th>
+                                <th onClick={() => handleSort('billDate')} className="px-6 py-4 text-sm font-semibold text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors">Bill Date{renderSortIcon('billDate')}</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">Vendor</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">Inv Type</th>
-                                <th className="px-6 py-4 text-sm font-semibold text-gray-600">PO Date</th>
-                                <th className="px-6 py-4 text-sm font-semibold text-gray-600">Amount</th>
-                                <th className="px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
+                                <th onClick={() => handleSort('orderDate')} className="px-6 py-4 text-sm font-semibold text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors">PO Date{renderSortIcon('orderDate')}</th>
+                                <th onClick={() => handleSort('totalAmount')} className="px-6 py-4 text-sm font-semibold text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors">Amount{renderSortIcon('totalAmount')}</th>
+                                <th onClick={() => handleSort('status')} className="px-6 py-4 text-sm font-semibold text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors">Status{renderSortIcon('status')}</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-right">Actions</th>
                             </tr>
                         </thead>

@@ -28,6 +28,8 @@ const SalesOrders = () => {
     const [typeFilter, setTypeFilter] = useState('');
     const [fromDate, setFromDate] = useState('');
     const [toDate, setToDate] = useState('');
+    const [sortBy, setSortBy] = useState('orderDate');
+    const [sortOrder, setSortOrder] = useState('desc');
     const [usersList, setUsersList] = useState([]);
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -454,9 +456,46 @@ const SalesOrders = () => {
         return matchSearch && matchUser && matchType && matchDate;
     });
 
-    const totalFiltered = filteredOrders.length;
+    const sortedOrders = [...filteredOrders].sort((a, b) => {
+        let aValue = a[sortBy];
+        let bValue = b[sortBy];
+
+        if (sortBy === 'customer') {
+            aValue = a.customer?.companyName || a.customer?.name || '';
+            bValue = b.customer?.companyName || b.customer?.name || '';
+        } else if (sortBy === 'user') {
+            aValue = a.user?.name || '';
+            bValue = b.user?.name || '';
+        }
+
+        if (sortBy === 'orderDate' || sortBy === 'createdAt') {
+            return sortOrder === 'asc' ? new Date(aValue) - new Date(bValue) : new Date(bValue) - new Date(aValue);
+        }
+
+        if (typeof aValue === 'string') {
+            return sortOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+        }
+
+        return sortOrder === 'asc' ? (aValue > bValue ? 1 : -1) : (bValue > aValue ? 1 : -1);
+    });
+
+    const totalFiltered = sortedOrders.length;
     const totalPages = Math.max(1, Math.ceil(totalFiltered / itemsPerPage));
-    const paginatedOrders = filteredOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    const paginatedOrders = sortedOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+    const handleSort = (field) => {
+        if (sortBy === field) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortBy(field);
+            setSortOrder('desc');
+        }
+    };
+
+    const renderSortIcon = (field) => {
+        if (sortBy !== field) return null;
+        return <span className="ml-1 inline-block">{sortOrder === 'asc' ? '↑' : '↓'}</span>;
+    };
 
     return (
         <div className="space-y-6">
@@ -562,14 +601,14 @@ const SalesOrders = () => {
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="bg-gray-50 border-bottom border-gray-100">
-                                            <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Order #</th>
-                                            <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">
-                                                {billingSettings?.industry === 'machinery' ? 'Client' : 'Customer'}
+                                            <th onClick={() => handleSort('orderNumber')} className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase cursor-pointer hover:bg-gray-200 transition-colors">Order #{renderSortIcon('orderNumber')}</th>
+                                            <th onClick={() => handleSort('customer')} className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase cursor-pointer hover:bg-gray-200 transition-colors">
+                                                {billingSettings?.industry === 'machinery' ? 'Client' : 'Customer'}{renderSortIcon('customer')}
                                             </th>
-                                            <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Date</th>
-                                            <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Created By</th>
-                                            <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Total Amount</th>
-                                            <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Status</th>
+                                            <th onClick={() => handleSort('orderDate')} className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase cursor-pointer hover:bg-gray-200 transition-colors">Date{renderSortIcon('orderDate')}</th>
+                                            <th onClick={() => handleSort('user')} className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase cursor-pointer hover:bg-gray-200 transition-colors">Created By{renderSortIcon('user')}</th>
+                                            <th onClick={() => handleSort('totalAmount')} className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase cursor-pointer hover:bg-gray-200 transition-colors">Total Amount{renderSortIcon('totalAmount')}</th>
+                                            <th onClick={() => handleSort('status')} className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase cursor-pointer hover:bg-gray-200 transition-colors">Status{renderSortIcon('status')}</th>
                                             <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase text-right print:hidden">Actions</th>
                                         </tr>
                                     </thead>

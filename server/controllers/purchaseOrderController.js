@@ -81,7 +81,7 @@ export const createPurchaseLedgerEntry = async ({ orderId, orderNumber, vendorId
 // @access  Private
 export const getPurchaseOrders = async (req, res, next) => {
     try {
-        const { status = '', page = 1, limit = 10, from, to, search = '' } = req.query;
+        const { status = '', page = 1, limit = 10, from, to, search = '', sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
         const query = { ...tenantQuery(req) };
 
         if (status) {
@@ -129,7 +129,7 @@ export const getPurchaseOrders = async (req, res, next) => {
             .populate('vendor', 'name companyName gstin address phone email')
             .populate('items.item', 'name sku barcode size brand unitType')
             .populate({ path: 'user', model: User, select: 'name' })
-            .sort({ createdAt: -1 })
+            .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 })
             .limit(limit * 1)
             .skip((page - 1) * limit);
 
