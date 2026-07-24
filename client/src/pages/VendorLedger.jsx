@@ -391,9 +391,16 @@ const VendorLedger = () => {
                                                 {entry.refNumber || '-'}
                                             </td>
                                             <td className="px-4 py-3">
-                                                <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mb-1 ${ts.badge}`}>
-                                                    {ts.label}
-                                                </span>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full ${ts.badge}`}>
+                                                        {ts.label}
+                                                    </span>
+                                                    {entry.paymentMode && (
+                                                        <span className="inline-block text-[10px] font-bold text-gray-500 uppercase tracking-wider bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+                                                            {entry.paymentMode}
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <p className="text-sm text-gray-700">{entry.description}</p>
                                                 {entry.notes && <p className="text-xs text-gray-400 mt-0.5">{entry.notes}</p>}
                                             </td>

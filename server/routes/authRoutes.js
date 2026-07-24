@@ -9,7 +9,7 @@ router.post('/register', validateRequest(schemas.register), register);
 router.post('/login', validateRequest(schemas.login), login);
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
-router.get('/users', protect, authorize('admin', 'tenant_owner', 'tenant_admin', 'manager'), getUsers);
+router.get('/users', protect, getUsers);
 router.post('/users', protect, authorize('admin', 'tenant_owner', 'tenant_admin', 'manager'), validateRequest(schemas.addUser), addUser);
 router.put('/users/:id', protect, authorize('admin', 'tenant_owner', 'tenant_admin', 'manager'), validateRequest(schemas.updateUser), updateUser);
 router.patch('/users/:id/status', protect, authorize('admin', 'tenant_owner', 'tenant_admin', 'manager'), toggleUserStatus);

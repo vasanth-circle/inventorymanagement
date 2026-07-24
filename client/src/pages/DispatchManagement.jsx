@@ -4,6 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { printShippingLabels } from '../utils/printTemplates';
+import SearchableSelect from '../components/SearchableSelect';
 
 const DispatchManagement = () => {
     const { billingSettings } = useContext(InventoryContext);
@@ -50,6 +51,8 @@ const DispatchManagement = () => {
     const [pendingSearch, setPendingSearch] = useState('');
     const [loadingSearch, setLoadingSearch] = useState('');
     const [historySearch, setHistorySearch] = useState('');
+    const [userFilter, setUserFilter] = useState('');
+    const [usersList, setUsersList] = useState([]);
 
     // Pagination states
     const [pendingPage, setPendingPage] = useState(1);
@@ -57,15 +60,25 @@ const DispatchManagement = () => {
     const [historyPage, setHistoryPage] = useState(1);
     const ITEMS_PER_PAGE = 20;
 
-    useEffect(() => { setPendingPage(1); }, [pendingSearch, activeTab]);
-    useEffect(() => { setLoadingPage(1); }, [loadingSearch, activeTab]);
-    useEffect(() => { setHistoryPage(1); }, [historySearch, activeTab]);
+    useEffect(() => { setPendingPage(1); }, [pendingSearch, activeTab, userFilter]);
+    useEffect(() => { setLoadingPage(1); }, [loadingSearch, activeTab, userFilter]);
+    useEffect(() => { setHistoryPage(1); }, [historySearch, activeTab, userFilter]);
 
     useEffect(() => {
         if (!isStrictlyGodown) {
             fetchPendingOrders();
         }
         fetchDispatches();
+        
+        const fetchUsers = async () => {
+            try {
+                const res = await api.get('/auth/users');
+                setUsersList(res.data?.data || res.data || []);
+            } catch (err) {
+                console.error('Failed to fetch users', err);
+            }
+        };
+        fetchUsers();
     }, [isStrictlyGodown]);
 
     const fetchDispatches = async () => {
@@ -601,7 +614,9 @@ const DispatchManagement = () => {
         const q = pendingSearch.toLowerCase();
         const cName = (order.customer?.companyName || order.customer?.name || '').toLowerCase();
         const oNum = (order.orderNumber || '').toLowerCase();
-        return cName.includes(q) || oNum.includes(q);
+        const matchSearch = cName.includes(q) || oNum.includes(q);
+        const matchUser = !userFilter || order.user?._id === userFilter || order.user === userFilter;
+        return matchSearch && matchUser;
     });
     const paginatedOrders = filteredOrders.slice((pendingPage - 1) * ITEMS_PER_PAGE, pendingPage * ITEMS_PER_PAGE);
     const totalPendingPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
@@ -609,6 +624,8 @@ const DispatchManagement = () => {
     // 2. Pending Loading Dispatches
     const filteredLoadingDispatches = dispatches.filter(d => {
         if (d.status !== 'pending_loading') return false;
+        const matchUser = !userFilter || d.order?.user?._id === userFilter || d.order?.user === userFilter || d.createdBy?._id === userFilter;
+        if (!matchUser) return false;
         if (!loadingSearch) return true;
         const query = loadingSearch.toLowerCase();
         const dispatchNum = d.dispatchNumber?.toLowerCase() || '';
@@ -622,6 +639,8 @@ const DispatchManagement = () => {
     // 3. Dispatch Logs (History)
     const completedDispatches = dispatches.filter(d => d.status === 'dispatched'); // Keep for summary prints etc
     const filteredHistoryDispatches = completedDispatches.filter(dh => {
+        const matchUser = !userFilter || dh.order?.user?._id === userFilter || dh.order?.user === userFilter || dh.createdBy?._id === userFilter;
+        if (!matchUser) return false;
         const query = historySearch.toLowerCase();
         const dispatchNum = dh.dispatchNumber?.toLowerCase() || '';
         const orderNum = dh.order?.orderNumber?.toLowerCase() || '';
@@ -688,14 +707,23 @@ const DispatchManagement = () => {
 
             {activeTab === 'pending' && (
                 <div className="space-y-6">
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 flex-wrap">
                         <input
                             type="text"
                             placeholder="Search by Order # or Customer Name..."
                             value={pendingSearch}
                             onChange={e => setPendingSearch(e.target.value)}
-                            className="flex-1 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
+                            className="flex-1 min-w-[250px] px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
                         />
+                        <div className="w-[220px]">
+                            <SearchableSelect
+                                value={userFilter}
+                                onChange={e => setUserFilter(e.target.value)}
+                                options={usersList.map(u => ({ value: u._id, label: u.name }))}
+                                placeholder="All Sales Persons"
+                                searchPlaceholder="Search users..."
+                            />
+                        </div>
                     </div>
                     {loading ? (
                         <div className="flex justify-center items-center h-64">
@@ -722,9 +750,13 @@ const DispatchManagement = () => {
                                                 <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 mr-4 border border-gray-100">
                                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                                                 </div>
-                                                <div className="overflow-hidden">
+                                                <div className="overflow-hidden flex-1">
                                                     <p className="text-xs text-gray-500 font-medium">Customer</p>
                                                     <p className="font-medium text-gray-900 truncate text-sm">{order.customer?.companyName || order.customer?.name}</p>
+                                                </div>
+                                                <div className="overflow-hidden text-right">
+                                                    <p className="text-xs text-gray-500 font-medium">Sales Person</p>
+                                                    <p className="font-medium text-indigo-700 truncate text-sm">{order.user?.name || 'System'}</p>
                                                 </div>
                                             </div>
                                             
@@ -811,14 +843,23 @@ const DispatchManagement = () => {
 
             {activeTab === 'loading' && (
                 <div className="space-y-6">
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 flex-wrap">
                         <input
                             type="text"
                             placeholder="Search by Dispatch #, Order #, or Customer..."
                             value={loadingSearch}
                             onChange={e => setLoadingSearch(e.target.value)}
-                            className="flex-1 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 outline-none shadow-sm"
+                            className="flex-1 min-w-[250px] px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 outline-none shadow-sm"
                         />
+                        <div className="w-[220px]">
+                            <SearchableSelect
+                                value={userFilter}
+                                onChange={e => setUserFilter(e.target.value)}
+                                options={usersList.map(u => ({ value: u._id, label: u.name }))}
+                                placeholder="All Sales Persons"
+                                searchPlaceholder="Search users..."
+                            />
+                        </div>
                     </div>
                     {historyLoading ? (
                         <div className="flex justify-center items-center h-64">
@@ -853,9 +894,9 @@ const DispatchManagement = () => {
                                                 </span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-400 font-medium block uppercase text-[9px] tracking-wider">Requested By</span>
+                                                <span className="text-gray-400 font-medium block uppercase text-[9px] tracking-wider">Sales Person</span>
                                                 <span className="font-bold text-gray-900 block mt-0.5 truncate">
-                                                    {dh.createdBy?.name || 'System'}
+                                                    {dh.order?.user?.name || dh.createdBy?.name || 'System'}
                                                 </span>
                                             </div>
                                         </div>
@@ -973,14 +1014,23 @@ const DispatchManagement = () => {
 
             {activeTab === 'history' && (
                 <div className="space-y-6">
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 flex-wrap">
                         <input
                             type="text"
                             placeholder="Search by Dispatch #, Order #, Vehicle, or Customer..."
                             value={historySearch}
                             onChange={e => setHistorySearch(e.target.value)}
-                            className="flex-1 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
+                            className="flex-1 min-w-[250px] px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
                         />
+                        <div className="w-[220px]">
+                            <SearchableSelect
+                                value={userFilter}
+                                onChange={e => setUserFilter(e.target.value)}
+                                options={usersList.map(u => ({ value: u._id, label: u.name }))}
+                                placeholder="All Sales Persons"
+                                searchPlaceholder="Search users..."
+                            />
+                        </div>
                     </div>
 
                     {historyLoading ? (
@@ -1017,6 +1067,12 @@ const DispatchManagement = () => {
                                                 <span className="text-gray-400 font-medium block uppercase text-[9px] tracking-wider">Vehicle Number</span>
                                                 <span className="font-bold text-indigo-700 block mt-0.5 uppercase">
                                                     {dh.vehicleNumber || 'N/A'}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-400 font-medium block uppercase text-[9px] tracking-wider">Sales Person</span>
+                                                <span className="font-bold text-gray-900 block mt-0.5">
+                                                    {dh.order?.user?.name || dh.createdBy?.name || 'System'}
                                                 </span>
                                             </div>
                                             {dh.driverPhone && (
