@@ -44,7 +44,7 @@ const revertPurchaseOrder = async (orderId, vendorId, tenantId, orderNumber) => 
 };
 
 // ─── Ledger helper (called after PO receipt/bill, does not change existing flow) ─
-export const createPurchaseLedgerEntry = async ({ orderId, orderNumber, vendorId, amount, tenantId, userId, orderDate }) => {
+export const createPurchaseLedgerEntry = async ({ orderId, orderNumber, vendorBillNumber, vendorId, amount, tenantId, userId, orderDate }) => {
     try {
         const vendor = await Vendor.findById(vendorId);
         if (!vendor) return;
@@ -55,6 +55,9 @@ export const createPurchaseLedgerEntry = async ({ orderId, orderNumber, vendorId
         // Credit increases our liability (balance)
         const newBalance = previousBalance + amount;
 
+        // Use vendor bill number as the ref number; fall back to PO number if not available
+        const displayRef = vendorBillNumber || orderNumber;
+
         await VendorLedger.create({
             tenantId,
             vendor: vendorId,
@@ -62,7 +65,7 @@ export const createPurchaseLedgerEntry = async ({ orderId, orderNumber, vendorId
             type: 'bill',
             refType: 'PurchaseOrder',
             refId: orderId,
-            refNumber: orderNumber,
+            refNumber: displayRef,
             description: `Bill from PO #${orderNumber}`,
             debit: 0,
             credit: amount,
@@ -282,6 +285,7 @@ export const createPurchaseOrder = async (req, res, next) => {
             await createPurchaseLedgerEntry({
                 orderId: order._id,
                 orderNumber: order.orderNumber,
+                vendorBillNumber: order.vendorBillNumber,
                 vendorId: order.vendor,
                 amount: order.totalAmount,
                 tenantId: req.tenantId,
@@ -384,6 +388,7 @@ export const updatePurchaseOrder = async (req, res, next) => {
             await createPurchaseLedgerEntry({
                 orderId: order._id,
                 orderNumber: order.orderNumber,
+                vendorBillNumber: order.vendorBillNumber,
                 vendorId: order.vendor,
                 amount: order.totalAmount,
                 tenantId: req.tenantId,
@@ -449,6 +454,7 @@ export const updatePOStatus = async (req, res, next) => {
                 createPurchaseLedgerEntry({
                     orderId: order._id,
                     orderNumber: order.orderNumber,
+                    vendorBillNumber: order.vendorBillNumber,
                     vendorId: order.vendor,
                     amount: order.totalAmount,
                     tenantId: req.tenantId,
@@ -561,6 +567,7 @@ export const receivePurchaseOrder = async (req, res, next) => {
         createPurchaseLedgerEntry({
             orderId: order._id,
             orderNumber: order.orderNumber,
+            vendorBillNumber: order.vendorBillNumber,
             vendorId: order.vendor,
             amount: order.totalAmount,
             tenantId: req.tenantId,

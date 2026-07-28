@@ -212,21 +212,66 @@ const StockReturn = () => {
         const po = purchaseOrders.find(p => p._id === poId);
         setSelectedPO(po || null);
         setReferenceOrder(po?.vendorBillNumber || po?.orderNumber || '');
-        setVendorItem('');
-        setVendorRate('');
+        if (po) {
+            const rows = po.items.map(lineItem => ({
+                itemId: lineItem.item?._id || lineItem.item,
+                itemName: lineItem.name || lineItem.item?.name || '',
+                brand: lineItem.brand || lineItem.item?.brand || '',
+                size: lineItem.size || lineItem.item?.size || '',
+                hsn: lineItem.hsn || lineItem.item?.hsn || lineItem.item?.hsnCode || '',
+                billingUnit: lineItem.billingUnit || lineItem.item?.unitType || lineItem.item?.billingUnit || 'Nos',
+                taxRate: lineItem.taxRate || lineItem.item?.taxRate || 0,
+                billedQty: lineItem.quantity || 0,
+                rate: lineItem.price || 0,
+                returnQty: '',
+                isManual: false
+            }));
+            setReturnItems(rows);
+        } else {
+            setReturnItems([]);
+        }
     };
 
     const handleVendorItemSelect = (itemId) => {
-        setVendorItem(itemId);
-        if (selectedPO) {
-            const poItem = selectedPO.items.find(i => (i.item?._id || i.item) === itemId);
-            if (poItem) setVendorRate(poItem.price);
+        if (!itemId) return;
+        const selectedItem = allItems.find(i => i._id === itemId) || {};
+        
+        if (returnItems.find(r => r.itemId === itemId)) {
+            toast.error('Item already added to return list');
+            return;
         }
+
+        const newRow = {
+            itemId: selectedItem._id,
+            itemName: selectedItem.name || 'Item',
+            brand: selectedItem.brand,
+            size: selectedItem.size,
+            hsn: selectedItem.hsn,
+            billingUnit: selectedItem.unitType || selectedItem.billingUnit || 'Nos',
+            taxRate: selectedItem.taxRate || 0,
+            billedQty: 0,
+            rate: 0,
+            returnQty: '',
+            isManual: true
+        };
+        setReturnItems([...returnItems, newRow]);
     };
 
     const handleReturnQtyChange = (index, value) => {
         const updated = [...returnItems];
         updated[index] = { ...updated[index], returnQty: value };
+        setReturnItems(updated);
+    };
+
+    const handleRateChange = (index, value) => {
+        const updated = [...returnItems];
+        updated[index] = { ...updated[index], rate: parseFloat(value) || 0 };
+        setReturnItems(updated);
+    };
+
+    const removeReturnItem = (index) => {
+        const updated = [...returnItems];
+        updated.splice(index, 1);
         setReturnItems(updated);
     };
 
@@ -257,7 +302,7 @@ const StockReturn = () => {
 
             setLoading(true);
             try {
-                // Submit each return item as a separate transaction (or you can batch later)
+                // Submit each return item as a separate transaction
                 for (const row of itemsToReturn) {
                     await api.post('/transactions/return', {
                         item: row.itemId,
@@ -273,7 +318,6 @@ const StockReturn = () => {
                 }
                 toast.success(`Return recorded! ₹${refundTotal.toLocaleString('en-IN')} refunded to customer ledger.`);
                 if (window.confirm('Return recorded successfully! Would you like to print the return slip?')) {
-                    // Create a mock transaction object for printing
                     const returnTx = {
                         returnType: 'customer',
                         customer: customers.find(c => c._id === selectedCustomer),
@@ -310,46 +354,52 @@ const StockReturn = () => {
         } else {
             // Vendor return
             if (!selectedVendor) return toast.error('Please select a vendor');
-            if (!vendorItem) return toast.error('Please select an item');
-            if (!vendorQty) return toast.error('Please enter quantity');
+            
+            const itemsToReturn = returnItems.filter(r => parseFloat(r.returnQty) > 0);
+            if (itemsToReturn.length === 0) return toast.error('Enter return quantity for at least one item');
+
+            for (const row of itemsToReturn) {
+                if (!row.isManual && parseFloat(row.returnQty) > row.billedQty) {
+                    return toast.error(`Return qty for "${row.itemName}" cannot exceed billed qty (${row.billedQty})`);
+                }
+            }
 
             setLoading(true);
             try {
-                await api.post('/transactions/return', {
-                    item: vendorItem,
-                    returnType: 'vendor',
-                    quantity: parseFloat(vendorQty),
-                    rate: parseFloat(vendorRate) || 0,
-                    vendor: selectedVendor,
-                    referenceOrder,
-                    reason,
-                    notes,
-                    settlementType,
-                });
+                for (const row of itemsToReturn) {
+                    await api.post('/transactions/return', {
+                        item: row.itemId,
+                        returnType: 'vendor',
+                        quantity: parseFloat(row.returnQty),
+                        rate: row.rate || 0,
+                        vendor: selectedVendor,
+                        referenceOrder,
+                        reason,
+                        notes,
+                        settlementType,
+                    });
+                }
                 toast.success('Vendor return recorded! Adjustments made to vendor ledger.');
                 if (window.confirm('Return recorded successfully! Would you like to print the return slip?')) {
                     const returnTx = {
                         returnType: 'vendor',
                         vendor: vendors.find(v => v._id === selectedVendor),
                         createdAt: new Date(),
-                        quantity: parseFloat(vendorQty),
+                        quantity: itemsToReturn.reduce((sum, r) => sum + parseFloat(r.returnQty), 0),
                         referenceOrder,
                         reason,
                         notes,
-                        items: [(() => {
-                            const selectedItem = allItems.find(i => i._id === vendorItem) || {};
-                            return {
-                                name: selectedItem.name || 'Item',
-                                brand: selectedItem.brand,
-                                size: selectedItem.size,
-                                hsnCode: selectedItem.hsn,
-                                billingUnit: selectedItem.unitType || selectedItem.billingUnit,
-                                taxRate: selectedItem.taxRate || 0,
-                                quantity: parseFloat(vendorQty),
-                                price: parseFloat(vendorRate) || 0,
-                                total: parseFloat(vendorQty) * (parseFloat(vendorRate) || 0)
-                            };
-                        })()]
+                        items: itemsToReturn.map(r => ({
+                            name: r.itemName,
+                            brand: r.brand,
+                            size: r.size,
+                            hsnCode: r.hsn,
+                            billingUnit: r.billingUnit,
+                            taxRate: r.taxRate,
+                            quantity: parseFloat(r.returnQty),
+                            price: r.rate,
+                            total: parseFloat(r.returnQty) * r.rate
+                        }))
                     };
                     import('../utils/printTemplates').then(module => {
                         module.printReturnSlip(returnTx, billingSettings);
@@ -472,25 +522,48 @@ const StockReturn = () => {
                         </div>
                     </div>
 
-                    {/* ── Section 2: Customer — Invoice Selector ── */}
-                    {returnType === 'customer' && selectedCustomer && (
-                        <div className="p-6 bg-rose-50/30 space-y-4">
+                    {/* ── Section 2: Items Selection (Customer & Vendor) ── */}
+                    {(returnType === 'customer' && selectedCustomer) || (returnType === 'vendor' && selectedVendor) ? (
+                        <div className={`p-6 space-y-4 ${returnType === 'customer' ? 'bg-rose-50/30' : 'bg-slate-50/30'}`}>
+                            
+                            {/* Bill/PO Selection */}
                             <div className="space-y-1">
                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
-                                    📄 Select Invoice to Return From
-                                    {loadingInvoices && <span className="ml-2 text-rose-400 animate-pulse">⏳ Loading...</span>}
-                                    {!loadingInvoices && invoices.length === 0 && selectedCustomer && (
-                                        <span className="ml-2 text-amber-500">⚠️ No invoices found for this customer</span>
-                                    )}
+                                    {returnType === 'customer' ? '📄 Select Invoice to Return From' : '📄 Select Bill / PO to Return From (Optional)'}
+                                    {loadingInvoices && returnType === 'customer' && <span className="ml-2 text-rose-400 animate-pulse">⏳ Loading...</span>}
+                                    {loadingPOs && returnType === 'vendor' && <span className="ml-2 text-slate-400 animate-pulse">⏳ Loading...</span>}
                                 </label>
-                                <SearchableDropdown
-                                    options={invoiceOptions}
-                                    value={selectedInvoice?._id || ''}
-                                    onChange={handleInvoiceSelect}
-                                    placeholder="Search invoice by number or date..."
-                                    disabled={loadingInvoices || invoices.length === 0}
-                                />
-                                {selectedInvoice && (
+                                {returnType === 'customer' ? (
+                                    <SearchableDropdown
+                                        options={invoiceOptions}
+                                        value={selectedInvoice?._id || ''}
+                                        onChange={handleInvoiceSelect}
+                                        placeholder="Search invoice by number or date..."
+                                        disabled={loadingInvoices || invoices.length === 0}
+                                    />
+                                ) : (
+                                    <div className="flex gap-4">
+                                        <div className="flex-1">
+                                            <SearchableDropdown
+                                                options={poOptions}
+                                                value={selectedPO?._id || ''}
+                                                onChange={handlePOSelect}
+                                                placeholder="Optional: Select PO to autofill items..."
+                                                disabled={loadingPOs || purchaseOrders.length === 0}
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <SearchableDropdown
+                                                options={vendorItemOptions}
+                                                value={''}
+                                                onChange={handleVendorItemSelect}
+                                                placeholder="Or manually search & add item..."
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedInvoice && returnType === 'customer' && (
                                     <div className="mt-2 flex items-center gap-3 px-3 py-2 bg-white border border-rose-100 rounded-lg">
                                         <span className="text-xs text-gray-500">Invoice:</span>
                                         <span className="font-black text-rose-600 text-sm">{selectedInvoice.orderNumber}</span>
@@ -505,11 +578,25 @@ const StockReturn = () => {
                                 )}
                             </div>
 
-                            {/* ── Billed Items Table ── */}
-                            {selectedInvoice && returnItems.length > 0 && (
-                                <div className="space-y-2">
+                            {/* Reference Order input for Vendors */}
+                            {returnType === 'vendor' && (
+                                <div className="space-y-1 w-1/2">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Order # / Ref</label>
+                                    <input
+                                        type="text"
+                                        value={referenceOrder}
+                                        onChange={e => setReferenceOrder(e.target.value)}
+                                        placeholder="Reference number"
+                                        className="w-full h-11 px-4 bg-white border border-gray-100 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-slate-500 transition-all"
+                                    />
+                                </div>
+                            )}
+
+                            {/* ── Return Items Table ── */}
+                            {returnItems.length > 0 && (
+                                <div className="space-y-2 mt-4">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
-                                        📦 Items from Bill — Enter Return Quantities
+                                        📦 Items to Return
                                     </label>
                                     <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
                                         <table className="w-full text-sm">
@@ -518,49 +605,81 @@ const StockReturn = () => {
                                                     <th className="text-left px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Item</th>
                                                     <th className="text-center px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-28">Billed Qty</th>
                                                     <th className="text-center px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-32">Return Qty</th>
-                                                    <th className="text-right px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-28">Rate</th>
+                                                    <th className="text-right px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-32">Rate</th>
                                                     <th className="text-right px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-32">Refund Amt</th>
+                                                    <th className="text-center px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-12"></th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-50">
                                                 {returnItems.map((row, idx) => {
                                                     const returnQty = parseFloat(row.returnQty) || 0;
                                                     const rowRefund = returnQty * row.rate;
-                                                    const isOverReturn = returnQty > row.billedQty;
+                                                    const isOverReturn = !row.isManual && returnQty > row.billedQty;
                                                     return (
                                                         <tr key={idx} className={`hover:bg-gray-50 transition-colors ${isOverReturn ? 'bg-red-50' : ''}`}>
                                                             <td className="px-4 py-3">
                                                                 <div className="font-bold text-gray-800 text-sm">{row.itemName}</div>
+                                                                <div className="text-xs text-gray-500">{row.brand || ''} {row.size ? `- ${row.size}` : ''}</div>
                                                             </td>
                                                             <td className="px-4 py-3 text-center">
-                                                                <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 font-black text-xs rounded-lg">
-                                                                    {row.billedQty}
-                                                                </span>
+                                                                {row.isManual ? (
+                                                                    <span className="text-xs text-gray-400 font-bold">—</span>
+                                                                ) : (
+                                                                    <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 font-black text-xs rounded-lg">
+                                                                        {row.billedQty}
+                                                                    </span>
+                                                                )}
                                                             </td>
                                                             <td className="px-4 py-3">
                                                                 <input
                                                                     type="number"
                                                                     min="0"
-                                                                    max={row.billedQty}
+                                                                    max={row.isManual ? undefined : row.billedQty}
                                                                     step="0.01"
                                                                     value={row.returnQty}
                                                                     onChange={e => handleReturnQtyChange(idx, e.target.value)}
                                                                     placeholder="0"
-                                                                    className={`w-full px-3 py-2 text-center font-bold rounded-lg border outline-none focus:ring-2 focus:ring-rose-500 text-sm ${isOverReturn ? 'border-red-400 bg-red-50 text-red-700' : 'border-gray-200 bg-gray-50'}`}
+                                                                    className={`w-full px-3 py-2 text-center font-bold rounded-lg border outline-none focus:ring-2 ${returnType === 'customer' ? 'focus:ring-rose-500' : 'focus:ring-slate-500'} text-sm ${isOverReturn ? 'border-red-400 bg-red-50 text-red-700' : 'border-gray-200 bg-gray-50'}`}
                                                                 />
                                                                 {isOverReturn && (
-                                                                    <div className="text-[9px] text-red-500 font-bold text-center mt-0.5">Exceeds billed qty!</div>
+                                                                    <div className="text-[9px] text-red-500 font-bold text-center mt-0.5">Exceeds!</div>
                                                                 )}
                                                             </td>
-                                                            <td className="px-4 py-3 text-right text-gray-600 font-medium text-sm">
-                                                                ₹{row.rate.toLocaleString('en-IN')}
+                                                            <td className="px-4 py-3">
+                                                                {row.isManual ? (
+                                                                    <input
+                                                                        type="number"
+                                                                        min="0"
+                                                                        step="0.01"
+                                                                        value={row.rate || ''}
+                                                                        onChange={e => handleRateChange(idx, e.target.value)}
+                                                                        placeholder="0.00"
+                                                                        className={`w-full px-3 py-2 text-right font-bold rounded-lg border border-gray-200 bg-gray-50 outline-none focus:ring-2 ${returnType === 'customer' ? 'focus:ring-rose-500' : 'focus:ring-slate-500'} text-sm`}
+                                                                    />
+                                                                ) : (
+                                                                    <div className="text-right text-gray-600 font-medium text-sm pt-2">
+                                                                        ₹{row.rate.toLocaleString('en-IN')}
+                                                                    </div>
+                                                                )}
                                                             </td>
                                                             <td className="px-4 py-3 text-right font-black text-gray-800">
                                                                 {rowRefund > 0 ? (
-                                                                    <span className="text-rose-600">₹{rowRefund.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                                    <span className={returnType === 'customer' ? 'text-rose-600' : 'text-slate-700'}>
+                                                                        ₹{rowRefund.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                    </span>
                                                                 ) : (
                                                                     <span className="text-gray-300">—</span>
                                                                 )}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-center">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => removeReturnItem(idx)}
+                                                                    className="text-gray-400 hover:text-red-500 transition-colors"
+                                                                    title="Remove Item"
+                                                                >
+                                                                    🗑️
+                                                                </button>
                                                             </td>
                                                         </tr>
                                                     );
@@ -569,87 +688,28 @@ const StockReturn = () => {
                                             {/* Summary Row */}
                                             {refundTotal > 0 && (
                                                 <tfoot>
-                                                    <tr className="bg-rose-600 text-white">
+                                                    <tr className={returnType === 'customer' ? 'bg-rose-600 text-white' : 'bg-slate-700 text-white'}>
                                                         <td colSpan={4} className="px-4 py-3 font-black text-sm uppercase tracking-wider text-right">
                                                             Total Refunded Amount:
                                                         </td>
                                                         <td className="px-4 py-3 text-right font-black text-lg">
                                                             ₹{refundTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                         </td>
+                                                        <td></td>
                                                     </tr>
                                                 </tfoot>
                                             )}
                                         </table>
                                     </div>
-                                    <p className="text-[10px] text-gray-400 pl-1">
-                                        💡 Only invoices (converted from quotation or directly created) can be returned. Quotations cannot be returned.
-                                    </p>
+                                    {returnType === 'customer' && (
+                                        <p className="text-[10px] text-gray-400 pl-1 mt-2">
+                                            💡 Only invoices (converted from quotation or directly created) can be returned. Quotations cannot be returned.
+                                        </p>
+                                    )}
                                 </div>
                             )}
                         </div>
-                    )}
-
-                    {/* ── Section 2 (Vendor): Item + Qty + Rate ── */}
-                    {returnType === 'vendor' && selectedVendor && (
-                        <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50/30">
-                            <div className="space-y-1 md:col-span-3">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
-                                    📄 Select Bill / PO to Return From
-                                    {loadingPOs && <span className="ml-2 text-slate-400 animate-pulse">⏳ Loading...</span>}
-                                </label>
-                                <SearchableDropdown
-                                    options={poOptions}
-                                    value={selectedPO?._id || ''}
-                                    onChange={handlePOSelect}
-                                    placeholder="Optional: Select PO to autofill items..."
-                                    disabled={loadingPOs || purchaseOrders.length === 0}
-                                />
-                            </div>
-                            <div className="space-y-1 md:col-span-3">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Select Item <span className="text-rose-500">*</span></label>
-                                <SearchableDropdown
-                                    options={vendorItemOptions}
-                                    value={vendorItem}
-                                    onChange={handleVendorItemSelect}
-                                    placeholder="Search & select item..."
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Quantity</label>
-                                <input
-                                    type="number"
-                                    min="0.01"
-                                    step="0.01"
-                                    value={vendorQty}
-                                    onChange={e => setVendorQty(e.target.value)}
-                                    placeholder="0.00"
-                                    className="w-full h-11 px-4 bg-white border border-gray-100 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all"
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Rate / Price</label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={vendorRate}
-                                    onChange={e => setVendorRate(e.target.value)}
-                                    placeholder="0.00"
-                                    className="w-full h-11 px-4 bg-white border border-gray-100 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all"
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Order # / Ref</label>
-                                <input
-                                    type="text"
-                                    value={referenceOrder}
-                                    onChange={e => setReferenceOrder(e.target.value)}
-                                    placeholder="Reference number"
-                                    className="w-full h-11 px-4 bg-white border border-gray-100 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all"
-                                />
-                            </div>
-                        </div>
-                    )}
+                    ) : null}
 
                     {/* ── Section 3: Reason & Notes ── */}
                     <div className="p-6 space-y-6">

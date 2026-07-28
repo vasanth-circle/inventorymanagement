@@ -1013,58 +1013,71 @@ export const printAccountStatement = (customer, entries, summary, period, settin
     executePrint(html);
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// NEW TEMPLATES for Dot-Matrix / Tally Style Ledgers
-// ─────────────────────────────────────────────────────────────────────────────
-
 export const printTallyLedger = (customer, entries, summary) => {
-    const formatAmt = (num) => {
-        if (!num) return '';
-        return Number(num).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fmt = (num) => {
+        if (!num && num !== 0) return '';
+        const n = Number(num);
+        if (!n) return '';
+        return n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
 
     const openingBal = customer.openingBalance || 0;
-
-    let rows = '';
     let totalDr = 0;
     let totalCr = 0;
+    let dataRows = '';
 
     entries.forEach(entry => {
         totalDr += (entry.debit || 0);
         totalCr += (entry.credit || 0);
-        const drStr = entry.debit ? formatAmt(entry.debit) : '';
-        const crStr = entry.credit ? formatAmt(entry.credit) : '';
+        const drStr  = entry.debit  ? fmt(entry.debit)  : '';
+        const crStr  = entry.credit ? fmt(entry.credit) : '';
         const dateStr = new Date(entry.date).toLocaleDateString('en-IN');
-        const particulars = (entry.description || '').substring(0, 25);
+        const particulars = (entry.description || '').substring(0, 30);
         const typeStr = entry.type === 'bill' ? 'Sales' : (entry.type === 'payment' ? 'Receipt' : 'Journal');
-        
-        rows += `<tr style="vertical-align:top;">
-            <td style="width:12%">${dateStr}</td>
-            <td style="width:25%">${particulars}</td>
-            <td style="width:15%"></td>
-            <td style="width:12%">${typeStr}</td>
-            <td style="width:10%">${entry.refNumber || ''}</td>
-            <td style="width:13%;text-align:right">${drStr}</td>
-            <td style="width:13%;text-align:right">${crStr}</td>
+        const bal = entry.balance || 0;
+        const balStr = fmt(Math.abs(bal)) + (bal >= 0 ? ' Cr' : ' Dr');
+
+        dataRows += `<tr>
+            <td class="c1">${dateStr}</td>
+            <td class="c2">${particulars}</td>
+            <td class="c3">${typeStr}</td>
+            <td class="c4">${entry.refNumber || ''}</td>
+            <td class="c5 ra">${drStr}</td>
+            <td class="c6 ra">${crStr}</td>
+            <td class="c7 ra">${balStr}</td>
         </tr>`;
     });
 
     const closeBal = summary?.closingBalance || 0;
+    const closeBalStr = fmt(Math.abs(closeBal)) + (closeBal >= 0 ? ' Cr' : ' Dr');
 
-    const html = `<html><head><meta charset="UTF-8"><title>Ledger - ${customer.name}</title>
+    // Grand totals: add closing balance to the lesser side to make both columns equal (Tally style)
+    const grandDr = totalDr + (closeBal >= 0 ? closeBal : 0) + (openingBal < 0 ? Math.abs(openingBal) : 0);
+    const grandCr = totalCr + (closeBal < 0 ? Math.abs(closeBal) : 0) + (openingBal > 0 ? openingBal : 0);
+
+    const html = `<html><head><meta charset="UTF-8"><title>Ledger - ${customer.companyName || customer.name}</title>
 <style>
   @page { size: A4; margin: 15mm; }
-  body { font-family: 'Courier New', Courier, monospace; font-size: 11px; color: #000; font-weight: bold; }
-  .header-table { width: 100%; border: none; margin-bottom: 10px; }
-  .header-table td { padding: 0; }
-  .line { border-bottom: 1px dashed #000; margin: 4px 0; }
-  .line-double { border-bottom: 1px dashed #000; border-top: 1px dashed #000; margin: 4px 0; height: 1px; }
-  table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; padding: 4px 0; font-weight: bold; }
-  td { padding: 4px 0; }
+  body { font-family: 'Courier New', Courier, monospace; font-size: 11px; color: #000; font-weight: bold; margin:0; }
+  .hdr { width:100%; border-collapse:collapse; margin-bottom:8px; }
+  .hdr td { padding:0; }
+  .lt { width:100%; border-collapse:collapse; table-layout:fixed; }
+  .lt th, .lt td { padding:3px 2px; overflow:hidden; white-space:nowrap; }
+  .lt th { text-align:left; border-bottom:1px dashed #000; }
+  .ra { text-align:right; }
+  .c1 { width:12%; }
+  .c2 { width:22%; white-space:normal; }
+  .c3 { width:12%; }
+  .c4 { width:12%; }
+  .c5 { width:11%; }
+  .c6 { width:11%; }
+  .c7 { width:20%; }
+  .sep td { border-top:1px dashed #000; padding:0; height:2px; }
+  .sep2 td { border-top:2px solid #000; padding:0; height:2px; }
+  .bold { font-weight:bold; }
 </style></head><body>
 
-<table class="header-table">
+<table class="hdr">
   <tr>
     <td>Ledger of: <b>${customer.companyName || customer.name}</b></td>
     <td style="text-align:right">Page No: 1</td>
@@ -1075,49 +1088,54 @@ export const printTallyLedger = (customer, entries, summary) => {
   </tr>
 </table>
 
-<div class="line"></div>
-<table>
-  <tr>
-    <th style="width:10%">Date</th>
-    <th style="width:25%">Particulars</th>
-    <th style="width:10%">Vch Type</th>
-    <th style="width:10%">Vch No</th>
-    <th style="width:13%;text-align:right">Debit</th>
-    <th style="width:13%;text-align:right">Credit</th>
-    <th style="width:19%;text-align:right">Balance</th>
-  </tr>
+<table class="lt">
+  <thead>
+    <tr>
+      <th class="c1">Date</th>
+      <th class="c2">Particulars</th>
+      <th class="c3">Vch Type</th>
+      <th class="c4">Vch No</th>
+      <th class="c5 ra">Debit</th>
+      <th class="c6 ra">Credit</th>
+      <th class="c7 ra">Balance</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="c1"></td>
+      <td class="c2 bold">Opening Balance :</td>
+      <td class="c3"></td>
+      <td class="c4"></td>
+      <td class="c5 ra bold">${openingBal < 0 ? fmt(Math.abs(openingBal)) : ''}</td>
+      <td class="c6 ra bold">${openingBal > 0 ? fmt(openingBal) : ''}</td>
+      <td class="c7 ra bold">${openingBal !== 0 ? fmt(Math.abs(openingBal)) + (openingBal > 0 ? ' Cr' : ' Dr') : ''}</td>
+    </tr>
+    ${dataRows}
+    <tr class="sep"><td colspan="7"></td></tr>
+    <!-- Current Total -->
+    <tr>
+      <td class="c1"></td>
+      <td class="c2 bold" style="text-align:right; padding-right:10px;">Current Total :</td>
+      <td class="c3"></td>
+      <td class="c4"></td>
+      <td class="c5 ra bold">${fmt(totalDr)}</td>
+      <td class="c6 ra bold">${fmt(totalCr)}</td>
+      <td class="c7"></td>
+    </tr>
+    <tr class="sep"><td colspan="7"></td></tr>
+    <!-- Closing Balance -->
+    <tr>
+      <td class="c1"></td>
+      <td class="c2 bold">Closing Balance :</td>
+      <td class="c3"></td>
+      <td class="c4"></td>
+      <td class="c5 ra bold"></td>
+      <td class="c6 ra bold"></td>
+      <td class="c7 ra bold">${closeBalStr}</td>
+    </tr>
+    <tr class="sep2"><td colspan="7"></td></tr>
+  </tbody>
 </table>
-<div class="line"></div>
-
-<table style="margin-bottom: 10px;">
-  <tr>
-    <td style="width:10%"></td>
-    <td style="width:25%"><b>Opening Balance :</b></td>
-    <td style="width:10%"></td>
-    <td style="width:10%"></td>
-    <td style="width:13%;text-align:right"><b>${openingBal >= 0 ? formatAmt(openingBal) : ''}</b></td>
-    <td style="width:13%;text-align:right"><b>${openingBal < 0 ? formatAmt(Math.abs(openingBal)) : ''}</b></td>
-    <td style="width:19%;text-align:right"><b>${openingBal !== 0 ? formatAmt(Math.abs(openingBal)) + (openingBal > 0 ? ' Dr' : ' Cr') : ''}</b></td>
-  </tr>
-</table>
-
-<table>
-  ${rows}
-</table>
-
-<div class="line" style="margin-top:20px;"></div>
-<table>
-  <tr>
-    <td style="width:10%"></td>
-    <td style="width:25%"><b>Closing Balance :</b></td>
-    <td style="width:10%"></td>
-    <td style="width:10%"></td>
-    <td style="width:13%;text-align:right"><b>${closeBal < 0 ? formatAmt(Math.abs(closeBal)) : ''}</b></td>
-    <td style="width:13%;text-align:right"><b>${closeBal >= 0 ? formatAmt(closeBal) : ''}</b></td>
-    <td style="width:19%;text-align:right"><b>${closeBal !== 0 ? formatAmt(Math.abs(closeBal)) + (closeBal > 0 ? ' Dr' : ' Cr') : ''}</b></td>
-  </tr>
-</table>
-<div class="line"></div>
 
 </body></html>`;
 
@@ -1125,6 +1143,7 @@ export const printTallyLedger = (customer, entries, summary) => {
 };
 
 export const printTallyReceivables = (receivablesData) => {
+
     const formatAmt = (num) => Number(num).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     let content = '';
