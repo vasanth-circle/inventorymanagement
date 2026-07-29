@@ -213,48 +213,82 @@ const StockReturn = () => {
         setSelectedPO(po || null);
         setReferenceOrder(po?.vendorBillNumber || po?.orderNumber || '');
         if (po) {
-            const rows = po.items.map(lineItem => ({
-                itemId: lineItem.item?._id || lineItem.item,
-                itemName: lineItem.name || lineItem.item?.name || '',
-                brand: lineItem.brand || lineItem.item?.brand || '',
-                size: lineItem.size || lineItem.item?.size || '',
-                hsn: lineItem.hsn || lineItem.item?.hsn || lineItem.item?.hsnCode || '',
-                billingUnit: lineItem.billingUnit || lineItem.item?.unitType || lineItem.item?.billingUnit || 'Nos',
-                taxRate: lineItem.taxRate || lineItem.item?.taxRate || 0,
-                billedQty: lineItem.quantity || 0,
-                rate: lineItem.price || 0,
-                returnQty: '',
-                isManual: false
-            }));
-            setReturnItems(rows);
-        } else {
-            setReturnItems([]);
+            const poNumber = po.vendorBillNumber || po.orderNumber;
+            const newRows = po.items.map(lineItem => {
+                const itemId = lineItem.item?._id || lineItem.item;
+                return {
+                    itemId: itemId,
+                    itemName: lineItem.name || lineItem.item?.name || '',
+                    brand: lineItem.brand || lineItem.item?.brand || '',
+                    size: lineItem.size || lineItem.item?.size || '',
+                    hsn: lineItem.hsn || lineItem.item?.hsn || lineItem.item?.hsnCode || '',
+                    billingUnit: lineItem.billingUnit || lineItem.item?.unitType || lineItem.item?.billingUnit || 'Nos',
+                    taxRate: lineItem.taxRate || lineItem.item?.taxRate || 0,
+                    billedQty: lineItem.quantity || 0,
+                    rate: lineItem.price || 0,
+                    returnQty: '',
+                    isManual: false,
+                    poNumber: poNumber,
+                    poId: po._id,
+                    uniqueId: `po-${po._id}-item-${itemId}`
+                };
+            });
+            const filteredNewRows = newRows.filter(r => !returnItems.find(existing => existing.uniqueId === r.uniqueId));
+            setReturnItems([...returnItems, ...filteredNewRows]);
         }
     };
 
-    const handleVendorItemSelect = (itemId) => {
-        if (!itemId) return;
-        const selectedItem = allItems.find(i => i._id === itemId) || {};
+    const handleVendorItemSelect = (val) => {
+        if (!val) return;
         
-        if (returnItems.find(r => r.itemId === itemId)) {
-            toast.error('Item already added to return list');
-            return;
-        }
+        const selectedVendorItem = allVendorItems.find(vi => vi.uniqueId === val);
+        
+        if (selectedVendorItem) {
+            if (returnItems.find(r => r.uniqueId === val)) {
+                toast.error('Item from this bill is already added');
+                return;
+            }
+            const newRow = {
+                itemId: selectedVendorItem.itemId,
+                itemName: selectedVendorItem.itemName,
+                brand: selectedVendorItem.brand,
+                size: selectedVendorItem.size,
+                hsn: selectedVendorItem.hsn,
+                billingUnit: selectedVendorItem.billingUnit,
+                taxRate: selectedVendorItem.taxRate,
+                billedQty: selectedVendorItem.billedQty,
+                rate: selectedVendorItem.rate,
+                returnQty: '',
+                isManual: false,
+                poNumber: selectedVendorItem.poNumber,
+                poId: selectedVendorItem.poId,
+                uniqueId: selectedVendorItem.uniqueId
+            };
+            setReturnItems([...returnItems, newRow]);
+        } else {
+            const selectedItem = allItems.find(i => i._id === val) || {};
+            
+            if (returnItems.find(r => r.itemId === val && r.isManual)) {
+                toast.error('Manual item already added to return list');
+                return;
+            }
 
-        const newRow = {
-            itemId: selectedItem._id,
-            itemName: selectedItem.name || 'Item',
-            brand: selectedItem.brand,
-            size: selectedItem.size,
-            hsn: selectedItem.hsn,
-            billingUnit: selectedItem.unitType || selectedItem.billingUnit || 'Nos',
-            taxRate: selectedItem.taxRate || 0,
-            billedQty: 0,
-            rate: 0,
-            returnQty: '',
-            isManual: true
-        };
-        setReturnItems([...returnItems, newRow]);
+            const newRow = {
+                itemId: selectedItem._id,
+                itemName: selectedItem.name || 'Item',
+                brand: selectedItem.brand,
+                size: selectedItem.size,
+                hsn: selectedItem.hsn,
+                billingUnit: selectedItem.unitType || selectedItem.billingUnit || 'Nos',
+                taxRate: selectedItem.taxRate || 0,
+                billedQty: 0,
+                rate: 0,
+                returnQty: '',
+                isManual: true,
+                uniqueId: `manual-${selectedItem._id}`
+            };
+            setReturnItems([...returnItems, newRow]);
+        }
     };
 
     const handleReturnQtyChange = (index, value) => {
@@ -373,7 +407,7 @@ const StockReturn = () => {
                         quantity: parseFloat(row.returnQty),
                         rate: row.rate || 0,
                         vendor: selectedVendor,
-                        referenceOrder,
+                        referenceOrder: row.poNumber || referenceOrder,
                         reason,
                         notes,
                         settlementType,
@@ -442,15 +476,36 @@ const StockReturn = () => {
         label: `${po.vendorBillNumber ? `Bill: ${po.vendorBillNumber}` : `PO: ${po.orderNumber}`}  •  ${new Date(po.orderDate || po.createdAt).toLocaleDateString('en-IN')}  •  ₹${(po.totalAmount || 0).toLocaleString('en-IN')}`
     }));
 
-    const vendorItemOptions = selectedPO 
-        ? selectedPO.items.map(i => {
+    const allVendorItems = purchaseOrders.flatMap(po => 
+        po.items.map(i => {
             const item = allItems.find(ai => ai._id === (i.item?._id || i.item));
             return {
-                value: item?._id || i.item,
-                label: `${item?.name || i.name} (Billed: ${i.quantity})`,
+                poId: po._id,
+                poNumber: po.vendorBillNumber || po.orderNumber,
+                itemId: item?._id || i.item,
+                itemName: item?.name || i.name,
+                brand: item?.brand || '',
+                size: item?.size || '',
+                hsn: item?.hsn || item?.hsnCode || '',
+                billingUnit: item?.unitType || item?.billingUnit || 'Nos',
+                taxRate: item?.taxRate || 0,
+                billedQty: i.quantity,
+                rate: i.price,
+                uniqueId: `po-${po._id}-item-${item?._id || i.item}`
             };
         })
-        : allItems.map(i => ({ value: i._id, label: `${i.name} (${i.brand || ''} - ${i.size || ''})` }));
+    );
+
+    const vendorItemOptions = [
+        ...allVendorItems.map(vi => ({
+            value: vi.uniqueId,
+            label: `${vi.itemName} ${vi.brand ? `(${vi.brand})` : ''} - Bill: ${vi.poNumber} - Qty: ${vi.billedQty}`
+        })),
+        ...allItems.map(i => ({ 
+            value: i._id, 
+            label: `${i.name} (${i.brand || ''} - ${i.size || ''}) (Manual)` 
+        }))
+    ];
 
     return (
         <div className="p-1 space-y-6 max-w-[1000px] mx-auto">
@@ -620,6 +675,11 @@ const StockReturn = () => {
                                                             <td className="px-4 py-3">
                                                                 <div className="font-bold text-gray-800 text-sm">{row.itemName}</div>
                                                                 <div className="text-xs text-gray-500">{row.brand || ''} {row.size ? `- ${row.size}` : ''}</div>
+                                                                {returnType === 'vendor' && row.poNumber && (
+                                                                    <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
+                                                                        <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-bold">Bill: {row.poNumber}</span>
+                                                                    </div>
+                                                                )}
                                                             </td>
                                                             <td className="px-4 py-3 text-center">
                                                                 {row.isManual ? (
