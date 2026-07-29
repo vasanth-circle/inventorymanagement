@@ -14,7 +14,7 @@ const Login = () => {
 
     useEffect(() => {
         if (user) {
-            navigate('/onboarding');
+            navigate('/dashboard');
         }
     }, [user, navigate]);
 
@@ -29,7 +29,7 @@ const Login = () => {
                 position: 'top-right',
                 duration: 4000
             });
-            navigate('/onboarding');
+            navigate('/dashboard');
         } else {
             toast.error(result.message);
         }

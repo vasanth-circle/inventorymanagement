@@ -84,11 +84,15 @@ export const createPurchaseLedgerEntry = async ({ orderId, orderNumber, vendorBi
 // @access  Private
 export const getPurchaseOrders = async (req, res, next) => {
     try {
-        const { status = '', page = 1, limit = 10, from, to, search = '', sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+        const { status = '', page = 1, limit = 10, from, to, search = '', sortBy = 'createdAt', sortOrder = 'desc', vendor } = req.query;
         const query = { ...tenantQuery(req) };
 
         if (status) {
             query.status = status;
+        }
+
+        if (vendor) {
+            query.vendor = vendor;
         }
 
         if (from || to) {
