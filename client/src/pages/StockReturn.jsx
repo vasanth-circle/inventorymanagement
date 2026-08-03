@@ -78,7 +78,7 @@ const SearchableDropdown = ({ options = [], value, onChange, placeholder = 'Sear
 // ── Main Component ─────────────────────────────────────────────────────────
 const StockReturn = () => {
     const navigate = useNavigate();
-    const { billingSettings } = useContext(InventoryContext);
+    const { billingSettings, calculateItemValues } = useContext(InventoryContext);
     const [loading, setLoading] = useState(false);
     const [customers, setCustomers] = useState([]);
     const [vendors, setVendors] = useState([]);
@@ -200,7 +200,12 @@ const StockReturn = () => {
                 taxRate: lineItem.taxRate || lineItem.item?.taxRate || 0,
                 billedQty: lineItem.quantity || 0,
                 rate: lineItem.price || 0,
+                price: lineItem.price || 0,
                 returnQty: '',
+                pcsPerBox: lineItem.item?.pcsPerBox || 1,
+                sqFtPerPc: lineItem.item?.sqFtPerPc || 0,
+                unitType: lineItem.item?.unitType || 'pieces',
+                total: 0,
             }));
             setReturnItems(rows);
         } else {
@@ -226,7 +231,12 @@ const StockReturn = () => {
                     taxRate: lineItem.taxRate || lineItem.item?.taxRate || 0,
                     billedQty: lineItem.quantity || 0,
                     rate: lineItem.price || 0,
+                    price: lineItem.price || 0,
                     returnQty: '',
+                    pcsPerBox: lineItem.item?.pcsPerBox || 1,
+                    sqFtPerPc: lineItem.item?.sqFtPerPc || 0,
+                    unitType: lineItem.item?.unitType || 'pieces',
+                    total: 0,
                     isManual: false,
                     poNumber: poNumber,
                     poId: po._id,
@@ -258,6 +268,11 @@ const StockReturn = () => {
                 taxRate: selectedVendorItem.taxRate,
                 billedQty: selectedVendorItem.billedQty,
                 rate: selectedVendorItem.rate,
+                price: selectedVendorItem.price,
+                pcsPerBox: selectedVendorItem.pcsPerBox,
+                sqFtPerPc: selectedVendorItem.sqFtPerPc,
+                unitType: selectedVendorItem.unitType,
+                total: 0,
                 returnQty: '',
                 isManual: false,
                 poNumber: selectedVendorItem.poNumber,
@@ -283,7 +298,12 @@ const StockReturn = () => {
                 taxRate: selectedItem.taxRate || 0,
                 billedQty: 0,
                 rate: 0,
+                price: 0,
                 returnQty: '',
+                pcsPerBox: selectedItem.pcsPerBox || 1,
+                sqFtPerPc: selectedItem.sqFtPerPc || 0,
+                unitType: selectedItem.unitType || 'pieces',
+                total: 0,
                 isManual: true,
                 uniqueId: `manual-${selectedItem._id}`
             };
@@ -293,13 +313,45 @@ const StockReturn = () => {
 
     const handleReturnQtyChange = (index, value) => {
         const updated = [...returnItems];
-        updated[index] = { ...updated[index], returnQty: value };
+        let row = { ...updated[index], returnQty: value };
+        
+        if (!row.isManual && billingSettings?.industry) {
+            const isTile = billingSettings.industry === 'tiles' && row.sqFtPerPc > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((row.unitType || '').toLowerCase());
+            
+            if (isTile) {
+                row.boxCount = parseFloat(value) || 0;
+                row = calculateItemValues(row, 'boxCount', row.boxCount, billingSettings.industry);
+            } else {
+                row.quantity = parseFloat(value) || 0;
+                row = calculateItemValues(row, 'quantity', row.quantity, billingSettings.industry);
+            }
+        } else {
+            row.total = (parseFloat(value) || 0) * (row.rate || 0);
+        }
+        
+        updated[index] = row;
         setReturnItems(updated);
     };
 
     const handleRateChange = (index, value) => {
         const updated = [...returnItems];
-        updated[index] = { ...updated[index], rate: parseFloat(value) || 0 };
+        const newRate = parseFloat(value) || 0;
+        let row = { ...updated[index], rate: newRate, price: newRate };
+        
+        if (!row.isManual && billingSettings?.industry) {
+            const isTile = billingSettings.industry === 'tiles' && row.sqFtPerPc > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((row.unitType || '').toLowerCase());
+            
+            if (isTile) {
+                row.boxCount = parseFloat(row.returnQty) || 0;
+            } else {
+                row.quantity = parseFloat(row.returnQty) || 0;
+            }
+            row = calculateItemValues(row, 'price', newRate, billingSettings.industry);
+        } else {
+            row.total = (parseFloat(row.returnQty) || 0) * newRate;
+        }
+        
+        updated[index] = row;
         setReturnItems(updated);
     };
 
@@ -311,8 +363,7 @@ const StockReturn = () => {
 
     // Calculate total refund amount
     const refundTotal = returnItems.reduce((sum, row) => {
-        const qty = parseFloat(row.returnQty) || 0;
-        return sum + qty * (row.rate || 0);
+        return sum + (row.total || 0);
     }, 0);
 
     // Submit handler
@@ -491,6 +542,11 @@ const StockReturn = () => {
                 taxRate: item?.taxRate || 0,
                 billedQty: i.quantity,
                 rate: i.price,
+                price: i.price,
+                pcsPerBox: item?.pcsPerBox || 1,
+                sqFtPerPc: item?.sqFtPerPc || 0,
+                unitType: item?.unitType || 'pieces',
+                total: 0,
                 uniqueId: `po-${po._id}-item-${item?._id || i.item}`
             };
         })
@@ -668,7 +724,7 @@ const StockReturn = () => {
                                             <tbody className="divide-y divide-gray-50">
                                                 {returnItems.map((row, idx) => {
                                                     const returnQty = parseFloat(row.returnQty) || 0;
-                                                    const rowRefund = returnQty * row.rate;
+                                                    const rowRefund = row.total || 0;
                                                     const isOverReturn = !row.isManual && returnQty > row.billedQty;
                                                     return (
                                                         <tr key={idx} className={`hover:bg-gray-50 transition-colors ${isOverReturn ? 'bg-red-50' : ''}`}>

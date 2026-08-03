@@ -227,6 +227,12 @@ const Customers = () => {
         }
     };
 
+    const filteredLockedCustomers = lockedCustomers.filter(c => 
+        !searchQuery || 
+        (c.name && c.name.toLowerCase().includes(searchQuery.toLowerCase())) || 
+        (c.phone && c.phone.includes(searchQuery))
+    );
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center mb-2">
@@ -459,7 +465,7 @@ const Customers = () => {
                         <div className="flex justify-center items-center h-64">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
                         </div>
-                    ) : lockedCustomers.length === 0 ? (
+                    ) : filteredLockedCustomers.length === 0 ? (
                         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center flex flex-col items-center">
                             <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center text-green-500 mb-4">
                                 <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" /></svg>
@@ -469,7 +475,7 @@ const Customers = () => {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {lockedCustomers.map(customer => (
+                            {filteredLockedCustomers.map(customer => (
                                 <div key={customer._id} className="bg-white rounded-2xl shadow-sm border border-red-200 overflow-hidden flex flex-col p-6 hover:shadow-md transition-shadow">
                                     <div className="flex justify-between items-start mb-4">
                                         <div>

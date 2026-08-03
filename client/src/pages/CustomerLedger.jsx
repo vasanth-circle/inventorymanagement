@@ -288,7 +288,7 @@ const CustomerLedger = () => {
                         value={selectedCustomerId}
                         onChange={handleCustomerChange}
                         placeholder="-- Select Customer Account --"
-                        options={customers.map(c => ({ value: c._id, label: c.companyName || c.name }))}
+                        options={customers.map(c => ({ value: c._id, label: `${c.companyName || c.name}${c.phone ? ` - ${c.phone}` : ''}` }))}
                     />
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
