@@ -14,7 +14,7 @@ const ITEMS_API = '/api/items';
 
 const SalesOrders = () => {
     const { user } = useContext(AuthContext);
-    const { billingSettings, calculateItemValues } = useContext(InventoryContext);
+    const { billingSettings, calculateItemValues, customerTypes = [] } = useContext(InventoryContext);
     const [orders, setOrders] = useState([]);
     const [customers, setCustomers] = useState([]);
     const [items, setItems] = useState([]);
@@ -990,11 +990,14 @@ const SalesOrders = () => {
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">Customer Type</label>
                                     <select value={formData.customerType} onChange={(e) => setFormData({ ...formData, customerType: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 bg-white">
-                                        <option value="Regular Customer">Regular Customer</option>
-                                        <option value="Walk-in">Walk-in</option>
-                                        <option value="Digital Marketing">Digital Marketing</option>
-                                        <option value="Referral">Referral</option>
-                                        <option value="Other">Other</option>
+                                        <option value="">Select Type (Optional)</option>
+                                        {customerTypes && customerTypes.map(ct => (
+                                            <option key={ct._id || ct.name} value={ct.name}>{ct.name}</option>
+                                        ))}
+                                        {/* Fallback for existing legacy types if not in DB */}
+                                        {formData.customerType && !customerTypes?.some(ct => ct.name === formData.customerType) && (
+                                            <option value={formData.customerType}>{formData.customerType}</option>
+                                        )}
                                     </select>
                                 </div>
                                 {formData.customerType === 'Referral' && (

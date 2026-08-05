@@ -47,8 +47,9 @@ const Sidebar = ({ isOpen, onClose }) => {
             icon: billingSettings?.industry === 'machinery' ? '🏭' : '🛒',
             items: [
                 { name: activePreset?.terminology?.customers || 'Customers', path: '/customers', id: 'customers' },
+                { name: 'Customer Types', path: '/customer-types', id: 'customer-types' },
                 { name: 'Customer Ledgers', path: '/customer-ledger', id: 'customer-ledger' },
-                // { name: 'Quotations', path: '/quotations', id: 'quotations' },
+                { name: 'Quotations', path: '/quotations', id: 'quotations' },
                 { name: activePreset?.terminology?.salesOrder || 'Sales Orders', path: '/sales-orders', id: 'sales-orders' },
                 { name: activePreset?.terminology?.outward || 'Dispatch Management', path: '/dispatch-management', id: 'dispatch-management' },
             ]

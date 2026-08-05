@@ -35,6 +35,7 @@ import finishRoutes from './routes/finishRoutes.js';
 import logRoutes from './routes/logRoutes.js';
 import profitRoutes from './routes/profitRoutes.js';
 import expenseRoutes from './routes/expenseRoutes.js';
+import customerTypeRoutes from './routes/customerTypeRoutes.js';
 import fixLegacyIndexes from './utils/fixIndexes.js';
 // Ensure User model is registered on appConn for cross-connection populate
 import { AppUser } from './models/User.js';
@@ -106,6 +107,7 @@ app.use('/api/finishes', finishRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/profit', profitRoutes);
 app.use('/api/expenses', expenseRoutes);
+app.use('/api/customer-types', customerTypeRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -26,6 +26,9 @@ const transactionSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
+    total: {
+        type: Number,
+    },
     reason: {
         type: String,
         trim: true,

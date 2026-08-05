@@ -129,7 +129,7 @@ const StockReturnsList = () => {
                                 {paginatedReturns.map((tx) => {
                                     const entityName = tx.customer?.companyName || tx.customer?.name || tx.vendor?.companyName || tx.vendor?.name || 'Unknown';
                                     const entityType = tx.returnType === 'customer' ? 'Customer' : 'Vendor';
-                                    const amount = (tx.quantity || 0) * (tx.rate || 0);
+                                    const amount = tx.total !== undefined ? tx.total : ((tx.quantity || 0) * (tx.rate || 0));
                                     
                                     return (
                                         <tr key={tx._id} className="hover:bg-gray-50 transition-colors">

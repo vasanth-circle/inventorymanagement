@@ -1468,18 +1468,21 @@ export const printReturnSlip = (returnTx, settings) => {
     const entity = returnTx.customer || returnTx.vendor || { name: 'Unknown' };
     const title = returnTx.returnType === 'customer' ? 'credit note' : 'debit note';
 
-    // Support both `returnTx.items` (array from StockReturn) and `returnTx.item` (single from ActionLogs)
-    const itemsList = returnTx.items || (returnTx.item ? [{
-        name: returnTx.item.name || 'Unknown Item',
-        brand: returnTx.item.brand,
-        size: returnTx.item.size,
-        hsnCode: returnTx.item.hsnCode || returnTx.item.hsn || '',
-        quantity: returnTx.quantity || 0,
-        price: returnTx.rate || 0,
-        total: (returnTx.quantity || 0) * (returnTx.rate || 0),
-        taxRate: returnTx.item.taxRate || 0,
-        billingUnit: returnTx.item.billingUnit || returnTx.item.unitType || 'Nos'
-    }] : []);
+    const itemsList = returnTx.items || (returnTx.item ? (() => {
+        const isTile = s?.industry === 'tiles' && returnTx.item.sqFtPerPc > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((returnTx.item.unitType || '').toLowerCase());
+        return [{
+            name: returnTx.item.name || 'Unknown Item',
+            brand: returnTx.item.brand,
+            size: returnTx.item.size,
+            hsnCode: returnTx.item.hsnCode || returnTx.item.hsn || '',
+            quantity: returnTx.quantity || 0,
+            boxCount: isTile ? ((returnTx.quantity || 0) / (returnTx.item.pcsPerBox || 1)) : undefined,
+            price: returnTx.rate || 0,
+            total: returnTx.total !== undefined ? returnTx.total : ((returnTx.quantity || 0) * (returnTx.rate || 0)),
+            taxRate: returnTx.item.taxRate || 0,
+            billingUnit: returnTx.item.billingUnit || returnTx.item.unitType || 'Nos'
+        }];
+    })() : []);
 
     // In Returns, we typically don't track tax breakdown unless fully integrated.
     // We'll compute basic totals from the items array.
@@ -1492,7 +1495,9 @@ export const printReturnSlip = (returnTx, settings) => {
     const itemRows = itemsList.map((item, i) => {
         const subtotal = item.total || (item.quantity * item.price) || 0;
         totQty += Number(item.quantity || 0);
-        const qtyVal = formatIndianNumber(item.quantity || 0, 3) + ' ' + (item.billingUnit || 'Nos').substring(0,3);
+        const qtyVal = item.boxCount !== undefined 
+            ? `${formatIndianNumber(item.boxCount, 3)} box` 
+            : `${formatIndianNumber(item.quantity || 0, 3)} ${(item.billingUnit || 'Nos').substring(0,3)}`;
         
         const desc = (() => {
             const b = (item.brand || '').trim();

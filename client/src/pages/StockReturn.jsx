@@ -389,15 +389,20 @@ const StockReturn = () => {
             try {
                 // Submit each return item as a separate transaction
                 for (const row of itemsToReturn) {
+                    const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((row.unitType || '').toLowerCase());
+                    const actualQty = isTile ? row.quantity : parseFloat(row.returnQty);
+                    const actualTotal = row.total !== undefined ? row.total : (actualQty * row.rate);
+                    
                     await api.post('/transactions/return', {
                         item: row.itemId,
                         returnType: 'customer',
-                        quantity: parseFloat(row.returnQty),
+                        quantity: actualQty,
                         rate: row.rate,
-                        customer: selectedCustomer,
-                        referenceOrder,
+                        total: actualTotal,
                         reason,
                         notes,
+                        customer: selectedCustomer,
+                        referenceOrder,
                         settlementType,
                     });
                 }
@@ -411,17 +416,22 @@ const StockReturn = () => {
                         referenceOrder,
                         reason,
                         notes,
-                        items: itemsToReturn.map(r => ({
-                            name: r.itemName,
-                            brand: r.brand,
-                            size: r.size,
-                            hsnCode: r.hsn,
-                            billingUnit: r.billingUnit,
-                            taxRate: r.taxRate,
-                            quantity: parseFloat(r.returnQty),
-                            price: r.rate,
-                            total: parseFloat(r.returnQty) * r.rate
-                        }))
+                        items: itemsToReturn.map(r => {
+                            const isTile = billingSettings?.industry === 'tiles' && r.sqFtPerPc > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((r.unitType || '').toLowerCase());
+                            const actualQty = isTile ? r.quantity : parseFloat(r.returnQty);
+                            return {
+                                name: r.itemName,
+                                brand: r.brand,
+                                size: r.size,
+                                hsnCode: r.hsn,
+                                billingUnit: r.billingUnit,
+                                taxRate: r.taxRate,
+                                quantity: actualQty,
+                                boxCount: isTile ? parseFloat(r.returnQty) : undefined,
+                                price: r.rate,
+                                total: r.total || (actualQty * r.rate)
+                            };
+                        })
                     };
                     import('../utils/printTemplates').then(module => {
                         module.printReturnSlip(returnTx, billingSettings);
@@ -452,11 +462,16 @@ const StockReturn = () => {
             setLoading(true);
             try {
                 for (const row of itemsToReturn) {
+                    const isTile = billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((row.unitType || '').toLowerCase());
+                    const actualQty = isTile ? row.quantity : parseFloat(row.returnQty);
+                    const actualTotal = row.total !== undefined ? row.total : (actualQty * (row.rate || 0));
+
                     await api.post('/transactions/return', {
                         item: row.itemId,
                         returnType: 'vendor',
-                        quantity: parseFloat(row.returnQty),
+                        quantity: actualQty,
                         rate: row.rate || 0,
+                        total: actualTotal,
                         vendor: selectedVendor,
                         referenceOrder: row.poNumber || referenceOrder,
                         reason,
@@ -474,17 +489,22 @@ const StockReturn = () => {
                         referenceOrder,
                         reason,
                         notes,
-                        items: itemsToReturn.map(r => ({
-                            name: r.itemName,
-                            brand: r.brand,
-                            size: r.size,
-                            hsnCode: r.hsn,
-                            billingUnit: r.billingUnit,
-                            taxRate: r.taxRate,
-                            quantity: parseFloat(r.returnQty),
-                            price: r.rate,
-                            total: parseFloat(r.returnQty) * r.rate
-                        }))
+                        items: itemsToReturn.map(r => {
+                            const isTile = billingSettings?.industry === 'tiles' && r.sqFtPerPc > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((r.unitType || '').toLowerCase());
+                            const actualQty = isTile ? r.quantity : parseFloat(r.returnQty);
+                            return {
+                                name: r.itemName,
+                                brand: r.brand,
+                                size: r.size,
+                                hsnCode: r.hsn,
+                                billingUnit: r.billingUnit,
+                                taxRate: r.taxRate,
+                                quantity: actualQty,
+                                boxCount: isTile ? parseFloat(r.returnQty) : undefined,
+                                price: r.rate,
+                                total: r.total || (actualQty * r.rate)
+                            };
+                        })
                     };
                     import('../utils/printTemplates').then(module => {
                         module.printReturnSlip(returnTx, billingSettings);

@@ -49,6 +49,7 @@ import ActionLogs from './pages/ActionLogs';
 import ProfitTracking from './pages/ProfitTracking';
 import Expenses from './pages/Expenses';
 import CustomReports from './pages/CustomReports';
+import CustomerTypes from './pages/CustomerTypes';
 
 function AppLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -125,6 +126,7 @@ function App() {
                                             <Route path="/sizes" element={<Sizes />} />
                                             <Route path="/brands" element={<Brands />} />
                                             <Route path="/finishes" element={<Finishes />} />
+                                            <Route path="/customer-types" element={<CustomerTypes />} />
                                             <Route path="/action-logs" element={<ActionLogs />} />
                                             <Route path="/custom-reports" element={<CustomReports />} />
                                             <Route path="/locations" element={<Locations />} />

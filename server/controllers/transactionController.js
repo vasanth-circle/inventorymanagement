@@ -313,7 +313,7 @@ export const getTransactions = async (req, res, next) => {
         }
 
         const transactions = await Transaction.find(query)
-            .populate('item', 'name barcode category brand size hsn unitType')
+            .populate('item', 'name barcode category brand size hsn unitType sqFtPerPc pcsPerBox billingUnit')
             .populate({ path: 'user', model: User, select: 'name email' })
             .populate('customer', 'name companyName phone address')
             .populate('vendor', 'name companyName phone address')
@@ -431,13 +431,17 @@ export const stockReturn = async (req, res, next) => {
         itemDoc.quantity = newQuantity;
         await itemDoc.save();
 
+        const rateVal = parseFloat(rate) || 0;
+        const totalAmount = req.body.total !== undefined ? parseFloat(req.body.total) : qty * rateVal;
+
         // Create transaction record
         const transaction = await Transaction.create({
             item: itemId,
             type: 'return',
             returnType,
             quantity: qty,
-            rate: parseFloat(rate) || 0,
+            rate: rateVal,
+            total: totalAmount,
             referenceOrder,
             reason,
             notes,
@@ -449,8 +453,6 @@ export const stockReturn = async (req, res, next) => {
             tenantId: req.tenantId,
             settlementType: req.body.settlementType || 'ledger'
         });
-
-        const totalAmount = qty * (parseFloat(rate) || 0);
 
         if (returnType === 'vendor' && vendor && totalAmount > 0) {
             const lastEntry = await VendorLedger.findOne({ vendor, tenantId: req.tenantId }).sort({ date: -1, createdAt: -1 });

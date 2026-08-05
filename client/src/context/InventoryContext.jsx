@@ -16,6 +16,7 @@ export const InventoryProvider = ({ children }) => {
     const [transactions, setTransactions] = useState([]);
     const [hsnCodes, setHsnCodes] = useState([]);
     const [sizes, setSizes] = useState([]);
+    const [customerTypes, setCustomerTypes] = useState([]);
     const [brands, setBrands] = useState([]);
     const [finishes, setFinishes] = useState([]);
     const [purchaseOrders, setPurchaseOrders] = useState([]);
@@ -611,6 +612,54 @@ export const InventoryProvider = ({ children }) => {
         return await customConfirmDelete(message, callback);
     };
 
+    // --- CUSTOMER TYPES ---
+    const fetchCustomerTypes = async () => {
+        try {
+            const { data } = await api.get('/customer-types');
+            setCustomerTypes(data || []);
+            return data;
+        } catch (error) {
+            console.error('Failed to fetch customer types');
+        }
+    };
+
+    const addCustomerType = async (typeData) => {
+        try {
+            const { data } = await api.post('/customer-types', typeData);
+            setCustomerTypes(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+            toast.success('Customer Type added');
+            return true;
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Error adding customer type');
+            return false;
+        }
+    };
+
+    const updateCustomerType = async (id, typeData) => {
+        try {
+            const { data } = await api.put(`/customer-types/${id}`, typeData);
+            setCustomerTypes(prev => prev.map(t => t._id === id ? data : t).sort((a, b) => a.name.localeCompare(b.name)));
+            toast.success('Customer Type updated');
+            return true;
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Error updating customer type');
+            return false;
+        }
+    };
+
+    const deleteCustomerType = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this customer type?')) return false;
+        try {
+            await api.delete(`/customer-types/${id}`);
+            setCustomerTypes(prev => prev.filter(t => t._id !== id));
+            toast.success('Customer Type deleted');
+            return true;
+        } catch (error) {
+            toast.error('Error deleting customer type');
+            return false;
+        }
+    };
+
     useEffect(() => {
         if (user) {
             fetchCategories();
@@ -621,6 +670,7 @@ export const InventoryProvider = ({ children }) => {
             fetchSizes();
             fetchBrands();
             fetchFinishes();
+            fetchCustomerTypes();
             fetchPurchaseOrders({ status: 'issued' });
         }
     }, [user]);
@@ -663,6 +713,12 @@ export const InventoryProvider = ({ children }) => {
                 addSize,
                 editSize,
                 removeSize,
+                customerTypes,
+                setCustomerTypes,
+                addCustomerType,
+                updateCustomerType,
+                deleteCustomerType,
+                fetchCustomerTypes,
                 brands,
                 setBrands,
                 finishes,
