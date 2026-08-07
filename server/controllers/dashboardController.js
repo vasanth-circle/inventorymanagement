@@ -13,6 +13,14 @@ import Vendor from '../models/Vendor.js';
 // @access  Private
 export const getDashboardStats = async (req, res, next) => {
     try {
+        const { startDate, endDate } = req.query;
+        let startD, endD;
+        if (startDate && endDate) {
+            startD = new Date(startDate);
+            endD = new Date(endDate);
+            endD.setHours(23, 59, 59, 999);
+        }
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const tenantQuery = { tenantId: req.tenantId };
@@ -39,17 +47,34 @@ export const getDashboardStats = async (req, res, next) => {
         const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
         const trueSalesExpr = { $subtract: [{ $add: ['$totalAmount', { $ifNull: ['$advanceAmount', 0] }] }, { $ifNull: ['$oldBalance', 0] }] };
+        
+        const salesGroupObj = { 
+            _id: null, 
+            totalSales: { $sum: trueSalesExpr }, 
+            todaySales: { $sum: { $cond: [{ $gte: [{ $ifNull: ['$orderDate', '$createdAt'] }, today] }, trueSalesExpr, 0] } }, 
+            weekSales: { $sum: { $cond: [{ $gte: [{ $ifNull: ['$orderDate', '$createdAt'] }, startOfWeek] }, trueSalesExpr, 0] } }, 
+            monthSales: { $sum: { $cond: [{ $gte: [{ $ifNull: ['$orderDate', '$createdAt'] }, startOfMonth] }, trueSalesExpr, 0] } } 
+        };
+
+        if (startD && endD) {
+            salesGroupObj.periodSales = {
+                $sum: { $cond: [{ $and: [{ $gte: [{ $ifNull: ['$orderDate', '$createdAt'] }, startD] }, { $lte: [{ $ifNull: ['$orderDate', '$createdAt'] }, endD] }] }, trueSalesExpr, 0] }
+            };
+        }
+
         const salesStats = await SalesOrder.aggregate([
             { $match: { ...tenantQuery, status: { $ne: 'void' }, isEstimation: { $ne: true } } },
-            { $group: { 
-                _id: null, 
-                totalSales: { $sum: trueSalesExpr }, 
-                todaySales: { $sum: { $cond: [{ $gte: [{ $ifNull: ['$orderDate', '$createdAt'] }, today] }, trueSalesExpr, 0] } }, 
-                weekSales: { $sum: { $cond: [{ $gte: [{ $ifNull: ['$orderDate', '$createdAt'] }, startOfWeek] }, trueSalesExpr, 0] } }, 
-                monthSales: { $sum: { $cond: [{ $gte: [{ $ifNull: ['$orderDate', '$createdAt'] }, startOfMonth] }, trueSalesExpr, 0] } } 
-            } }
+            { $group: salesGroupObj }
         ]);
-        const purchaseStats = await PurchaseOrder.aggregate([{ $match: { ...tenantQuery, status: { $ne: 'void' } } }, { $group: { _id: null, totalPurchase: { $sum: '$totalAmount' } } }]);
+
+        const purchaseGroupObj = { _id: null, totalPurchase: { $sum: '$totalAmount' } };
+        if (startD && endD) {
+            purchaseGroupObj.periodPurchase = {
+                $sum: { $cond: [{ $and: [{ $gte: [{ $ifNull: ['$orderDate', '$createdAt'] }, startD] }, { $lte: [{ $ifNull: ['$orderDate', '$createdAt'] }, endD] }] }, '$totalAmount', 0] }
+            };
+        }
+        
+        const purchaseStats = await PurchaseOrder.aggregate([{ $match: { ...tenantQuery, status: { $ne: 'void' } } }, { $group: purchaseGroupObj }]);
         const categoryDistribution = await Item.aggregate([
             { $match: tenantQuery }, { $group: { _id: '$category', count: { $sum: 1 }, totalQuantity: { $sum: '$quantity' } } },
             { $lookup: { from: 'categories', localField: '_id', foreignField: '_id', as: 'categoryInfo' } }, { $unwind: '$categoryInfo' },
@@ -74,6 +99,7 @@ export const getDashboardStats = async (req, res, next) => {
             purchaseActivity: purchaseActivity.reduce((acc, curr) => ({ ...acc, [curr._id]: curr.count }), {}),
             totalSales: salesStats[0]?.totalSales || 0, todaySales: salesStats[0]?.todaySales || 0,
             weekSales: salesStats[0]?.weekSales || 0, monthSales: salesStats[0]?.monthSales || 0,
+            periodSales: salesStats[0]?.periodSales || 0, periodPurchase: purchaseStats[0]?.periodPurchase || 0,
             totalPurchase: purchaseStats[0]?.totalPurchase || 0, totalItemsCount,
             pendingReceipts, pendingOrdersCount, totalCategories, topSellingItems,
             totalDamagedItems: totalDamagedItems[0]?.totalDamaged || 0, damagedItemsList

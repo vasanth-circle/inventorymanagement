@@ -142,6 +142,7 @@ const Dashboard = () => {
     const [stockTab, setStockTab] = useState('low'); // 'low' | 'out' | 'damaged'
     const [perfTab, setPerfTab] = useState('top');   // 'top' | 'slow'
     const [dismissedAlerts, setDismissedAlerts] = useState([]);
+    const [salesFilter, setSalesFilter] = useState({ startDate: '', endDate: '' });
 
     // Also keep old stats for existing KPIs used by other card styles
     const [oldStats, setOldStats] = useState(null);
@@ -159,10 +160,12 @@ const Dashboard = () => {
 
     const fetchAll = useCallback(async () => {
         try {
-            setLoading(true);
+            const queryParams = salesFilter.startDate && salesFilter.endDate 
+                ? `?startDate=${salesFilter.startDate}&endDate=${salesFilter.endDate}` 
+                : '';
             const [invRes, statsRes, trendRes] = await Promise.all([
                 api.get('/dashboard/inventory'),
-                api.get('/dashboard/stats'),
+                api.get(`/dashboard/stats${queryParams}`),
                 api.get('/dashboard/stock-trend'),
             ]);
             setData(invRes.data);
@@ -180,7 +183,7 @@ const Dashboard = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [salesFilter.startDate, salesFilter.endDate]);
 
     useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -590,18 +593,35 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Sales Snapshot */}
                 {isFinancialAdmin && (
-                    <SectionCard title="Sales Snapshot" icon="💰">
+                    <SectionCard 
+                        title="Sales Snapshot" 
+                        icon="💰"
+                        action={
+                            <div className="flex items-center gap-1 bg-white px-2 py-1 rounded border border-gray-200">
+                                <input type="date" value={salesFilter.startDate} onChange={(e) => setSalesFilter(f => ({ ...f, startDate: e.target.value }))} className="text-[10px] bg-transparent font-bold text-gray-700 outline-none w-[90px]" />
+                                <span className="text-[8px] text-gray-300 font-black uppercase">TO</span>
+                                <input type="date" value={salesFilter.endDate} onChange={(e) => setSalesFilter(f => ({ ...f, endDate: e.target.value }))} className="text-[10px] bg-transparent font-bold text-gray-700 outline-none w-[90px]" />
+                                {(salesFilter.startDate || salesFilter.endDate) && (
+                                    <button onClick={() => setSalesFilter({ startDate: '', endDate: '' })} className="ml-1 text-gray-400 hover:text-red-500 font-bold text-[10px]">✕</button>
+                                )}
+                            </div>
+                        }
+                    >
                         <div className="space-y-2">
                             {[
+                                ...(salesFilter.startDate && salesFilter.endDate ? [
+                                    { label: "Selected Period Sales", value: oldStats?.periodSales, color: 'text-indigo-600 bg-indigo-50 border border-indigo-100 p-2 rounded-lg' },
+                                    { label: "Selected Period Purchases", value: oldStats?.periodPurchase, color: 'text-amber-600 bg-amber-50 border border-amber-100 p-2 rounded-lg' }
+                                ] : []),
                                 { label: "Today's Sales",         value: oldStats?.todaySales,    color: 'text-indigo-600' },
                                 { label: "This Week",             value: oldStats?.weekSales,     color: 'text-blue-600' },
                                 { label: "This Month",            value: oldStats?.monthSales,    color: 'text-emerald-600' },
                                 { label: "All Time Sales",        value: oldStats?.totalSales,    color: 'text-gray-900' },
                                 { label: "Total Purchases",       value: oldStats?.totalPurchase, color: 'text-amber-600' },
                             ].map((row, i) => (
-                                <div key={i} className="flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-gray-50 transition-colors">
-                                    <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">{row.label}</span>
-                                    <span className={`text-sm font-black ${row.color}`}>{formatCurrency(row.value ?? 0)}</span>
+                                <div key={i} className={`flex items-center justify-between py-2.5 px-3 rounded-xl transition-colors ${row.color && row.color.includes('bg-') ? row.color : 'hover:bg-gray-50'}`}>
+                                    <span className={`text-[11px] font-bold uppercase tracking-wide ${row.color && row.color.includes('bg-') ? '' : 'text-gray-500'}`}>{row.label}</span>
+                                    <span className={`text-sm font-black ${row.color && row.color.includes('bg-') ? '' : row.color}`}>{formatCurrency(row.value ?? 0)}</span>
                                 </div>
                             ))}
                         </div>

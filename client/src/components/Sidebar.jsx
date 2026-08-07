@@ -63,6 +63,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 { name: 'Vendor Ledgers', path: '/vendor-ledger', id: 'vendor-ledger' },
                 { name: '🔗 Combined Ledger', path: '/combined-ledger', id: 'combined-ledger' },
                 { name: activePreset?.terminology?.purchaseOrder || 'Purchase Entry', path: '/purchase-orders', id: 'purchase-orders' },
+                { name: 'Generate PO (Draft)', path: '/draft-pos', id: 'draft-pos' },
                 { name: activePreset?.terminology?.inward || 'Stock Inward', path: '/stock-inward', id: 'stock-inward' },
             ]
         },

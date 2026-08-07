@@ -36,6 +36,7 @@ import logRoutes from './routes/logRoutes.js';
 import profitRoutes from './routes/profitRoutes.js';
 import expenseRoutes from './routes/expenseRoutes.js';
 import customerTypeRoutes from './routes/customerTypeRoutes.js';
+import draftPORoutes from './routes/draftPORoutes.js';
 import fixLegacyIndexes from './utils/fixIndexes.js';
 // Ensure User model is registered on appConn for cross-connection populate
 import { AppUser } from './models/User.js';
@@ -92,6 +93,7 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/sales-orders', salesOrderRoutes);
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/purchase-orders', purchaseOrderRoutes);
+app.use('/api/draft-pos', draftPORoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/api/dispatches', dispatchRoutes);
 app.use('/api/settings', settingRoutes);

@@ -25,10 +25,10 @@ import Customers from './pages/Customers';
 import SalesOrders from './pages/SalesOrders';
 import Vendors from './pages/Vendors';
 import PurchaseOrders from './pages/PurchaseOrders';
-import Locations from './pages/Locations';
+import DraftPOs from './pages/DraftPOs';
+import Quotations from './pages/Quotations';
 import DispatchManagement from './pages/DispatchManagement';
 import Settings from './pages/Settings';
-import Quotations from './pages/Quotations';
 import CustomerLedger from './pages/CustomerLedger';
 import Assets from './pages/Assets';
 import AssetDashboard from './pages/AssetDashboard';
@@ -51,6 +51,7 @@ import ProfitTracking from './pages/ProfitTracking';
 import Expenses from './pages/Expenses';
 import CustomReports from './pages/CustomReports';
 import CustomerTypes from './pages/CustomerTypes';
+import Locations from './pages/Locations';
 
 function AppLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -120,6 +121,7 @@ function App() {
                                             <Route path="/sales-orders" element={<SalesOrders />} />
                                             <Route path="/vendors" element={<Vendors />} />
                                             <Route path="/purchase-orders" element={<PurchaseOrders />} />
+                                            <Route path="/draft-pos" element={<DraftPOs />} />
                                             <Route path="/vendor-ledger" element={<VendorLedger />} />
                                             <Route path="/combined-ledger" element={<CombinedLedger />} />
                                             <Route path="/combined-ledger/:id" element={<CombinedLedger />} />
