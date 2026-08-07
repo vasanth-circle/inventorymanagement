@@ -465,6 +465,7 @@ export const stockReturn = async (req, res, next) => {
                 date: Date.now(),
                 type: 'adjustment',
                 refType: 'Manual',
+                refId: transaction._id,
                 refNumber: referenceOrder || `RET-${Date.now()}`,
                 description: `Stock Return to Vendor: ${itemDoc.name} (${qty} qty)`,
                 debit: totalAmount,
@@ -481,6 +482,7 @@ export const stockReturn = async (req, res, next) => {
                     date: Date.now(),
                     type: 'payment',
                     refType: 'Cash',
+                    refId: transaction._id,
                     refNumber: referenceOrder || `CASH-${Date.now()}`,
                     description: `Cash Received for Return: ${itemDoc.name}`,
                     credit: totalAmount,
@@ -500,6 +502,7 @@ export const stockReturn = async (req, res, next) => {
                 date: Date.now(),
                 type: 'payment',
                 refType: 'Manual',
+                refId: transaction._id,
                 refNumber: referenceOrder || `RET-${Date.now()}`,
                 description: `Refunded Amt: ${itemDoc.name} (${qty} qty returned)`,
                 credit: totalAmount,
@@ -516,6 +519,7 @@ export const stockReturn = async (req, res, next) => {
                     date: Date.now(),
                     type: 'payment',
                     refType: 'Cash',
+                    refId: transaction._id,
                     refNumber: referenceOrder || `CASH-${Date.now()}`,
                     description: `Cash Paid for Return: ${itemDoc.name}`,
                     debit: totalAmount,
@@ -561,12 +565,18 @@ export const deleteStockReturn = async (req, res, next) => {
 
         // Remove ledger entries created by this return (matched by refNumber)
         const refNum = tx.referenceOrder || tx.refNumber;
-        if (refNum) {
-            if (tx.returnType === 'vendor' && tx.vendor) {
-                await VendorLedger.deleteMany({ vendor: tx.vendor, refNumber: refNum, tenantId: req.tenantId });
-            } else if (tx.returnType === 'customer' && tx.customer) {
-                await CustomerLedger.deleteMany({ customer: tx.customer, refNumber: refNum, tenantId: req.tenantId });
-            }
+        if (tx.returnType === 'vendor' && tx.vendor) {
+            await VendorLedger.deleteMany({
+                vendor: tx.vendor,
+                tenantId: req.tenantId,
+                $or: [{ refId: tx._id }, { refNumber: refNum, refId: null }]
+            });
+        } else if (tx.returnType === 'customer' && tx.customer) {
+            await CustomerLedger.deleteMany({
+                customer: tx.customer,
+                tenantId: req.tenantId,
+                $or: [{ refId: tx._id }, { refNumber: refNum, refId: null }]
+            });
         }
 
         // Delete the transaction record
@@ -618,12 +628,18 @@ export const updateStockReturn = async (req, res, next) => {
 
         // --- Step 3: Reverse original ledger entries ---
         const oldRefNum = tx.referenceOrder;
-        if (oldRefNum) {
-            if (tx.returnType === 'vendor' && tx.vendor) {
-                await VendorLedger.deleteMany({ vendor: tx.vendor, refNumber: oldRefNum, tenantId: req.tenantId });
-            } else if (tx.returnType === 'customer' && tx.customer) {
-                await CustomerLedger.deleteMany({ customer: tx.customer, refNumber: oldRefNum, tenantId: req.tenantId });
-            }
+        if (tx.returnType === 'vendor' && tx.vendor) {
+            await VendorLedger.deleteMany({
+                vendor: tx.vendor,
+                tenantId: req.tenantId,
+                $or: [{ refId: tx._id }, { refNumber: oldRefNum, refId: null }]
+            });
+        } else if (tx.returnType === 'customer' && tx.customer) {
+            await CustomerLedger.deleteMany({
+                customer: tx.customer,
+                tenantId: req.tenantId,
+                $or: [{ refId: tx._id }, { refNumber: oldRefNum, refId: null }]
+            });
         }
 
         // --- Step 4: Create new ledger entries with updated values ---
@@ -641,6 +657,7 @@ export const updateStockReturn = async (req, res, next) => {
                 date: Date.now(),
                 type: 'adjustment',
                 refType: 'Manual',
+                refId: tx._id,
                 refNumber: newRefNum,
                 description: `Stock Return (Edited): ${itemDoc.name} (${newQty} qty)`,
                 debit: totalAmount,
@@ -657,6 +674,7 @@ export const updateStockReturn = async (req, res, next) => {
                     date: Date.now(),
                     type: 'payment',
                     refType: 'Cash',
+                    refId: tx._id,
                     refNumber: newRefNum,
                     description: `Cash Received for Edited Return: ${itemDoc.name}`,
                     credit: totalAmount,
@@ -675,6 +693,7 @@ export const updateStockReturn = async (req, res, next) => {
                 date: Date.now(),
                 type: 'payment',
                 refType: 'Manual',
+                refId: tx._id,
                 refNumber: newRefNum,
                 description: `Refund (Edited): ${itemDoc.name} (${newQty} qty)`,
                 credit: totalAmount,
@@ -691,6 +710,7 @@ export const updateStockReturn = async (req, res, next) => {
                     date: Date.now(),
                     type: 'payment',
                     refType: 'Cash',
+                    refId: tx._id,
                     refNumber: newRefNum,
                     description: `Cash Paid for Edited Return: ${itemDoc.name}`,
                     debit: totalAmount,
