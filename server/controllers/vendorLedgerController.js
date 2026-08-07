@@ -1,5 +1,7 @@
 import VendorLedger from '../models/VendorLedger.js';
+import CustomerLedger from '../models/CustomerLedger.js';
 import Vendor from '../models/Vendor.js';
+import Customer from '../models/Customer.js';
 import User from '../models/User.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
@@ -435,6 +437,177 @@ export const getVendorOutstandingSummary = async (req, res, next) => {
         }));
 
         sendResponse(res, 200, summaries, 'Vendor outstanding summary fetched');
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Get combined ledger for a vendor who is also a customer
+//          Merges Purchase (VendorLedger) + Sales (CustomerLedger) into one
+//          chronological statement with a single net running balance
+// @route   GET /api/vendor-ledger/:vendorId/combined
+// @access  Private
+export const getCombinedLedger = async (req, res, next) => {
+    try {
+        const { vendorId } = req.params;
+        const { from, to } = req.query;
+
+        // 1. Fetch the vendor and verify it has a linked customer
+        const vendor = await Vendor.findOne({ _id: vendorId, ...tenantQuery(req) });
+        if (!vendor) return sendError(res, 404, 'Vendor not found');
+        if (!vendor.linkedCustomerId) {
+            return sendError(res, 400, 'This vendor is not linked to a customer account. Please link them first.');
+        }
+
+        // 2. Fetch the linked customer
+        const customer = await Customer.findOne({ _id: vendor.linkedCustomerId, ...tenantQuery(req) });
+        if (!customer) return sendError(res, 404, 'Linked customer not found');
+
+        // 3. Build date filter
+        const dateFilter = {};
+        if (from || to) {
+            dateFilter.date = {};
+            if (from) dateFilter.date.$gte = new Date(from);
+            if (to)   dateFilter.date.$lte = new Date(new Date(to).setHours(23, 59, 59, 999));
+        }
+
+        // 4. Fetch both ledgers in parallel
+        const [vendorEntries, customerEntries] = await Promise.all([
+            VendorLedger.find({ vendor: vendorId, ...tenantQuery(req), ...dateFilter })
+                .populate({ path: 'createdBy', model: User, select: 'name email' })
+                .sort({ date: 1, createdAt: 1 }),
+            CustomerLedger.find({ customer: vendor.linkedCustomerId, ...tenantQuery(req), ...dateFilter })
+                .populate({ path: 'createdBy', model: User, select: 'name email' })
+                .sort({ date: 1, createdAt: 1 }),
+        ]);
+
+        // 5. Compute Balance Brought Forward (BBF) before the date filter
+        //    Standard accounting: BBF = net of all prior-period entries
+        let bbf = 0;
+        if (from) {
+            // All vendor entries before date range: Purchase credits increase our liability (+)
+            const prevVendorEntries = await VendorLedger.find({
+                vendor: vendorId,
+                ...tenantQuery(req),
+                date: { $lt: new Date(from) },
+            }).sort({ date: 1, createdAt: 1 });
+
+            // All customer entries before date range: Sales debits increase their liability to us (+)
+            const prevCustomerEntries = await CustomerLedger.find({
+                customer: vendor.linkedCustomerId,
+                ...tenantQuery(req),
+                date: { $lt: new Date(from) },
+            }).sort({ date: 1, createdAt: 1 });
+
+            // Opening balances
+            const vendorOpeningBal = vendor.openingBalance || 0;
+            const customerOpeningBal = customer.openingBalance || 0;
+
+            // Net prior-period balance:
+            // Sales side: customer owes us (debit positive, credit negative)
+            const salesNet = customerOpeningBal
+                + prevCustomerEntries.reduce((s, e) => s + (e.debit || 0) - (e.credit || 0), 0);
+            // Purchase side: we owe vendor (credit positive, debit negative)
+            const purchaseNet = vendorOpeningBal
+                + prevVendorEntries.reduce((s, e) => s + (e.credit || 0) - (e.debit || 0), 0);
+
+            // Net BBF: positive = overall party owes us; negative = we owe party
+            bbf = salesNet - purchaseNet;
+        } else {
+            // No date filter: BBF is the opening balances
+            const vendorOpeningBal = vendor.openingBalance || 0;
+            const customerOpeningBal = customer.openingBalance || 0;
+            bbf = customerOpeningBal - vendorOpeningBal;
+        }
+
+        // 6. Tag and merge entries into a single array
+        const tagged = [
+            ...vendorEntries.map(e => ({
+                _id: e._id,
+                date: e.date,
+                createdAt: e.createdAt,
+                source: 'purchase',          // Purchase = Vendor side
+                type: e.type,
+                refType: e.refType,
+                refId: e.refId,
+                refNumber: e.refNumber,
+                description: e.description,
+                paymentMode: e.paymentMode,
+                notes: e.notes,
+                createdBy: e.createdBy,
+                // In combined ledger, purchase bills INCREASE party's claim on us:
+                //   Vendor credit (purchase bill) → party earns money from us → net DR to us → shows in 'credit' column
+                // Purchase payment (we pay vendor) → party receives money → net CR → shows in 'debit' column
+                // Tally-standard: from OUR perspective:
+                //   Purchase credit → our payable increases → CREDIT in combined
+                //   Purchase debit (payment out) → our payable decreases → DEBIT in combined
+                combinedDebit:  e.debit  || 0,   // Payment to vendor = reduces our payable
+                combinedCredit: e.credit || 0,   // Purchase bill = increases our payable
+            })),
+            ...customerEntries.map(e => ({
+                _id: e._id,
+                date: e.date,
+                createdAt: e.createdAt,
+                source: 'sales',             // Sales = Customer side
+                type: e.type,
+                refType: e.refType,
+                refId: e.refId,
+                refNumber: e.refNumber,
+                description: e.description,
+                paymentMode: e.paymentMode,
+                notes: e.notes,
+                createdBy: e.createdBy,
+                // Sales bill (customer debit) → party owes us → DEBIT in combined
+                // Payment received (customer credit) → party pays us → CREDIT in combined
+                combinedDebit:  e.debit  || 0,   // Sales bill = party owes us
+                combinedCredit: e.credit || 0,   // Payment received from party
+            })),
+        ];
+
+        // 7. Sort chronologically
+        tagged.sort((a, b) => {
+            const dateDiff = new Date(a.date) - new Date(b.date);
+            if (dateDiff !== 0) return dateDiff;
+            return new Date(a.createdAt) - new Date(b.createdAt);
+        });
+
+        // 8. Compute running net balance
+        //    Positive = party owes US (net receivable)
+        //    Negative = we owe PARTY (net payable)
+        let runningBalance = bbf;
+        const combinedLedger = tagged.map(entry => {
+            // Sales entries: debit = party owes us (+), credit = they paid us (-)
+            // Purchase entries: credit = we owe them (-), debit = we paid them (+)
+            if (entry.source === 'sales') {
+                runningBalance = runningBalance + (entry.combinedDebit || 0) - (entry.combinedCredit || 0);
+            } else {
+                // Purchase: bill (credit) reduces our net receivable; payment (debit) increases it
+                runningBalance = runningBalance - (entry.combinedCredit || 0) + (entry.combinedDebit || 0);
+            }
+            return { ...entry, balance: runningBalance };
+        });
+
+        // 9. Summary totals
+        const salesDebitTotal    = customerEntries.reduce((s, e) => s + (e.debit  || 0), 0);
+        const salesCreditTotal   = customerEntries.reduce((s, e) => s + (e.credit || 0), 0);
+        const purchaseCreditTotal = vendorEntries.reduce((s, e) => s + (e.credit || 0), 0);
+        const purchaseDebitTotal  = vendorEntries.reduce((s, e) => s + (e.debit  || 0), 0);
+
+        const netBalance = combinedLedger.length > 0
+            ? combinedLedger[combinedLedger.length - 1].balance
+            : bbf;
+
+        sendResponse(res, 200, {
+            vendor,
+            customer,
+            combinedLedger,
+            bbf,
+            netBalance,
+            salesDebitTotal,
+            salesCreditTotal,
+            purchaseCreditTotal,
+            purchaseDebitTotal,
+        }, 'Combined ledger fetched successfully');
     } catch (error) {
         next(error);
     }

@@ -293,7 +293,27 @@ const VendorLedger = () => {
                 </div>
             </div>
 
+            {/* Combined Ledger Banner — shown when vendor is linked to a customer */}
+            {vendor?.linkedCustomerId && (
+                <div className="flex items-center justify-between bg-purple-50 border border-purple-200 rounded-xl px-5 py-3 gap-3">
+                    <div className="flex items-center gap-2">
+                        <span className="text-purple-600 text-lg">🔗</span>
+                        <div>
+                            <p className="text-sm font-bold text-purple-800">This vendor is also a Customer</p>
+                            <p className="text-xs text-purple-600">View both Sales and Purchase transactions together with a single net balance.</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => navigate(`/combined-ledger/${selectedVendorId}`)}
+                        className="shrink-0 px-4 py-2 bg-purple-600 text-white text-sm font-bold rounded-lg hover:bg-purple-700 transition-colors shadow"
+                    >
+                        View Combined Ledger →
+                    </button>
+                </div>
+            )}
+
             {/* Date Filters and Print */}
+
             <div className="flex flex-wrap items-end gap-3 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                 <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1">From Date</label>

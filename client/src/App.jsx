@@ -38,6 +38,7 @@ import ProductShowcase from './pages/ProductShowcase';
 import ProductShowcaseEdit from './pages/ProductShowcaseEdit';
 import PublicProductPage from './pages/PublicProductPage';
 import VendorLedger from './pages/VendorLedger';
+import CombinedLedger from './pages/CombinedLedger';
 import BottomNav from './components/BottomNav';
 import HSNManagement from './pages/HSNManagement';
 import LedgerReports from './pages/LedgerReports';
@@ -120,6 +121,8 @@ function App() {
                                             <Route path="/vendors" element={<Vendors />} />
                                             <Route path="/purchase-orders" element={<PurchaseOrders />} />
                                             <Route path="/vendor-ledger" element={<VendorLedger />} />
+                                            <Route path="/combined-ledger" element={<CombinedLedger />} />
+                                            <Route path="/combined-ledger/:id" element={<CombinedLedger />} />
                                             <Route path="/hsn-management" element={<HSNManagement />} />
                                             <Route path="/vendor-ledger/:id" element={<VendorLedger />} />
                                             <Route path="/expenses" element={<Expenses />} />

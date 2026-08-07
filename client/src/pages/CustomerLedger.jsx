@@ -101,6 +101,7 @@ const CustomerLedger = () => {
     const [from, setFrom] = useState('');
     const [to, setTo] = useState('');
     const [settings, setSettings] = useState(null);
+    const [linkedVendor, setLinkedVendor] = useState(null); // vendor that links to this customer
 
     const effectiveRole = user?.appRoles?.inventory || user?.role;
     const canRecordPayment = ['admin', 'manager', 'tenant_owner', 'tenant_admin', 'accounts', 'sales_person', 'sales person', 'sales_user', 'sales user'].includes(effectiveRole) || ['admin', 'manager', 'tenant_owner', 'tenant_admin', 'super_admin', 'sales_person'].includes(user?.role);
@@ -148,6 +149,16 @@ const CustomerLedger = () => {
         }).catch(() => {});
         fetchLedger(); 
     }, [fetchLedger]);
+
+    // When selected customer changes, check if any vendor is linked to this customer
+    useEffect(() => {
+        if (!selectedCustomerId) { setLinkedVendor(null); return; }
+        api('/vendors?limit=1000').then(res => {
+            const allVendors = res.data?.data?.vendors || [];
+            const linked = allVendors.find(v => v.linkedCustomerId === selectedCustomerId || String(v.linkedCustomerId) === String(selectedCustomerId));
+            setLinkedVendor(linked || null);
+        }).catch(() => setLinkedVendor(null));
+    }, [selectedCustomerId]);
 
     useEffect(() => {
         if (id && id !== selectedCustomerId) {
@@ -309,6 +320,25 @@ const CustomerLedger = () => {
                     </button>
                 </div>
             </div>
+
+            {/* Combined Ledger Banner — shown when this customer is also a vendor */}
+            {linkedVendor && (
+                <div className="flex items-center justify-between bg-purple-50 border border-purple-200 rounded-xl px-5 py-3 gap-3">
+                    <div className="flex items-center gap-2">
+                        <span className="text-purple-600 text-lg">🔗</span>
+                        <div>
+                            <p className="text-sm font-bold text-purple-800">This customer is also a Vendor</p>
+                            <p className="text-xs text-purple-600">View both Sales and Purchase transactions together with a single net balance.</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => navigate(`/combined-ledger/${linkedVendor._id}`)}
+                        className="shrink-0 px-4 py-2 bg-purple-600 text-white text-sm font-bold rounded-lg hover:bg-purple-700 transition-colors shadow"
+                    >
+                        View Combined Ledger →
+                    </button>
+                </div>
+            )}
 
             {/* Balance Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

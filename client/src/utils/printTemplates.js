@@ -1025,71 +1025,88 @@ export const printTallyLedger = (customer, entries, summary) => {
     let totalDr = 0;
     let totalCr = 0;
     let dataRows = '';
+    let lastDate = '';
 
     entries.forEach(entry => {
         totalDr += (entry.debit || 0);
         totalCr += (entry.credit || 0);
         const drStr  = entry.debit  ? fmt(entry.debit)  : '';
         const crStr  = entry.credit ? fmt(entry.credit) : '';
-        const dateStr = new Date(entry.date).toLocaleDateString('en-IN');
-        const particulars = (entry.description || '').substring(0, 30);
+        const dateStr = new Date(entry.date).toLocaleDateString('en-GB'); // DD/MM/YYYY
+        
+        // Hide date if same as previous row
+        const displayDate = dateStr === lastDate ? '' : dateStr;
+        lastDate = dateStr;
+
+        let particulars = (entry.description || '');
+        // If it's a bill, Tally usually says something like "Sales" or the item names.
+        // We'll use the description from the entry.
         const typeStr = entry.type === 'bill' ? 'Sales' : (entry.type === 'payment' ? 'Receipt' : 'Journal');
-        const bal = entry.balance || 0;
-        const balStr = fmt(Math.abs(bal)) + (bal >= 0 ? ' Cr' : ' Dr');
 
         dataRows += `<tr>
-            <td class="c1">${dateStr}</td>
+            <td class="c1">${displayDate}</td>
             <td class="c2">${particulars}</td>
             <td class="c3">${typeStr}</td>
             <td class="c4">${entry.refNumber || ''}</td>
             <td class="c5 ra">${drStr}</td>
             <td class="c6 ra">${crStr}</td>
-            <td class="c7 ra">${balStr}</td>
         </tr>`;
     });
 
     const closeBal = summary?.closingBalance || 0;
-    const closeBalStr = fmt(Math.abs(closeBal)) + (closeBal >= 0 ? ' Cr' : ' Dr');
 
-    // Grand totals: add closing balance to the lesser side to make both columns equal (Tally style)
-    const grandDr = totalDr + (closeBal >= 0 ? closeBal : 0) + (openingBal < 0 ? Math.abs(openingBal) : 0);
-    const grandCr = totalCr + (closeBal < 0 ? Math.abs(closeBal) : 0) + (openingBal > 0 ? openingBal : 0);
+    // Calculate actual column totals before closing balance
+    const actualTotalDr = totalDr + (openingBal < 0 ? Math.abs(openingBal) : 0);
+    const actualTotalCr = totalCr + (openingBal > 0 ? openingBal : 0);
+    
+    // Grand totals (balanced on both sides)
+    const grandTotal = Math.max(actualTotalDr, actualTotalCr);
+
+    const addressParts = [customer.address?.billing?.street, customer.address?.billing?.city, customer.address?.billing?.state].filter(Boolean).join(', ');
+    const phoneStr = customer.phone ? `Cell: ${customer.phone}` : '';
 
     const html = `<html><head><meta charset="UTF-8"><title>Ledger - ${customer.companyName || customer.name}</title>
 <style>
   @page { size: A4; margin: 15mm; }
-  body { font-family: 'Courier New', Courier, monospace; font-size: 11px; color: #000; font-weight: bold; margin:0; }
-  .hdr { width:100%; border-collapse:collapse; margin-bottom:8px; }
+  body { font-family: 'Courier New', Courier, monospace; font-size: 13px; color: #000; font-weight: bold; margin:0; line-height: 1.3; }
+  .hdr { width:100%; border-collapse:collapse; margin-bottom:10px; }
   .hdr td { padding:0; }
   .lt { width:100%; border-collapse:collapse; table-layout:fixed; }
-  .lt th, .lt td { padding:3px 2px; overflow:hidden; white-space:nowrap; }
-  .lt th { text-align:left; border-bottom:1px dashed #000; }
+  .lt th, .lt td { padding:4px 2px; }
+  .lt th { text-align:left; font-weight:bold; }
   .ra { text-align:right; }
+  
+  /* Adjusted column widths */
   .c1 { width:12%; }
-  .c2 { width:22%; white-space:normal; }
+  .c2 { width:40%; }
   .c3 { width:12%; }
   .c4 { width:12%; }
-  .c5 { width:11%; }
-  .c6 { width:11%; }
-  .c7 { width:20%; }
-  .sep td { border-top:1px dashed #000; padding:0; height:2px; }
-  .sep2 td { border-top:2px solid #000; padding:0; height:2px; }
+  .c5 { width:12%; }
+  .c6 { width:12%; }
+  
   .bold { font-weight:bold; }
+  
+  .double-line { border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 4px 0; height: 2px; }
+  .single-line { border-top: 1px dashed #000; margin: 4px 0; height: 1px; }
+  
+  /* Tally style borders */
+  .tally-border-top { border-top: 1px solid #000; border-top-style: dashed; }
+  .tally-border-bottom { border-bottom: 1px solid #000; border-bottom-style: dashed; }
 </style></head><body>
 
 <table class="hdr">
   <tr>
-    <td>Ledger of: <b>${customer.companyName || customer.name}</b></td>
+    <td>Ledger of: <span style="font-size:15px; margin-left: 10px;"><b>${customer.companyName || customer.name}</b></span></td>
     <td style="text-align:right">Page No: 1</td>
   </tr>
   <tr>
-    <td>${[customer.address?.billing?.street, customer.address?.billing?.city].filter(Boolean).join(', ')}</td>
-    <td></td>
+    <td colspan="2">${addressParts} ${phoneStr ? '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' + phoneStr : ''}</td>
   </tr>
 </table>
 
 <table class="lt">
   <thead>
+    <tr><td colspan="6" class="tally-border-bottom" style="padding:0; height:1px;"></td></tr>
     <tr>
       <th class="c1">Date</th>
       <th class="c2">Particulars</th>
@@ -1097,43 +1114,51 @@ export const printTallyLedger = (customer, entries, summary) => {
       <th class="c4">Vch No</th>
       <th class="c5 ra">Debit</th>
       <th class="c6 ra">Credit</th>
-      <th class="c7 ra">Balance</th>
     </tr>
+    <tr><td colspan="6" class="tally-border-bottom" style="padding:0; height:1px;"></td></tr>
   </thead>
   <tbody>
+    <tr><td colspan="6" style="height: 10px;"></td></tr>
     <tr>
       <td class="c1"></td>
-      <td class="c2 bold">Opening Balance :</td>
+      <td class="c2 bold" style="text-align:center;">Opening Balance :</td>
       <td class="c3"></td>
       <td class="c4"></td>
-      <td class="c5 ra bold">${openingBal < 0 ? fmt(Math.abs(openingBal)) : ''}</td>
-      <td class="c6 ra bold">${openingBal > 0 ? fmt(openingBal) : ''}</td>
-      <td class="c7 ra bold">${openingBal !== 0 ? fmt(Math.abs(openingBal)) + (openingBal > 0 ? ' Cr' : ' Dr') : ''}</td>
+      <td class="c5 ra bold" style="text-align:center;" colspan="2">${openingBal !== 0 ? fmt(Math.abs(openingBal)) + (openingBal > 0 ? ' Cr' : ' Dr') : ''}</td>
     </tr>
+    <tr><td colspan="6" style="height: 10px;"></td></tr>
     ${dataRows}
-    <tr class="sep"><td colspan="7"></td></tr>
+    <tr><td colspan="6" style="height: 10px;"></td></tr>
+    <tr><td colspan="6" class="tally-border-top" style="padding:0; height:1px;"></td></tr>
     <!-- Current Total -->
     <tr>
       <td class="c1"></td>
-      <td class="c2 bold" style="text-align:right; padding-right:10px;">Current Total :</td>
+      <td class="c2 bold" style="text-align:right; padding-right:20px;">Current Total :</td>
       <td class="c3"></td>
       <td class="c4"></td>
       <td class="c5 ra bold">${fmt(totalDr)}</td>
       <td class="c6 ra bold">${fmt(totalCr)}</td>
-      <td class="c7"></td>
     </tr>
-    <tr class="sep"><td colspan="7"></td></tr>
+    <tr><td colspan="6" style="height: 5px;"></td></tr>
     <!-- Closing Balance -->
     <tr>
       <td class="c1"></td>
-      <td class="c2 bold">Closing Balance :</td>
+      <td class="c2 bold" style="text-align:right; padding-right:20px;">Closing Balance :</td>
       <td class="c3"></td>
       <td class="c4"></td>
-      <td class="c5 ra bold"></td>
-      <td class="c6 ra bold"></td>
-      <td class="c7 ra bold">${closeBalStr}</td>
+      <td class="c5 ra bold">${closeBal < 0 ? fmt(Math.abs(closeBal)) : ''}</td>
+      <td class="c6 ra bold">${closeBal > 0 ? fmt(closeBal) : ''}</td>
     </tr>
-    <tr class="sep2"><td colspan="7"></td></tr>
+    <tr><td colspan="6" class="tally-border-bottom" style="padding:0; height:1px;"></td></tr>
+    <tr>
+      <td class="c1"></td>
+      <td class="c2 bold"></td>
+      <td class="c3"></td>
+      <td class="c4"></td>
+      <td class="c5 ra bold">${fmt(grandTotal)}</td>
+      <td class="c6 ra bold">${fmt(grandTotal)}</td>
+    </tr>
+    <tr><td colspan="6" class="tally-border-bottom" style="padding:0; height:1px;"></td></tr>
   </tbody>
 </table>
 

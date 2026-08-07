@@ -535,3 +535,192 @@ export const stockReturn = async (req, res, next) => {
         next(error);
     }
 };
+
+// @desc    Delete a stock return (reverses stock + ledger entries)
+// @route   DELETE /api/transactions/return/:id
+// @access  Private
+export const deleteStockReturn = async (req, res, next) => {
+    try {
+        const tx = await Transaction.findOne({ _id: req.params.id, type: 'return', ...tenantQuery(req) });
+        if (!tx) return sendError(res, 404, 'Return transaction not found');
+
+        const itemDoc = await Item.findById(tx.item);
+        if (!itemDoc) return sendError(res, 404, 'Item not found');
+
+        // Reverse the stock effect
+        const qty = tx.quantity || 0;
+        if (tx.returnType === 'customer') {
+            // Original return ADDED stock → reverse by subtracting
+            itemDoc.quantity = Math.max(0, itemDoc.quantity - qty);
+        } else if (tx.returnType === 'vendor') {
+            // Original return REMOVED stock → reverse by adding back
+            itemDoc.quantity = itemDoc.quantity + qty;
+        }
+        itemDoc.markModified('quantity');
+        await itemDoc.save();
+
+        // Remove ledger entries created by this return (matched by refNumber)
+        const refNum = tx.referenceOrder || tx.refNumber;
+        if (refNum) {
+            if (tx.returnType === 'vendor' && tx.vendor) {
+                await VendorLedger.deleteMany({ vendor: tx.vendor, refNumber: refNum, tenantId: req.tenantId });
+            } else if (tx.returnType === 'customer' && tx.customer) {
+                await CustomerLedger.deleteMany({ customer: tx.customer, refNumber: refNum, tenantId: req.tenantId });
+            }
+        }
+
+        // Delete the transaction record
+        await Transaction.deleteOne({ _id: tx._id });
+
+        sendResponse(res, 200, { deleted: tx._id }, 'Stock return deleted and stock/ledger reversed successfully');
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Edit a stock return (reverses original, applies new values)
+// @route   PUT /api/transactions/return/:id
+// @access  Private
+export const updateStockReturn = async (req, res, next) => {
+    try {
+        const tx = await Transaction.findOne({ _id: req.params.id, type: 'return', ...tenantQuery(req) });
+        if (!tx) return sendError(res, 404, 'Return transaction not found');
+
+        const itemDoc = await Item.findById(tx.item);
+        if (!itemDoc) return sendError(res, 404, 'Item not found');
+
+        const oldQty = tx.quantity || 0;
+        const newQty = parseInt(req.body.quantity) || oldQty;
+        const newRate = parseFloat(req.body.rate) ?? tx.rate;
+        const newTotal = req.body.total !== undefined ? parseFloat(req.body.total) : newQty * newRate;
+        const newSettlement = req.body.settlementType || tx.settlementType;
+        const newReason = req.body.reason ?? tx.reason;
+        const newNotes = req.body.notes ?? tx.notes;
+
+        // --- Step 1: Reverse the original stock change ---
+        if (tx.returnType === 'customer') {
+            itemDoc.quantity = Math.max(0, itemDoc.quantity - oldQty);
+        } else if (tx.returnType === 'vendor') {
+            itemDoc.quantity = itemDoc.quantity + oldQty;
+        }
+
+        // --- Step 2: Apply new stock change ---
+        const prevQty = itemDoc.quantity;
+        if (tx.returnType === 'customer') {
+            itemDoc.quantity = prevQty + newQty;
+        } else if (tx.returnType === 'vendor') {
+            if (itemDoc.quantity < newQty) {
+                return sendError(res, 400, 'Insufficient stock for updated return quantity');
+            }
+            itemDoc.quantity = itemDoc.quantity - newQty;
+        }
+        await itemDoc.save();
+
+        // --- Step 3: Reverse original ledger entries ---
+        const oldRefNum = tx.referenceOrder;
+        if (oldRefNum) {
+            if (tx.returnType === 'vendor' && tx.vendor) {
+                await VendorLedger.deleteMany({ vendor: tx.vendor, refNumber: oldRefNum, tenantId: req.tenantId });
+            } else if (tx.returnType === 'customer' && tx.customer) {
+                await CustomerLedger.deleteMany({ customer: tx.customer, refNumber: oldRefNum, tenantId: req.tenantId });
+            }
+        }
+
+        // --- Step 4: Create new ledger entries with updated values ---
+        const newRefNum = oldRefNum || `RET-${Date.now()}`;
+        const totalAmount = newTotal;
+
+        if (tx.returnType === 'vendor' && tx.vendor && totalAmount > 0) {
+            const lastEntry = await VendorLedger.findOne({ vendor: tx.vendor, tenantId: req.tenantId }).sort({ date: -1, createdAt: -1 });
+            const currentBalance = lastEntry ? lastEntry.balance : 0;
+            const newBalance = currentBalance - totalAmount;
+
+            await VendorLedger.create({
+                tenantId: req.tenantId,
+                vendor: tx.vendor,
+                date: Date.now(),
+                type: 'adjustment',
+                refType: 'Manual',
+                refNumber: newRefNum,
+                description: `Stock Return (Edited): ${itemDoc.name} (${newQty} qty)`,
+                debit: totalAmount,
+                balance: newBalance,
+                createdBy: req.user._id,
+                notes: newNotes || 'Edited return entry'
+            });
+
+            if (newSettlement === 'cash') {
+                const finalBalance = newBalance + totalAmount;
+                await VendorLedger.create({
+                    tenantId: req.tenantId,
+                    vendor: tx.vendor,
+                    date: Date.now(),
+                    type: 'payment',
+                    refType: 'Cash',
+                    refNumber: newRefNum,
+                    description: `Cash Received for Edited Return: ${itemDoc.name}`,
+                    credit: totalAmount,
+                    balance: finalBalance,
+                    createdBy: req.user._id,
+                });
+            }
+        } else if (tx.returnType === 'customer' && tx.customer && totalAmount > 0) {
+            const lastEntry = await CustomerLedger.findOne({ customer: tx.customer, tenantId: req.tenantId }).sort({ date: -1, createdAt: -1 });
+            const currentBalance = lastEntry ? lastEntry.balance : 0;
+            const newBalance = currentBalance - totalAmount;
+
+            await CustomerLedger.create({
+                tenantId: req.tenantId,
+                customer: tx.customer,
+                date: Date.now(),
+                type: 'payment',
+                refType: 'Manual',
+                refNumber: newRefNum,
+                description: `Refund (Edited): ${itemDoc.name} (${newQty} qty)`,
+                credit: totalAmount,
+                balance: newBalance,
+                createdBy: req.user._id,
+                notes: newNotes || 'Edited return entry'
+            });
+
+            if (newSettlement === 'cash') {
+                const finalBalance = newBalance + totalAmount;
+                await CustomerLedger.create({
+                    tenantId: req.tenantId,
+                    customer: tx.customer,
+                    date: Date.now(),
+                    type: 'payment',
+                    refType: 'Cash',
+                    refNumber: newRefNum,
+                    description: `Cash Paid for Edited Return: ${itemDoc.name}`,
+                    debit: totalAmount,
+                    balance: finalBalance,
+                    createdBy: req.user._id,
+                });
+            }
+        }
+
+        // --- Step 5: Update the transaction record ---
+        tx.quantity = newQty;
+        tx.rate = newRate;
+        tx.total = newTotal;
+        tx.settlementType = newSettlement;
+        tx.reason = newReason;
+        tx.notes = newNotes;
+        tx.referenceOrder = newRefNum;
+        tx.previousQuantity = prevQty;
+        tx.newQuantity = itemDoc.quantity;
+        await tx.save();
+
+        const updated = await Transaction.findById(tx._id)
+            .populate('item', 'name barcode')
+            .populate('customer', 'name companyName phone')
+            .populate('vendor', 'name companyName phone')
+            .populate({ path: 'user', model: User, select: 'name email' });
+
+        sendResponse(res, 200, updated, 'Stock return updated successfully');
+    } catch (error) {
+        next(error);
+    }
+};
+

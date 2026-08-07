@@ -45,6 +45,13 @@ const vendorSchema = new mongoose.Schema({
         type: Boolean,
         default: true,
     },
+    // If this vendor is also a customer, link to that Customer record
+    // Enables combined ledger view (Sales + Purchase in one statement)
+    linkedCustomerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Customer',
+        default: null,
+    },
     tenantId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Tenant',

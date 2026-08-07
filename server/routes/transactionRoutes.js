@@ -7,7 +7,9 @@ import {
     stockAdjustment,
     getTransactions,
     getItemHistory,
-    upload
+    upload,
+    deleteStockReturn,
+    updateStockReturn,
 } from '../controllers/transactionController.js';
 // import { protect } from '../middleware/authMiddleware.js';
 import { checkMenuAccess } from '../middleware/accessMiddleware.js';
@@ -20,7 +22,10 @@ router.post('/outward', checkMenuAccess('stock-outward'), validateRequest(schema
 router.post('/transfer', checkMenuAccess('inventory'), validateRequest(schemas.createTransaction), stockTransfer);
 router.post('/return', checkMenuAccess('stock-return'), validateRequest(schemas.createTransaction), stockReturn);
 router.post('/adjustment', checkMenuAccess('stocks'), validateRequest(schemas.createTransaction), stockAdjustment);
+router.put('/return/:id', checkMenuAccess('stock-return'), updateStockReturn);
+router.delete('/return/:id', checkMenuAccess('stock-return'), deleteStockReturn);
 router.get('/', getTransactions);
 router.get('/item/:itemId', getItemHistory);
 
 export default router;
+
