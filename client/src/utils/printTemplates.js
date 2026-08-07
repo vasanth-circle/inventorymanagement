@@ -1027,7 +1027,32 @@ export const printTallyLedger = (customer, entries, summary) => {
     let dataRows = '';
     let lastDate = '';
 
-    entries.forEach(entry => {
+    const groupedEntries = [];
+    let currentGroup = null;
+
+    entries.forEach((entry) => {
+        const dateStr = new Date(entry.date).toDateString();
+        const isRefund = entry.description && (entry.description.includes('Refund') || entry.description.includes('Return'));
+        
+        if (isRefund && entry.refNumber) {
+            if (currentGroup && currentGroup.refNumber === entry.refNumber && currentGroup.dateStr === dateStr) {
+                currentGroup.credit += entry.credit || 0;
+                currentGroup.debit += entry.debit || 0;
+            } else {
+                if (currentGroup) groupedEntries.push(currentGroup);
+                currentGroup = { ...entry, isGroup: true, dateStr, description: `Grouped Refund (Ref: ${entry.refNumber})` };
+            }
+        } else {
+            if (currentGroup) {
+                groupedEntries.push(currentGroup);
+                currentGroup = null;
+            }
+            groupedEntries.push(entry);
+        }
+    });
+    if (currentGroup) groupedEntries.push(currentGroup);
+
+    groupedEntries.forEach(entry => {
         totalDr += (entry.debit || 0);
         totalCr += (entry.credit || 0);
         const drStr  = entry.debit  ? fmt(entry.debit)  : '';
@@ -1039,9 +1064,13 @@ export const printTallyLedger = (customer, entries, summary) => {
         lastDate = dateStr;
 
         let particulars = (entry.description || '');
-        // If it's a bill, Tally usually says something like "Sales" or the item names.
-        // We'll use the description from the entry.
-        const typeStr = entry.type === 'bill' ? 'Sales' : (entry.type === 'payment' ? 'Receipt' : 'Journal');
+        const isRefund = entry.description && (entry.description.includes('Refund') || entry.description.includes('Return'));
+        
+        let typeStr;
+        if (isRefund) typeStr = 'Return';
+        else if (entry.type === 'bill') typeStr = 'Sales';
+        else if (entry.type === 'payment') typeStr = 'Receipt';
+        else typeStr = 'Journal';
 
         dataRows += `<tr>
             <td class="c1">${displayDate}</td>
@@ -1148,15 +1177,6 @@ export const printTallyLedger = (customer, entries, summary) => {
       <td class="c4"></td>
       <td class="c5 ra bold">${closeBal < 0 ? fmt(Math.abs(closeBal)) : ''}</td>
       <td class="c6 ra bold">${closeBal > 0 ? fmt(closeBal) : ''}</td>
-    </tr>
-    <tr><td colspan="6" class="tally-border-bottom" style="padding:0; height:1px;"></td></tr>
-    <tr>
-      <td class="c1"></td>
-      <td class="c2 bold"></td>
-      <td class="c3"></td>
-      <td class="c4"></td>
-      <td class="c5 ra bold">${fmt(grandTotal)}</td>
-      <td class="c6 ra bold">${fmt(grandTotal)}</td>
     </tr>
     <tr><td colspan="6" class="tally-border-bottom" style="padding:0; height:1px;"></td></tr>
   </tbody>

@@ -441,6 +441,32 @@ const Reports = () => {
                 </div>
             );
         } else if (reportType === 'detailed_ledger') {
+            const groupedReportData = [];
+            let currentGroup = null;
+
+            reportData.forEach((entry) => {
+                const dateStr = new Date(entry.date).toDateString();
+                const isRefund = entry.description && (entry.description.includes('Refund') || entry.description.includes('Return'));
+                
+                if (isRefund && entry.refNumber) {
+                    if (currentGroup && currentGroup.refNumber === entry.refNumber && currentGroup.dateStr === dateStr) {
+                        currentGroup.credit += entry.credit || 0;
+                        currentGroup.debit += entry.debit || 0;
+                        currentGroup.balance = entry.balance;
+                    } else {
+                        if (currentGroup) groupedReportData.push(currentGroup);
+                        currentGroup = { ...entry, isGroup: true, dateStr, description: `Grouped Refund (Ref: ${entry.refNumber})` };
+                    }
+                } else {
+                    if (currentGroup) {
+                        groupedReportData.push(currentGroup);
+                        currentGroup = null;
+                    }
+                    groupedReportData.push(entry);
+                }
+            });
+            if (currentGroup) groupedReportData.push(currentGroup);
+
             return (
                 <div className="overflow-x-auto">
                     <table className="min-w-full">
@@ -455,7 +481,7 @@ const Reports = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50 font-medium">
-                            {reportData.map((entry, idx) => (
+                            {groupedReportData.map((entry, idx) => (
                                 <tr key={idx} className="hover:bg-gray-50/50">
                                     <td className="px-3 py-2 sm:px-6 sm:py-3 whitespace-nowrap text-[11px] sm:text-xs text-gray-900">{new Date(entry.date).toLocaleDateString()}</td>
                                     <td className="px-3 py-2 sm:px-6 sm:py-3 text-[11px] sm:text-xs text-gray-800">{entry.description}</td>
@@ -608,16 +634,14 @@ const Reports = () => {
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-1 rounded">Parameters</span>
                     
                     {(reportType === 'detailed_ledger' || reportType === 'daywise_receivables') && (
-                        <select
-                            value={selectedCustomer}
-                            onChange={(e) => setSelectedCustomer(e.target.value)}
-                            className="text-xs bg-white border border-gray-200 font-bold text-gray-700 focus:ring-2 focus:ring-primary-100 focus:border-primary-300 outline-none px-3 py-2 rounded-lg min-w-[200px]"
-                        >
-                            <option value="">-- All Customers --</option>
-                            {customers.map(c => (
-                                <option key={c._id} value={c._id}>{c.companyName || c.name}</option>
-                            ))}
-                        </select>
+                        <div className="w-[300px]">
+                            <SearchableSelect
+                                options={customers.map(c => ({ value: c._id, label: c.companyName || c.name }))}
+                                value={selectedCustomer}
+                                onChange={(e) => setSelectedCustomer(e?.target?.value || e)}
+                                placeholder="Search & Select Customer..."
+                            />
+                        </div>
                     )}
 
                     {reportType === 'item_history' && (
