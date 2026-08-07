@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { toast } from 'react-hot-toast';
@@ -262,6 +262,36 @@ const VendorLedger = () => {
         });
     }
 
+    const groupedEntries = useMemo(() => {
+        const groups = [];
+        let currentGroup = null;
+
+        entries.forEach((entry) => {
+            const dateStr = new Date(entry.date).toDateString();
+            const isRefund = entry.description && entry.description.includes('Return');
+            
+            if (isRefund && entry.refNumber) {
+                if (currentGroup && currentGroup.refNumber === entry.refNumber && currentGroup.dateStr === dateStr) {
+                    currentGroup.items.push(entry);
+                    currentGroup.credit += entry.credit || 0;
+                    currentGroup.debit += entry.debit || 0;
+                    currentGroup.balance = entry.balance;
+                } else {
+                    if (currentGroup) groups.push(currentGroup);
+                    currentGroup = { ...entry, isGroup: true, items: [entry], dateStr, description: `Grouped Return (Ref: ${entry.refNumber})` };
+                }
+            } else {
+                if (currentGroup) {
+                    groups.push(currentGroup);
+                    currentGroup = null;
+                }
+                groups.push(entry);
+            }
+        });
+        if (currentGroup) groups.push(currentGroup);
+        return groups;
+    }, [entries]);
+
     const typeStyle = (type) => {
         if (type === 'bill') return { bg: 'bg-red-50', badge: 'bg-red-100 text-red-700', label: '📦 Purchase' };
         if (type === 'payment') return { bg: 'bg-green-50', badge: 'bg-green-100 text-green-700', label: '💸 Paid' };
@@ -365,7 +395,7 @@ const VendorLedger = () => {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
                     <h2 className="font-bold text-gray-800">Vendor Ledger Entries</h2>
-                    <span className="text-sm text-gray-500">{entries.length} entries</span>
+                    <span className="text-sm text-gray-500">{groupedEntries.length} entries</span>
                 </div>
                 {loading ? (
                     <div className="flex justify-center items-center h-48">
@@ -377,7 +407,7 @@ const VendorLedger = () => {
                         <p className="text-lg font-medium">Select a Vendor</p>
                         <p className="text-sm">Choose a vendor from the dropdown to view your payment history and dues.</p>
                     </div>
-                ) : entries.length === 0 ? (
+                ) : groupedEntries.length === 0 ? (
                     <div className="text-center py-16 text-gray-400">
                         <p className="text-4xl mb-3">📒</p>
                         <p className="text-lg font-medium">No ledger entries found</p>
@@ -399,10 +429,11 @@ const VendorLedger = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {entries.map((entry, i) => {
+                                {groupedEntries.map((entry, i) => {
                                     const ts = typeStyle(entry.type);
+                                    const isManualPayment = entry.type === 'payment' && entry.refType === 'Manual' && !entry.isGroup;
                                     return (
-                                        <tr key={entry._id} className={`${ts.bg} hover:brightness-95 transition-all`}>
+                                        <tr key={entry._id || i} className={`${ts.bg} hover:brightness-95 transition-all`}>
                                             <td className="px-4 py-3 text-gray-400 text-sm">{i + 1}</td>
                                             <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
                                                 {new Date(entry.date).toLocaleDateString('en-IN')}

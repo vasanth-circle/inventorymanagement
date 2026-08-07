@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { printReturnSlip } from '../utils/printTemplates';
 import { InventoryContext } from '../context/InventoryContext';
-import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, TrashIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
 const API_URL = '/api/transactions';
 const authHeader = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
@@ -242,15 +242,72 @@ const StockReturnsList = () => {
 
     const handleDeleted = (id) => setReturns(prev => prev.filter(tx => tx._id !== id));
     const handleSaved = () => fetchReturns();
-    const handlePrint = (tx) => printReturnSlip(tx, billingSettings);
+    const handlePrint = (txGroup) => {
+        const returnTx = {
+            ...txGroup,
+            items: txGroup.items.map(t => {
+                const isTile = billingSettings?.industry === 'tiles' && t.item?.sqFtPerPc > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((t.item?.unitType || '').toLowerCase());
+                return {
+                    name: t.item?.name || 'Unknown',
+                    brand: t.item?.brand,
+                    size: t.item?.size,
+                    hsnCode: t.item?.hsnCode || t.item?.hsn || '',
+                    quantity: t.quantity || 0,
+                    boxCount: isTile ? ((t.quantity || 0) / (t.item?.pcsPerBox || 1)) : undefined,
+                    price: t.rate || 0,
+                    total: t.total !== undefined ? t.total : ((t.quantity || 0) * (t.rate || 0)),
+                    taxRate: t.item?.taxRate || 0,
+                    billingUnit: t.item?.billingUnit || t.item?.unitType || 'Nos',
+                    item: t.item
+                };
+            })
+        };
+        printReturnSlip(returnTx, billingSettings);
+    };
 
-    const filteredReturns = returns.filter(tx => {
-        const entityName = (tx.customer?.name || tx.customer?.companyName || tx.vendor?.name || tx.vendor?.companyName || '').toLowerCase();
-        const itemName = (tx.item?.name || '').toLowerCase();
-        const matchSearch = !searchTerm || entityName.includes(searchTerm.toLowerCase()) || itemName.includes(searchTerm.toLowerCase());
+    const [expandedGroups, setExpandedGroups] = useState(new Set());
+
+    const toggleGroup = (groupId) => {
+        setExpandedGroups(prev => {
+            const next = new Set(prev);
+            if (next.has(groupId)) next.delete(groupId);
+            else next.add(groupId);
+            return next;
+        });
+    };
+
+    const groupedReturns = useMemo(() => {
+        const groups = {};
+        returns.forEach(tx => {
+            const date = new Date(tx.createdAt).toLocaleDateString('en-IN');
+            const ref = tx.referenceOrder || 'NO-REF';
+            const cust = tx.customer?._id || tx.vendor?._id || 'NO-ENT';
+            const key = `${date}-${ref}-${cust}`;
+            if (!groups[key]) {
+                groups[key] = {
+                    ...tx,
+                    _id: key,
+                    isGroup: true,
+                    items: [tx],
+                    totalAmount: tx.total !== undefined ? tx.total : ((tx.quantity || 0) * (tx.rate || 0)),
+                    totalQty: tx.quantity || 0,
+                };
+            } else {
+                groups[key].items.push(tx);
+                groups[key].totalAmount += (tx.total !== undefined ? tx.total : ((tx.quantity || 0) * (tx.rate || 0)));
+                groups[key].totalQty += (tx.quantity || 0);
+            }
+        });
+        return Object.values(groups).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }, [returns]);
+
+    const filteredReturns = groupedReturns.filter(group => {
+        const entityName = (group.customer?.name || group.customer?.companyName || group.vendor?.name || group.vendor?.companyName || '').toLowerCase();
+        const matchSearch = !searchTerm || entityName.includes(searchTerm.toLowerCase()) || group.items.some(it => (it.item?.name || '').toLowerCase().includes(searchTerm.toLowerCase()));
+        
         let matchDate = true;
         if (fromDate || toDate) {
-            const txDate = new Date(tx.createdAt).setHours(0, 0, 0, 0);
+            const txDate = new Date(group.createdAt).setHours(0, 0, 0, 0);
             const start = fromDate ? new Date(fromDate).setHours(0, 0, 0, 0) : null;
             const end = toDate ? new Date(toDate).setHours(0, 0, 0, 0) : null;
             if (start && end) matchDate = txDate >= start && txDate <= end;
@@ -312,56 +369,86 @@ const StockReturnsList = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {paginatedReturns.map((tx) => {
-                                    const entityName = tx.customer?.companyName || tx.customer?.name || tx.vendor?.companyName || tx.vendor?.name || 'Unknown';
-                                    const entityType = tx.returnType === 'customer' ? 'Customer' : 'Vendor';
-                                    const amount = tx.total !== undefined ? tx.total : ((tx.quantity || 0) * (tx.rate || 0));
+                                {paginatedReturns.map((group) => {
+                                    const entityName = group.customer?.companyName || group.customer?.name || group.vendor?.companyName || group.vendor?.name || 'Unknown';
+                                    const entityType = group.returnType === 'customer' ? 'Customer' : 'Vendor';
+                                    const amount = group.totalAmount;
+                                    const isExpanded = expandedGroups.has(group._id);
 
                                     return (
-                                        <tr key={tx._id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-6 py-4 text-gray-600 text-sm font-medium whitespace-nowrap">
-                                                {new Date(tx.createdAt).toLocaleDateString('en-IN')}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <p className="text-gray-900 font-bold text-sm">{entityName}</p>
-                                                <span className={`text-[10px] font-bold uppercase ${entityType === 'Customer' ? 'text-blue-500' : 'text-purple-500'}`}>{entityType}</span>
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-700 font-medium text-sm">{tx.item?.name || 'N/A'}</td>
-                                            <td className="px-6 py-4 text-center font-bold text-gray-900">{tx.quantity}</td>
-                                            <td className="px-6 py-4 font-bold text-gray-900 text-right whitespace-nowrap">
-                                                ₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className={`px-2 py-1 rounded text-[10px] font-black uppercase ${tx.settlementType === 'cash' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                                                    {tx.settlementType === 'cash' ? '💵 Cash' : '📒 Ledger'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <button
-                                                        onClick={() => handlePrint(tx)}
-                                                        className="text-primary-600 hover:text-primary-800 text-xs font-bold border border-primary-200 px-2.5 py-1.5 rounded-lg bg-primary-50 transition-all hover:bg-primary-100 whitespace-nowrap"
-                                                        title="Print Slip"
-                                                    >
-                                                        🖨️ Print
+                                        <React.Fragment key={group._id}>
+                                            <tr className="hover:bg-gray-50 transition-colors border-b border-gray-100">
+                                                <td className="px-6 py-4 text-gray-600 text-sm font-medium whitespace-nowrap">
+                                                    {new Date(group.createdAt).toLocaleDateString('en-IN')}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <p className="text-gray-900 font-bold text-sm">{entityName}</p>
+                                                    <span className={`text-[10px] font-bold uppercase ${entityType === 'Customer' ? 'text-blue-500' : 'text-purple-500'}`}>{entityType}</span>
+                                                    {group.referenceOrder && <span className="block text-[10px] text-gray-500 mt-0.5">Ref: {group.referenceOrder}</span>}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <button onClick={() => toggleGroup(group._id)} className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-800 font-semibold text-sm transition-colors">
+                                                        {isExpanded ? <ChevronDownIcon className="w-4 h-4" /> : <ChevronRightIcon className="w-4 h-4" />}
+                                                        {group.items.length} {group.items.length === 1 ? 'Item' : 'Items'}
                                                     </button>
-                                                    <button
-                                                        onClick={() => setEditingTx(tx)}
-                                                        className="p-1.5 rounded-lg text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 transition-colors"
-                                                        title="Edit Return"
-                                                    >
-                                                        <PencilSquareIcon className="w-4 h-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setDeletingTx(tx)}
-                                                        className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                                                        title="Delete Return"
-                                                    >
-                                                        <TrashIcon className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
+                                                </td>
+                                                <td className="px-6 py-4 text-center font-bold text-gray-900">{group.totalQty}</td>
+                                                <td className="px-6 py-4 font-bold text-gray-900 text-right whitespace-nowrap">
+                                                    ₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <span className={`px-2 py-1 rounded text-[10px] font-black uppercase ${group.settlementType === 'cash' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                        {group.settlementType === 'cash' ? '💵 Cash' : '📒 Ledger'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button
+                                                            onClick={() => handlePrint(group)}
+                                                            className="text-primary-600 hover:text-primary-800 text-xs font-bold border border-primary-200 px-2.5 py-1.5 rounded-lg bg-primary-50 transition-all hover:bg-primary-100 whitespace-nowrap"
+                                                            title="Print Slip"
+                                                        >
+                                                            🖨️ Print
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {isExpanded && group.items.map((tx, idx) => (
+                                                <tr key={tx._id} className="bg-indigo-50/30 border-b border-indigo-50 last:border-b-0">
+                                                    <td className="px-6 py-3 pl-12">
+                                                        <span className="text-[10px] text-gray-400 font-bold uppercase">Item {idx + 1}</span>
+                                                    </td>
+                                                    <td colSpan="2" className="px-6 py-3">
+                                                        <p className="text-sm font-semibold text-gray-800">{tx.item?.name || 'Unknown'}</p>
+                                                        {(tx.item?.brand || tx.item?.size) && (
+                                                            <span className="text-[10px] text-gray-500">{[tx.item?.brand, tx.item?.size].filter(Boolean).join(' · ')}</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-3 text-center text-sm font-bold text-gray-700">{tx.quantity}</td>
+                                                    <td className="px-6 py-3 text-right text-sm font-bold text-gray-700">
+                                                        ₹{(tx.total !== undefined ? tx.total : ((tx.quantity || 0) * (tx.rate || 0))).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                    </td>
+                                                    <td colSpan="2" className="px-6 py-3">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <button
+                                                                onClick={() => setEditingTx(tx)}
+                                                                className="p-1.5 rounded-lg text-indigo-500 hover:text-indigo-700 hover:bg-white border border-transparent hover:border-indigo-100 transition-colors"
+                                                                title="Edit Item"
+                                                            >
+                                                                <PencilSquareIcon className="w-4 h-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setDeletingTx(tx)}
+                                                                className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-white border border-transparent hover:border-red-100 transition-colors"
+                                                                title="Delete Item"
+                                                            >
+                                                                <TrashIcon className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </React.Fragment>
                                     );
                                 })}
                                 {paginatedReturns.length === 0 && (
@@ -378,37 +465,63 @@ const StockReturnsList = () => {
 
                     {/* Mobile Cards */}
                     <div className="lg:hidden space-y-3">
-                        {paginatedReturns.map((tx) => {
-                            const entityName = tx.customer?.companyName || tx.customer?.name || tx.vendor?.companyName || tx.vendor?.name || 'Unknown';
-                            const amount = tx.total !== undefined ? tx.total : (tx.quantity || 0) * (tx.rate || 0);
+                        {paginatedReturns.map((group) => {
+                            const entityName = group.customer?.companyName || group.customer?.name || group.vendor?.companyName || group.vendor?.name || 'Unknown';
+                            const amount = group.totalAmount;
+                            const isExpanded = expandedGroups.has(group._id);
                             return (
-                                <div key={tx._id} className="bg-white rounded-2xl border border-gray-100 shadow-md p-4">
+                                <div key={group._id} className="bg-white rounded-2xl border border-gray-100 shadow-md p-4">
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
-                                            <span className="text-[10px] font-black text-gray-400 uppercase">{new Date(tx.createdAt).toLocaleDateString('en-IN')}</span>
+                                            <span className="text-[10px] font-black text-gray-400 uppercase">{new Date(group.createdAt).toLocaleDateString('en-IN')}</span>
                                             <h3 className="font-extrabold text-gray-900 text-sm mt-0.5">{entityName}</h3>
+                                            {group.referenceOrder && <span className="block text-[10px] text-gray-500">Ref: {group.referenceOrder}</span>}
                                         </div>
-                                        <span className={`px-2 py-1 rounded text-[9px] font-black uppercase ${tx.returnType === 'customer' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
-                                            {tx.returnType}
+                                        <span className={`px-2 py-1 rounded text-[9px] font-black uppercase ${group.returnType === 'customer' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
+                                            {group.returnType}
                                         </span>
                                     </div>
-                                    <div className="text-sm font-medium text-gray-600 mb-3">{tx.item?.name} × {tx.quantity}</div>
+                                    <div className="text-sm font-medium text-gray-600 mb-3 flex items-center gap-1 cursor-pointer" onClick={() => toggleGroup(group._id)}>
+                                        {isExpanded ? <ChevronDownIcon className="w-4 h-4 text-indigo-500" /> : <ChevronRightIcon className="w-4 h-4 text-indigo-500" />}
+                                        <span className="text-indigo-600 font-bold">{group.items.length} {group.items.length === 1 ? 'Item' : 'Items'}</span> 
+                                        <span className="text-gray-400 mx-1">•</span> 
+                                        {group.totalQty} Qty
+                                    </div>
+                                    
+                                    {isExpanded && (
+                                        <div className="mb-3 space-y-2 border-l-2 border-indigo-100 pl-3">
+                                            {group.items.map((tx, idx) => (
+                                                <div key={tx._id} className="bg-gray-50 p-2 rounded-lg">
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <span className="text-xs font-semibold text-gray-800">{tx.item?.name || 'Unknown'}</span>
+                                                        <span className="text-xs font-bold text-gray-600">₹{(tx.total !== undefined ? tx.total : ((tx.quantity || 0) * (tx.rate || 0))).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center mt-2">
+                                                        <span className="text-[10px] font-bold text-gray-500">Qty: {tx.quantity}</span>
+                                                        <div className="flex gap-2">
+                                                            <button onClick={() => setEditingTx(tx)} className="p-1.5 rounded-lg text-indigo-500 hover:text-indigo-700 hover:bg-white transition-colors">
+                                                                <PencilSquareIcon className="w-4 h-4" />
+                                                            </button>
+                                                            <button onClick={() => setDeletingTx(tx)} className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-white transition-colors">
+                                                                <TrashIcon className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
                                     <div className="flex justify-between items-center pt-3 border-t border-gray-50">
                                         <div>
                                             <span className="font-black text-gray-900">₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                                            <span className={`block text-[9px] font-black uppercase mt-1 ${tx.settlementType === 'cash' ? 'text-green-600' : 'text-gray-500'}`}>
-                                                {tx.settlementType === 'cash' ? '💵 Cash Refund' : '📒 Ledger Credit'}
+                                            <span className={`block text-[9px] font-black uppercase mt-1 ${group.settlementType === 'cash' ? 'text-green-600' : 'text-gray-500'}`}>
+                                                {group.settlementType === 'cash' ? '💵 Cash Refund' : '📒 Ledger Credit'}
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <button onClick={() => handlePrint(tx)} className="h-8 px-3 bg-primary-50 hover:bg-primary-100 text-primary-700 rounded-lg text-xs font-bold border border-primary-200">
-                                                🖨️
-                                            </button>
-                                            <button onClick={() => setEditingTx(tx)} className="h-8 w-8 flex items-center justify-center bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg border border-indigo-200">
-                                                <PencilSquareIcon className="w-4 h-4" />
-                                            </button>
-                                            <button onClick={() => setDeletingTx(tx)} className="h-8 w-8 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-lg border border-red-200">
-                                                <TrashIcon className="w-4 h-4" />
+                                            <button onClick={() => handlePrint(group)} className="h-8 px-3 bg-primary-50 hover:bg-primary-100 text-primary-700 rounded-lg text-xs font-bold border border-primary-200">
+                                                🖨️ Print
                                             </button>
                                         </div>
                                     </div>

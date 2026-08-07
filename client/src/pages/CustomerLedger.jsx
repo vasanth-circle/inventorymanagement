@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useContext, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useContext, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
@@ -101,27 +101,23 @@ const CustomerLedger = () => {
     const [from, setFrom] = useState('');
     const [to, setTo] = useState('');
     const [settings, setSettings] = useState(null);
-    const [linkedVendor, setLinkedVendor] = useState(null); // vendor that links to this customer
+    const [linkedVendor, setLinkedVendor] = useState(null);
 
     const effectiveRole = user?.appRoles?.inventory || user?.role;
     const canRecordPayment = ['admin', 'manager', 'tenant_owner', 'tenant_admin', 'accounts', 'sales_person', 'sales person', 'sales_user', 'sales user'].includes(effectiveRole) || ['admin', 'manager', 'tenant_owner', 'tenant_admin', 'super_admin', 'sales_person'].includes(user?.role);
     const canEditPayment = ['admin', 'manager', 'tenant_owner', 'tenant_admin'].includes(effectiveRole) || ['admin', 'manager', 'tenant_owner', 'tenant_admin', 'super_admin'].includes(user?.role);
 
-    // New Payment modal state
     const [payModal, setPayModal] = useState(false);
     const [paying, setPaying] = useState(false);
     const [payForm, setPayForm] = useState({ amount: '', paymentMode: 'cash', date: new Date().toISOString().split('T')[0], notes: '', refNumber: '' });
 
-    // Edit Payment modal state
     const [editModal, setEditModal] = useState(false);
     const [editingEntry, setEditingEntry] = useState(null);
     const [editForm, setEditForm] = useState({ amount: '', paymentMode: 'cash', date: '', notes: '', refNumber: '' });
     const [editSaving, setEditSaving] = useState(false);
 
-    // Delete confirm state
-    const [deleteConfirm, setDeleteConfirm] = useState(null); // holds the entry to delete
+    const [deleteConfirm, setDeleteConfirm] = useState(null);
     const [deleting, setDeleting] = useState(false);
-
 
     const fetchLedger = useCallback(async () => {
         if (!selectedCustomerId) {
@@ -143,14 +139,12 @@ const CustomerLedger = () => {
     }, [selectedCustomerId, from, to]);
 
     useEffect(() => {
-        // Fetch customers list for dropdown (fetch all for local search)
         api('/customers?limit=1000').then(res => {
             setCustomers(res.data.data.customers);
         }).catch(() => {});
         fetchLedger(); 
     }, [fetchLedger]);
 
-    // When selected customer changes, check if any vendor is linked to this customer
     useEffect(() => {
         if (!selectedCustomerId) { setLinkedVendor(null); return; }
         api('/vendors?limit=1000').then(res => {
@@ -182,9 +176,8 @@ const CustomerLedger = () => {
 
     const handlePrint = async () => {
         try {
-            // Always fetch full statement (no date filter) for printing
             const res = await api(`/customers/${selectedCustomerId}/statement`);
-            const { customer, entries, summary, period } = res.data.data;
+            const { customer, entries, summary } = res.data.data;
             printTallyLedger(customer, entries, summary);
         } catch {
             toast.error('Failed to generate statement');
@@ -243,30 +236,13 @@ const CustomerLedger = () => {
         }
     };
 
-    const handleDeletePayment = async () => {
-        if (!deleteConfirm) return;
-        setDeleting(true);
-        try {
-            await api(`/customers/${selectedCustomerId}/payment/${deleteConfirm._id}`, { method: 'DELETE' });
-            toast.success('Payment deleted successfully');
-            setDeleteConfirm(null);
-            fetchLedger();
-        } catch (err) {
-            toast.error(err.response?.data?.message || 'Failed to delete payment');
-        } finally {
-            setDeleting(false);
-        }
-    };
-
-
     const customer = data?.customer;
     const backendEntries = data?.entries || [];
     const balance = data?.currentBalance ?? 0;
     const bbf = data?.bbf ?? 0;
 
     const entries = [...backendEntries];
-    if (bbf !== 0 || backendEntries.length === 0 && customer?.openingBalance) {
-        // If there are no entries but an opening balance, or if there's a non-zero bbf
+    if (bbf !== 0 || (backendEntries.length === 0 && customer?.openingBalance)) {
         const displayBbf = bbf !== 0 ? bbf : (customer?.openingBalance || 0);
         if (displayBbf !== 0) {
             entries.unshift({
@@ -282,6 +258,36 @@ const CustomerLedger = () => {
         }
     }
 
+    const groupedEntries = useMemo(() => {
+        const groups = [];
+        let currentGroup = null;
+
+        entries.forEach((entry) => {
+            const dateStr = new Date(entry.date).toDateString();
+            const isRefund = entry.description && entry.description.includes('Refund');
+            
+            if (isRefund && entry.refNumber) {
+                if (currentGroup && currentGroup.refNumber === entry.refNumber && currentGroup.dateStr === dateStr) {
+                    currentGroup.items.push(entry);
+                    currentGroup.credit += entry.credit || 0;
+                    currentGroup.debit += entry.debit || 0;
+                    currentGroup.balance = entry.balance;
+                } else {
+                    if (currentGroup) groups.push(currentGroup);
+                    currentGroup = { ...entry, isGroup: true, items: [entry], dateStr, description: `Grouped Refund (Ref: ${entry.refNumber})` };
+                }
+            } else {
+                if (currentGroup) {
+                    groups.push(currentGroup);
+                    currentGroup = null;
+                }
+                groups.push(entry);
+            }
+        });
+        if (currentGroup) groups.push(currentGroup);
+        return groups;
+    }, [entries]);
+
     const typeStyle = (type) => {
         if (type === 'bill') return { bg: 'bg-orange-50', badge: 'bg-orange-100 text-orange-700', label: '🧾 Bill' };
         if (type === 'payment') return { bg: 'bg-green-50', badge: 'bg-green-100 text-green-700', label: '✅ Payment' };
@@ -291,7 +297,6 @@ const CustomerLedger = () => {
 
     return (
         <div className="space-y-6 pb-24 lg:pb-8">
-            {/* Header */}
             <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-end pb-4 border-b border-gray-100">
                 <div className="flex items-center gap-3 w-full sm:w-auto flex-1 max-w-md">
                     <button onClick={() => navigate('/customers')} className="text-gray-500 hover:text-gray-800 text-xl font-bold">←</button>
@@ -321,7 +326,6 @@ const CustomerLedger = () => {
                 </div>
             </div>
 
-            {/* Combined Ledger Banner — shown when this customer is also a vendor */}
             {linkedVendor && (
                 <div className="flex items-center justify-between bg-purple-50 border border-purple-200 rounded-xl px-5 py-3 gap-3">
                     <div className="flex items-center gap-2">
@@ -340,7 +344,6 @@ const CustomerLedger = () => {
                 </div>
             )}
 
-            {/* Balance Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className={`rounded-xl p-5 shadow-sm border ${balance > 0 ? 'bg-orange-50 border-orange-200' : 'bg-green-50 border-green-200'}`}>
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Outstanding Balance</p>
@@ -361,7 +364,6 @@ const CustomerLedger = () => {
                 </div>
             </div>
 
-            {/* Date Filter */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-wrap gap-3 items-end">
                 <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1">From Date</label>
@@ -379,11 +381,10 @@ const CustomerLedger = () => {
                 )}
             </div>
 
-            {/* Ledger Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
                     <h2 className="font-bold text-gray-800">Ledger Entries</h2>
-                    <span className="text-sm text-gray-500">{entries.length} entries</span>
+                    <span className="text-sm text-gray-500">{groupedEntries.length} entries</span>
                 </div>
                 {loading ? (
                     <div className="flex justify-center items-center h-48">
@@ -395,7 +396,7 @@ const CustomerLedger = () => {
                         <p className="text-lg font-medium">Select an account</p>
                         <p className="text-sm">Choose a customer document from the dropdown above to view their Tally ledger statement.</p>
                     </div>
-                ) : entries.length === 0 ? (
+                ) : groupedEntries.length === 0 ? (
                     <div className="text-center py-16 text-gray-400">
                         <p className="text-4xl mb-3">📒</p>
                         <p className="text-lg font-medium">No ledger entries found</p>
@@ -417,11 +418,11 @@ const CustomerLedger = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {entries.map((entry, i) => {
+                                {groupedEntries.map((entry, i) => {
                                     const ts = typeStyle(entry.type);
-                                    const isManualPayment = entry.type === 'payment' && entry.refType === 'Manual';
+                                    const isManualPayment = entry.type === 'payment' && entry.refType === 'Manual' && !entry.isGroup;
                                     return (
-                                        <tr key={entry._id} className={`${ts.bg} hover:brightness-95 transition-all`}>
+                                        <tr key={entry._id || i} className={`${ts.bg} hover:brightness-95 transition-all`}>
                                             <td className="px-4 py-3 text-gray-400 text-sm" data-label="#">{i + 1}</td>
                                             <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap" data-label="Date">
                                                 {new Date(entry.date).toLocaleDateString('en-IN')}
