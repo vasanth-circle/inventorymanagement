@@ -5,9 +5,10 @@ import { InventoryContext } from '../context/InventoryContext';
 import SearchableSelect from '../components/SearchableSelect';
 import FullScreenModal from '../components/FullScreenModal';
 import { printDraftPO } from '../utils/printTemplates';
+import { confirmDelete } from '../utils/confirmHelper';
 
 const DraftPOs = () => {
-    const { items: allItems, fetchItems } = useContext(InventoryContext);
+    const { items: allItems, fetchItems, billingSettings } = useContext(InventoryContext);
     const [draftPOs, setDraftPOs] = useState([]);
     const [vendors, setVendors] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -97,21 +98,25 @@ const DraftPOs = () => {
             setSelectedItems([]);
             fetchDraftPOs();
             // Automatically print the newly created PO
-            printDraftPO(data);
+            printDraftPO(data, billingSettings);
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to create Draft PO');
         }
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this Draft PO?')) return;
-        try {
-            await api.delete(`/draft-pos/${id}`);
-            toast.success('Draft PO deleted');
-            fetchDraftPOs();
-        } catch (error) {
-            toast.error('Failed to delete Draft PO');
-        }
+        confirmDelete(
+            'Are you sure you want to delete this Draft PO? This action cannot be undone.',
+            async () => {
+                try {
+                    await api.delete(`/draft-pos/${id}`);
+                    toast.success('Draft PO deleted');
+                    fetchDraftPOs();
+                } catch (error) {
+                    toast.error('Failed to delete Draft PO');
+                }
+            }
+        );
     };
 
     const itemOptions = allItems.map(i => ({
@@ -284,7 +289,7 @@ const DraftPOs = () => {
                                     <td className="p-3 text-sm font-bold text-emerald-600 text-right">₹{po.totalAmount?.toLocaleString() || 0}</td>
                                     <td className="p-3 flex justify-center gap-2">
                                         <button 
-                                            onClick={() => printDraftPO(po)}
+                                            onClick={() => printDraftPO(po, billingSettings)}
                                             className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-xs font-bold hover:bg-blue-200"
                                         >
                                             Print

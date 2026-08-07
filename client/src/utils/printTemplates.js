@@ -1715,7 +1715,7 @@ const getGstStateCode = (gstin) => {
     return gstin.substring(0, 2).toUpperCase();
 };
 
-export const generatePurchaseOrderHtml = (order, settings) => {
+export const generatePurchaseOrderHtml = (order, settings, docTitle = 'Purchase Bill') => {
     const s = settings || {};
     const sym = s.documentConfig?.currencySymbol || '₹';
 
@@ -1863,7 +1863,7 @@ export const generatePurchaseOrderHtml = (order, settings) => {
   </div>
 
   <!-- Doc Title -->
-  <div class="doc-title">Purchase Bill</div>
+  <div class="doc-title">${docTitle}</div>
 
   <!-- Vendor & PO Meta -->
   <div class="meta-grid">
@@ -2030,104 +2030,24 @@ export const printPaymentReceipt = (entry, entity, settings, type = 'customer') 
     executePrint(html);
 };
 
-export const printDraftPO = (po) => {
-    const s = JSON.parse(localStorage.getItem('inventory_billing_settings') || '{}');
-    const sym = s.documentConfig?.currencySymbol || '₹';
-    const companyName = s.companyName || 'Your Company';
+export const printDraftPO = (po, passedSettings) => {
+    const s = passedSettings || JSON.parse(localStorage.getItem('inventory_billing_settings') || '{}');
     
-    let itemRows = '';
-    po.items.forEach((item, index) => {
-        const total = (item.quantity * item.price).toLocaleString('en-IN', { minimumFractionDigits: 2 });
-        itemRows += `
-        <tr>
-            <td style="text-align:center;">${index + 1}</td>
-            <td><strong>${item.name}</strong></td>
-            <td style="text-align:center;">${item.quantity} ${item.unitType || 'Nos'}</td>
-            <td style="text-align:right;">${item.price?.toLocaleString('en-IN', { minimumFractionDigits: 2 }) || '0.00'}</td>
-            <td style="text-align:right; font-weight:bold;">${total}</td>
-        </tr>`;
-    });
+    const mappedOrder = {
+        orderNumber: po.poNumber,
+        orderDate: po.createdAt,
+        vendor: { name: po.vendorName || '', companyName: po.vendorName || '' },
+        notes: po.notes,
+        items: po.items.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            total: item.price * item.quantity,
+            taxRate: 0,
+            billingUnit: item.unitType || 'Nos'
+        }))
+    };
 
-    const html = `<html><head><meta charset="UTF-8"><title>Purchase Order - ${po.poNumber}</title>
-<style>
-  @page { size: A4 portrait; margin: 15mm; }
-  body { font-family: 'Arial', sans-serif; font-size: 13px; color: #000; margin: 0; line-height: 1.4; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 20px; }
-  .header h1 { margin: 0; font-size: 24px; font-weight: 900; text-transform: uppercase; color: #1a1a2e; }
-  .header p { margin: 3px 0; font-size: 12px; color: #444; }
-  .doc-title { text-align: center; font-size: 20px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 20px; text-decoration: underline; }
-  .meta-box { border: 1px solid #000; padding: 10px; margin-bottom: 20px; border-radius: 4px; display: flex; justify-content: space-between; }
-  .meta-left, .meta-right { width: 48%; }
-  .meta-row { display: flex; margin-bottom: 5px; }
-  .meta-label { width: 120px; font-weight: bold; }
-  .meta-value { flex: 1; font-weight: bold; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-  th, td { border: 1px solid #000; padding: 8px; font-size: 12px; }
-  th { background: #f0f0f0; font-weight: bold; text-align: center; text-transform: uppercase; }
-  .totals-row td { border: none; padding: 4px 8px; font-size: 14px; }
-  .footer { margin-top: 50px; display: flex; justify-content: space-between; }
-  .sign-box { text-align: center; width: 200px; margin-top: 30px; }
-  .sign-line { border-bottom: 1px solid #000; margin-bottom: 5px; }
-</style></head><body>
-
-<div class="header">
-  <div>
-    <h1>${companyName}</h1>
-    <p>${s.address || ''}</p>
-    <p>${s.phone1 ? 'Tel: ' + s.phone1 : ''}</p>
-  </div>
-</div>
-
-<div class="doc-title">PURCHASE ORDER</div>
-
-<div class="meta-box">
-  <div class="meta-left">
-    <div class="meta-row"><div class="meta-label">Vendor / Ref:</div><div class="meta-value">${po.vendorName || '-'}</div></div>
-  </div>
-  <div class="meta-right">
-    <div class="meta-row"><div class="meta-label">PO No:</div><div class="meta-value">${po.poNumber}</div></div>
-    <div class="meta-row"><div class="meta-label">Date:</div><div class="meta-value">${new Date(po.createdAt || po.date).toLocaleDateString('en-IN')}</div></div>
-  </div>
-</div>
-
-<table>
-  <thead>
-    <tr>
-      <th style="width: 5%;">#</th>
-      <th style="width: 45%;">Item Description</th>
-      <th style="width: 15%;">Quantity</th>
-      <th style="width: 15%;">Rate (${sym})</th>
-      <th style="width: 20%;">Total (${sym})</th>
-    </tr>
-  </thead>
-  <tbody>
-    ${itemRows}
-  </tbody>
-</table>
-
-<table style="border:none; margin-top: 10px;">
-  <tr class="totals-row">
-    <td colspan="4" style="text-align: right; font-weight: bold;">Grand Total:</td>
-    <td style="text-align: right; font-weight: 900; font-size: 16px; width: 20%; border-bottom: 2px solid #000; border-top: 2px solid #000;">
-        ${sym} ${(po.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-    </td>
-  </tr>
-</table>
-
-${po.notes ? `<div style="margin-top: 20px;"><strong>Notes:</strong><br/>${po.notes}</div>` : ''}
-
-<div class="footer">
-  <div class="sign-box">
-    <div class="sign-line"></div>
-    <strong>Prepared By</strong>
-  </div>
-  <div class="sign-box">
-    <div class="sign-line"></div>
-    <strong>Authorized Signatory</strong>
-  </div>
-</div>
-
-</body></html>`;
-
+    const html = generatePurchaseOrderHtml(mappedOrder, s, 'Draft Purchase Order');
     executePrint(html);
 };

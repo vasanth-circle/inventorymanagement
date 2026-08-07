@@ -258,7 +258,7 @@ export const getCustomerBalance = async (req, res, next) => {
 // @access  Private
 export const getCustomerLedger = async (req, res, next) => {
     try {
-        const { from, to, page = 1, limit = 50 } = req.query;
+        const { from, to, page = 1, limit = 10000 } = req.query;
         const customer = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
         if (!customer) return sendError(res, 404, 'Customer not found');
 
