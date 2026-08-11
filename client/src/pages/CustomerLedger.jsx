@@ -176,7 +176,10 @@ const CustomerLedger = () => {
 
     const handlePrint = async () => {
         try {
-            const res = await api(`/customers/${selectedCustomerId}/statement`);
+            const params = {};
+            if (from) params.from = from;
+            if (to) params.to = to;
+            const res = await api(`/customers/${selectedCustomerId}/statement`, { params });
             const { customer, entries, summary } = res.data.data;
             printTallyLedger(customer, entries, summary);
         } catch {
@@ -242,20 +245,18 @@ const CustomerLedger = () => {
     const bbf = data?.bbf ?? 0;
 
     const entries = [...backendEntries];
-    if (bbf !== 0 || (backendEntries.length === 0 && customer?.openingBalance)) {
-        const displayBbf = bbf !== 0 ? bbf : (customer?.openingBalance || 0);
-        if (displayBbf !== 0) {
-            entries.unshift({
-                _id: 'bbf-entry',
-                date: from ? new Date(from).toISOString() : (customer?.createdAt || new Date().toISOString()),
-                type: 'opening',
-                refNumber: from ? 'B/F' : 'OPENING',
-                description: from ? 'Balance Brought Forward' : 'Opening Balance',
-                debit: displayBbf > 0 ? displayBbf : 0,
-                credit: displayBbf < 0 ? Math.abs(displayBbf) : 0,
-                balance: displayBbf
-            });
-        }
+    const displayBbf = from ? bbf : (customer?.openingBalance || 0);
+    if (displayBbf !== 0) {
+        entries.unshift({
+            _id: 'bbf-entry',
+            date: from ? new Date(from).toISOString() : (customer?.createdAt || new Date().toISOString()),
+            type: 'opening',
+            refNumber: from ? 'B/F' : 'OPENING',
+            description: from ? 'Balance Brought Forward' : 'Opening Balance',
+            debit: displayBbf > 0 ? displayBbf : 0,
+            credit: displayBbf < 0 ? Math.abs(displayBbf) : 0,
+            balance: displayBbf
+        });
     }
 
     const groupedEntries = useMemo(() => {

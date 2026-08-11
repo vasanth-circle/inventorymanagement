@@ -1,6 +1,7 @@
 import Vendor from '../models/Vendor.js';
 import VendorLedger from '../models/VendorLedger.js';
 import PurchaseOrder from '../models/PurchaseOrder.js';
+import { recalculateVendorBalance } from './vendorLedgerController.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
 // @desc    Get all vendors
@@ -57,6 +58,9 @@ export const getVendor = async (req, res, next) => {
 export const createVendor = async (req, res, next) => {
     try {
         const payload = { ...req.body, tenantId: req.tenantId };
+        if (payload.linkedCustomerId === '') {
+            payload.linkedCustomerId = null;
+        }
         if (payload.openingBalance !== undefined) {
             payload.currentBalance = payload.openingBalance;
         }
@@ -89,6 +93,9 @@ export const createVendor = async (req, res, next) => {
 export const updateVendor = async (req, res, next) => {
     try {
         const payload = { ...req.body };
+        if (payload.linkedCustomerId === '') {
+            payload.linkedCustomerId = null;
+        }
         if (payload.openingBalance !== undefined) {
             const existing = await Vendor.findOne({ _id: req.params.id, ...tenantQuery(req) });
             if (existing) {
@@ -110,6 +117,13 @@ export const updateVendor = async (req, res, next) => {
         if (!vendor) {
             return sendError(res, 404, 'Vendor not found');
         }
+
+        if (payload.openingBalance !== undefined) {
+            await recalculateVendorBalance(vendor._id, req.tenantId);
+            const updatedVendor = await Vendor.findById(vendor._id);
+            return sendResponse(res, 200, updatedVendor, 'Vendor updated successfully');
+        }
+
         sendResponse(res, 200, vendor, 'Vendor updated successfully');
     } catch (error) {
         next(error);

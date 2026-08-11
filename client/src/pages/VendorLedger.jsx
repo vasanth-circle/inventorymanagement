@@ -130,7 +130,7 @@ const VendorLedger = () => {
         } finally {
             setLoading(false);
         }
-    }, [selectedVendorId]);
+    }, [selectedVendorId, from, to]);
 
     useEffect(() => {
         // Fetch vendors list for dropdown
@@ -165,15 +165,35 @@ const VendorLedger = () => {
 
     const handlePrint = async () => {
         try {
-            // Always fetch full statement for printing
-            const res = await api.get(`/vendor-ledger/${selectedVendorId}`);
-            const { ledger, vendor } = res.data.data;
+            const params = {};
+            if (from) params.from = from;
+            if (to) params.to = to;
+            const res = await api.get(`/vendor-ledger/${selectedVendorId}`, { params });
+            const { ledger, vendor, bbf } = res.data.data;
             const summary = {
                 totalDebit: ledger.reduce((s, e) => s + e.debit, 0),
                 totalCredit: ledger.reduce((s, e) => s + e.credit, 0),
-                closingBalance: ledger.length > 0 ? ledger[ledger.length - 1].balance : vendor.openingBalance
+                closingBalance: ledger.length > 0 ? ledger[ledger.length - 1].balance : (vendor.openingBalance || 0)
             };
-            printTallyLedger(vendor, ledger, summary);
+            
+            const entriesToPrint = [...ledger];
+            const displayBbf = bbf ?? 0;
+            if (displayBbf !== 0 || (ledger.length === 0 && vendor?.openingBalance)) {
+                const finalBbf = displayBbf !== 0 ? displayBbf : (vendor?.openingBalance || 0);
+                if (finalBbf !== 0) {
+                    entriesToPrint.unshift({
+                        _id: 'bbf-entry',
+                        date: from ? new Date(from).toISOString() : (vendor?.createdAt || new Date().toISOString()),
+                        type: 'opening',
+                        refNumber: from ? 'B/F' : 'OPENING',
+                        description: from ? 'Balance Brought Forward' : 'Opening Balance',
+                        debit: finalBbf < 0 ? Math.abs(finalBbf) : 0,
+                        credit: finalBbf > 0 ? finalBbf : 0,
+                        balance: finalBbf
+                    });
+                }
+            }
+            printTallyLedger(vendor, entriesToPrint, summary);
         } catch {
             toast.error('Failed to generate statement');
         }
@@ -246,19 +266,21 @@ const VendorLedger = () => {
 
     const vendor = data?.vendor;
     const backendEntries = Array.isArray(data?.ledger) ? data.ledger : [];
-    const balance = vendor?.currentBalance ?? 0;
+    const balance = data?.currentBalance ?? vendor?.currentBalance ?? 0;
+    const bbf = data?.bbf ?? 0;
 
     const entries = [...backendEntries];
-    if (backendEntries.length === 0 && vendor?.openingBalance) {
+    const displayBbf = from ? bbf : (vendor?.openingBalance || 0);
+    if (displayBbf !== 0) {
         entries.unshift({
             _id: 'bbf-entry',
-            date: vendor?.createdAt || new Date().toISOString(),
+            date: from ? new Date(from).toISOString() : (vendor?.createdAt || new Date().toISOString()),
             type: 'opening',
-            refNumber: 'OPENING',
-            description: 'Opening Balance',
-            debit: vendor.openingBalance < 0 ? Math.abs(vendor.openingBalance) : 0, // vendor owes us -> debit
-            credit: vendor.openingBalance > 0 ? vendor.openingBalance : 0, // we owe vendor -> credit
-            balance: vendor.openingBalance
+            refNumber: from ? 'B/F' : 'OPENING',
+            description: from ? 'Balance Brought Forward' : 'Opening Balance',
+            debit: displayBbf < 0 ? Math.abs(displayBbf) : 0, // vendor owes us -> debit
+            credit: displayBbf > 0 ? displayBbf : 0, // we owe vendor -> credit
+            balance: displayBbf
         });
     }
 
