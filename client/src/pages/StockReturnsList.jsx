@@ -253,7 +253,7 @@ const StockReturnsList = () => {
                     size: t.item?.size,
                     hsnCode: t.item?.hsnCode || t.item?.hsn || '',
                     quantity: t.quantity || 0,
-                    boxCount: isTile ? ((t.quantity || 0) / (t.item?.pcsPerBox || 1)) : undefined,
+                    boxCount: isTile ? ((t.quantity || 0) / ((t.item?.pcsPerBox || 1) * (t.item?.sqFtPerPc || 1))) : undefined,
                     price: t.rate || 0,
                     total: t.total !== undefined ? t.total : ((t.quantity || 0) * (t.rate || 0)),
                     taxRate: t.item?.taxRate || 0,

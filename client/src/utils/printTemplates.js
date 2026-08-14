@@ -1535,14 +1535,19 @@ export const printReturnSlip = (returnTx, settings) => {
     const taxAmount = 0; // If you add tax tracking to returns later, add it here
     const grandTotal = itemsTotal + taxAmount;
     
+    const hasTiles = itemsList.some(it => it.boxCount !== undefined);
+    
     // Build item rows
     let totQty = 0;
+    let totBox = 0;
     const itemRows = itemsList.map((item, i) => {
         const subtotal = item.total || (item.quantity * item.price) || 0;
         totQty += Number(item.quantity || 0);
-        const qtyVal = item.boxCount !== undefined 
-            ? `${formatIndianNumber(item.boxCount, 3)} box` 
-            : `${formatIndianNumber(item.quantity || 0, 3)} ${(item.billingUnit || 'Nos').substring(0,3)}`;
+        if (item.boxCount) totBox += Number(item.boxCount);
+        const boxVal = item.boxCount !== undefined ? formatIndianNumber(item.boxCount, 3) : '';
+        const qtyVal = item.boxCount !== undefined
+            ? `${formatIndianNumber(item.quantity || 0, 2)} SQFT`
+            : `${formatIndianNumber(item.quantity || 0, 2)} ${(item.billingUnit || 'NOS').toUpperCase().substring(0,4)}`;
         
         const desc = (() => {
             const b = (item.brand || '').trim();
@@ -1556,6 +1561,7 @@ export const printReturnSlip = (returnTx, settings) => {
           <td style="text-align:center">${i + 1}</td>
           <td><strong>${desc}</strong></td>
           <td style="text-align:center">${item.hsnCode || item.hsn || ''}</td>
+          <td style="text-align:center;font-weight:bold">${boxVal}</td>
           <td style="text-align:center;font-weight:bold">${qtyVal}</td>
           <td style="text-align:right">${formatIndianNumber(item.price || 0, 2)}</td>
           <td style="text-align:right">${formatIndianNumber(subtotal, 2)}</td>
@@ -1651,27 +1657,29 @@ export const printReturnSlip = (returnTx, settings) => {
       <thead>
         <tr>
           <th width="5%">S.No</th>
-          <th width="38%">Description</th>
-          <th width="10%">HSN<br/>Code</th>
-          <th width="12%">Qty</th>
+          <th width="32%">Description</th>
+          <th width="8%">HSN<br/>Code</th>
+          <th width="8%">Box</th>
+          <th width="10%">${hasTiles ? 'Sq.Ft' : 'Qty'}</th>
           <th width="10%">Rate</th>
-          <th width="12%">Amount</th>
+          <th width="10%">Amount</th>
           <th width="5%">Tax<br/>%</th>
           <th width="12%">Total<br/>Amount</th>
         </tr>
       </thead>
       <tbody>
         ${itemRows}
-        <tr class="filler"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+        <tr class="filler"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
       </tbody>
     </table>
   </div>
   
   <div style="border-bottom:1.5px solid #000; border-top:1.5px solid #000; padding:2px 5px; font-weight:bold; font-size:10px; display:flex">
-    <div style="width:53%; padding-left:15px">Total</div>
-    <div style="width:12%; text-align:center">${formatIndianNumber(totQty, 3)}</div>
+    <div style="width:45%; padding-left:15px">Total</div>
+    <div style="width:8%; text-align:center">${totBox > 0 ? formatIndianNumber(totBox, 3) : ''}</div>
+    <div style="width:10%; text-align:center">${formatIndianNumber(totQty, 2)}</div>
     <div style="width:10%"></div>
-    <div style="width:12%; text-align:right">${formatIndianNumber(itemsTotal, 2)}</div>
+    <div style="width:10%; text-align:right">${formatIndianNumber(itemsTotal, 2)}</div>
     <div style="width:5%"></div>
     <div style="width:12%; text-align:right">${formatIndianNumber(grandTotal, 2)}</div>
   </div>
