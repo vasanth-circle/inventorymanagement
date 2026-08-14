@@ -328,6 +328,9 @@ const PurchaseOrders = () => {
                 totalPcs: i.totalPcs || '',
                 brand: i.item?.brand || i.brand || '',
                 size: i.item?.size || i.size || '',
+                unitType: i.item?.unitType || i.unitType || 'pieces',
+                sqFtPerPc: Number(i.item?.sqFtPerPc || i.sqFtPerPc || 0),
+                pcsPerBox: Math.max(1, Number(i.item?.pcsPerBox || i.pcsPerBox || 1)),
                 billingUnit: i.billingUnit || (billingSettings?.industry === 'tiles' ? 'boxes' : 'pieces'),
                 total: i.total || (i.quantity * i.price)
             }))

@@ -134,7 +134,7 @@ export const getPurchaseOrders = async (req, res, next) => {
 
         const orders = await PurchaseOrder.find(query)
             .populate('vendor', 'name companyName gstin address phone email')
-            .populate('items.item', 'name sku barcode size brand unitType')
+            .populate('items.item', 'name sku barcode size brand unitType pcsPerBox sqFtPerPc')
             .populate({ path: 'user', model: User, select: 'name' })
             .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 })
             .limit(limit * 1)
@@ -163,7 +163,7 @@ export const getPurchaseOrder = async (req, res, next) => {
     try {
         const order = await PurchaseOrder.findOne({ _id: req.params.id, ...tenantQuery(req) })
             .populate('vendor')
-            .populate('items.item', 'name sku barcode size brand unitType')
+            .populate('items.item', 'name sku barcode size brand unitType pcsPerBox sqFtPerPc')
             .populate({ path: 'user', model: User, select: 'name' });
 
         if (!order) {
