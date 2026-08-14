@@ -612,3 +612,32 @@ export const getCombinedLedger = async (req, res, next) => {
         next(error);
     }
 };
+
+// @desc    Get Vendor Payments Report
+// @route   GET /api/vendor-ledger/reports/payments
+// @access  Private
+export const getVendorPaymentsReport = async (req, res, next) => {
+    try {
+        const { from, to } = req.query;
+        const query = { 
+            type: 'payment',
+            debit: { $gt: 0 },
+            ...tenantQuery(req) 
+        };
+
+        if (from || to) {
+            query.date = {};
+            if (from) query.date.$gte = new Date(from);
+            if (to) query.date.$lte = new Date(new Date(to).setHours(23, 59, 59, 999));
+        }
+
+        const payments = await VendorLedger.find(query)
+            .populate('vendor', 'name companyName phone')
+            .populate('createdBy', 'name')
+            .sort({ date: -1, createdAt: -1 });
+
+        sendResponse(res, 200, { payments }, 'Vendor payments report fetched successfully');
+    } catch (error) {
+        next(error);
+    }
+};

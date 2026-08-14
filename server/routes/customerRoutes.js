@@ -16,6 +16,7 @@ import {
     unlockCustomer,
     getCustomerReceivables,
     getCustomerOutstandingSummary,
+    getCustomerReceiptsReport
 } from '../controllers/customerController.js';
 import { authorize } from '../middleware/authMiddleware.js';
 import { checkMenuAccess } from '../middleware/accessMiddleware.js';
@@ -33,6 +34,7 @@ router.get('/statements/overall', getCustomerOverallStatement);
 router.get('/reports/locked', authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), getLockedCustomers);
 router.get('/reports/receivables', getCustomerReceivables);
 router.get('/reports/outstanding-summary', getCustomerOutstandingSummary);
+router.get('/reports/receipts', getCustomerReceiptsReport);
 
 router.route('/:id')
     .get(getCustomer)

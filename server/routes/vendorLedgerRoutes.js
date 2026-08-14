@@ -9,10 +9,12 @@ import {
     getVendorPayables, 
     getVendorOutstandingSummary,
     getCombinedLedger,
+    getVendorPaymentsReport
 } from '../controllers/vendorLedgerController.js';
 
 const router = express.Router();
 
+router.get('/reports/payments', getVendorPaymentsReport);
 router.get('/statements/overall', getVendorOverallStatement);
 router.get('/reports/payables', getVendorPayables);
 router.get('/reports/outstanding-summary', getVendorOutstandingSummary);

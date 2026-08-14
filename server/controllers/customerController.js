@@ -813,3 +813,32 @@ export const getCustomerOutstandingSummary = async (req, res, next) => {
         next(error);
     }
 };
+
+// @desc    Get Customer Receipts Report
+// @route   GET /api/customers/reports/receipts
+// @access  Private
+export const getCustomerReceiptsReport = async (req, res, next) => {
+    try {
+        const { from, to } = req.query;
+        const query = { 
+            type: 'payment',
+            credit: { $gt: 0 },
+            ...tenantQuery(req) 
+        };
+
+        if (from || to) {
+            query.date = {};
+            if (from) query.date.$gte = new Date(from);
+            if (to) query.date.$lte = new Date(new Date(to).setHours(23, 59, 59, 999));
+        }
+
+        const receipts = await CustomerLedger.find(query)
+            .populate('customer', 'name companyName phone')
+            .populate('createdBy', 'name')
+            .sort({ date: -1, createdAt: -1 });
+
+        sendResponse(res, 200, { receipts }, 'Customer receipts report fetched successfully');
+    } catch (error) {
+        next(error);
+    }
+};

@@ -358,6 +358,134 @@ const downloadReceivablesPayables = (opts) => openOrDownload(buildRPHtml(opts), 
 const printOutstandingSummary     = (opts) => openOrDownload(buildOSSHtml(opts),    `Outstanding_${opts.entityType}.html`,   'print');
 const downloadOutstandingSummary  = (opts) => openOrDownload(buildOSSHtml(opts),    `Outstanding_${opts.entityType}.html`,   'download');
 
+// Build Vendor Payments Report HTML
+const buildVendorPaymentsHtml = ({ payments, from, to, settings }) => {
+    const company = settings?.companyName || 'Company';
+    const period = from && to ? `${fmtDate(from)} To ${fmtDate(to)}` : from ? `From ${fmtDate(from)}` : to ? `Till ${fmtDate(to)}` : 'All Dates';
+    const grandTotal = payments.reduce((s, o) => s + (o.debit || 0), 0);
+
+    const rows = payments.map((o, i) => `<tr>
+<td>${i + 1}</td>
+<td>${fmtDate(o.date)}</td>
+<td>${escHtml(o.vendor?.companyName || o.vendor?.name || '-')}</td>
+<td style="text-transform:uppercase">${escHtml(o.paymentMode || '-')}</td>
+<td>${escHtml(o.notes || o.refNumber || '-')}</td>
+<td class="r">${fmt(o.debit)}</td>
+</tr>`).join('');
+
+    const addr    = settings?.address  || '';
+    const phone1  = settings?.phone1   || '';
+    const phone2  = settings?.phone2   || '';
+    const gst     = settings?.gstNumber || '';
+    const phones  = [phone1, phone2].filter(Boolean).join(' / ');
+    const addrLine  = [addr, phones].filter(Boolean).join('  |  ');
+    const gstLine   = gst ? `GST No: ${gst}` : '';
+
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Vendor Payments Report</title>
+<style>
+${A4}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;font-size:13px;color:#000;padding:5mm}
+.co-name{text-align:center;font-size:22px;font-weight:900;letter-spacing:0.5px;margin-bottom:2px;text-transform:uppercase}
+.co-addr{text-align:center;font-size:11px;color:#111;margin-bottom:1px}
+.co-gst{text-align:center;font-size:11px;color:#111;margin-bottom:4px}
+.rpt-title{text-align:center;font-size:14px;font-weight:bold;border-top:2px solid #000;border-bottom:2px solid #000;padding:3px 0;margin-bottom:5px}
+table{width:100%;border-collapse:collapse;table-layout:fixed;border:1.5px solid #000}
+th{border:1.5px solid #000;padding:5px 6px;font-size:13px;font-weight:bold;background:#7beba0;text-align:left;white-space:nowrap}
+th.r{text-align:right}
+td{border:1px solid #444;padding:3px 6px;font-size:13px;font-weight:bold;color:#000;overflow:hidden;word-break:break-word}
+td.r{text-align:right;white-space:nowrap}
+.tot td{font-weight:900;background:#7beba0!important;border:1.5px solid #000;font-size:14px}
+</style></head><body>
+<div class="co-name">${escHtml(company)}</div>
+${addrLine ? `<div class="co-addr">${escHtml(addrLine)}</div>` : ''}
+${gstLine  ? `<div class="co-gst">${escHtml(gstLine)}</div>`   : ''}
+<div class="rpt-title">Vendor Payments Display &nbsp;&nbsp; Date : ${period}</div>
+<div style="margin-bottom:8px"></div>
+<table>
+<colgroup><col style="width:45px"/><col style="width:85px"/><col/><col style="width:100px"/><col style="width:150px"/><col style="width:110px"/></colgroup>
+<thead><tr>
+<th>S.No</th><th>Date</th><th>Party Name</th><th>Mode</th><th>Ref/Notes</th><th class="r">Amount Paid</th>
+</tr></thead>
+<tbody>
+${rows}
+<tr class="tot">
+<td colspan="5" class="r">TOTAL PAYMENTS</td>
+<td class="r">${fmt(grandTotal)}</td>
+</tr>
+</tbody>
+</table>
+<div style="margin-top:6px;font-size:9px;color:#555;text-align:right">Generated on: ${fmtDateTime()}</div>
+</body></html>`;
+};
+
+// Build Customer Receipts Report HTML
+const buildCustomerReceiptsHtml = ({ receipts, from, to, settings }) => {
+    const company = settings?.companyName || 'Company';
+    const period = from && to ? `${fmtDate(from)} To ${fmtDate(to)}` : from ? `From ${fmtDate(from)}` : to ? `Till ${fmtDate(to)}` : 'All Dates';
+    const grandTotal = receipts.reduce((s, o) => s + (o.credit || 0), 0);
+
+    const rows = receipts.map((o, i) => `<tr>
+<td>${i + 1}</td>
+<td>${fmtDate(o.date)}</td>
+<td>${escHtml(o.customer?.companyName || o.customer?.name || '-')}</td>
+<td style="text-transform:uppercase">${escHtml(o.paymentMode || '-')}</td>
+<td>${escHtml(o.notes || o.refNumber || '-')}</td>
+<td class="r">${fmt(o.credit)}</td>
+</tr>`).join('');
+
+    const addr    = settings?.address  || '';
+    const phone1  = settings?.phone1   || '';
+    const phone2  = settings?.phone2   || '';
+    const gst     = settings?.gstNumber || '';
+    const phones  = [phone1, phone2].filter(Boolean).join(' / ');
+    const addrLine  = [addr, phones].filter(Boolean).join('  |  ');
+    const gstLine   = gst ? `GST No: ${gst}` : '';
+
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Customer Receipts Report</title>
+<style>
+${A4}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;font-size:13px;color:#000;padding:5mm}
+.co-name{text-align:center;font-size:22px;font-weight:900;letter-spacing:0.5px;margin-bottom:2px;text-transform:uppercase}
+.co-addr{text-align:center;font-size:11px;color:#111;margin-bottom:1px}
+.co-gst{text-align:center;font-size:11px;color:#111;margin-bottom:4px}
+.rpt-title{text-align:center;font-size:14px;font-weight:bold;border-top:2px solid #000;border-bottom:2px solid #000;padding:3px 0;margin-bottom:5px}
+table{width:100%;border-collapse:collapse;table-layout:fixed;border:1.5px solid #000}
+th{border:1.5px solid #000;padding:5px 6px;font-size:13px;font-weight:bold;background:#7bebe8;text-align:left;white-space:nowrap}
+th.r{text-align:right}
+td{border:1px solid #444;padding:3px 6px;font-size:13px;font-weight:bold;color:#000;overflow:hidden;word-break:break-word}
+td.r{text-align:right;white-space:nowrap}
+.tot td{font-weight:900;background:#7bebe8!important;border:1.5px solid #000;font-size:14px}
+</style></head><body>
+<div class="co-name">${escHtml(company)}</div>
+${addrLine ? `<div class="co-addr">${escHtml(addrLine)}</div>` : ''}
+${gstLine  ? `<div class="co-gst">${escHtml(gstLine)}</div>`   : ''}
+<div class="rpt-title">Customer Receipts Display &nbsp;&nbsp; Date : ${period}</div>
+<div style="margin-bottom:8px"></div>
+<table>
+<colgroup><col style="width:45px"/><col style="width:85px"/><col/><col style="width:100px"/><col style="width:150px"/><col style="width:110px"/></colgroup>
+<thead><tr>
+<th>S.No</th><th>Date</th><th>Customer Name</th><th>Mode</th><th>Ref/Notes</th><th class="r">Amount Received</th>
+</tr></thead>
+<tbody>
+${rows}
+<tr class="tot">
+<td colspan="5" class="r">TOTAL RECEIPTS</td>
+<td class="r">${fmt(grandTotal)}</td>
+</tr>
+</tbody>
+</table>
+<div style="margin-top:6px;font-size:9px;color:#555;text-align:right">Generated on: ${fmtDateTime()}</div>
+</body></html>`;
+};
+
+const printCustomerReceiptsReport    = (opts) => openOrDownload(buildCustomerReceiptsHtml(opts), 'Customer_Receipts_Report.html', 'print');
+const downloadCustomerReceiptsReport = (opts) => openOrDownload(buildCustomerReceiptsHtml(opts), 'Customer_Receipts_Report.html', 'download');
+
+const printVendorPaymentsReport    = (opts) => openOrDownload(buildVendorPaymentsHtml(opts), 'Vendor_Payments_Report.html', 'print');
+const downloadVendorPaymentsReport = (opts) => openOrDownload(buildVendorPaymentsHtml(opts), 'Vendor_Payments_Report.html', 'download');
+
 // Build Purchase Report HTML
 const buildPurchaseHtml = ({ orders, from, to, settings }) => {
     const company = settings?.companyName || 'Company';
@@ -1125,18 +1253,18 @@ const PurchaseReport = ({ settings }) => {
                 {loading ? <Spinner /> : !data || data.length === 0 ? (
                     <EmptyState icon="📦" title="No Purchases" subtitle="No purchase records found." />
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                            <thead>
-                                <tr className="bg-amber-100 border-b border-amber-200">
-                                    <th className="px-4 py-2.5 text-xs font-bold text-amber-900 uppercase">S.No</th>
-                                    <th className="px-4 py-2.5 text-xs font-bold text-amber-900 uppercase">Date</th>
-                                    <th className="px-4 py-2.5 text-xs font-bold text-amber-900 uppercase">Inv No</th>
-                                    <th className="px-4 py-2.5 text-xs font-bold text-amber-900 uppercase">Inv Date</th>
-                                    <th className="px-4 py-2.5 text-xs font-bold text-amber-900 uppercase">Inv Type</th>
-                                    <th className="px-4 py-2.5 text-xs font-bold text-amber-900 uppercase">Series</th>
-                                    <th className="px-4 py-2.5 text-xs font-bold text-amber-900 uppercase">Party Name</th>
-                                    <th className="px-4 py-2.5 text-xs font-bold text-amber-900 uppercase text-right">Net Amount</th>
+                    <div className="overflow-auto max-h-[500px]">
+                        <table className="w-full text-left text-sm relative">
+                            <thead className="sticky top-0 z-10">
+                                <tr className="bg-amber-100 border-b border-amber-200 shadow-sm">
+                                    <th className="px-4 py-2.5 text-xs font-bold text-amber-900 uppercase bg-amber-100">S.No</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-amber-900 uppercase bg-amber-100">Date</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-amber-900 uppercase bg-amber-100">Inv No</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-amber-900 uppercase bg-amber-100">Inv Date</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-amber-900 uppercase bg-amber-100">Inv Type</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-amber-900 uppercase bg-amber-100">Series</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-amber-900 uppercase bg-amber-100">Party Name</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-amber-900 uppercase text-right bg-amber-100">Net Amount</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
@@ -1166,14 +1294,219 @@ const PurchaseReport = ({ settings }) => {
         </div>
     );
 };
+// TAB 6 - Vendor Payments Report
+const VendorPaymentsReport = ({ settings }) => {
+    const [from, setFrom] = useState('');
+    const [to, setTo] = useState('');
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(false);
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const params = {};
+            if (from) params.from = from;
+            if (to) params.to = to;
+            const r = await api('/vendor-ledger/reports/payments', { params });
+            setData(r.data.data.payments);
+        } catch { toast.error('Failed to fetch vendor payments'); }
+        finally { setLoading(false); }
+    }, [from, to]);
+
+    useEffect(() => { fetchData(); }, [fetchData]);
+
+    const grandTotal = (data || []).reduce((s, r) => s + (r.debit || 0), 0);
+    const printOpts = { payments: data || [], from, to, settings };
+
+    return (
+        <div className="space-y-5">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-wrap gap-4 items-end justify-between">
+                <div>
+                    <h2 className="font-bold text-gray-800">Vendor Payments Report</h2>
+                    <p className="text-xs text-gray-500 mt-1">View all payments made to vendors within a date range.</p>
+                </div>
+                <div className="flex gap-2">
+                    <BtnPrint onClick={() => printVendorPaymentsReport(printOpts)} disabled={!data || data.length === 0}>
+                        Print Report
+                    </BtnPrint>
+                    <BtnDownload onClick={() => downloadVendorPaymentsReport(printOpts)} disabled={!data || data.length === 0}>
+                        Download
+                    </BtnDownload>
+                </div>
+            </div>
+
+            <DateFilterBar from={from} to={to} onFromChange={setFrom} onToChange={setTo}
+                onApply={fetchData} onClear={() => { setFrom(''); setTo(''); }} disabled={loading} />
+
+            {data && data.length > 0 && (
+                <div className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl p-4 shadow-md flex justify-between items-center">
+                    <div>
+                        <p className="text-xs font-bold uppercase opacity-80">Total Payments Made</p>
+                        <p className="text-3xl font-black">{'\u20B9'}{fmt(grandTotal)}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-xs opacity-80">{data.length} {data.length === 1 ? 'Payment' : 'Payments'}</p>
+                    </div>
+                </div>
+            )}
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                    <h2 className="font-bold text-gray-800">Payments Display</h2>
+                    <span className="text-sm text-gray-400">{data ? data.length : 0} payments</span>
+                </div>
+                {loading ? <Spinner /> : !data || data.length === 0 ? (
+                    <EmptyState icon="💸" title="No Payments" subtitle="No payment records found." />
+                ) : (
+                    <div className="overflow-auto max-h-[500px]">
+                        <table className="w-full text-left text-sm relative">
+                            <thead className="sticky top-0 z-10">
+                                <tr className="bg-emerald-50 border-b border-emerald-100 shadow-sm">
+                                    <th className="px-4 py-2.5 text-xs font-bold text-emerald-900 uppercase bg-emerald-50">S.No</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-emerald-900 uppercase bg-emerald-50">Date</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-emerald-900 uppercase bg-emerald-50">Vendor Name</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-emerald-900 uppercase bg-emerald-50">Mode</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-emerald-900 uppercase bg-emerald-50">Ref/Notes</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-emerald-900 uppercase text-right bg-emerald-50">Amount Paid</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {data.map((row, i) => (
+                                    <tr key={row._id} className="hover:bg-emerald-50/50 transition-colors">
+                                        <td className="px-4 py-2.5 text-gray-500 text-xs">{i + 1}</td>
+                                        <td className="px-4 py-2.5 text-gray-800 text-xs whitespace-nowrap">{fmtDate(row.date)}</td>
+                                        <td className="px-4 py-2.5 font-semibold text-gray-800 text-sm">{row.vendor?.companyName || row.vendor?.name}</td>
+                                        <td className="px-4 py-2.5 text-gray-800 text-xs uppercase">{row.paymentMode}</td>
+                                        <td className="px-4 py-2.5 text-gray-500 text-xs">{row.notes || row.refNumber || '-'}</td>
+                                        <td className="px-4 py-2.5 text-right font-bold text-gray-900 text-sm text-emerald-700">{'\u20B9'}{fmt(row.debit)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                            <tfoot>
+                                <tr className="bg-emerald-100">
+                                    <td colSpan={5} className="px-4 py-3 font-bold text-emerald-900 text-right text-sm">TOTAL PAYMENTS</td>
+                                    <td className="px-4 py-3 text-right font-black text-emerald-900 text-lg">{'\u20B9'}{fmt(grandTotal)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// TAB 7 - Customer Receipts Report
+const CustomerReceiptsReport = ({ settings }) => {
+    const [from, setFrom] = useState('');
+    const [to, setTo] = useState('');
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(false);
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const params = {};
+            if (from) params.from = from;
+            if (to) params.to = to;
+            const r = await api('/customers/reports/receipts', { params });
+            setData(r.data.data.receipts);
+        } catch { toast.error('Failed to fetch customer receipts'); }
+        finally { setLoading(false); }
+    }, [from, to]);
+
+    useEffect(() => { fetchData(); }, [fetchData]);
+
+    const grandTotal = (data || []).reduce((s, r) => s + (r.credit || 0), 0);
+    const printOpts = { receipts: data || [], from, to, settings };
+
+    return (
+        <div className="space-y-5">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-wrap gap-4 items-end justify-between">
+                <div>
+                    <h2 className="font-bold text-gray-800">Customer Receipts Report</h2>
+                    <p className="text-xs text-gray-500 mt-1">View all payments received from customers within a date range.</p>
+                </div>
+                <div className="flex gap-2">
+                    <BtnPrint onClick={() => printCustomerReceiptsReport(printOpts)} disabled={!data || data.length === 0}>
+                        Print Report
+                    </BtnPrint>
+                    <BtnDownload onClick={() => downloadCustomerReceiptsReport(printOpts)} disabled={!data || data.length === 0}>
+                        Download
+                    </BtnDownload>
+                </div>
+            </div>
+
+            <DateFilterBar from={from} to={to} onFromChange={setFrom} onToChange={setTo}
+                onApply={fetchData} onClear={() => { setFrom(''); setTo(''); }} disabled={loading} />
+
+            {data && data.length > 0 && (
+                <div className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl p-4 shadow-md flex justify-between items-center">
+                    <div>
+                        <p className="text-xs font-bold uppercase opacity-80">Total Receipts</p>
+                        <p className="text-3xl font-black">{'\u20B9'}{fmt(grandTotal)}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-xs opacity-80">{data.length} {data.length === 1 ? 'Receipt' : 'Receipts'}</p>
+                    </div>
+                </div>
+            )}
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                    <h2 className="font-bold text-gray-800">Receipts Display</h2>
+                    <span className="text-sm text-gray-400">{data ? data.length : 0} receipts</span>
+                </div>
+                {loading ? <Spinner /> : !data || data.length === 0 ? (
+                    <EmptyState icon="💰" title="No Receipts" subtitle="No payment receipts found." />
+                ) : (
+                    <div className="overflow-auto max-h-[500px]">
+                        <table className="w-full text-left text-sm relative">
+                            <thead className="sticky top-0 z-10">
+                                <tr className="bg-cyan-50 border-b border-cyan-100 shadow-sm">
+                                    <th className="px-4 py-2.5 text-xs font-bold text-cyan-900 uppercase bg-cyan-50">S.No</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-cyan-900 uppercase bg-cyan-50">Date</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-cyan-900 uppercase bg-cyan-50">Customer Name</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-cyan-900 uppercase bg-cyan-50">Mode</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-cyan-900 uppercase bg-cyan-50">Ref/Notes</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-cyan-900 uppercase text-right bg-cyan-50">Amount Received</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {data.map((row, i) => (
+                                    <tr key={row._id} className="hover:bg-cyan-50/50 transition-colors">
+                                        <td className="px-4 py-2.5 text-gray-500 text-xs">{i + 1}</td>
+                                        <td className="px-4 py-2.5 text-gray-800 text-xs whitespace-nowrap">{fmtDate(row.date)}</td>
+                                        <td className="px-4 py-2.5 font-semibold text-gray-800 text-sm">{row.customer?.companyName || row.customer?.name}</td>
+                                        <td className="px-4 py-2.5 text-gray-800 text-xs uppercase">{row.paymentMode}</td>
+                                        <td className="px-4 py-2.5 text-gray-500 text-xs">{row.notes || row.refNumber || '-'}</td>
+                                        <td className="px-4 py-2.5 text-right font-bold text-gray-900 text-sm text-cyan-700">{'\u20B9'}{fmt(row.credit)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                            <tfoot>
+                                <tr className="bg-cyan-100">
+                                    <td colSpan={5} className="px-4 py-3 font-bold text-cyan-900 text-right text-sm">TOTAL RECEIPTS</td>
+                                    <td className="px-4 py-3 text-right font-black text-cyan-900 text-lg">{'\u20B9'}{fmt(grandTotal)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
 
 // Main Component
 const TABS = [
-    { id: 'ledger',      label: 'Ledger Report'       },
+    { id: 'ledger',      label: 'Ledger Report'        },
     { id: 'purchase',    label: 'Purchase Report'      },
     { id: 'receivables', label: 'Receivables'          },
     { id: 'payables',    label: 'Payables'             },
     { id: 'outstanding', label: 'Outstanding Summary'  },
+    { id: 'vendor_payments', label: 'Vendor Payments'  },
+    { id: 'customer_receipts', label: 'Customer Receipts' },
 ];
 
 const TAB_COLORS = {
@@ -1182,6 +1515,8 @@ const TAB_COLORS = {
     receivables: { active: 'bg-orange-500 text-white', inactive: 'border border-orange-200 text-orange-700 hover:bg-orange-50' },
     payables:    { active: 'bg-blue-600 text-white',   inactive: 'border border-blue-200 text-blue-700 hover:bg-blue-50'       },
     outstanding: { active: 'bg-purple-600 text-white', inactive: 'border border-purple-200 text-purple-700 hover:bg-purple-50' },
+    vendor_payments: { active: 'bg-emerald-600 text-white', inactive: 'border border-emerald-200 text-emerald-700 hover:bg-emerald-50' },
+    customer_receipts: { active: 'bg-cyan-600 text-white', inactive: 'border border-cyan-200 text-cyan-700 hover:bg-cyan-50' },
 };
 
 const CustomReports = () => {
@@ -1223,6 +1558,8 @@ const CustomReports = () => {
                 {activeTab === 'receivables' && <ReceivablesReport  settings={settings} />}
                 {activeTab === 'payables'    && <PayablesReport     settings={settings} />}
                 {activeTab === 'outstanding' && <OutstandingSummary settings={settings} />}
+                {activeTab === 'vendor_payments' && <VendorPaymentsReport settings={settings} />}
+                {activeTab === 'customer_receipts' && <CustomerReceiptsReport settings={settings} />}
             </div>
         </div>
     );
