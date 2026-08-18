@@ -283,7 +283,6 @@ const CustomerLedger = () => {
 
     const customer = data?.customer;
     const backendEntries = data?.entries || [];
-    const balance = data?.currentBalance ?? 0;
     const bbf = data?.bbf ?? 0;
 
     const entries = [...backendEntries];
@@ -336,6 +335,8 @@ const CustomerLedger = () => {
             return g;
         });
     }, [entries]);
+
+    const balance = groupedEntries.length > 0 ? groupedEntries[groupedEntries.length - 1].balance : displayBbf;
 
     const typeStyle = (type) => {
         if (type === 'bill') return { bg: 'bg-orange-50', badge: 'bg-orange-100 text-orange-700', label: '🧾 Bill' };

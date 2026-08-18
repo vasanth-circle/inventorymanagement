@@ -266,7 +266,6 @@ const VendorLedger = () => {
 
     const vendor = data?.vendor;
     const backendEntries = Array.isArray(data?.ledger) ? data.ledger : [];
-    const balance = data?.currentBalance ?? vendor?.currentBalance ?? 0;
     const bbf = data?.bbf ?? 0;
 
     const entries = [...backendEntries];
@@ -314,6 +313,8 @@ const VendorLedger = () => {
         if (currentGroup) groups.push(currentGroup);
         return groups;
     }, [entries]);
+
+    const balance = groupedEntries.length > 0 ? groupedEntries[groupedEntries.length - 1].balance : displayBbf;
 
     const typeStyle = (type) => {
         if (type === 'bill') return { bg: 'bg-red-50', badge: 'bg-red-100 text-red-700', label: '📦 Purchase' };
