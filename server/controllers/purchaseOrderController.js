@@ -49,31 +49,29 @@ export const createPurchaseLedgerEntry = async ({ orderId, orderNumber, vendorBi
         const vendor = await Vendor.findById(vendorId);
         if (!vendor) return;
 
-        const lastEntry = await VendorLedger.findOne({ vendor: vendorId, tenantId }).sort({ date: -1, createdAt: -1 });
-        const previousBalance = lastEntry ? lastEntry.balance : (vendor.openingBalance || 0);
-        
-        // Credit increases our liability (balance)
-        const newBalance = previousBalance + amount;
-
         // Use vendor bill number as the ref number; fall back to PO number if not available
         const displayRef = vendorBillNumber || orderNumber;
 
-        await VendorLedger.create({
-            tenantId,
-            vendor: vendorId,
-            date: billDate || orderDate || new Date(),
-            type: 'bill',
-            refType: 'PurchaseOrder',
-            refId: orderId,
-            refNumber: displayRef,
-            description: `Bill from PO #${orderNumber}`,
-            debit: 0,
-            credit: amount,
-            balance: newBalance,
-            createdBy: userId,
-        });
+        await VendorLedger.findOneAndUpdate(
+            { refId: orderId, refType: 'PurchaseOrder' },
+            {
+                $set: {
+                    tenantId,
+                    vendor: vendorId,
+                    date: billDate || orderDate || new Date(),
+                    type: 'bill',
+                    refNumber: displayRef,
+                    description: `Bill from PO #${orderNumber}`,
+                    debit: 0,
+                    credit: amount,
+                    createdBy: userId,
+                }
+            },
+            { upsert: true, new: true }
+        );
 
-        await Vendor.findByIdAndUpdate(vendorId, { currentBalance: newBalance });
+        // The recalculateVendorBalance function is always called right after this,
+        // so we don't need to manually calculate the running balance here anymore.
     } catch (err) {
         console.error('createPurchaseLedgerEntry error:', err.message);
     }

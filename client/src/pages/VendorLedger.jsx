@@ -193,7 +193,7 @@ const VendorLedger = () => {
                     });
                 }
             }
-            printTallyLedger(vendor, entriesToPrint, summary);
+            printTallyLedger(vendor, entriesToPrint, summary, true);
         } catch {
             toast.error('Failed to generate statement');
         }

@@ -1013,7 +1013,7 @@ export const printAccountStatement = (customer, entries, summary, period, settin
     executePrint(html);
 };
 
-export const printTallyLedger = (customer, entries, summary) => {
+export const printTallyLedger = (customer, entries, summary, isVendor = false) => {
     const fmt = (num) => {
         if (!num && num !== 0) return '';
         const n = Number(num);
@@ -1022,6 +1022,9 @@ export const printTallyLedger = (customer, entries, summary) => {
     };
 
     const openingBal = customer.openingBalance || 0;
+    const isDebitOpening = isVendor ? (openingBal < 0) : (openingBal > 0);
+    const absOpeningBal = Math.abs(openingBal);
+
     let totalDr = 0;
     let totalCr = 0;
     let dataRows = '';
@@ -1085,8 +1088,8 @@ export const printTallyLedger = (customer, entries, summary) => {
     const closeBal = summary?.closingBalance || 0;
 
     // Calculate actual column totals before closing balance
-    const actualTotalDr = totalDr + (openingBal < 0 ? Math.abs(openingBal) : 0);
-    const actualTotalCr = totalCr + (openingBal > 0 ? openingBal : 0);
+    const actualTotalDr = totalDr + (isDebitOpening ? absOpeningBal : 0);
+    const actualTotalCr = totalCr + (!isDebitOpening && absOpeningBal > 0 ? absOpeningBal : 0);
     
     // Grand totals (balanced on both sides)
     const grandTotal = Math.max(actualTotalDr, actualTotalCr);
@@ -1153,8 +1156,8 @@ export const printTallyLedger = (customer, entries, summary) => {
       <td class="c2 bold" style="text-align:center;">Opening Balance :</td>
       <td class="c3"></td>
       <td class="c4"></td>
-      <td class="c5 ra bold"></td>
-      <td class="c6 ra bold">${openingBal !== 0 ? fmt(Math.abs(openingBal)) + (openingBal > 0 ? ' Cr' : ' Dr') : ''}</td>
+      <td class="c5 ra bold">${absOpeningBal !== 0 && isDebitOpening ? fmt(absOpeningBal) + ' Dr' : ''}</td>
+      <td class="c6 ra bold">${absOpeningBal !== 0 && !isDebitOpening ? fmt(absOpeningBal) + ' Cr' : ''}</td>
     </tr>
     <tr><td colspan="6" style="height: 10px;"></td></tr>
     ${dataRows}
