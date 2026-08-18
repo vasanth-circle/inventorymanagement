@@ -66,21 +66,6 @@ export const createVendor = async (req, res, next) => {
         }
         const vendor = await Vendor.create(payload);
 
-        // Record opening balance in ledger if it's not zero
-        if (payload.openingBalance && Number(payload.openingBalance) > 0) {
-            await VendorLedger.create({
-                tenantId: req.tenantId,
-                vendor: vendor._id,
-                date: new Date(),
-                type: 'adjustment',
-                debit: 0,
-                credit: Number(payload.openingBalance),
-                balance: Number(payload.openingBalance),
-                description: 'Opening Balance',
-                createdBy: req.user._id,
-            });
-        }
-
         sendResponse(res, 201, vendor, 'Vendor created successfully');
     } catch (error) {
         next(error);

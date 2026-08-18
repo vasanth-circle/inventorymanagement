@@ -284,6 +284,7 @@ const VendorLedger = () => {
         });
     }
 
+
     const groupedEntries = useMemo(() => {
         const groups = [];
         let currentGroup = null;

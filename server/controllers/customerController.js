@@ -330,8 +330,8 @@ export const recordRefund = async (req, res, next) => {
             refType: 'Manual',
             refNumber: refNumber || auto,
             description: `Return Refund${returnRef ? ` (Ref: ${returnRef})` : ''}${paymentMode ? ` — ${paymentMode.replace('_', ' ')}` : ''}`,
-            debit: 0,
-            credit: amount, // Credit the customer — reduces what they owe / creates advance
+            debit: amount,  // Debit the customer: reduces their Cr balance / reduces our liability to them
+            credit: 0,
             balance: 0,     // Will be set by recalculate
             paymentMode,
             notes,
@@ -410,16 +410,22 @@ export const updatePayment = async (req, res, next) => {
         });
 
         if (!entry) return sendError(res, 404, 'Payment entry not found');
-        if (entry.refType !== 'Manual') return sendError(res, 400, 'Only manually recorded payments can be edited');
-        if (entry.type !== 'payment') return sendError(res, 400, 'Only payment entries can be edited');
+        if (entry.refType !== 'Manual') return sendError(res, 400, 'Only manually recorded entries can be edited');
+        if (entry.type !== 'payment' && entry.type !== 'adjustment') return sendError(res, 400, 'Only payment or refund entries can be edited');
 
         if (amount !== undefined) {
             if (Number(amount) <= 0) return sendError(res, 400, 'Amount must be greater than 0');
-            entry.credit = Number(amount);
+            if (entry.type === 'adjustment') {
+                entry.debit = Number(amount);
+            } else {
+                entry.credit = Number(amount);
+            }
         }
         if (paymentMode !== undefined) {
             entry.paymentMode = paymentMode;
-            entry.description = paymentMode === 'discount' ? 'Discount / Write-off' : `Payment Received (${paymentMode.replace('_', ' ')})`;
+            if (entry.type === 'payment') {
+                entry.description = paymentMode === 'discount' ? 'Discount / Write-off' : `Payment Received (${paymentMode.replace('_', ' ')})`;
+            }
         }
         if (date !== undefined) entry.date = new Date(date);
         if (notes !== undefined) entry.notes = notes;
@@ -446,9 +452,9 @@ export const deletePayment = async (req, res, next) => {
             ...tenantQuery(req),
         });
 
-        if (!entry) return sendError(res, 404, 'Payment entry not found');
-        if (entry.refType !== 'Manual') return sendError(res, 400, 'Only manually recorded payments can be deleted');
-        if (entry.type !== 'payment') return sendError(res, 400, 'Only payment entries can be deleted');
+        if (!entry) return sendError(res, 404, 'Entry not found');
+        if (entry.refType !== 'Manual') return sendError(res, 400, 'Only manually recorded entries can be deleted');
+        if (entry.type !== 'payment' && entry.type !== 'adjustment') return sendError(res, 400, 'Only payment or refund entries can be deleted');
 
         await CustomerLedger.deleteOne({ _id: entry._id });
         await recalculateCustomerBalance(req.params.id, req.tenantId);

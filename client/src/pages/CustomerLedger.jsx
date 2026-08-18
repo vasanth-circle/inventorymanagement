@@ -214,7 +214,8 @@ const CustomerLedger = () => {
     const handleEditOpen = (entry) => {
         setEditingEntry(entry);
         setEditForm({
-            amount: entry.credit,
+            // For refunds (adjustment) amount is stored in debit; for payments it's in credit
+            amount: entry.type === 'adjustment' ? entry.debit : entry.credit,
             paymentMode: entry.paymentMode || 'cash',
             date: new Date(entry.date).toISOString().split('T')[0],
             notes: entry.notes || '',
@@ -327,7 +328,13 @@ const CustomerLedger = () => {
             }
         });
         if (currentGroup) groups.push(currentGroup);
-        return groups;
+        
+        return groups.map(g => {
+            if (g.isGroup && g.items.length === 1) {
+                return g.items[0]; // flatten single-item groups back to original entry
+            }
+            return g;
+        });
     }, [entries]);
 
     const typeStyle = (type) => {
@@ -471,6 +478,7 @@ const CustomerLedger = () => {
                                 {groupedEntries.map((entry, i) => {
                                     const ts = typeStyle(entry.type);
                                     const isManualPayment = entry.type === 'payment' && entry.refType === 'Manual' && !entry.isGroup;
+                                    const isManualRefund  = entry.type === 'adjustment' && entry.refType === 'Manual' && !entry.isGroup;
                                     return (
                                         <tr key={entry._id || i} className={`${ts.bg} hover:brightness-95 transition-all`}>
                                             <td className="px-4 py-3 text-gray-400 text-sm" data-label="#">{i + 1}</td>
@@ -506,23 +514,25 @@ const CustomerLedger = () => {
                                             </td>
                                             {canEditPayment && (
                                                 <td className="px-4 py-3 text-center whitespace-nowrap" data-label="Actions">
-                                                    {isManualPayment ? (
+                                                    {(isManualPayment || isManualRefund) ? (
                                                         <div className="flex gap-1 justify-center">
                                                             <button
                                                                 onClick={() => handleEditOpen(entry)}
-                                                                title="Edit payment"
+                                                                title={isManualRefund ? 'Edit refund' : 'Edit payment'}
                                                                 className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
                                                                 ✏️
                                                             </button>
-                                                            <button
-                                                                onClick={() => printPaymentReceipt(entry, data.customer, settings, 'customer')}
-                                                                title="Print Receipt"
-                                                                className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors">
-                                                                🖨️
-                                                            </button>
+                                                            {isManualPayment && (
+                                                                <button
+                                                                    onClick={() => printPaymentReceipt(entry, data.customer, settings, 'customer')}
+                                                                    title="Print Receipt"
+                                                                    className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors">
+                                                                    🖨️
+                                                                </button>
+                                                            )}
                                                             <button
                                                                 onClick={() => setDeleteConfirm(entry)}
-                                                                title="Delete payment"
+                                                                title={isManualRefund ? 'Delete refund' : 'Delete payment'}
                                                                 className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
                                                                 🗑️
                                                             </button>
@@ -625,7 +635,9 @@ const CustomerLedger = () => {
                     <div className="modal-content">
                         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-blue-50">
                             <div className="flex flex-col">
-                                <h2 className="text-xl font-bold text-blue-800">✏️ Edit Payment</h2>
+                                <h2 className="text-xl font-bold text-blue-800">
+                                    {editingEntry?.type === 'adjustment' ? '✏️ Edit Refund' : '✏️ Edit Payment'}
+                                </h2>
                                 <p className="text-xs font-bold text-blue-600 uppercase tracking-tight mt-0.5">CUSTOMER: {customer?.companyName || customer?.name}</p>
                             </div>
                             <button onClick={() => { setEditModal(false); setEditingEntry(null); }} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
