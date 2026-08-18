@@ -119,6 +119,10 @@ const CustomerLedger = () => {
     const [deleteConfirm, setDeleteConfirm] = useState(null);
     const [deleting, setDeleting] = useState(false);
 
+    const [refundModal, setRefundModal] = useState(false);
+    const [refunding, setRefunding] = useState(false);
+    const [refundForm, setRefundForm] = useState({ amount: '', paymentMode: 'cash', date: new Date().toISOString().split('T')[0], notes: '', refNumber: '', returnRef: '' });
+
     const fetchLedger = useCallback(async () => {
         if (!selectedCustomerId) {
             setData(null);
@@ -239,6 +243,43 @@ const CustomerLedger = () => {
         }
     };
 
+    const handleDeletePayment = async () => {
+        if (!deleteConfirm) return;
+        setDeleting(true);
+        try {
+            await api(`/customers/${selectedCustomerId}/payment/${deleteConfirm._id}`, {
+                method: 'DELETE',
+            });
+            toast.success('Payment deleted successfully');
+            setDeleteConfirm(null);
+            fetchLedger();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to delete payment');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    const handleRefundSubmit = async (e) => {
+        e.preventDefault();
+        if (!refundForm.amount || Number(refundForm.amount) <= 0) return toast.error('Enter a valid refund amount');
+        setRefunding(true);
+        try {
+            await api(`/customers/${selectedCustomerId}/refund`, {
+                method: 'POST',
+                data: { ...refundForm, amount: Number(refundForm.amount) },
+            });
+            toast.success('Refund recorded successfully');
+            setRefundModal(false);
+            setRefundForm({ amount: '', paymentMode: 'cash', date: new Date().toISOString().split('T')[0], notes: '', refNumber: '', returnRef: '' });
+            fetchLedger();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to record refund');
+        } finally {
+            setRefunding(false);
+        }
+    };
+
     const customer = data?.customer;
     const backendEntries = data?.entries || [];
     const balance = data?.currentBalance ?? 0;
@@ -315,6 +356,14 @@ const CustomerLedger = () => {
                             className="flex-1 sm:flex-none px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-xs shadow"
                         >
                             + Receive Payment
+                        </button>
+                    )}
+                    {canRecordPayment && (
+                        <button
+                            onClick={() => setRefundModal(true)}
+                            className="flex-1 sm:flex-none px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold text-xs shadow"
+                        >
+                            ↩ Issue Refund
                         </button>
                     )}
                     <button
@@ -656,6 +705,78 @@ const CustomerLedger = () => {
                                 </button>
                             </div>
                         </div>
+                    </div>
+                </FullScreenModal>
+            )}
+
+            {/* Issue Refund Modal */}
+            {refundModal && (
+                <FullScreenModal isOpen={refundModal} onClose={() => setRefundModal(false)}>
+                    <div className="modal-content">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-purple-50">
+                            <div className="flex flex-col">
+                                <h2 className="text-xl font-bold text-purple-800">&#x21A9; Issue Refund</h2>
+                                <p className="text-xs font-bold text-purple-600 uppercase tracking-tight mt-0.5">CUSTOMER: {customer?.companyName || customer?.name}</p>
+                            </div>
+                            <button onClick={() => setRefundModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+                        </div>
+                        <form onSubmit={handleRefundSubmit} className="p-6 space-y-4">
+                            <div className={`p-3 rounded-lg text-center font-semibold text-sm ${balance > 0 ? 'bg-orange-50 text-orange-700 border border-orange-100' : 'bg-green-50 text-green-700 border border-green-100'}`}>
+                                Current Balance: &#x20B9;{fmt(Math.abs(balance))} {balance >= 0 ? 'Dr (Pending)' : 'Cr (Advance)'}
+                            </div>
+                            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-xs text-purple-700">
+                                <strong>&#8505;&#65039; What this does:</strong> Records money paid back to the customer for a return. Reduces their outstanding balance (or creates an advance credit for future bills).
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">Refund Amount *</label>
+                                <input type="number" step="0.01" min="0.01" required
+                                    value={refundForm.amount} onChange={e => setRefundForm({ ...refundForm, amount: e.target.value })}
+                                    placeholder="Enter refund amount"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-lg font-bold" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Payment Mode</label>
+                                    <select value={refundForm.paymentMode} onChange={e => setRefundForm({ ...refundForm, paymentMode: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none">
+                                        {PAYMENT_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Date</label>
+                                    <input type="date" value={refundForm.date} onChange={e => setRefundForm({ ...refundForm, date: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">Return Reference No. (optional)</label>
+                                <input type="text" value={refundForm.returnRef} onChange={e => setRefundForm({ ...refundForm, returnRef: e.target.value })}
+                                    placeholder="e.g. RET-001, SO-123"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">Ref / Voucher No. (optional)</label>
+                                <input type="text" value={refundForm.refNumber} onChange={e => setRefundForm({ ...refundForm, refNumber: e.target.value })}
+                                    placeholder="e.g. CHQ-123, UPI Ref"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">Notes (optional)</label>
+                                <textarea rows={2} value={refundForm.notes} onChange={e => setRefundForm({ ...refundForm, notes: e.target.value })}
+                                    placeholder="Reason for refund, items returned, etc."
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none resize-none" />
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                                <button type="submit" disabled={refunding}
+                                    className="flex-1 py-2.5 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700 disabled:opacity-50">
+                                    {refunding ? 'Recording...' : '&#x21A9; Record Refund'}
+                                </button>
+                                <button type="button" onClick={() => setRefundModal(false)}
+                                    className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-50">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </FullScreenModal>
             )}

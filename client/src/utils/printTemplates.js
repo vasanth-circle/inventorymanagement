@@ -1153,7 +1153,8 @@ export const printTallyLedger = (customer, entries, summary) => {
       <td class="c2 bold" style="text-align:center;">Opening Balance :</td>
       <td class="c3"></td>
       <td class="c4"></td>
-      <td class="c5 ra bold" style="text-align:center;" colspan="2">${openingBal !== 0 ? fmt(Math.abs(openingBal)) + (openingBal > 0 ? ' Cr' : ' Dr') : ''}</td>
+      <td class="c5 ra bold"></td>
+      <td class="c6 ra bold">${openingBal !== 0 ? fmt(Math.abs(openingBal)) + (openingBal > 0 ? ' Cr' : ' Dr') : ''}</td>
     </tr>
     <tr><td colspan="6" style="height: 10px;"></td></tr>
     ${dataRows}

@@ -309,10 +309,49 @@ export const getCustomerLedger = async (req, res, next) => {
     }
 };
 
+// @desc    Record a refund paid to a customer (debit entry — reduces customer balance)
+// @route   POST /api/customers/:id/refund
+// @access  Private
+export const recordRefund = async (req, res, next) => {
+    try {
+        const { amount, paymentMode = 'cash', date, notes, refNumber, returnRef } = req.body;
+        if (!amount || amount <= 0) return sendError(res, 400, 'Refund amount must be greater than 0');
+
+        const customer = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
+        if (!customer) return sendError(res, 404, 'Customer not found');
+
+        const auto = returnRef ? `RET-${returnRef}` : `RET-${Date.now()}`;
+
+        const entry = await CustomerLedger.create({
+            tenantId: req.tenantId,
+            customer: req.params.id,
+            date: date ? new Date(date) : new Date(),
+            type: 'adjustment',
+            refType: 'Manual',
+            refNumber: refNumber || auto,
+            description: `Return Refund${returnRef ? ` (Ref: ${returnRef})` : ''}${paymentMode ? ` — ${paymentMode.replace('_', ' ')}` : ''}`,
+            debit: 0,
+            credit: amount, // Credit the customer — reduces what they owe / creates advance
+            balance: 0,     // Will be set by recalculate
+            paymentMode,
+            notes,
+            createdBy: req.user._id,
+        });
+
+        await recalculateCustomerBalance(req.params.id, req.tenantId);
+        const updatedCustomer = await Customer.findById(req.params.id);
+
+        sendResponse(res, 201, { entry, balance: updatedCustomer.currentBalance }, 'Refund recorded successfully');
+    } catch (error) {
+        next(error);
+    }
+};
+
 // @desc    Record a payment received from a customer (credit entry)
 // @route   POST /api/customers/:id/payment
 // @access  Private
 export const recordPayment = async (req, res, next) => {
+
     try {
         const { amount, paymentMode = 'cash', date, notes, refNumber } = req.body;
         if (!amount || amount <= 0) return sendError(res, 400, 'Payment amount must be greater than 0');

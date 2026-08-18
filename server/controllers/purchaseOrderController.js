@@ -44,7 +44,7 @@ const revertPurchaseOrder = async (orderId, vendorId, tenantId, orderNumber) => 
 };
 
 // ─── Ledger helper (called after PO receipt/bill, does not change existing flow) ─
-export const createPurchaseLedgerEntry = async ({ orderId, orderNumber, vendorBillNumber, vendorId, amount, tenantId, userId, orderDate }) => {
+export const createPurchaseLedgerEntry = async ({ orderId, orderNumber, vendorBillNumber, vendorId, amount, tenantId, userId, billDate, orderDate }) => {
     try {
         const vendor = await Vendor.findById(vendorId);
         if (!vendor) return;
@@ -61,7 +61,7 @@ export const createPurchaseLedgerEntry = async ({ orderId, orderNumber, vendorBi
         await VendorLedger.create({
             tenantId,
             vendor: vendorId,
-            date: orderDate || new Date(),
+            date: billDate || orderDate || new Date(),
             type: 'bill',
             refType: 'PurchaseOrder',
             refId: orderId,
@@ -294,6 +294,7 @@ export const createPurchaseOrder = async (req, res, next) => {
                 amount: order.totalAmount,
                 tenantId: req.tenantId,
                 userId: req.user._id,
+                billDate: order.billDate,
                 orderDate: order.orderDate,
             });
             await recalculateVendorBalance(order.vendor, req.tenantId);
@@ -397,6 +398,7 @@ export const updatePurchaseOrder = async (req, res, next) => {
                 amount: order.totalAmount,
                 tenantId: req.tenantId,
                 userId: req.user._id,
+                billDate: order.billDate,
                 orderDate: order.orderDate,
             });
             await recalculateVendorBalance(order.vendor, req.tenantId);
@@ -463,6 +465,7 @@ export const updatePOStatus = async (req, res, next) => {
                     amount: order.totalAmount,
                     tenantId: req.tenantId,
                     userId: req.user._id,
+                    billDate: order.billDate,
                     orderDate: order.orderDate,
                 });
             }
@@ -576,6 +579,7 @@ export const receivePurchaseOrder = async (req, res, next) => {
             amount: order.totalAmount,
             tenantId: req.tenantId,
             userId: req.user._id,
+            billDate: order.billDate,
             orderDate: order.orderDate,
         });
 
