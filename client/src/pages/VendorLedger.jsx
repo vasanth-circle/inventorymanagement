@@ -519,7 +519,7 @@ const VendorLedger = () => {
                                 })}
                             </tbody>
                             <tfoot>
-                                <tr className="bg-gray-800 text-white">
+                                <tr className="bg-gray-800 text-white border-b border-gray-700">
                                     <td colSpan={4} className="px-4 py-3 font-bold text-sm">TOTAL</td>
                                     <td className="px-4 py-3 text-right font-bold text-green-300">
                                         ₹{fmt(entries.reduce((s, e) => s + (e.debit || 0), 0))}
@@ -527,6 +527,11 @@ const VendorLedger = () => {
                                     <td className="px-4 py-3 text-right font-bold text-red-300">
                                         ₹{fmt(entries.reduce((s, e) => s + (e.credit || 0), 0))}
                                     </td>
+                                    <td className="px-4 py-3"></td>
+                                    <td></td>
+                                </tr>
+                                <tr className="bg-gray-900 text-white">
+                                    <td colSpan={6} className="px-4 py-3 font-bold text-sm text-right text-gray-300 uppercase tracking-wider">Closing Balance</td>
                                     <td className={`px-4 py-3 text-right font-bold text-lg ${balance >= 0 ? 'text-red-300' : 'text-green-300'}`}>
                                         ₹{fmt(Math.abs(balance))} {balance >= 0 ? 'Cr' : 'Dr'}
                                     </td>
