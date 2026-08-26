@@ -123,6 +123,10 @@ const CustomerLedger = () => {
     const [refunding, setRefunding] = useState(false);
     const [refundForm, setRefundForm] = useState({ amount: '', paymentMode: 'cash', date: new Date().toISOString().split('T')[0], notes: '', refNumber: '', returnRef: '' });
 
+    const [chargeModal, setChargeModal] = useState(false);
+    const [charging, setCharging] = useState(false);
+    const [chargeForm, setChargeForm] = useState({ amount: '', date: new Date().toISOString().split('T')[0], description: '', refNumber: '' });
+
     const fetchLedger = useCallback(async () => {
         if (!selectedCustomerId) {
             setData(null);
@@ -281,7 +285,29 @@ const CustomerLedger = () => {
         }
     };
 
-    const customer = data?.customer;
+    const handleChargeSubmit = async (e) => {
+        e.preventDefault();
+        if (!chargeForm.amount || Number(chargeForm.amount) <= 0) return toast.error('Enter a valid charge amount');
+        if (!chargeForm.description.trim()) return toast.error('Description/Reason is required');
+        setCharging(true);
+        try {
+            await api(`/customers/${selectedCustomerId}/charge`, {
+                method: 'POST',
+                data: { ...chargeForm, amount: Number(chargeForm.amount) },
+            });
+            toast.success('Charge recorded successfully');
+            setChargeModal(false);
+            setChargeForm({ amount: '', date: new Date().toISOString().split('T')[0], description: '', refNumber: '' });
+            fetchLedger();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to record charge');
+        } finally {
+            setCharging(false);
+        }
+    };
+
+    const selectedCustomerInfo = customers.find(c => c._id === selectedCustomerId);
+    const customer = data?.customer || selectedCustomerInfo;
     const backendEntries = data?.entries || [];
     const bbf = data?.bbf ?? 0;
 
@@ -372,6 +398,14 @@ const CustomerLedger = () => {
                             className="flex-1 sm:flex-none px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold text-xs shadow"
                         >
                             ↩ Issue Refund
+                        </button>
+                    )}
+                    {canRecordPayment && (
+                        <button
+                            onClick={() => setChargeModal(true)}
+                            className="flex-1 sm:flex-none px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 font-semibold text-xs shadow"
+                        >
+                            + Add Charge
                         </button>
                     )}
                     <button
@@ -790,6 +824,65 @@ const CustomerLedger = () => {
                                     {refunding ? 'Recording...' : '&#x21A9; Record Refund'}
                                 </button>
                                 <button type="button" onClick={() => setRefundModal(false)}
+                                    className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-50">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </FullScreenModal>
+            )}
+            {/* Add Charge Modal */}
+            {chargeModal && (
+                <FullScreenModal isOpen={chargeModal} onClose={() => setChargeModal(false)}>
+                    <div className="modal-content">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-rose-50">
+                            <div className="flex flex-col">
+                                <h2 className="text-xl font-bold text-rose-800">+ Add Charge / Voucher</h2>
+                                <p className="text-xs font-bold text-rose-600 uppercase tracking-tight mt-0.5">CUSTOMER: {customer?.companyName || customer?.name}</p>
+                            </div>
+                            <button onClick={() => setChargeModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+                        </div>
+                        <form onSubmit={handleChargeSubmit} className="p-6 space-y-4">
+                            <div className={`p-3 rounded-lg text-center font-semibold text-sm ${balance > 0 ? 'bg-orange-50 text-orange-700 border border-orange-100' : 'bg-green-50 text-green-700 border border-green-100'}`}>
+                                Current Balance: &#x20B9;{fmt(Math.abs(balance))} {balance >= 0 ? 'Dr (Pending)' : 'Cr (Advance)'}
+                            </div>
+                            <div className="bg-rose-50 border border-rose-200 rounded-lg p-3 text-xs text-rose-700">
+                                <strong>&#8505;&#65039; What this does:</strong> Records an additional manual charge (e.g. auto fare, dispatch fee, fines) to the customer. This increases the total amount they owe you (Debit).
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">Charge Amount *</label>
+                                <input type="number" step="0.01" min="0.01" required
+                                    value={chargeForm.amount} onChange={e => setChargeForm({ ...chargeForm, amount: e.target.value })}
+                                    placeholder="Enter charge amount"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none text-lg font-bold" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Reason / Description *</label>
+                                    <input type="text" required
+                                        value={chargeForm.description} onChange={e => setChargeForm({ ...chargeForm, description: e.target.value })}
+                                        placeholder="e.g. Auto fare, Coolie charge"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Date</label>
+                                    <input type="date" required value={chargeForm.date} onChange={e => setChargeForm({ ...chargeForm, date: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">Ref / Voucher No. (optional)</label>
+                                <input type="text" value={chargeForm.refNumber} onChange={e => setChargeForm({ ...chargeForm, refNumber: e.target.value })}
+                                    placeholder="e.g. VCH-001"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none" />
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                                <button type="submit" disabled={charging}
+                                    className="flex-1 py-2.5 bg-rose-600 text-white rounded-lg font-bold hover:bg-rose-700 disabled:opacity-50">
+                                    {charging ? 'Recording...' : '+ Record Charge'}
+                                </button>
+                                <button type="button" onClick={() => setChargeModal(false)}
                                     className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-50">
                                     Cancel
                                 </button>

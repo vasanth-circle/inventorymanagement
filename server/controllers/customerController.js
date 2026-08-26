@@ -351,6 +351,41 @@ export const recordRefund = async (req, res, next) => {
 // @desc    Record a payment received from a customer (credit entry)
 // @route   POST /api/customers/:id/payment
 // @access  Private
+// @route   POST /api/customers/:id/charge
+// @desc    Record a manual charge/voucher (increases outstanding balance)
+// @access  Private
+export const recordCharge = async (req, res, next) => {
+    try {
+        const { amount, date, description, refNumber } = req.body;
+        if (!amount || amount <= 0) return sendError(res, 400, 'Charge amount must be greater than 0');
+        if (!description || description.trim() === '') return sendError(res, 400, 'Description/Reason is required');
+
+        const customer = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
+        if (!customer) return sendError(res, 404, 'Customer not found');
+
+        // Create debit entry (increases balance)
+        const entry = await CustomerLedger.create({
+            tenantId: req.tenantId,
+            customer: req.params.id,
+            date: date || new Date(),
+            type: 'adjustment',
+            refType: 'Manual',
+            refNumber,
+            description,
+            debit: amount,
+            credit: 0,
+            createdBy: req.user._id,
+        });
+
+        // Recalculate balance from this date onwards
+        await recalculateLedgerBalance(req.tenantId, req.params.id);
+
+        sendResponse(res, 201, entry, 'Charge recorded successfully');
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const recordPayment = async (req, res, next) => {
 
     try {

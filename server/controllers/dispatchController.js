@@ -27,18 +27,26 @@ export const createDispatch = async (req, res, next) => {
         // Validate over-dispatch (including pending requests)
         const pastDispatches = await Dispatch.find({ order: orderId, status: { $ne: 'cancelled' }, ...tenantQuery(req) });
 
-        for (const dispatchItem of items) {
-            const orderItem = order.items.find(oi => oi.item.toString() === dispatchItem.item.toString());
-            if (!orderItem) return sendError(res, 400, `Item ${dispatchItem.item} not found in order`);
+        // Aggregate requested quantities by item ID
+        const requestedQties = {};
+        for (const di of items) {
+            const iId = di.item.toString();
+            requestedQties[iId] = (requestedQties[iId] || 0) + Number(Number(di.quantity).toFixed(2));
+        }
 
+        for (const itemId of Object.keys(requestedQties)) {
+            const reqQty = requestedQties[itemId];
+            const orderItems = order.items.filter(oi => oi.item.toString() === itemId);
+            if (orderItems.length === 0) return sendError(res, 400, `Item not found in order`);
+
+            const targetedStockLimit = orderItems.reduce((sum, oi) => sum + Number((oi.stockQty || oi.quantity).toFixed(2)), 0);
+            
             const pastDispatchedQty = pastDispatches.reduce((sum, d) => {
-                const match = d.items.find(di => di.item.toString() === dispatchItem.item.toString());
-                return sum + (match ? match.quantity : 0);
+                const matches = d.items.filter(di => di.item.toString() === itemId);
+                return sum + matches.reduce((mSum, m) => mSum + m.quantity, 0);
             }, 0);
 
-            const targetedStockLimit = Number((orderItem.stockQty || orderItem.quantity).toFixed(2));
             const pendingQty = Number((targetedStockLimit - pastDispatchedQty).toFixed(2));
-            const reqQty = Number(Number(dispatchItem.quantity).toFixed(2));
             
             if (reqQty > pendingQty) {
                 return sendError(res, 400, `Cannot request dispatch of ${reqQty} units. Only ${pendingQty} pending for this item.`);
@@ -231,25 +239,28 @@ export const updateDispatch = async (req, res, next) => {
         }
 
         // Validate over-dispatch
-        const pastDispatches = await Dispatch.find({ 
-            order: order._id, 
-            status: { $ne: 'cancelled' },
-            _id: { $ne: dispatch._id }, // Exclude current dispatch from past calculations
-            ...tenantQuery(req) 
-        });
+        const pastDispatches = await Dispatch.find({ order: dispatch.order, _id: { $ne: req.params.id }, status: { $ne: 'cancelled' }, ...tenantQuery(req) });
 
-        for (const dispatchItem of items) {
-            const orderItem = order.items.find(oi => oi.item.toString() === dispatchItem.item.toString());
-            if (!orderItem) return sendError(res, 400, `Item ${dispatchItem.item} not found in order`);
+        // Aggregate requested quantities by item ID
+        const requestedQties = {};
+        for (const di of items) {
+            const iId = di.item.toString();
+            requestedQties[iId] = (requestedQties[iId] || 0) + Number(Number(di.quantity).toFixed(2));
+        }
+
+        for (const itemId of Object.keys(requestedQties)) {
+            const reqQty = requestedQties[itemId];
+            const orderItems = order.items.filter(oi => oi.item.toString() === itemId);
+            if (orderItems.length === 0) return sendError(res, 400, `Item not found in order`);
+
+            const targetedStockLimit = orderItems.reduce((sum, oi) => sum + Number((oi.stockQty || oi.quantity).toFixed(2)), 0);
 
             const pastDispatchedQty = pastDispatches.reduce((sum, d) => {
-                const match = d.items.find(di => di.item.toString() === dispatchItem.item.toString());
-                return sum + (match ? match.quantity : 0);
+                const matches = d.items.filter(di => di.item.toString() === itemId);
+                return sum + matches.reduce((mSum, m) => mSum + m.quantity, 0);
             }, 0);
 
-            const targetedStockLimit = Number((orderItem.stockQty || orderItem.quantity).toFixed(2));
             const pendingQty = Number((targetedStockLimit - pastDispatchedQty).toFixed(2));
-            const reqQty = Number(Number(dispatchItem.quantity).toFixed(2));
             
             if (reqQty > pendingQty) {
                 return sendError(res, 400, `Cannot request dispatch of ${reqQty} units. Only ${pendingQty} pending for this item.`);

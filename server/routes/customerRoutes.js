@@ -7,6 +7,7 @@ import {
     deleteCustomer,
     getCustomerBalance,
     getCustomerLedger,
+    recordCharge,
     recordPayment,
     recordRefund,
     updatePayment,
@@ -46,6 +47,7 @@ router.route('/:id')
 router.get('/:id/balance', getCustomerBalance);
 router.get('/:id/ledger', getCustomerLedger);
 router.get('/:id/statement', getCustomerStatement);
+router.post('/:id/charge', recordCharge);
 router.post('/:id/payment', recordPayment);
 router.post('/:id/refund', recordRefund);
 router.put('/:id/payment/:entryId', authorize('admin', 'manager', 'tenant_owner', 'tenant_admin'), updatePayment);

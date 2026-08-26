@@ -123,25 +123,39 @@ const DispatchManagement = () => {
                     String(d.order?._id || d.order) === String(order._id) && d.status !== 'cancelled'
                 );
 
-                const pendingItems = order.items.map(item => {
+                // Group dispatched sums by Product ID (to handle duplicate lines of the same product)
+                const productDispatchedSums = {};
+                for (const d of orderDispatches) {
+                    for (const di of d.items) {
+                        const pid = String(di.item?._id || di.item);
+                        productDispatchedSums[pid] = (productDispatchedSums[pid] || 0) + (Number(di.quantity) || 0);
+                    }
+                }
+
+                const pendingItems = [];
+                for (const item of order.items) {
                     const itemId = item.item?._id || item.item;
-                    if (!itemId) return null;
+                    if (!itemId) continue;
 
                     const stockLimit = Number(item.stockQty) || 0;
                     const billedQty = Number(item.quantity) || 0;
                     const targetedStockLimit = stockLimit > 0 ? stockLimit : billedQty;
 
-                    const dispatchedSum = orderDispatches.reduce((sum, d) => {
-                        const dMatch = d.items.find(di => String(di.item?._id || di.item) === String(itemId));
-                        return sum + (dMatch ? Number(dMatch.quantity) || 0 : 0);
-                    }, 0);
+                    const alreadyDispatchedForProduct = productDispatchedSums[String(itemId)] || 0;
+                    const dispatchForThisLine = Math.min(targetedStockLimit, alreadyDispatchedForProduct);
+                    
+                    productDispatchedSums[String(itemId)] -= dispatchForThisLine; // deduct what's consumed by this line
 
-                    const pending = Math.max(0, targetedStockLimit - dispatchedSum);
-                    return {
-                        ...item,
-                        quantity: Number(pending.toFixed(2)) // Display the remaining pending quantity
-                    };
-                }).filter(i => i !== null && i.quantity > 0);
+                    const pending = Math.max(0, targetedStockLimit - dispatchForThisLine);
+                    if (pending > 0) {
+                        pendingItems.push({
+                            ...item,
+                            orderedQuantity: targetedStockLimit,
+                            previouslyDispatched: dispatchForThisLine,
+                            quantity: Number(pending.toFixed(2)) // Display the remaining pending quantity
+                        });
+                    }
+                }
 
                 return { 
                     ...order, 
@@ -208,37 +222,48 @@ const DispatchManagement = () => {
             // Filter out cancelled ones if they exist
             const activeDispatches = pastDispatches.filter(d => d.status !== 'cancelled');
 
-            const mappedItems = order.items.map(item => {
+            // Group dispatched sums by Product ID
+            const productDispatchedSums = {};
+            for (const d of activeDispatches) {
+                for (const di of d.items) {
+                    const pid = String(di.item?._id || di.item);
+                    productDispatchedSums[pid] = (productDispatchedSums[pid] || 0) + (Number(di.quantity) || 0);
+                }
+            }
+
+            const mappedItems = [];
+            for (const item of order.items) {
                 const itemId = item.item?._id || item.item;
-                if (!itemId) return null;
+                if (!itemId) continue;
 
                 const stockLimit = Number(item.stockQty) || 0;
                 const billedQty = Number(item.quantity) || 0;
                 const targetedStockLimit = Number((stockLimit > 0 ? stockLimit : billedQty).toFixed(2));
 
-                const dispatchedSum = activeDispatches.reduce((sum, d) => {
-                    const dMatch = d.items.find(di => {
-                        const diItemId = di.item?._id || di.item;
-                        return String(diItemId) === String(itemId);
+                const alreadyDispatchedForProduct = productDispatchedSums[String(itemId)] || 0;
+                const dispatchForThisLine = Math.min(targetedStockLimit, alreadyDispatchedForProduct);
+                
+                productDispatchedSums[String(itemId)] -= dispatchForThisLine;
+
+                const pending = Math.max(0, targetedStockLimit - dispatchForThisLine);
+
+                if (pending > 0) {
+                    mappedItems.push({
+                        ...item,
+                        item: item.item,
+                        itemId: String(itemId),
+                        name: item.name || item.item?.name,
+                        brand: item.brand || item.item?.brand,
+                        size: item.size,
+                        orderedQuantity: targetedStockLimit,
+                        previouslyDispatched: dispatchForThisLine,
+                        pendingQuantity: Number(pending.toFixed(2)),
+                        quantity: '', // Default empty instead of 0
+                        selected: false,
+                        stockUnit: item.stockUnit || (item.sqFtPerPc ? 'Boxes' : 'Boxes')
                     });
-                    return sum + (dMatch ? Number(dMatch.quantity) || 0 : 0);
-                }, 0);
-
-                const pending = Math.max(0, targetedStockLimit - dispatchedSum);
-
-                return {
-                    item: itemId,
-                    name: item.name,
-                    brand: item.brand,
-                    size: item.size,
-                    orderedQuantity: targetedStockLimit,
-                    previouslyDispatched: dispatchedSum,
-                    pendingQuantity: Number(pending.toFixed(2)),
-                    quantity: '', // Default empty instead of 0
-                    selected: false,
-                    stockUnit: item.stockUnit || (item.sqFtPerPc ? 'Boxes' : 'Boxes')
-                };
-            }).filter(i => i !== null && i.pendingQuantity > 0);
+                }
+            }
 
             setRequestData(prev => ({
                 ...prev,
@@ -331,37 +356,51 @@ const DispatchManagement = () => {
             const pastDispatches = res.data?.data || [];
             const activeDispatches = pastDispatches.filter(d => d.status !== 'cancelled' && String(d._id) !== String(dh._id));
 
-            const mappedItems = order.items.map(item => {
+            // Group dispatched sums by Product ID
+            const productDispatchedSums = {};
+            for (const d of activeDispatches) {
+                for (const di of d.items) {
+                    const pid = String(di.item?._id || di.item);
+                    productDispatchedSums[pid] = (productDispatchedSums[pid] || 0) + (Number(di.quantity) || 0);
+                }
+            }
+
+            const mappedItems = [];
+            for (const item of order.items) {
                 const itemId = item.item?._id || item.item;
-                if (!itemId) return null;
+                if (!itemId) continue;
 
                 const stockLimit = Number(item.stockQty) || 0;
                 const billedQty = Number(item.quantity) || 0;
                 const targetedStockLimit = Number((stockLimit > 0 ? stockLimit : billedQty).toFixed(2));
 
-                const dispatchedSum = activeDispatches.reduce((sum, d) => {
-                    const dMatch = d.items.find(di => String(di.item?._id || di.item) === String(itemId));
-                    return sum + (dMatch ? Number(dMatch.quantity) || 0 : 0);
-                }, 0);
+                const alreadyDispatchedForProduct = productDispatchedSums[String(itemId)] || 0;
+                const dispatchForThisLine = Math.min(targetedStockLimit, alreadyDispatchedForProduct);
+                
+                productDispatchedSums[String(itemId)] -= dispatchForThisLine;
 
-                const pending = Math.max(0, targetedStockLimit - dispatchedSum);
+                const pending = Math.max(0, targetedStockLimit - dispatchForThisLine);
 
                 const existingItem = dh.items.find(i => String(i.item?._id || i.item) === String(itemId));
                 const currentQty = existingItem ? Number(existingItem.quantity) : '';
 
-                return {
-                    item: itemId,
-                    name: item.name || item.item?.name,
-                    brand: item.brand || item.item?.brand,
-                    size: item.size || item.item?.size,
-                    orderedQuantity: targetedStockLimit,
-                    previouslyDispatched: dispatchedSum,
-                    pendingQuantity: Number(pending.toFixed(2)),
-                    quantity: currentQty,
-                    selected: !!existingItem,
-                    stockUnit: item.stockUnit || (item.sqFtPerPc ? 'Boxes' : 'Boxes')
-                };
-            }).filter(i => i !== null && i.pendingQuantity > 0);
+                if (pending > 0 || currentQty !== '') {
+                    mappedItems.push({
+                        ...item,
+                        item: item.item,
+                        itemId: String(itemId),
+                        name: item.name || item.item?.name,
+                        brand: item.brand || item.item?.brand,
+                        size: item.size || item.item?.size,
+                        orderedQuantity: targetedStockLimit,
+                        previouslyDispatched: dispatchForThisLine,
+                        pendingQuantity: Number(pending.toFixed(2)),
+                        quantity: currentQty,
+                        selected: currentQty !== '',
+                        stockUnit: item.stockUnit || (item.sqFtPerPc ? 'Boxes' : 'Boxes')
+                    });
+                }
+            }
 
             setEditDispatchData({
                 id: dh._id,
