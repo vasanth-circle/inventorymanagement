@@ -378,7 +378,7 @@ export const recordCharge = async (req, res, next) => {
         });
 
         // Recalculate balance from this date onwards
-        await recalculateLedgerBalance(req.tenantId, req.params.id);
+        await recalculateCustomerBalance(req.params.id, req.tenantId);
 
         sendResponse(res, 201, entry, 'Charge recorded successfully');
     } catch (error) {
