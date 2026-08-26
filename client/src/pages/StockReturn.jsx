@@ -315,7 +315,13 @@ const StockReturn = () => {
         const updated = [...returnItems];
         let row = { ...updated[index], returnQty: value };
         
-        if (!row.isManual && billingSettings?.industry) {
+        if (returnType === 'vendor') {
+            row.quantity = parseFloat(value) || 0;
+            if (billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0) {
+                 row.boxCount = parseFloat(value) || 0;
+            }
+            row.total = row.quantity * (row.rate || 0);
+        } else if (!row.isManual && billingSettings?.industry) {
             const isTile = billingSettings.industry === 'tiles' && row.sqFtPerPc > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((row.unitType || '').toLowerCase());
             
             if (isTile) {
@@ -338,7 +344,10 @@ const StockReturn = () => {
         const newRate = parseFloat(value) || 0;
         let row = { ...updated[index], rate: newRate, price: newRate };
         
-        if (!row.isManual && billingSettings?.industry) {
+        if (returnType === 'vendor') {
+            row.quantity = parseFloat(row.returnQty) || 0;
+            row.total = row.quantity * newRate;
+        } else if (!row.isManual && billingSettings?.industry) {
             const isTile = billingSettings.industry === 'tiles' && row.sqFtPerPc > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((row.unitType || '').toLowerCase());
             
             if (isTile) {

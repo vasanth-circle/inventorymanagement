@@ -1,6 +1,7 @@
 import Customer from '../models/Customer.js';
 import CustomerLedger from '../models/CustomerLedger.js';
 import User from '../models/User.js';
+import SalesOrder from '../models/SalesOrder.js';
 import Setting from '../models/Setting.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
@@ -809,6 +810,14 @@ export const getCustomerReceivables = async (req, res, next) => {
 export const getCustomerOutstandingSummary = async (req, res, next) => {
     try {
         const query = { ...tenantQuery(req), isActive: true };
+
+        // Filter by sales person if provided
+        if (req.query.salesPerson) {
+            const salesOrders = await SalesOrder.find({ user: req.query.salesPerson, ...tenantQuery(req) }).select('customer');
+            const customerIds = salesOrders.map(so => so.customer);
+            query._id = { $in: customerIds };
+        }
+
         const customers = await Customer.find(query).sort({ name: 1 });
         const fromDate = req.query.from ? new Date(req.query.from) : null;
         if (fromDate) fromDate.setHours(0, 0, 0, 0);

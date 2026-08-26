@@ -56,7 +56,7 @@ const SearchableDropdown = ({ options = [], value, onChange, placeholder = 'Sear
 };
 
 // Date Filter Bar
-const DateFilterBar = ({ from, to, onFromChange, onToChange, onApply, onClear, disabled }) => (
+const DateFilterBar = ({ from, to, onFromChange, onToChange, onApply, onClear, disabled, children, hasFilters }) => (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-wrap gap-3 items-end">
         <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1">From Date</label>
@@ -68,11 +68,12 @@ const DateFilterBar = ({ from, to, onFromChange, onToChange, onApply, onClear, d
             <input type="date" value={to} onChange={e => onToChange(e.target.value)}
                 className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
         </div>
+        {children}
         <button onClick={onApply} disabled={disabled}
             className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors">
             Apply Filter
         </button>
-        {(from || to) && (
+        {(hasFilters !== undefined ? hasFilters : (from || to)) && (
             <button onClick={onClear} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition-colors">
                 Clear
             </button>
@@ -1038,9 +1039,15 @@ const OutstandingSummary = ({ settings }) => {
     const [entityType, setEntityType] = useState('customer');
     const [from, setFrom] = useState('');
     const [to, setTo] = useState('');
+    const [selectedSalesPerson, setSelectedSalesPerson] = useState('');
+    const [users, setUsers] = useState([]);
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
+
+    useEffect(() => {
+        api('/auth/users').then(r => setUsers(Array.isArray(r.data) ? r.data : (r.data.data || []))).catch(console.error);
+    }, []);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -1048,6 +1055,7 @@ const OutstandingSummary = ({ settings }) => {
             const params = {};
             if (from) params.from = from;
             if (to) params.to = to;
+            if (entityType === 'customer' && selectedSalesPerson) params.salesPerson = selectedSalesPerson;
             const endpoint = entityType === 'customer'
                 ? '/customers/reports/outstanding-summary'
                 : '/vendor-ledger/reports/outstanding-summary';
@@ -1055,7 +1063,7 @@ const OutstandingSummary = ({ settings }) => {
             setData(r.data.data);
         } catch { toast.error('Failed to fetch outstanding summary'); }
         finally { setLoading(false); }
-    }, [entityType, from, to]);
+    }, [entityType, from, to, selectedSalesPerson]);
 
     useEffect(() => { fetchData(); setSearch(''); }, [entityType]);
 
@@ -1067,6 +1075,11 @@ const OutstandingSummary = ({ settings }) => {
     const grandCredit  = rows.reduce((s, r) => s + (r.closingBalance < 0 ? Math.abs(r.closingBalance) : 0), 0);
     const grandBalance = rows.reduce((s, r) => s + r.closingBalance, 0);
     const printOpts = { entityType, summaries: rows, from, to, settings };
+
+    const userOptions = [
+        { value: '', label: 'All Sales Persons' },
+        ...users.map(u => ({ value: u._id, label: u.name || u.email }))
+    ];
 
     return (
         <div className="space-y-5">
@@ -1092,8 +1105,30 @@ const OutstandingSummary = ({ settings }) => {
                 </div>
             </div>
 
-            <DateFilterBar from={from} to={to} onFromChange={setFrom} onToChange={setTo}
-                onApply={fetchData} onClear={() => { setFrom(''); setTo(''); }} />
+            <DateFilterBar 
+                from={from} 
+                to={to} 
+                onFromChange={setFrom} 
+                onToChange={setTo}
+                onApply={fetchData} 
+                onClear={() => { setFrom(''); setTo(''); setSelectedSalesPerson(''); }}
+                hasFilters={from || to || selectedSalesPerson}
+            >
+                {entityType === 'customer' && (
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">Filter by Sales Person</label>
+                        <select
+                            value={selectedSalesPerson}
+                            onChange={(e) => setSelectedSalesPerson(e.target.value)}
+                            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-48"
+                        >
+                            {userOptions.map(opt => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+            </DateFilterBar>
 
             {data && rows.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
