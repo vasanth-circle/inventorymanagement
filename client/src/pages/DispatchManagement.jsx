@@ -319,7 +319,7 @@ const DispatchManagement = () => {
                 order: selectedOrder._id,
                 notes: requestData.notes,
                 items: selectedItems.map(i => ({
-                    item: i.item,
+                    item: i.itemId || (i.item && i.item._id) || i.item,
                     quantity: Number(i.quantity)
                 }))
             });
@@ -447,7 +447,7 @@ const DispatchManagement = () => {
             await api.put(`/dispatches/${editDispatchData.id}`, {
                 notes: editDispatchData.notes,
                 items: selectedItems.map(i => ({
-                    item: i.item,
+                    item: i.itemId || (i.item && i.item._id) || i.item,
                     quantity: Number(i.quantity)
                 }))
             });
