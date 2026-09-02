@@ -1,4 +1,4 @@
-// ─────────────────────────────────────────────────────────────────────────────
+import html2pdf from 'html2pdf.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared print execution utility (fixes iOS Safari popup blocker issues)
@@ -40,6 +40,44 @@ export const executePrint = (html) => {
             alert('Popup blocker prevented printing. Please allow popups for this site.');
         }
     }
+};
+
+export const executeDownload = (html, filename = 'document.pdf') => {
+    const styleMatch = html.match(/<style>([\s\S]*?)<\/style>/i);
+    const bodyMatch = html.match(/<body>([\s\S]*?)<\/body>/i);
+    
+    const styleContent = styleMatch ? styleMatch[1] : '';
+    const bodyContent = bodyMatch ? bodyMatch[1] : '';
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.top = '0';
+    iframe.style.left = '0';
+    iframe.style.width = '210mm';
+    iframe.style.height = '297mm';
+    iframe.style.opacity = '0';
+    iframe.style.pointerEvents = 'none';
+    iframe.style.zIndex = '-1';
+    document.body.appendChild(iframe);
+    
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(html);
+    doc.close();
+
+    setTimeout(() => {
+        const opt = {
+            margin: 0,
+            filename: filename,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        
+        html2pdf().set(opt).from(doc.documentElement).save().then(() => {
+            document.body.removeChild(iframe);
+        });
+    }, 500);
 };
 
 // Shared Indian number formatting utility
@@ -1013,7 +1051,7 @@ export const printAccountStatement = (customer, entries, summary, period, settin
     executePrint(html);
 };
 
-export const printTallyLedger = (customer, entries, summary, isVendor = false) => {
+export const printTallyLedger = (customer, entries, summary, isVendor = false, mode = 'print') => {
     const fmt = (num) => {
         if (!num && num !== 0) return '';
         const n = Number(num);
@@ -1188,7 +1226,11 @@ export const printTallyLedger = (customer, entries, summary, isVendor = false) =
 
 </body></html>`;
 
-    executePrint(html);
+    if (mode === 'download') {
+        executeDownload(html, `Statement_${customer?.name?.replace(/[^a-zA-Z0-9_-]/g, '') || 'Customer'}.pdf`);
+    } else {
+        executePrint(html);
+    }
 };
 
 export const printTallyReceivables = (receivablesData) => {

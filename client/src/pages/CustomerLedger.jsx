@@ -182,14 +182,14 @@ const CustomerLedger = () => {
         api('/settings/billing').then(r => setSettings(r.data.data)).catch(() => {});
     }, []);
 
-    const handlePrint = async () => {
+    const handlePrint = async (mode = 'print') => {
         try {
             const params = {};
             if (from) params.from = from;
             if (to) params.to = to;
             const res = await api(`/customers/${selectedCustomerId}/statement`, { params });
             const { customer, entries, summary } = res.data.data;
-            printTallyLedger(customer, entries, summary);
+            printTallyLedger(customer, entries, summary, false, mode);
         } catch {
             toast.error('Failed to generate statement');
         }
@@ -409,11 +409,19 @@ const CustomerLedger = () => {
                         </button>
                     )}
                     <button
-                        onClick={handlePrint}
+                        onClick={() => handlePrint('print')}
                         disabled={!selectedCustomerId || !data}
                         className="flex-1 sm:flex-none px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold text-xs shadow disabled:opacity-50"
                     >
                         🖨️ Statement
+                    </button>
+                    <button
+                        onClick={() => handlePrint('download')}
+                        disabled={!selectedCustomerId || !data}
+                        className="flex-1 sm:flex-none px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-xs shadow disabled:opacity-50 flex items-center justify-center gap-1"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Download
                     </button>
                 </div>
             </div>

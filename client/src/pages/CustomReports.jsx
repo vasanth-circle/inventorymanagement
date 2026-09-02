@@ -100,9 +100,14 @@ const EmptyState = ({ icon, title, subtitle }) => (
 const openOrDownload = (html, filename, mode = 'print') => {
     if (mode === 'download') {
         const iframe = document.createElement('iframe');
-        iframe.style.position = 'absolute';
-        iframe.style.width = '210mm'; // A4 width
-        iframe.style.left = '-9999px';
+        iframe.style.position = 'fixed';
+        iframe.style.top = '0';
+        iframe.style.left = '0';
+        iframe.style.width = '210mm';
+        iframe.style.height = '297mm';
+        iframe.style.opacity = '0';
+        iframe.style.pointerEvents = 'none';
+        iframe.style.zIndex = '-1';
         document.body.appendChild(iframe);
         
         const doc = iframe.contentWindow.document;
