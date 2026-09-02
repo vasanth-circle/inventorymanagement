@@ -53,8 +53,10 @@ export const executeDownload = (html, filename = 'document.pdf') => {
     iframe.style.position = 'fixed';
     iframe.style.top = '0';
     iframe.style.left = '0';
-    iframe.style.width = '210mm';
-    iframe.style.height = '297mm';
+    // Use A4 pixel width (at 96 DPI) so the layout matches standard print proportions
+    iframe.style.width = '800px';
+    iframe.style.maxWidth = 'none';
+    iframe.style.height = '100vh';
     iframe.style.opacity = '0';
     iframe.style.pointerEvents = 'none';
     iframe.style.zIndex = '-1';
@@ -65,12 +67,13 @@ export const executeDownload = (html, filename = 'document.pdf') => {
     doc.write(html);
     doc.close();
 
+    // Wait slightly for styles and content to fully render in the iframe
     setTimeout(() => {
         const opt = {
             margin: 0,
             filename: filename,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
+            html2canvas: { scale: 2, useCORS: true, windowWidth: 800 },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
         
@@ -1144,15 +1147,15 @@ export const printTallyLedger = (customer, entries, summary, isVendor = false, m
   .lt { width:100%; border-collapse:collapse; table-layout:fixed; }
   .lt th, .lt td { padding:4px 2px; }
   .lt th { text-align:left; font-weight:bold; }
-  .ra { text-align:right; }
+  .ra { text-align:right !important; }
   
   /* Adjusted column widths */
-  .c1 { width:12%; }
-  .c2 { width:40%; }
-  .c3 { width:12%; }
+  .c1 { width:11%; }
+  .c2 { width:43%; }
+  .c3 { width:10%; }
   .c4 { width:12%; }
   .c5 { width:12%; }
-  .c6 { width:12%; }
+  .c6 { width:12%; padding-right: 5px; }
   
   .bold { font-weight:bold; }
   
