@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import html2pdf from 'html2pdf.js';
 
 const api = (path, opts = {}) =>
     axios({ url: `/api${path}`, ...opts, headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}`, ...opts.headers } });
@@ -98,15 +99,31 @@ const EmptyState = ({ icon, title, subtitle }) => (
 // Print / Download helper
 const openOrDownload = (html, filename, mode = 'print') => {
     if (mode === 'download') {
-        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'absolute';
+        iframe.style.width = '210mm'; // A4 width
+        iframe.style.left = '-9999px';
+        document.body.appendChild(iframe);
+        
+        const doc = iframe.contentWindow.document;
+        doc.open();
+        doc.write(html);
+        doc.close();
+
+        // Wait slightly for styles and content to fully render in the iframe
+        setTimeout(() => {
+            const opt = {
+                margin: 0,
+                filename: filename.replace('.html', '.pdf'),
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, windowWidth: iframe.contentWindow.document.body.scrollWidth },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            
+            html2pdf().set(opt).from(doc.documentElement).save().then(() => {
+                document.body.removeChild(iframe);
+            });
+        }, 500);
     } else {
         const w = window.open('', '_blank');
         w.document.write(html);
