@@ -58,14 +58,14 @@ export const getVendorLedger = async (req, res, next) => {
         // Calculate Balance Brought Forward (bbf)
         let bbf = vendor?.openingBalance || 0;
         if (from) {
-            const lastPreviousEntry = await VendorLedger.findOne({
+            const previousEntries = await VendorLedger.find({
                 vendor: vendorId,
                 ...tenantQuery(req),
                 date: { $lt: new Date(from) }
-            }).sort({ date: -1, createdAt: -1 });
-            if (lastPreviousEntry) {
-                bbf = lastPreviousEntry.balance;
-            }
+            });
+            const priorCredits = previousEntries.reduce((sum, e) => sum + (e.credit || 0), 0);
+            const priorDebits = previousEntries.reduce((sum, e) => sum + (e.debit || 0), 0);
+            bbf = bbf + priorCredits - priorDebits;
         }
 
         // Last entry balance = current balance

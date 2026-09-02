@@ -286,14 +286,14 @@ export const getCustomerLedger = async (req, res, next) => {
         // Calculate Balance Brought Forward (bbf)
         let bbf = customer.openingBalance || 0;
         if (from) {
-            const lastPreviousEntry = await CustomerLedger.findOne({
+            const previousEntries = await CustomerLedger.find({
                 customer: req.params.id,
                 ...tenantQuery(req),
                 date: { $lt: new Date(from) }
-            }).sort({ date: -1, createdAt: -1 });
-            if (lastPreviousEntry) {
-                bbf = lastPreviousEntry.balance;
-            }
+            });
+            const priorDebits = previousEntries.reduce((sum, e) => sum + (e.debit || 0), 0);
+            const priorCredits = previousEntries.reduce((sum, e) => sum + (e.credit || 0), 0);
+            bbf = bbf + priorDebits - priorCredits;
         }
 
         sendResponse(res, 200, {
