@@ -1269,28 +1269,10 @@ const SalesOrders = () => {
                                         </div>
                                     </div>
                                     <div className="pt-6 border-t mt-6 space-y-3">
-                                        <div className="flex justify-between text-gray-600 font-medium">
-                                            <span>Subtotal Items:</span>
-                                            <span>₹{itemsTotal.toLocaleString()}</span>
+                                        <div className="flex justify-between text-gray-800 font-bold">
+                                            <span>Subtotal:</span>
+                                            <span>₹{(itemsTotal + parseFloat(formData.loadingCharges || 0) + parseFloat(formData.unloadingCharges || 0) + parseFloat(formData.transportCharges || 0)).toLocaleString()}</span>
                                         </div>
-                                        {parseFloat(formData.loadingCharges || 0) > 0 && (
-                                            <div className="flex justify-between text-gray-600 font-medium text-sm">
-                                                <span>🚛 Loading Charges:</span>
-                                                <span>+ ₹{parseFloat(formData.loadingCharges || 0).toLocaleString()}</span>
-                                            </div>
-                                        )}
-                                        {parseFloat(formData.unloadingCharges || 0) > 0 && (
-                                            <div className="flex justify-between text-gray-600 font-medium text-sm">
-                                                <span>👷 Unloading Charges:</span>
-                                                <span>+ ₹{parseFloat(formData.unloadingCharges || 0).toLocaleString()}</span>
-                                            </div>
-                                        )}
-                                        {parseFloat(formData.transportCharges || 0) > 0 && (
-                                            <div className="flex justify-between text-gray-600 font-medium text-sm">
-                                                <span>🚚 Transport Charges:</span>
-                                                <span>+ ₹{parseFloat(formData.transportCharges || 0).toLocaleString()}</span>
-                                            </div>
-                                        )}
                                         {parseFloat(formData.taxAmount || 0) > 0 && (
                                             <div className="flex justify-between text-gray-600 font-medium text-sm">
                                                 <span>🏛️ Tax Amount:</span>

@@ -1636,7 +1636,13 @@ const SalesByCustomerTypeReport = ({ settings }) => {
         // Fetch from the customer-types endpoint
         api('/customer-types').then(r => {
             if (r.data && Array.isArray(r.data)) {
-                setCustomerTypes(r.data);
+                const types = r.data;
+                const hasRegular = types.some(t => (t.name === 'Regular Customer' || t === 'Regular Customer'));
+                if (!hasRegular) {
+                    setCustomerTypes([{ name: 'Regular Customer' }, ...types]);
+                } else {
+                    setCustomerTypes(types);
+                }
             }
         }).catch(() => {});
     }, []);
