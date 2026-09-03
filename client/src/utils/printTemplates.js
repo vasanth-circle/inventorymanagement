@@ -42,7 +42,7 @@ export const executePrint = (html) => {
     }
 };
 
-export const executeDownload = (html, filename = 'document.pdf') => {
+export const executeDownload = (html, filename = 'document.pdf', pdfMargin = 0) => {
     const styleMatch = html.match(/<style>([\s\S]*?)<\/style>/i);
     const bodyMatch = html.match(/<body>([\s\S]*?)<\/body>/i);
     
@@ -70,7 +70,7 @@ export const executeDownload = (html, filename = 'document.pdf') => {
     // Wait slightly for styles and content to fully render in the iframe
     setTimeout(() => {
         const opt = {
-            margin: 0,
+            margin: pdfMargin,
             filename: filename,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2, useCORS: true, windowWidth: 800 },
@@ -1141,10 +1141,10 @@ export const printTallyLedger = (customer, entries, summary, isVendor = false, m
     const html = `<html><head><meta charset="UTF-8"><title>Ledger - ${customer.companyName || customer.name}</title>
 <style>
   @page { size: A4; margin: 15mm; }
-  body { font-family: 'Courier New', Courier, monospace; font-size: 13px; color: #000; font-weight: bold; margin:0; line-height: 1.3; }
+  body { font-family: 'Courier New', Courier, monospace; font-size: 13px; color: #000; font-weight: bold; margin:0; line-height: 1.3; background-color: #ffffff; }
   .hdr { width:100%; border-collapse:collapse; margin-bottom:10px; }
   .hdr td { padding:0; }
-  .lt { width:100%; border-collapse:collapse; table-layout:fixed; }
+  .lt { width:100%; border-collapse:collapse; }
   .lt th, .lt td { padding:4px 2px; }
   .lt th { text-align:left; font-weight:bold; }
   .ra { text-align:right !important; }
@@ -1163,9 +1163,9 @@ export const printTallyLedger = (customer, entries, summary, isVendor = false, m
   .single-line { border-top: 1px dashed #000; margin: 4px 0; height: 1px; }
   
   /* Tally style borders */
-  .tally-border-top { border-top: 1px solid #000; border-top-style: dashed; }
-  .tally-border-bottom { border-bottom: 1px solid #000; border-bottom-style: dashed; }
-</style></head><body>
+  .tally-border-top { border-top: 1px dashed #000 !important; }
+  .tally-border-bottom { border-bottom: 1px dashed #000 !important; }
+</style></head><body style="background-color: #ffffff;">
 
 <table class="hdr">
   <tr>
@@ -1179,22 +1179,22 @@ export const printTallyLedger = (customer, entries, summary, isVendor = false, m
 
 <table class="lt">
   <thead>
-    <tr><td colspan="6" class="tally-border-bottom" style="padding:0; height:1px;"></td></tr>
+    <tr><td colspan="6" class="tally-border-bottom" style="padding:0; height:1px; line-height: 1px;">&nbsp;</td></tr>
     <tr>
-      <th class="c1">Date</th>
-      <th class="c2">Particulars</th>
-      <th class="c3">Vch Type</th>
-      <th class="c4">Vch No</th>
-      <th class="c5 ra">Debit</th>
-      <th class="c6 ra">Credit</th>
+      <th class="c1" width="11%">Date</th>
+      <th class="c2" width="43%">Particulars</th>
+      <th class="c3" width="10%">Vch Type</th>
+      <th class="c4" width="12%">Vch No</th>
+      <th class="c5 ra" width="12%">Debit</th>
+      <th class="c6 ra" width="12%">Credit</th>
     </tr>
-    <tr><td colspan="6" class="tally-border-bottom" style="padding:0; height:1px;"></td></tr>
+    <tr><td colspan="6" class="tally-border-bottom" style="padding:0; height:1px; line-height: 1px;">&nbsp;</td></tr>
   </thead>
   <tbody>
     <tr><td colspan="6" style="height: 10px;"></td></tr>
     <tr>
       <td class="c1"></td>
-      <td class="c2 bold" style="text-align:center;">Opening Balance :</td>
+      <td class="c2 bold" style="text-align:center; white-space: nowrap;">Opening&nbsp;Balance&nbsp;:</td>
       <td class="c3"></td>
       <td class="c4"></td>
       <td class="c5 ra bold">${absOpeningBal !== 0 && isDebitOpening ? fmt(absOpeningBal) + ' Dr' : ''}</td>
@@ -1203,11 +1203,11 @@ export const printTallyLedger = (customer, entries, summary, isVendor = false, m
     <tr><td colspan="6" style="height: 10px;"></td></tr>
     ${dataRows}
     <tr><td colspan="6" style="height: 10px;"></td></tr>
-    <tr><td colspan="6" class="tally-border-top" style="padding:0; height:1px;"></td></tr>
+    <tr><td colspan="6" class="tally-border-top" style="padding:0; height:1px; line-height: 1px;">&nbsp;</td></tr>
     <!-- Current Total -->
     <tr>
       <td class="c1"></td>
-      <td class="c2 bold" style="text-align:right; padding-right:20px;">Current Total :</td>
+      <td class="c2 bold" style="text-align:right; padding-right:20px; white-space: nowrap;">Current&nbsp;Total&nbsp;:</td>
       <td class="c3"></td>
       <td class="c4"></td>
       <td class="c5 ra bold">${fmt(totalDr)}</td>
@@ -1217,20 +1217,20 @@ export const printTallyLedger = (customer, entries, summary, isVendor = false, m
     <!-- Closing Balance -->
     <tr>
       <td class="c1"></td>
-      <td class="c2 bold" style="text-align:right; padding-right:20px;">Closing Balance :</td>
+      <td class="c2 bold" style="text-align:right; padding-right:20px; white-space: nowrap;">Closing&nbsp;Balance&nbsp;:</td>
       <td class="c3"></td>
       <td class="c4"></td>
       <td class="c5 ra bold">${closeBal < 0 ? fmt(Math.abs(closeBal)) : ''}</td>
       <td class="c6 ra bold">${closeBal > 0 ? fmt(closeBal) : ''}</td>
     </tr>
-    <tr><td colspan="6" class="tally-border-bottom" style="padding:0; height:1px;"></td></tr>
+    <tr><td colspan="6" class="tally-border-bottom" style="padding:0; height:1px; line-height: 1px;">&nbsp;</td></tr>
   </tbody>
 </table>
 
 </body></html>`;
 
     if (mode === 'download') {
-        executeDownload(html, `Statement_${customer?.name?.replace(/[^a-zA-Z0-9_-]/g, '') || 'Customer'}.pdf`);
+        executeDownload(html, `Statement_${customer?.name?.replace(/[^a-zA-Z0-9_-]/g, '') || 'Customer'}.pdf`, 15);
     } else {
         executePrint(html);
     }
