@@ -1555,6 +1555,214 @@ const CustomerReceiptsReport = ({ settings }) => {
     );
 };
 
+// Build Sales by Customer Type HTML
+const buildSalesByCustomerTypeHtml = ({ orders, from, to, customerType, settings }) => {
+    const company = settings?.companyName || 'Company';
+    const period = from && to ? `${fmtDate(from)} To ${fmtDate(to)}` : from ? `From ${fmtDate(from)}` : to ? `Till ${fmtDate(to)}` : 'All Dates';
+    const cTypeLabel = customerType ? customerType : 'All Types';
+    const grandTotal = orders.reduce((s, o) => s + (o.totalAmount || 0), 0);
+
+    const rows = orders.map((o, i) => `<tr>
+<td>${i + 1}</td>
+<td>${fmtDate(o.orderDate)}</td>
+<td>${escHtml(o.orderNumber || '-')}</td>
+<td>${escHtml(o.customer?.companyName || o.customer?.name || '-')}</td>
+<td>${escHtml(o.customerType || '-')}</td>
+<td class="r">${fmt(o.totalAmount)}</td>
+</tr>`).join('');
+
+    const addr    = settings?.address  || '';
+    const phone1  = settings?.phone1   || '';
+    const phone2  = settings?.phone2   || '';
+    const gst     = settings?.gstNumber || '';
+    const phones  = [phone1, phone2].filter(Boolean).join(' / ');
+    const addrLine  = [addr, phones].filter(Boolean).join('  |  ');
+    const gstLine   = gst ? `GST No: ${gst}` : '';
+
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Sales by Customer Type</title>
+<style>
+${A4}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;font-size:13px;color:#000;padding:5mm}
+.co-name{text-align:center;font-size:22px;font-weight:900;letter-spacing:0.5px;margin-bottom:2px;text-transform:uppercase}
+.co-addr{text-align:center;font-size:11px;color:#111;margin-bottom:1px}
+.co-gst{text-align:center;font-size:11px;color:#111;margin-bottom:4px}
+.rpt-title{text-align:center;font-size:14px;font-weight:bold;border-top:2px solid #000;border-bottom:2px solid #000;padding:3px 0;margin-bottom:5px}
+table{width:100%;border-collapse:collapse;table-layout:fixed;border:1.5px solid #000}
+th{border:1.5px solid #000;padding:5px 6px;font-size:13px;font-weight:bold;background:#fda4af;text-align:left;white-space:nowrap}
+th.r{text-align:right}
+td{border:1px solid #444;padding:3px 6px;font-size:13px;font-weight:bold;color:#000;overflow:hidden;word-break:break-word}
+td.r{text-align:right;white-space:nowrap}
+.tot td{font-weight:900;background:#fda4af!important;border:1.5px solid #000;font-size:14px}
+</style></head><body>
+<div class="co-name">${escHtml(company)}</div>
+${addrLine ? `<div class="co-addr">${escHtml(addrLine)}</div>` : ''}
+${gstLine  ? `<div class="co-gst">${escHtml(gstLine)}</div>`   : ''}
+<div class="rpt-title">Sales by Customer Type [${escHtml(cTypeLabel)}] &nbsp;&nbsp; Date : ${period}</div>
+<div style="margin-bottom:8px"></div>
+<table>
+<colgroup><col style="width:45px"/><col style="width:85px"/><col style="width:110px"/><col/><col style="width:130px"/><col style="width:110px"/></colgroup>
+<thead><tr>
+<th>S.No</th><th>Date</th><th>Inv No</th><th>Customer Name</th><th>Customer Type</th><th class="r">Net Amount</th>
+</tr></thead>
+<tbody>
+${rows}
+<tr class="tot">
+<td colspan="5" class="r">TOTAL SALES</td>
+<td class="r">${fmt(grandTotal)}</td>
+</tr>
+</tbody>
+</table>
+<div style="margin-top:6px;font-size:9px;color:#555;text-align:right">Generated on: ${fmtDateTime()}</div>
+</body></html>`;
+};
+
+const printSalesByCustomerTypeReport    = (opts) => openOrDownload(buildSalesByCustomerTypeHtml(opts), 'Sales_CustomerType.html', 'print');
+const downloadSalesByCustomerTypeReport = (opts) => openOrDownload(buildSalesByCustomerTypeHtml(opts), 'Sales_CustomerType.html', 'download');
+
+
+// TAB - Sales By Customer Type Report
+const SalesByCustomerTypeReport = ({ settings }) => {
+    const [from, setFrom] = useState('');
+    const [to, setTo] = useState('');
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(false);
+    
+    // For fetching customer types available
+    const [customerTypes, setCustomerTypes] = useState([]);
+    const [selectedType, setSelectedType] = useState('');
+
+    useEffect(() => {
+        // Fetch from the customer-types endpoint
+        api('/customer-types').then(r => {
+            if (r.data && Array.isArray(r.data)) {
+                setCustomerTypes(r.data);
+            }
+        }).catch(() => {});
+    }, []);
+
+    const fetchSales = useCallback(async () => {
+        setLoading(true);
+        try {
+            // Fetch all sales orders
+            const r = await api('/sales-orders', { params: { limit: 5000 } });
+            const resData = r.data.data;
+            const allSales = resData.orders || (Array.isArray(resData) ? resData : []);
+            
+            // Filter by selected type, exclude estimations/cancelled, AND apply date filters
+            const filteredSales = allSales.filter(o => {
+                if (o.isEstimation || o.status === 'cancelled' || o.status === 'void') return false;
+                if (selectedType && o.customerType !== selectedType) return false;
+                
+                let matchDate = true;
+                if (from || to) {
+                    const orderDate = new Date(o.orderDate).setHours(0, 0, 0, 0);
+                    const startDate = from ? new Date(from).setHours(0, 0, 0, 0) : null;
+                    const endDate = to ? new Date(to).setHours(0, 0, 0, 0) : null;
+                    
+                    if (startDate && endDate) matchDate = orderDate >= startDate && orderDate <= endDate;
+                    else if (startDate) matchDate = orderDate >= startDate;
+                    else if (endDate) matchDate = orderDate <= endDate;
+                }
+                return matchDate;
+            });
+            
+            setData(filteredSales);
+        } catch { 
+            toast.error('Failed to fetch sales data'); 
+        } finally { 
+            setLoading(false); 
+        }
+    }, [from, to, selectedType]);
+
+    const grandTotal = data ? data.reduce((s, o) => s + (o.totalAmount || 0), 0) : 0;
+    const printOpts = { orders: data || [], from, to, customerType: selectedType, settings };
+
+    return (
+        <div className="space-y-5">
+            <DateFilterBar from={from} to={to} onFromChange={setFrom} onToChange={setTo}
+                onApply={fetchSales} onClear={() => { setFrom(''); setTo(''); setSelectedType(''); setData(null); }}
+                disabled={false}>
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">Customer Type</label>
+                    <select value={selectedType} onChange={e => setSelectedType(e.target.value)}
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none bg-white min-w-40">
+                        <option value="">All Types</option>
+                        {customerTypes.map(t => {
+                            const typeName = typeof t === 'string' ? t : t.name;
+                            return <option key={typeName} value={typeName}>{typeName}</option>;
+                        })}
+                    </select>
+                </div>
+            </DateFilterBar>
+
+            <div className="flex gap-2">
+                <BtnPrint onClick={() => printSalesByCustomerTypeReport(printOpts)} disabled={!data || data.length === 0}>
+                    Print Report
+                </BtnPrint>
+                <BtnDownload onClick={() => downloadSalesByCustomerTypeReport(printOpts)} disabled={!data || data.length === 0}>
+                    Download PDF
+                </BtnDownload>
+            </div>
+
+            {data && data.length > 0 && (
+                <div className="bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl p-4 shadow-md flex justify-between items-center">
+                    <div>
+                        <p className="text-xs font-bold uppercase opacity-80">Total Sales (Net Amount)</p>
+                        <p className="text-3xl font-black">{'\u20B9'}{fmt(grandTotal)}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-xs opacity-80">{data.length} {data.length === 1 ? 'Invoice' : 'Invoices'}</p>
+                    </div>
+                </div>
+            )}
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                    <h2 className="font-bold text-gray-800">Sales Display</h2>
+                    <span className="text-sm text-gray-400">{data ? data.length : 0} records</span>
+                </div>
+                {loading ? <Spinner /> : !data || data.length === 0 ? (
+                    <EmptyState icon="🧾" title="No Sales Found" subtitle="Adjust filters and click Apply to view sales." />
+                ) : (
+                    <div className="overflow-auto max-h-[500px]">
+                        <table className="w-full text-left text-sm relative">
+                            <thead className="sticky top-0 z-10">
+                                <tr className="bg-rose-50 border-b border-rose-100 shadow-sm">
+                                    <th className="px-4 py-2.5 text-xs font-bold text-rose-900 uppercase bg-rose-50">S.No</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-rose-900 uppercase bg-rose-50">Date</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-rose-900 uppercase bg-rose-50">Inv No</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-rose-900 uppercase bg-rose-50">Customer Name</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-rose-900 uppercase bg-rose-50">Customer Type</th>
+                                    <th className="px-4 py-2.5 text-xs font-bold text-rose-900 uppercase text-right bg-rose-50">Net Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {data.map((row, i) => (
+                                    <tr key={row._id} className="hover:bg-rose-50/50 transition-colors">
+                                        <td className="px-4 py-2.5 text-gray-500 text-xs">{i + 1}</td>
+                                        <td className="px-4 py-2.5 text-gray-800 text-xs whitespace-nowrap">{fmtDate(row.orderDate)}</td>
+                                        <td className="px-4 py-2.5 text-gray-800 text-xs">{row.orderNumber || '-'}</td>
+                                        <td className="px-4 py-2.5 font-semibold text-gray-800 text-sm">{row.customer?.companyName || row.customer?.name || '-'}</td>
+                                        <td className="px-4 py-2.5 text-gray-600 text-xs">{row.customerType || '-'}</td>
+                                        <td className="px-4 py-2.5 text-right font-bold text-gray-900 text-sm text-rose-700">{'\u20B9'}{fmt(row.totalAmount)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                            <tfoot>
+                                <tr className="bg-rose-100">
+                                    <td colSpan={5} className="px-4 py-3 font-bold text-rose-900 text-right text-sm">TOTAL SALES</td>
+                                    <td className="px-4 py-3 text-right font-black text-rose-900 text-lg">{'\u20B9'}{fmt(grandTotal)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
 // Main Component
 const TABS = [
     { id: 'ledger',      label: 'Ledger Report'        },
@@ -1564,6 +1772,7 @@ const TABS = [
     { id: 'outstanding', label: 'Outstanding Summary'  },
     { id: 'vendor_payments', label: 'Vendor Payments'  },
     { id: 'customer_receipts', label: 'Customer Receipts' },
+    { id: 'sales_by_customer_type', label: 'Sales by Customer Type' },
 ];
 
 const TAB_COLORS = {
@@ -1574,6 +1783,7 @@ const TAB_COLORS = {
     outstanding: { active: 'bg-purple-600 text-white', inactive: 'border border-purple-200 text-purple-700 hover:bg-purple-50' },
     vendor_payments: { active: 'bg-emerald-600 text-white', inactive: 'border border-emerald-200 text-emerald-700 hover:bg-emerald-50' },
     customer_receipts: { active: 'bg-cyan-600 text-white', inactive: 'border border-cyan-200 text-cyan-700 hover:bg-cyan-50' },
+    sales_by_customer_type: { active: 'bg-rose-600 text-white', inactive: 'border border-rose-200 text-rose-700 hover:bg-rose-50' },
 };
 
 const CustomReports = () => {
@@ -1617,6 +1827,7 @@ const CustomReports = () => {
                 {activeTab === 'outstanding' && <OutstandingSummary settings={settings} />}
                 {activeTab === 'vendor_payments' && <VendorPaymentsReport settings={settings} />}
                 {activeTab === 'customer_receipts' && <CustomerReceiptsReport settings={settings} />}
+                {activeTab === 'sales_by_customer_type' && <SalesByCustomerTypeReport settings={settings} />}
             </div>
         </div>
     );

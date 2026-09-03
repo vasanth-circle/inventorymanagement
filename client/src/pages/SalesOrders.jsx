@@ -1273,14 +1273,50 @@ const SalesOrders = () => {
                                             <span>Subtotal Items:</span>
                                             <span>₹{itemsTotal.toLocaleString()}</span>
                                         </div>
+                                        {parseFloat(formData.loadingCharges || 0) > 0 && (
+                                            <div className="flex justify-between text-gray-600 font-medium text-sm">
+                                                <span>🚛 Loading Charges:</span>
+                                                <span>+ ₹{parseFloat(formData.loadingCharges || 0).toLocaleString()}</span>
+                                            </div>
+                                        )}
+                                        {parseFloat(formData.unloadingCharges || 0) > 0 && (
+                                            <div className="flex justify-between text-gray-600 font-medium text-sm">
+                                                <span>👷 Unloading Charges:</span>
+                                                <span>+ ₹{parseFloat(formData.unloadingCharges || 0).toLocaleString()}</span>
+                                            </div>
+                                        )}
+                                        {parseFloat(formData.transportCharges || 0) > 0 && (
+                                            <div className="flex justify-between text-gray-600 font-medium text-sm">
+                                                <span>🚚 Transport Charges:</span>
+                                                <span>+ ₹{parseFloat(formData.transportCharges || 0).toLocaleString()}</span>
+                                            </div>
+                                        )}
+                                        {parseFloat(formData.taxAmount || 0) > 0 && (
+                                            <div className="flex justify-between text-gray-600 font-medium text-sm">
+                                                <span>🏛️ Tax Amount:</span>
+                                                <span>+ ₹{parseFloat(formData.taxAmount || 0).toLocaleString()}</span>
+                                            </div>
+                                        )}
+                                        {parseFloat(formData.oldBalance || 0) > 0 && (
+                                            <div className="flex justify-between text-blue-600 font-medium text-sm">
+                                                <span>📜 Old Balance:</span>
+                                                <span>+ ₹{parseFloat(formData.oldBalance || 0).toLocaleString()}</span>
+                                            </div>
+                                        )}
                                         {parseFloat(formData.discountAmount || 0) > 0 && (
                                             <div className="flex justify-between text-amber-700 font-semibold text-sm">
                                                 <span>🏷️ Discount:</span>
                                                 <span>- ₹{parseFloat(formData.discountAmount || 0).toLocaleString()}</span>
                                             </div>
                                         )}
+                                        {parseFloat(formData.advanceAmount || 0) > 0 && (
+                                            <div className="flex justify-between text-green-600 font-semibold text-sm">
+                                                <span>💸 Advance Paid:</span>
+                                                <span>- ₹{parseFloat(formData.advanceAmount || 0).toLocaleString()}</span>
+                                            </div>
+                                        )}
                                         {roundOffAmount !== 0 && (
-                                            <div className="flex justify-between text-blue-600 font-semibold text-sm">
+                                            <div className="flex justify-between text-gray-500 font-semibold text-sm">
                                                 <span>🔄 Round Off:</span>
                                                 <span>{roundOffAmount > 0 ? '+' : ''} ₹{roundOffAmount.toFixed(2)}</span>
                                             </div>
