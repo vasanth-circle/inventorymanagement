@@ -873,22 +873,8 @@ export const getCustomerOutstandingSummary = async (req, res, next) => {
             // All-time ledger entries
             const allEntries = await CustomerLedger.find(baseQuery).sort({ date: 1, createdAt: 1 });
             
-            let ledgerDebit = 0;
-            let ledgerCredit = 0;
-
-            if (req.query.salesPerson && req.query.salesPerson !== 'unbilled') {
-                // If filtered by sales person, only sum debits from their bills
-                allEntries.forEach(e => {
-                    if (e.type === 'bill' && e.refId && salesPersonOrderIds.includes(e.refId.toString())) {
-                        ledgerDebit += (e.debit || 0);
-                    }
-                    // For credits, we still subtract all payments made by the customer
-                    ledgerCredit += (e.credit || 0);
-                });
-            } else {
-                ledgerDebit  = allEntries.reduce((s, e) => s + (e.debit  || 0), 0);
-                ledgerCredit = allEntries.reduce((s, e) => s + (e.credit || 0), 0);
-            }
+            let ledgerDebit = allEntries.reduce((s, e) => s + (e.debit  || 0), 0);
+            let ledgerCredit = allEntries.reduce((s, e) => s + (e.credit || 0), 0);
 
             // Opening balance is stored on Customer (not as a ledger entry).
             // If positive = customer owes money => add to Debit column.
@@ -906,25 +892,16 @@ export const getCustomerOutstandingSummary = async (req, res, next) => {
                 if (toDate)   filteredQuery.date.$lte = toDate;
             }
             
-            if (req.query.salesPerson || fromDate || toDate) {
-                // If filtered by salesPerson or date, recalculate the running balance accurately based on the filtered constraints
+            if (fromDate || toDate) {
+                // If filtered by date, recalculate the running balance accurately
                 let runningDebit = openBal > 0 ? openBal : 0;
                 let runningCredit = openBal < 0 ? Math.abs(openBal) : 0;
                 
-                const entriesToConsider = (fromDate || toDate) 
-                    ? await CustomerLedger.find(filteredQuery).sort({ date: 1, createdAt: 1 })
-                    : allEntries;
+                const entriesToConsider = await CustomerLedger.find(filteredQuery).sort({ date: 1, createdAt: 1 });
 
                 entriesToConsider.forEach(e => {
-                    if (req.query.salesPerson && req.query.salesPerson !== 'unbilled') {
-                        if (e.type === 'bill' && e.refId && salesPersonOrderIds.includes(e.refId.toString())) {
-                            runningDebit += (e.debit || 0);
-                        }
-                        runningCredit += (e.credit || 0);
-                    } else {
-                        runningDebit += (e.debit || 0);
-                        runningCredit += (e.credit || 0);
-                    }
+                    runningDebit += (e.debit || 0);
+                    runningCredit += (e.credit || 0);
                 });
                 closingBalance = runningDebit - runningCredit;
             } else {
