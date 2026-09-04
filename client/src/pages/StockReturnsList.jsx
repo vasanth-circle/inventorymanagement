@@ -211,6 +211,61 @@ const DeleteModal = ({ tx, onClose, onDeleted }) => {
     );
 };
 
+// ─── Delete Group Confirm Modal ────────────────────────────────────────────────
+const DeleteGroupModal = ({ group, onClose, onDeleted }) => {
+    const [deleting, setDeleting] = useState(false);
+    const entityName = group.customer?.companyName || group.customer?.name || group.vendor?.companyName || group.vendor?.name || 'Unknown';
+    const amount = group.totalAmount;
+
+    const handleDelete = async () => {
+        setDeleting(true);
+        try {
+            await Promise.all(group.items.map(tx => axios.delete(`${API_URL}/return/${tx._id}`, { headers: authHeader() })));
+            toast.success('Return fully deleted — stock and ledger reversed');
+            group.items.forEach(tx => onDeleted(tx._id));
+            onClose();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to delete some items in return');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+                <div className="p-6 text-center">
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <TrashIcon className="w-8 h-8 text-red-500" />
+                    </div>
+                    <h2 className="text-lg font-black text-gray-800 mb-1">Delete Entire Return?</h2>
+                    <p className="text-sm text-gray-500 mb-4">
+                        <strong>{entityName}</strong> — {group.items.length} items
+                    </p>
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-left space-y-1">
+                        <p className="text-xs font-bold text-red-700">This action will:</p>
+                        <p className="text-xs text-red-600">• Reverse stock changes for all {group.items.length} items</p>
+                        <p className="text-xs text-red-600">• Remove ledger entries (₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })})</p>
+                        <p className="text-xs text-red-600">• This cannot be undone</p>
+                    </div>
+                    <div className="flex gap-3">
+                        <button onClick={onClose} className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-bold text-sm hover:bg-gray-50">
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleDelete}
+                            disabled={deleting}
+                            className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 disabled:opacity-50 transition-colors"
+                        >
+                            {deleting ? 'Deleting...' : 'Yes, Delete All'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // ─── Main Component ────────────────────────────────────────────────────────────
 const StockReturnsList = () => {
     const { billingSettings } = useContext(InventoryContext);
@@ -221,6 +276,7 @@ const StockReturnsList = () => {
     const [toDate, setToDate] = useState('');
     const [editingTx, setEditingTx] = useState(null);
     const [deletingTx, setDeletingTx] = useState(null);
+    const [deletingGroup, setDeletingGroup] = useState(null);
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -326,6 +382,7 @@ const StockReturnsList = () => {
             {/* Modals */}
             {editingTx && <EditModal tx={editingTx} onClose={() => setEditingTx(null)} onSave={handleSaved} />}
             {deletingTx && <DeleteModal tx={deletingTx} onClose={() => setDeletingTx(null)} onDeleted={handleDeleted} />}
+            {deletingGroup && <DeleteGroupModal group={deletingGroup} onClose={() => setDeletingGroup(null)} onDeleted={handleDeleted} />}
 
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-800">Stock Returns List</h1>
@@ -409,6 +466,13 @@ const StockReturnsList = () => {
                                                             title="Print Slip"
                                                         >
                                                             🖨️ Print
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setDeletingGroup(group)}
+                                                            className="text-red-600 hover:text-red-800 text-xs font-bold border border-red-200 px-2.5 py-1.5 rounded-lg bg-red-50 transition-all hover:bg-red-100 whitespace-nowrap"
+                                                            title="Delete Entire Return"
+                                                        >
+                                                            🗑️ Delete
                                                         </button>
                                                     </div>
                                                 </td>
@@ -522,6 +586,9 @@ const StockReturnsList = () => {
                                         <div className="flex items-center gap-2">
                                             <button onClick={() => handlePrint(group)} className="h-8 px-3 bg-primary-50 hover:bg-primary-100 text-primary-700 rounded-lg text-xs font-bold border border-primary-200">
                                                 🖨️ Print
+                                            </button>
+                                            <button onClick={() => setDeletingGroup(group)} className="h-8 px-3 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-xs font-bold border border-red-200">
+                                                🗑️ Delete
                                             </button>
                                         </div>
                                     </div>
