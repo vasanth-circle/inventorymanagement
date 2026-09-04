@@ -1100,6 +1100,7 @@ const OutstandingSummary = ({ settings }) => {
 
     const userOptions = [
         { value: '', label: 'All Sales Persons' },
+        { value: 'unbilled', label: 'Unbilled Customers' },
         ...users.map(u => ({ value: u._id, label: u.name || u.email }))
     ];
 
