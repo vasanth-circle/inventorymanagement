@@ -315,6 +315,7 @@ const buildOSSHtml = ({ entityType, summaries, from, to, settings }) => {
 
     const rows = summaries.map(r => `<tr>
 <td>${escHtml(r.name)}</td>
+<td>${escHtml(r.salesPersonName || '-')}</td>
 <td style="text-align:right">${r.closingBalance > 0 ? fmt(r.closingBalance) : ''}</td>
 <td style="text-align:right">${r.closingBalance < 0 ? fmt(Math.abs(r.closingBalance)) : ''}</td>
 <td style="text-align:right">${r.closingBalance < 0 ? '-' : ''}${fmt(Math.abs(r.closingBalance))}</td>
@@ -353,14 +354,15 @@ ${addrLine ? `<div class="co-addr">${escHtml(addrLine)}</div>` : ''}
 ${gstLine  ? `<div class="co-gst">${escHtml(gstLine)}</div>`   : ''}
 <div class="rpt-title">${title} &nbsp;&nbsp; Date : ${period}</div>
 <table>
-<colgroup><col/><col style="width:100px"/><col style="width:100px"/><col style="width:100px"/><col style="width:115px"/></colgroup>
+<colgroup><col/><col style="width:110px"/><col style="width:100px"/><col style="width:100px"/><col style="width:100px"/><col style="width:115px"/></colgroup>
 <thead><tr>
-<th>Particulars</th><th class="r">Pending (Dr)</th><th class="r">Advance (Cr)</th><th class="r">Closing</th><th>Cell</th>
+<th>Particulars</th><th>Sales Person</th><th class="r">Pending (Dr)</th><th class="r">Advance (Cr)</th><th class="r">Closing</th><th>Cell</th>
 </tr></thead>
 <tbody>
-<tr class="sec"><td colspan="5"><b>${title}</b></td></tr>
+<tr class="sec"><td colspan="6"><b>${title}</b></td></tr>
 ${rows}
 <tr class="tot">
+<td></td>
 <td></td>
 <td class="r">${fmt(grandDr)}</td>
 <td class="r">${fmt(grandCr)}</td>
@@ -1201,6 +1203,7 @@ const OutstandingSummary = ({ settings }) => {
                                 <tr className="bg-gray-50 border-b border-gray-100">
                                     <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase">#</th>
                                     <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase">Particulars</th>
+                                    {entityType === 'customer' && <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase">Sales Person</th>}
                                     <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase text-right">Debit (Dr)</th>
                                     <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase text-right">Credit (Cr)</th>
                                     <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase text-right">Closing Balance</th>
@@ -1212,6 +1215,7 @@ const OutstandingSummary = ({ settings }) => {
                                     <tr key={row.customerId || row.vendorId} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-4 py-2.5 text-gray-400 text-xs">{i + 1}</td>
                                         <td className="px-4 py-2.5 font-semibold text-gray-800 text-sm">{row.name}</td>
+                                        {entityType === 'customer' && <td className="px-4 py-2.5 text-gray-600 text-xs">{row.salesPersonName || <span className="text-gray-300">-</span>}</td>}
                                         <td className="px-4 py-2.5 text-right text-red-600 font-semibold text-xs">
                                             {row.closingBalance > 0 ? <>{'\u20B9'}{fmt(row.closingBalance)}</> : <span className="text-gray-300">-</span>}
                                         </td>
@@ -1229,7 +1233,7 @@ const OutstandingSummary = ({ settings }) => {
                             </tbody>
                             <tfoot>
                                 <tr className="bg-gray-800 text-white">
-                                    <td colSpan={2} className="px-4 py-3 font-bold text-sm">GRAND TOTAL</td>
+                                    <td colSpan={entityType === 'customer' ? 3 : 2} className="px-4 py-3 font-bold text-sm">GRAND TOTAL</td>
                                     <td className="px-4 py-3 text-right font-bold text-red-300">{'\u20B9'}{fmt(grandDebit)}</td>
                                     <td className="px-4 py-3 text-right font-bold text-green-300">{'\u20B9'}{fmt(grandCredit)}</td>
                                     <td className={`px-4 py-3 text-right font-bold text-lg ${grandBalance >= 0 ? 'text-orange-300' : 'text-blue-300'}`}>

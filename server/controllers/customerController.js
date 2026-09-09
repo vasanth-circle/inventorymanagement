@@ -1,6 +1,6 @@
 import Customer from '../models/Customer.js';
 import CustomerLedger from '../models/CustomerLedger.js';
-import User from '../models/User.js';
+import User, { AppUser } from '../models/User.js'; // AppUser registers User on appConn so SalesOrder.populate('user') resolves correctly
 import SalesOrder from '../models/SalesOrder.js';
 import Setting from '../models/Setting.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
@@ -909,13 +909,21 @@ export const getCustomerOutstandingSummary = async (req, res, next) => {
                 closingBalance = lastEntry ? lastEntry.balance : openBal;
             }
 
+            // Fetch salesperson name from the most recent sales order for this customer
+            const latestOrder = await SalesOrder.findOne({ customer: customer._id, ...tenantQuery(req) })
+                .sort({ createdAt: -1 })
+                .select('user')
+                .populate({ path: 'user', model: User, select: 'name email' });
+            const salesPersonName = latestOrder?.user?.name || latestOrder?.user?.email || '';
+
             return {
                 customerId: customer._id,
                 name: customer.companyName || customer.name,
                 phone: customer.phone,
                 totalDebit,
                 totalCredit,
-                closingBalance
+                closingBalance,
+                salesPersonName
             };
         }));
 
