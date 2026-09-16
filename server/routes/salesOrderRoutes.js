@@ -7,7 +7,7 @@ import {
     updateSalesOrder,
     deleteSalesOrder,
     syncSalesOrderLedger,
-    recalculateCustomerBalance,
+    recalculatePartyBalance,
 } from '../controllers/salesOrderController.js';
 import { checkMenuAccess } from '../middleware/accessMiddleware.js';
 import { authorize } from '../middleware/authMiddleware.js';
@@ -33,17 +33,17 @@ router.route('/:id/status')
 router.post('/admin/resync-ledgers', authorize('admin', 'super_admin', 'tenant_owner', 'tenant_admin'), async (req, res) => {
     try {
         const SalesOrder = (await import('../models/SalesOrder.js')).default;
-        const Customer = (await import('../models/Customer.js')).default;
+        const Party = (await import('../models/Party.js')).default;
         const orders = await SalesOrder.find({ tenantId: req.tenantId, isEstimation: false });
         let fixed = 0;
         for (const order of orders) {
             await syncSalesOrderLedger(order._id, req.tenantId, req.user._id);
             fixed++;
         }
-        // Final recalc for all affected customers
-        const customers = await Customer.find({ tenantId: req.tenantId }).select('_id');
-        for (const c of customers) {
-            await recalculateCustomerBalance(c._id.toString(), req.tenantId);
+        // Final recalc for all affected parties
+        const parties = await Party.find({ tenantId: req.tenantId }).select('_id');
+        for (const p of parties) {
+            await recalculatePartyBalance(p._id.toString(), req.tenantId);
         }
         res.json({ success: true, message: `Re-synced ledger for ${fixed} invoices.` });
     } catch (err) {

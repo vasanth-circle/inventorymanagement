@@ -511,7 +511,7 @@ const PurchaseOrders = () => {
                 </div>
             ) : (
                 <div className="bg-white rounded-xl shadow-md overflow-x-auto print:hidden">
-                    <table className="w-full text-left border-collapse">
+                    <table className="table-premium">
                         <thead>
                             <tr className="bg-gray-50 border-bottom border-gray-100">
                                 <th className="px-6 py-4 text-sm font-semibold text-gray-600">S.No</th>
@@ -613,11 +613,11 @@ const PurchaseOrders = () => {
                                 </div>
                                 <div className="w-1/4 min-w-[150px]">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Bill No. *</label>
-                                    <input required type="text" value={formData.vendorBillNumber} onChange={(e) => setFormData({ ...formData, vendorBillNumber: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" placeholder="Enter Bill No." />
+                                    <input required type="text" value={formData.vendorBillNumber} onChange={(e) => setFormData({ ...formData, vendorBillNumber: e.target.value })} className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none" placeholder="Enter Bill No." />
                                 </div>
                                 <div className="w-1/4 min-w-[150px]">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Bill Date</label>
-                                    <input type="date" value={formData.billDate} onChange={(e) => setFormData({ ...formData, billDate: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" />
+                                    <input type="date" value={formData.billDate} onChange={(e) => setFormData({ ...formData, billDate: e.target.value })} className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none" />
                                 </div>
                                 <div className="flex items-end min-w-[140px]">
                                     <div className={`px-3 py-2 rounded-lg text-sm font-bold border-2 ${ taxType === 'igst' ? 'bg-orange-50 border-orange-300 text-orange-700' : 'bg-green-50 border-green-300 text-green-700'}`}>
@@ -842,7 +842,7 @@ const PurchaseOrders = () => {
                                 <p className="text-sm text-gray-600 mb-4">Please verify the quantities received and record any damaged stock before converting to an inward transaction. Damaged stock will be recorded but won't be added to your usable inventory count.</p>
                                 <div className="mb-4">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Bill No.</label>
-                                    <input type="text" value={receiveVendorBillNo} onChange={(e) => setReceiveVendorBillNo(e.target.value)} className="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" placeholder="Enter bill number" />
+                                    <input type="text" value={receiveVendorBillNo} onChange={(e) => setReceiveVendorBillNo(e.target.value)} className="w-1/3 px-3 py-2 input-premium focus:ring-primary-500 outline-none" placeholder="Enter bill number" />
                                 </div>
                                 <table className="w-full text-left">
                                     <thead className="bg-gray-50">
@@ -1028,7 +1028,7 @@ const PurchaseOrders = () => {
                                 <button
                                     type="button"
                                     onClick={() => handlePrintOrder(selectedOrder)}
-                                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center"
+                                    className="px-5 py-2 btn-primary rounded-lg text-sm font-semibold transition-colors flex items-center"
                                 >
                                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                                     Save as PDF

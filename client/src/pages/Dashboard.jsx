@@ -61,7 +61,7 @@ const KpiCard = ({ icon, label, value, sub, color = 'indigo', onClick, urgent })
 };
 
 const SectionCard = ({ title, icon, children, action, noPad }) => (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="glass-panel overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50/50">
             <h3 className="text-[11px] font-black text-gray-700 uppercase tracking-widest flex items-center gap-2">
                 <span className="text-base">{icon}</span>{title}

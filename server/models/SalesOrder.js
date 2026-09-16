@@ -14,7 +14,7 @@ const salesOrderSchema = new mongoose.Schema({
     },
     customer: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Customer',
+        ref: 'Party',
         required: [true, 'Customer is required'],
     },
     items: [{

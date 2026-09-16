@@ -1,11 +1,11 @@
-import Customer from '../models/Customer.js';
+import Party from '../models/Party.js';
 import Ledger from '../models/Ledger.js';
 import User, { AppUser } from '../models/User.js'; // AppUser registers User on appConn so SalesOrder.populate('user') resolves correctly
 import SalesOrder from '../models/SalesOrder.js';
 import Setting from '../models/Setting.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
-import { recalculateCustomerBalance } from './salesOrderController.js';
+import { recalculatePartyBalance } from './salesOrderController.js';
 // Helper for phone validation
 const validatePhoneNumber = (phone) => {
     if (!phone) return null; // allow empty if not required by schema, schema handles required
@@ -18,7 +18,7 @@ const validatePhoneNumber = (phone) => {
 };
 
 // @access  Private
-export const getCustomers = async (req, res, next) => {
+export const getPartys = async (req, res, next) => {
     try {
         const { search = '', page = 1, limit = 5000 } = req.query;
         const query = { ...tenantQuery(req), isActive: true };
@@ -32,43 +32,43 @@ export const getCustomers = async (req, res, next) => {
             ];
         }
 
-        const customers = await Customer.find(query)
+        const partys = await Party.find(query)
             .sort({ name: 1 })
             .limit(limit * 1)
             .skip((page - 1) * limit);
 
-        const total = await Customer.countDocuments(query);
+        const total = await Party.countDocuments(query);
 
         sendResponse(res, 200, {
-            customers,
+            partys,
             totalPages: Math.ceil(total / limit),
             currentPage: Number(page),
-            totalCustomers: total
-        }, 'Customers fetched successfully');
+            totalPartys: total
+        }, 'Partys fetched successfully');
     } catch (error) {
         next(error);
     }
 };
 
-// @desc    Get single customer
-// @route   GET /api/customers/:id
+// @desc    Get single party
+// @route   GET /api/partys/:id
 // @access  Private
-export const getCustomer = async (req, res, next) => {
+export const getParty = async (req, res, next) => {
     try {
-        const customer = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
-        if (!customer) {
-            return sendError(res, 404, 'Customer not found');
+        const party = await Party.findOne({ _id: req.params.id, ...tenantQuery(req) });
+        if (!party) {
+            return sendError(res, 404, 'Party not found');
         }
-        sendResponse(res, 200, customer, 'Customer fetched successfully');
+        sendResponse(res, 200, party, 'Party fetched successfully');
     } catch (error) {
         next(error);
     }
 };
 
-// @desc    Create new customer
-// @route   POST /api/customers
+// @desc    Create new party
+// @route   POST /api/partys
 // @access  Private
-export const createCustomer = async (req, res, next) => {
+export const createParty = async (req, res, next) => {
     try {
         const payload = { ...req.body, tenantId: req.tenantId };
         
@@ -78,29 +78,29 @@ export const createCustomer = async (req, res, next) => {
             if (error) return sendError(res, 400, error);
             
             // Duplicate check
-            const exists = await Customer.findOne({ 
+            const exists = await Party.findOne({ 
                 phone: payload.phone, 
                 isActive: true,
                 ...tenantQuery(req) 
             });
-            if (exists) return sendError(res, 400, 'A customer with this phone number already exists');
+            if (exists) return sendError(res, 400, 'A party with this phone number already exists');
         }
 
         if (payload.openingBalance !== undefined) {
             payload.currentBalance = payload.openingBalance;
         }
-        const customer = await Customer.create(payload);
+        const party = await Party.create(payload);
 
-        sendResponse(res, 201, customer, 'Customer created successfully');
+        sendResponse(res, 201, party, 'Party created successfully');
     } catch (error) {
         next(error);
     }
 };
 
-// @desc    Update customer
-// @route   PUT /api/customers/:id
+// @desc    Update party
+// @route   PUT /api/partys/:id
 // @access  Private
-export const updateCustomer = async (req, res, next) => {
+export const updateParty = async (req, res, next) => {
     try {
         const payload = { ...req.body };
         
@@ -110,17 +110,17 @@ export const updateCustomer = async (req, res, next) => {
             if (error) return sendError(res, 400, error);
             
             // Duplicate check
-            const exists = await Customer.findOne({ 
+            const exists = await Party.findOne({ 
                 _id: { $ne: req.params.id },
                 phone: payload.phone, 
                 isActive: true,
                 ...tenantQuery(req) 
             });
-            if (exists) return sendError(res, 400, 'Another customer with this phone number already exists');
+            if (exists) return sendError(res, 400, 'Another party with this phone number already exists');
         }
 
         if (payload.openingBalance !== undefined) {
-            const existing = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
+            const existing = await Party.findOne({ _id: req.params.id, ...tenantQuery(req) });
             if (existing) {
                 const diff = Number(payload.openingBalance) - (existing.openingBalance || 0);
                 if (diff !== 0) {
@@ -129,7 +129,7 @@ export const updateCustomer = async (req, res, next) => {
             }
         }
 
-        const customer = await Customer.findOneAndUpdate(
+        const party = await Party.findOneAndUpdate(
             { _id: req.params.id, ...tenantQuery(req) },
             payload,
             {
@@ -137,42 +137,42 @@ export const updateCustomer = async (req, res, next) => {
                 runValidators: true
             }
         );
-        if (!customer) {
-            return sendError(res, 404, 'Customer not found');
+        if (!party) {
+            return sendError(res, 404, 'Party not found');
         }
 
         if (payload.openingBalance !== undefined) {
-            await recalculateCustomerBalance(customer._id, req.tenantId);
-            // Refresh customer to get the correct currentBalance after recalculation
-            const updatedCustomer = await Customer.findById(customer._id);
-            return sendResponse(res, 200, updatedCustomer, 'Customer updated successfully');
+            await recalculatePartyBalance(party._id, req.tenantId);
+            // Refresh party to get the correct currentBalance after recalculation
+            const updatedParty = await Party.findById(party._id);
+            return sendResponse(res, 200, updatedParty, 'Party updated successfully');
         }
 
-        sendResponse(res, 200, customer, 'Customer updated successfully');
+        sendResponse(res, 200, party, 'Party updated successfully');
     } catch (error) {
         next(error);
     }
 };
 
-// @desc    Delete customer (soft delete)
-// @route   DELETE /api/customers/:id
+// @desc    Delete party (soft delete)
+// @route   DELETE /api/partys/:id
 // @access  Private/Admin
-export const deleteCustomer = async (req, res, next) => {
+export const deleteParty = async (req, res, next) => {
     try {
-        const customer = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
-        if (!customer) {
-            return sendError(res, 404, 'Customer not found');
+        const party = await Party.findOne({ _id: req.params.id, ...tenantQuery(req) });
+        if (!party) {
+            return sendError(res, 404, 'Party not found');
         }
 
-        // Prevent deletion if customer has a balance
-        if (customer.currentBalance && customer.currentBalance !== 0) {
-            return sendError(res, 400, `Cannot delete customer with an outstanding balance of ₹${Math.abs(customer.currentBalance).toLocaleString('en-IN')}`);
+        // Prevent deletion if party has a balance
+        if (party.currentBalance && party.currentBalance !== 0) {
+            return sendError(res, 400, `Cannot delete party with an outstanding balance of ₹${Math.abs(party.currentBalance).toLocaleString('en-IN')}`);
         }
 
-        customer.isActive = false;
-        await customer.save();
+        party.isActive = false;
+        await party.save();
 
-        sendResponse(res, 200, null, 'Customer deleted successfully');
+        sendResponse(res, 200, null, 'Party deleted successfully');
     } catch (error) {
         next(error);
     }
@@ -182,44 +182,44 @@ export const deleteCustomer = async (req, res, next) => {
 // LEDGER FUNCTIONS — New additions, existing functions above are untouched
 // ─────────────────────────────────────────────────────────────────────────────
 
-// @desc    Get customer's current outstanding balance
-// @route   GET /api/customers/:id/balance
+// @desc    Get party's current outstanding balance
+// @route   GET /api/partys/:id/balance
 // @access  Private
-export const getCustomerBalance = async (req, res, next) => {
+export const getPartyBalance = async (req, res, next) => {
     try {
-        const customer = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
-        if (!customer) return sendError(res, 404, 'Customer not found');
+        const party = await Party.findOne({ _id: req.params.id, ...tenantQuery(req) });
+        if (!party) return sendError(res, 404, 'Party not found');
 
         // Get the last ledger entry to determine running balance
-        const lastEntry = await Ledger.findOne({ partyType: 'Customer', party: req.params.id,
+        const lastEntry = await Ledger.findOne({ partyType: 'Party', party: req.params.id,
             ...tenantQuery(req),
         }).sort({ date: -1, createdAt: -1 });
 
-        const balance = lastEntry ? lastEntry.balance : (customer.openingBalance || 0);
+        const balance = lastEntry ? lastEntry.balance : (party.openingBalance || 0);
 
         let isLocked = false;
         let isManuallyUnlocked = false;
 
-        if (customer.unlockedUntil && new Date(customer.unlockedUntil) > new Date()) {
+        if (party.unlockedUntil && new Date(party.unlockedUntil) > new Date()) {
             isManuallyUnlocked = true;
         }
 
         const settings = await Setting.findOne({ tenantId: req.tenantId });
         if (settings?.creditConfig?.enableAutoLock && !isManuallyUnlocked) {
-            const creditLimit = settings.creditConfig.customerCreditLimit || 0;
-            const creditDays = settings.creditConfig.customerCreditDays || 0;
+            const creditLimit = settings.creditConfig.partyCreditLimit || 0;
+            const creditDays = settings.creditConfig.partyCreditDays || 0;
             
             if (creditLimit > 0 && balance > creditLimit) {
                 isLocked = true;
             } else if (creditDays > 0 && balance > 0) {
-                const allLedgerEntries = await Ledger.find({ partyType: 'Customer', party: customer._id, tenantId: req.tenantId }).sort({ date: 1, createdAt: 1 });
+                const allLedgerEntries = await Ledger.find({ partyType: 'Party', party: party._id, tenantId: req.tenantId }).sort({ date: 1, createdAt: 1 });
                 let totalPayments = 0;
                 const bills = [];
 
-                if (customer.openingBalance > 0) {
-                    bills.push({ date: customer.createdAt || new Date(0), amount: customer.openingBalance });
-                } else if (customer.openingBalance < 0) {
-                    totalPayments += Math.abs(customer.openingBalance);
+                if (party.openingBalance > 0) {
+                    bills.push({ date: party.createdAt || new Date(0), amount: party.openingBalance });
+                } else if (party.openingBalance < 0) {
+                    totalPayments += Math.abs(party.openingBalance);
                 }
 
                 allLedgerEntries.forEach(entry => {
@@ -247,22 +247,22 @@ export const getCustomerBalance = async (req, res, next) => {
             }
         }
 
-        sendResponse(res, 200, { balance, customer, isLocked, isManuallyUnlocked }, 'Balance fetched');
+        sendResponse(res, 200, { balance, party, isLocked, isManuallyUnlocked }, 'Balance fetched');
     } catch (error) {
         next(error);
     }
 };
 
-// @desc    Get all ledger entries for a customer
-// @route   GET /api/customers/:id/ledger
+// @desc    Get all ledger entries for a party
+// @route   GET /api/partys/:id/ledger
 // @access  Private
-export const getCustomerLedger = async (req, res, next) => {
+export const getLedger = async (req, res, next) => {
     try {
         const { from, to, page = 1, limit = 10000 } = req.query;
-        const customer = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
-        if (!customer) return sendError(res, 404, 'Customer not found');
+        const party = await Party.findOne({ _id: req.params.id, ...tenantQuery(req) });
+        if (!party) return sendError(res, 404, 'Party not found');
 
-        const query = { customer: req.params.id, ...tenantQuery(req) };
+        const query = { party: req.params.id, ...tenantQuery(req) };
         if (from || to) {
             query.date = {};
             if (from) query.date.$gte = new Date(from);
@@ -278,14 +278,14 @@ export const getCustomerLedger = async (req, res, next) => {
         const total = await Ledger.countDocuments(query);
 
         // Last entry's balance = current balance
-        const lastEntry = await Ledger.findOne({ partyType: 'Customer', party: req.params.id, ...tenantQuery(req) })
+        const lastEntry = await Ledger.findOne({ partyType: 'Party', party: req.params.id, ...tenantQuery(req) })
             .sort({ date: -1, createdAt: -1 });
-        const currentBalance = lastEntry ? lastEntry.balance : (customer.openingBalance || 0);
+        const currentBalance = lastEntry ? lastEntry.balance : (party.openingBalance || 0);
 
         // Calculate Balance Brought Forward (bbf)
-        let bbf = customer.openingBalance || 0;
+        let bbf = party.openingBalance || 0;
         if (from) {
-            const previousEntries = await Ledger.find({ partyType: 'Customer', party: req.params.id,
+            const previousEntries = await Ledger.find({ partyType: 'Party', party: req.params.id,
                 ...tenantQuery(req),
                 date: { $lt: new Date(from) }
             });
@@ -295,7 +295,7 @@ export const getCustomerLedger = async (req, res, next) => {
         }
 
         sendResponse(res, 200, {
-            customer,
+            party,
             entries,
             currentBalance,
             bbf,
@@ -308,26 +308,26 @@ export const getCustomerLedger = async (req, res, next) => {
     }
 };
 
-// @desc    Record a refund paid to a customer (debit entry — reduces customer balance)
-// @route   POST /api/customers/:id/refund
+// @desc    Record a refund paid to a party (debit entry — reduces party balance)
+// @route   POST /api/partys/:id/refund
 // @access  Private
 export const recordRefund = async (req, res, next) => {
     try {
         const { amount, paymentMode = 'cash', date, notes, refNumber, returnRef } = req.body;
         if (!amount || amount <= 0) return sendError(res, 400, 'Refund amount must be greater than 0');
 
-        const customer = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
-        if (!customer) return sendError(res, 404, 'Customer not found');
+        const party = await Party.findOne({ _id: req.params.id, ...tenantQuery(req) });
+        if (!party) return sendError(res, 404, 'Party not found');
 
         const auto = returnRef ? `RET-${returnRef}` : `RET-${Date.now()}`;
 
-        const entry = await Ledger.create({ tenantId: req.tenantId, partyType: 'Customer', party: req.params.id,
+        const entry = await Ledger.create({ tenantId: req.tenantId, partyType: 'Party', party: req.params.id,
             date: date ? new Date(date) : new Date(),
             type: 'adjustment',
             refType: 'Manual',
             refNumber: refNumber || auto,
             description: `Return Refund${returnRef ? ` (Ref: ${returnRef})` : ''}${paymentMode ? ` — ${paymentMode.replace('_', ' ')}` : ''}`,
-            debit: amount,  // Debit the customer: reduces their Cr balance / reduces our liability to them
+            debit: amount,  // Debit the party: reduces their Cr balance / reduces our liability to them
             credit: 0,
             balance: 0,     // Will be set by recalculate
             paymentMode,
@@ -335,19 +335,19 @@ export const recordRefund = async (req, res, next) => {
             createdBy: req.user._id,
         });
 
-        await recalculateCustomerBalance(req.params.id, req.tenantId);
-        const updatedCustomer = await Customer.findById(req.params.id);
+        await recalculatePartyBalance(req.params.id, req.tenantId);
+        const updatedParty = await Party.findById(req.params.id);
 
-        sendResponse(res, 201, { entry, balance: updatedCustomer.currentBalance }, 'Refund recorded successfully');
+        sendResponse(res, 201, { entry, balance: updatedParty.currentBalance }, 'Refund recorded successfully');
     } catch (error) {
         next(error);
     }
 };
 
-// @desc    Record a payment received from a customer (credit entry)
-// @route   POST /api/customers/:id/payment
+// @desc    Record a payment received from a party (credit entry)
+// @route   POST /api/partys/:id/payment
 // @access  Private
-// @route   POST /api/customers/:id/charge
+// @route   POST /api/partys/:id/charge
 // @desc    Record a manual charge/voucher (increases outstanding balance)
 // @access  Private
 export const recordCharge = async (req, res, next) => {
@@ -356,11 +356,11 @@ export const recordCharge = async (req, res, next) => {
         if (!amount || amount <= 0) return sendError(res, 400, 'Charge amount must be greater than 0');
         if (!description || description.trim() === '') return sendError(res, 400, 'Description/Reason is required');
 
-        const customer = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
-        if (!customer) return sendError(res, 404, 'Customer not found');
+        const party = await Party.findOne({ _id: req.params.id, ...tenantQuery(req) });
+        if (!party) return sendError(res, 404, 'Party not found');
 
         // Create debit entry (increases balance)
-        const entry = await Ledger.create({ tenantId: req.tenantId, partyType: 'Customer', party: req.params.id,
+        const entry = await Ledger.create({ tenantId: req.tenantId, partyType: 'Party', party: req.params.id,
             date: date || new Date(),
             type: 'adjustment',
             refType: 'Manual',
@@ -372,7 +372,7 @@ export const recordCharge = async (req, res, next) => {
         });
 
         // Recalculate balance from this date onwards
-        await recalculateCustomerBalance(req.params.id, req.tenantId);
+        await recalculatePartyBalance(req.params.id, req.tenantId);
 
         sendResponse(res, 201, entry, 'Charge recorded successfully');
     } catch (error) {
@@ -386,18 +386,18 @@ export const recordPayment = async (req, res, next) => {
         const { amount, paymentMode = 'cash', date, notes, refNumber } = req.body;
         if (!amount || amount <= 0) return sendError(res, 400, 'Payment amount must be greater than 0');
 
-        const customer = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
-        if (!customer) return sendError(res, 404, 'Customer not found');
+        const party = await Party.findOne({ _id: req.params.id, ...tenantQuery(req) });
+        if (!party) return sendError(res, 404, 'Party not found');
 
         // Get current running balance (temporary for this entry, will be recalculated)
-        const lastEntry = await Ledger.findOne({ partyType: 'Customer', party: req.params.id,
+        const lastEntry = await Ledger.findOne({ partyType: 'Party', party: req.params.id,
             ...tenantQuery(req),
         }).sort({ date: -1, createdAt: -1 });
-        const previousBalance = lastEntry ? lastEntry.balance : (customer.openingBalance || 0);
+        const previousBalance = lastEntry ? lastEntry.balance : (party.openingBalance || 0);
         const newBalance = previousBalance - amount;
 
         // Create credit entry
-        const entry = await Ledger.create({ tenantId: req.tenantId, partyType: 'Customer', party: req.params.id,
+        const entry = await Ledger.create({ tenantId: req.tenantId, partyType: 'Party', party: req.params.id,
             date: date ? new Date(date) : new Date(),
             type: 'payment',
             refType: 'Manual',
@@ -412,19 +412,19 @@ export const recordPayment = async (req, res, next) => {
         });
 
         // Recalculate full ledger chronologically
-        await recalculateCustomerBalance(req.params.id, req.tenantId);
+        await recalculatePartyBalance(req.params.id, req.tenantId);
         
-        // Fetch the updated customer to get the correct new balance
-        const updatedCustomer = await Customer.findById(req.params.id);
+        // Fetch the updated party to get the correct new balance
+        const updatedParty = await Party.findById(req.params.id);
 
-        sendResponse(res, 201, { entry, balance: updatedCustomer.currentBalance }, 'Payment recorded successfully');
+        sendResponse(res, 201, { entry, balance: updatedParty.currentBalance }, 'Payment recorded successfully');
     } catch (error) {
         next(error);
     }
 };
 
 // @desc    Update a manually recorded payment entry
-// @route   PUT /api/customers/:id/payment/:entryId
+// @route   PUT /api/partys/:id/payment/:entryId
 // @access  Private (Admin/Manager)
 export const updatePayment = async (req, res, next) => {
     try {
@@ -432,7 +432,7 @@ export const updatePayment = async (req, res, next) => {
 
         const entry = await Ledger.findOne({
             _id: req.params.entryId,
-            customer: req.params.id,
+            party: req.params.id,
             ...tenantQuery(req),
         });
 
@@ -459,23 +459,23 @@ export const updatePayment = async (req, res, next) => {
         if (refNumber !== undefined) entry.refNumber = refNumber;
 
         await entry.save();
-        await recalculateCustomerBalance(req.params.id, req.tenantId);
+        await recalculatePartyBalance(req.params.id, req.tenantId);
 
-        const updatedCustomer = await Customer.findById(req.params.id);
-        sendResponse(res, 200, { entry, balance: updatedCustomer.currentBalance }, 'Payment updated successfully');
+        const updatedParty = await Party.findById(req.params.id);
+        sendResponse(res, 200, { entry, balance: updatedParty.currentBalance }, 'Payment updated successfully');
     } catch (error) {
         next(error);
     }
 };
 
 // @desc    Delete a manually recorded payment entry
-// @route   DELETE /api/customers/:id/payment/:entryId
+// @route   DELETE /api/partys/:id/payment/:entryId
 // @access  Private (Admin/Manager)
 export const deletePayment = async (req, res, next) => {
     try {
         const entry = await Ledger.findOne({
             _id: req.params.entryId,
-            customer: req.params.id,
+            party: req.params.id,
             ...tenantQuery(req),
         });
 
@@ -484,10 +484,10 @@ export const deletePayment = async (req, res, next) => {
         if (entry.type !== 'payment' && entry.type !== 'adjustment') return sendError(res, 400, 'Only payment or refund entries can be deleted');
 
         await Ledger.deleteOne({ _id: entry._id });
-        await recalculateCustomerBalance(req.params.id, req.tenantId);
+        await recalculatePartyBalance(req.params.id, req.tenantId);
 
-        const updatedCustomer = await Customer.findById(req.params.id);
-        sendResponse(res, 200, { balance: updatedCustomer.currentBalance }, 'Payment deleted successfully');
+        const updatedParty = await Party.findById(req.params.id);
+        sendResponse(res, 200, { balance: updatedParty.currentBalance }, 'Payment deleted successfully');
     } catch (error) {
         next(error);
     }
@@ -495,15 +495,15 @@ export const deletePayment = async (req, res, next) => {
 
 
 // @desc    Get full account statement (for printing) with optional date range
-// @route   GET /api/customers/:id/statement
+// @route   GET /api/partys/:id/statement
 // @access  Private
-export const getCustomerStatement = async (req, res, next) => {
+export const getPartyStatement = async (req, res, next) => {
     try {
         const { from, to } = req.query;
-        const customer = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
-        if (!customer) return sendError(res, 404, 'Customer not found');
+        const party = await Party.findOne({ _id: req.params.id, ...tenantQuery(req) });
+        if (!party) return sendError(res, 404, 'Party not found');
 
-        const query = { customer: req.params.id, ...tenantQuery(req) };
+        const query = { party: req.params.id, ...tenantQuery(req) };
         if (from || to) {
             query.date = {};
             if (from) query.date.$gte = new Date(from);
@@ -516,10 +516,10 @@ export const getCustomerStatement = async (req, res, next) => {
 
         const totalDebit = entries.reduce((s, e) => s + e.debit, 0);
         const totalCredit = entries.reduce((s, e) => s + e.credit, 0);
-        const closingBalance = entries.length > 0 ? entries[entries.length - 1].balance : (customer.openingBalance || 0);
+        const closingBalance = entries.length > 0 ? entries[entries.length - 1].balance : (party.openingBalance || 0);
 
         sendResponse(res, 200, {
-            customer,
+            party,
             entries,
             summary: { totalDebit, totalCredit, closingBalance },
             period: { from: from || null, to: to || null }
@@ -529,26 +529,26 @@ export const getCustomerStatement = async (req, res, next) => {
     }
 };
 
-// @desc    Get overall statements and aging for all customers
-// @route   GET /api/customers/statements/overall
+// @desc    Get overall statements and aging for all partys
+// @route   GET /api/partys/statements/overall
 // @access  Private
-export const getCustomerOverallStatement = async (req, res, next) => {
+export const getPartyOverallStatement = async (req, res, next) => {
     try {
-        console.log('Fetching overall customer statements for tenant:', req.tenantId);
+        console.log('Fetching overall party statements for tenant:', req.tenantId);
         const query = { ...tenantQuery(req), isActive: true };
-        const customers = await Customer.find(query).sort({ name: 1 });
+        const partys = await Party.find(query).sort({ name: 1 });
 
-        const statements = await Promise.all(customers.map(async (customer) => {
+        const statements = await Promise.all(partys.map(async (party) => {
             try {
-                const entries = await Ledger.find({ partyType: 'Customer', party: customer._id, ...tenantQuery(req) }).sort({ date: 1, createdAt: 1 });
+                const entries = await Ledger.find({ partyType: 'Party', party: party._id, ...tenantQuery(req) }).sort({ date: 1, createdAt: 1 });
                 
                 let totalBilled = 0;
                 let totalPaid = 0;
-                let currentBalance = customer.openingBalance || 0;
+                let currentBalance = party.openingBalance || 0;
                 let oldestUnpaidBillDate = null;
                 
                 if (currentBalance > 0) {
-                     oldestUnpaidBillDate = customer.createdAt;
+                     oldestUnpaidBillDate = party.createdAt;
                 }
 
                 for (const entry of entries) {
@@ -570,70 +570,70 @@ export const getCustomerOverallStatement = async (req, res, next) => {
                 }
 
                 return {
-                    customerId: customer._id,
-                    name: customer.companyName || customer.name,
-                    contact: customer.phone,
+                    partyId: party._id,
+                    name: party.companyName || party.name,
+                    contact: party.phone,
                     totalBilled,
                     totalPaid,
                     currentBalance,
                     oldestPendingDays
                 };
             } catch (innerError) {
-                console.error(`Error processing customer ${customer._id}:`, innerError);
+                console.error(`Error processing party ${party._id}:`, innerError);
                 return {
-                    customerId: customer._id,
-                    name: (customer.companyName || customer.name) + ' (Error)',
-                    contact: customer.phone,
+                    partyId: party._id,
+                    name: (party.companyName || party.name) + ' (Error)',
+                    contact: party.phone,
                     totalBilled: 0,
                     totalPaid: 0,
-                    currentBalance: customer.currentBalance || 0,
+                    currentBalance: party.currentBalance || 0,
                     oldestPendingDays: 0
                 };
             }
         }));
 
-        sendResponse(res, 200, statements, 'Overall customer statements fetched');
+        sendResponse(res, 200, statements, 'Overall party statements fetched');
     } catch (error) {
-        console.error('Error in getCustomerOverallStatement:', error);
+        console.error('Error in getPartyOverallStatement:', error);
         next(error);
     }
 };
 
-// @desc    Get locked customers
-// @route   GET /api/customers/reports/locked
+// @desc    Get locked partys
+// @route   GET /api/partys/reports/locked
 // @access  Private
-export const getLockedCustomers = async (req, res, next) => {
+export const getLockedPartys = async (req, res, next) => {
     try {
         const settings = await Setting.findOne({ tenantId: req.tenantId });
         if (!settings?.creditConfig?.enableAutoLock) {
             return sendResponse(res, 200, [], 'Auto-lock is disabled');
         }
 
-        const creditLimit = settings.creditConfig.customerCreditLimit || 0;
-        const creditDays = settings.creditConfig.customerCreditDays || 0;
+        const creditLimit = settings.creditConfig.partyCreditLimit || 0;
+        const creditDays = settings.creditConfig.partyCreditDays || 0;
 
         const query = { ...tenantQuery(req), isActive: true };
-        const customers = await Customer.find(query).sort({ name: 1 });
+        const partys = await Party.find(query).sort({ name: 1 });
 
-        const lockedCustomers = [];
+        const lockedPartys = [];
 
-        await Promise.all(customers.map(async (customer) => {
+        await Promise.all(partys.map(async (party) => {
             try {
                 // Check manual unlock first
-                if (customer.unlockedUntil && new Date(customer.unlockedUntil) > new Date()) {
+                if (party.unlockedUntil && new Date(party.unlockedUntil) > new Date()) {
                     return; // Skip manually unlocked
                 }
 
-                const entries = await Ledger.find({ partyType: 'Customer', party: customer._id, ...tenantQuery(req) }).sort({ date: 1, createdAt: 1 });
+                const entries = await Ledger.find({ partyType: 'Party', party: party._id, ...tenantQuery(req) }).sort({ date: 1, createdAt: 1 });
                 
-                let currentBalance = customer.openingBalance || 0;
+                let currentBalance = party.openingBalance || 0;
                 let totalPayments = 0;
                 const bills = [];
 
-                if (customer.openingBalance > 0) {
-                    bills.push({ date: customer.createdAt || new Date(0), amount: customer.openingBalance });
-                } else if (customer.openingBalance < 0) {
-                    totalPayments += Math.abs(customer.openingBalance);
+                if (party.openingBalance > 0) {
+                    bills.push({ date: party.createdAt || new Date(0), amount: party.openingBalance });
+                } else if (party.openingBalance < 0) {
+                    totalPayments += Math.abs(party.openingBalance);
                 }
 
                 for (const entry of entries) {
@@ -666,43 +666,43 @@ export const getLockedCustomers = async (req, res, next) => {
                 }
 
                 if (isLocked) {
-                    lockedCustomers.push({
-                        _id: customer._id,
-                        name: customer.companyName || customer.name,
-                        phone: customer.phone,
-                        email: customer.email,
+                    lockedPartys.push({
+                        _id: party._id,
+                        name: party.companyName || party.name,
+                        phone: party.phone,
+                        email: party.email,
                         currentBalance,
                         oldestPendingDays,
                         creditLimit,
                         creditDays,
-                        unlockedUntil: customer.unlockedUntil
+                        unlockedUntil: party.unlockedUntil
                     });
                 }
             } catch (innerError) {
-                console.error(`Error processing locked status for customer ${customer._id}:`, innerError);
+                console.error(`Error processing locked status for party ${party._id}:`, innerError);
             }
         }));
 
-        sendResponse(res, 200, lockedCustomers, 'Locked customers fetched');
+        sendResponse(res, 200, lockedPartys, 'Locked partys fetched');
     } catch (error) {
-        console.error('Error in getLockedCustomers:', error);
+        console.error('Error in getLockedPartys:', error);
         next(error);
     }
 };
 
-// @desc    Manually unlock a customer for billing
-// @route   POST /api/customers/:id/unlock
+// @desc    Manually unlock a party for billing
+// @route   POST /api/partys/:id/unlock
 // @access  Private (Admin/Manager)
-export const unlockCustomer = async (req, res, next) => {
+export const unlockParty = async (req, res, next) => {
     try {
         const { unlockComment, days = 1 } = req.body;
         if (!unlockComment) {
             return sendError(res, 400, 'Unlock comment/reason is required');
         }
 
-        const customer = await Customer.findOne({ _id: req.params.id, ...tenantQuery(req) });
-        if (!customer) {
-            return sendError(res, 404, 'Customer not found');
+        const party = await Party.findOne({ _id: req.params.id, ...tenantQuery(req) });
+        if (!party) {
+            return sendError(res, 404, 'Party not found');
         }
 
         const unlockDays = Number(days);
@@ -714,28 +714,28 @@ export const unlockCustomer = async (req, res, next) => {
         const unlockedUntil = new Date();
         unlockedUntil.setHours(unlockedUntil.getHours() + (24 * unlockDays));
 
-        customer.unlockedUntil = unlockedUntil;
-        customer.unlockComment = unlockComment;
-        customer.unlockedBy = req.user.id;
+        party.unlockedUntil = unlockedUntil;
+        party.unlockComment = unlockComment;
+        party.unlockedBy = req.user.id;
         
-        await customer.save();
+        await party.save();
 
-        sendResponse(res, 200, customer, `Customer temporarily unlocked for ${unlockDays} days`);
+        sendResponse(res, 200, party, `Party temporarily unlocked for ${unlockDays} days`);
     } catch (error) {
         next(error);
     }
 };
 
 // @desc    Get daywise outstanding/receivables report (pending bills)
-// @route   GET /api/customers/reports/receivables
+// @route   GET /api/partys/reports/receivables
 // @access  Private
-export const getCustomerReceivables = async (req, res, next) => {
+export const getPartyReceivables = async (req, res, next) => {
     try {
         const query = { ...tenantQuery(req), isActive: true };
-        if (req.query.customer) {
-            query._id = req.query.customer;
+        if (req.query.party) {
+            query._id = req.query.party;
         }
-        const customers = await Customer.find(query).sort({ name: 1 });
+        const partys = await Party.find(query).sort({ name: 1 });
         const currentDate = new Date();
         const fromDate = req.query.from ? new Date(req.query.from) : null;
         if (fromDate) fromDate.setHours(0, 0, 0, 0);
@@ -744,30 +744,30 @@ export const getCustomerReceivables = async (req, res, next) => {
 
         const receivablesData = [];
 
-        await Promise.all(customers.map(async (customer) => {
-            const entries = await Ledger.find({ partyType: 'Customer', party: customer._id, ...tenantQuery(req) })
+        await Promise.all(partys.map(async (party) => {
+            const entries = await Ledger.find({ partyType: 'Party', party: party._id, ...tenantQuery(req) })
                 .sort({ date: 1, createdAt: 1 });
 
             let totalCredits = entries.reduce((sum, entry) => sum + (entry.credit || 0), 0);
             const allPendingBills = [];
             
-            if (customer.openingBalance > 0) {
-                const billDate = new Date(customer.createdAt);
-                if (totalCredits >= customer.openingBalance) {
-                    totalCredits -= customer.openingBalance;
+            if (party.openingBalance > 0) {
+                const billDate = new Date(party.createdAt);
+                if (totalCredits >= party.openingBalance) {
+                    totalCredits -= party.openingBalance;
                 } else if (totalCredits > 0) {
                     allPendingBills.push({
                         refNumber: 'Opening Balance',
-                        pendingAmount: customer.openingBalance - totalCredits,
-                        date: customer.createdAt,
+                        pendingAmount: party.openingBalance - totalCredits,
+                        date: party.createdAt,
                         osDays: Math.floor((currentDate - billDate) / (1000 * 60 * 60 * 24))
                     });
                     totalCredits = 0;
                 } else {
                     allPendingBills.push({
                         refNumber: 'Opening Balance',
-                        pendingAmount: customer.openingBalance,
-                        date: customer.createdAt,
+                        pendingAmount: party.openingBalance,
+                        date: party.createdAt,
                         osDays: Math.floor((currentDate - billDate) / (1000 * 60 * 60 * 24))
                     });
                 }
@@ -808,13 +808,13 @@ export const getCustomerReceivables = async (req, res, next) => {
 
             if (pendingBills.length > 0) {
                 receivablesData.push({
-                    customerId: customer._id,
-                    name: customer.companyName || customer.name,
-                    contact: customer.phone,
+                    partyId: party._id,
+                    name: party.companyName || party.name,
+                    contact: party.phone,
                     address: [
-                        customer.address?.billing?.street, 
-                        customer.address?.billing?.city,
-                        customer.address?.billing?.state
+                        party.address?.billing?.street, 
+                        party.address?.billing?.city,
+                        party.address?.billing?.state
                     ].filter(Boolean) || [],
                     totalPending: pendingBills.reduce((s, b) => s + b.pendingAmount, 0),
                     pendingBills
@@ -830,10 +830,10 @@ export const getCustomerReceivables = async (req, res, next) => {
     }
 };
 
-// @desc    Get outstanding summary for all customers (Name, Debit, Credit, Closing Balance)
-// @route   GET /api/customers/reports/outstanding-summary
+// @desc    Get outstanding summary for all partys (Name, Debit, Credit, Closing Balance)
+// @route   GET /api/partys/reports/outstanding-summary
 // @access  Private
-export const getCustomerOutstandingSummary = async (req, res, next) => {
+export const getPartyOutstandingSummary = async (req, res, next) => {
     try {
         const query = { ...tenantQuery(req), isActive: true };
 
@@ -841,25 +841,25 @@ export const getCustomerOutstandingSummary = async (req, res, next) => {
         let salesPersonOrderIds = [];
         if (req.query.salesPerson) {
             if (req.query.salesPerson === 'unbilled') {
-                const customersWithOrders = await SalesOrder.find({ ...tenantQuery(req) }).distinct('customer');
-                query._id = { $nin: customersWithOrders };
+                const partysWithOrders = await SalesOrder.find({ ...tenantQuery(req) }).distinct('party');
+                query._id = { $nin: partysWithOrders };
             } else {
-                const salesOrders = await SalesOrder.find({ user: req.query.salesPerson, ...tenantQuery(req) }).select('customer _id');
-                const customerIds = salesOrders.map(so => so.customer);
+                const salesOrders = await SalesOrder.find({ user: req.query.salesPerson, ...tenantQuery(req) }).select('party _id');
+                const partyIds = salesOrders.map(so => so.party);
                 salesPersonOrderIds = salesOrders.map(so => so._id.toString());
-                query._id = { $in: customerIds };
+                query._id = { $in: partyIds };
             }
         }
 
-        const customers = await Customer.find(query).sort({ name: 1 });
+        const partys = await Party.find(query).sort({ name: 1 });
         const fromDate = req.query.from ? new Date(req.query.from) : null;
         if (fromDate) fromDate.setHours(0, 0, 0, 0);
         const toDate = req.query.to ? new Date(req.query.to) : null;
         if (toDate) toDate.setHours(23, 59, 59, 999);
 
-        const summaries = await Promise.all(customers.map(async (customer) => {
-            const baseQuery = { customer: customer._id, ...tenantQuery(req) };
-            const openBal = customer.openingBalance || 0;
+        const summaries = await Promise.all(partys.map(async (party) => {
+            const baseQuery = { party: party._id, ...tenantQuery(req) };
+            const openBal = party.openingBalance || 0;
 
             // All-time ledger entries
             const allEntries = await Ledger.find(baseQuery).sort({ date: 1, createdAt: 1 });
@@ -867,9 +867,9 @@ export const getCustomerOutstandingSummary = async (req, res, next) => {
             let ledgerDebit = allEntries.reduce((s, e) => s + (e.debit  || 0), 0);
             let ledgerCredit = allEntries.reduce((s, e) => s + (e.credit || 0), 0);
 
-            // Opening balance is stored on Customer (not as a ledger entry).
-            // If positive = customer owes money => add to Debit column.
-            // If negative = customer paid in advance => add to Credit column.
+            // Opening balance is stored on Party (not as a ledger entry).
+            // If positive = party owes money => add to Debit column.
+            // If negative = party paid in advance => add to Credit column.
             const totalDebit  = ledgerDebit  + (openBal > 0 ? openBal : 0);
             const totalCredit = ledgerCredit + (openBal < 0 ? Math.abs(openBal) : 0);
 
@@ -900,17 +900,17 @@ export const getCustomerOutstandingSummary = async (req, res, next) => {
                 closingBalance = lastEntry ? lastEntry.balance : openBal;
             }
 
-            // Fetch salesperson name from the most recent sales order for this customer
-            const latestOrder = await SalesOrder.findOne({ customer: customer._id, ...tenantQuery(req) })
+            // Fetch salesperson name from the most recent sales order for this party
+            const latestOrder = await SalesOrder.findOne({ party: party._id, ...tenantQuery(req) })
                 .sort({ createdAt: -1 })
                 .select('user')
                 .populate({ path: 'user', model: User, select: 'name email' });
             const salesPersonName = latestOrder?.user?.name || latestOrder?.user?.email || '';
 
             return {
-                customerId: customer._id,
-                name: customer.companyName || customer.name,
-                phone: customer.phone,
+                partyId: party._id,
+                name: party.companyName || party.name,
+                phone: party.phone,
                 totalDebit,
                 totalCredit,
                 closingBalance,
@@ -918,16 +918,16 @@ export const getCustomerOutstandingSummary = async (req, res, next) => {
             };
         }));
 
-        sendResponse(res, 200, summaries, 'Customer outstanding summary fetched');
+        sendResponse(res, 200, summaries, 'Party outstanding summary fetched');
     } catch (error) {
         next(error);
     }
 };
 
-// @desc    Get Customer Receipts Report
-// @route   GET /api/customers/reports/receipts
+// @desc    Get Party Receipts Report
+// @route   GET /api/partys/reports/receipts
 // @access  Private
-export const getCustomerReceiptsReport = async (req, res, next) => {
+export const getPartyReceiptsReport = async (req, res, next) => {
     try {
         const { from, to } = req.query;
         const query = { 
@@ -943,11 +943,11 @@ export const getCustomerReceiptsReport = async (req, res, next) => {
         }
 
         const receipts = await Ledger.find(query)
-            .populate('customer', 'name companyName phone')
+            .populate('party', 'name companyName phone')
             .populate('createdBy', 'name')
             .sort({ date: -1, createdAt: -1 });
 
-        sendResponse(res, 200, { receipts }, 'Customer receipts report fetched successfully');
+        sendResponse(res, 200, { receipts }, 'Party receipts report fetched successfully');
     } catch (error) {
         next(error);
     }

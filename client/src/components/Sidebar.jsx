@@ -46,9 +46,9 @@ const Sidebar = ({ isOpen, onClose }) => {
             id: 'sales',
             icon: billingSettings?.industry === 'machinery' ? '🏭' : '🛒',
             items: [
-                { name: activePreset?.terminology?.customers || 'Customers', path: '/customers', id: 'customers' },
+                { name: 'Parties', path: '/parties', id: 'parties' },
                 { name: 'Customer Types', path: '/customer-types', id: 'customer-types' },
-                { name: 'Customer Ledgers', path: '/customer-ledger', id: 'customer-ledger' },
+
                 { name: 'Quotations', path: '/quotations', id: 'quotations' },
                 { name: activePreset?.terminology?.salesOrder || 'Sales Orders', path: '/sales-orders', id: 'sales-orders' },
                 { name: activePreset?.terminology?.outward || 'Dispatch Management', path: '/dispatch-management', id: 'dispatch-management' },
@@ -59,9 +59,6 @@ const Sidebar = ({ isOpen, onClose }) => {
             id: 'purchases',
             icon: billingSettings?.industry === 'machinery' ? '🔩' : '🎫',
             items: [
-                { name: activePreset?.terminology?.vendors || 'Vendors', path: '/vendors', id: 'vendors' },
-                { name: 'Vendor Ledgers', path: '/vendor-ledger', id: 'vendor-ledger' },
-                { name: '🔗 Combined Ledger', path: '/combined-ledger', id: 'combined-ledger' },
                 { name: activePreset?.terminology?.purchaseOrder || 'Purchase Entry', path: '/purchase-orders', id: 'purchase-orders' },
                 { name: 'Generate PO (Draft)', path: '/draft-pos', id: 'draft-pos' },
                 { name: activePreset?.terminology?.inward || 'Stock Inward', path: '/stock-inward', id: 'stock-inward' },
@@ -72,11 +69,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             id: 'reports',
             icon: '📈',
             items: [
-                { name: 'Analytics Dashboard', path: '/reports', id: 'reports' },
-                { name: 'Financial Ledgers', path: '/ledger-reports', id: 'ledger-reports' },
-                { name: 'Custom Reports', path: '/custom-reports', id: 'custom-reports' },
-                { name: 'Profit Tracking', path: '/profit-tracking', id: 'profit-tracking' },
-                { name: 'Company Expenses', path: '/expenses', id: 'expenses' }
+                { name: 'Reports Hub', path: '/reports-hub', id: 'reports-hub' }
             ]
         },
         {
@@ -149,203 +142,179 @@ const Sidebar = ({ isOpen, onClose }) => {
             if (!isAllowed) {
                 if (itemId === 'items' && user?.allowedMenus?.includes('inventory')) isAllowed = true;
                 if (itemId === 'dispatch-management' && user?.allowedMenus?.includes('stock-outward')) isAllowed = true;
-                if ((itemId === 'reports' || itemId === 'ledger-reports' || itemId === 'profit-tracking' || itemId === 'expenses' || itemId === 'custom-reports') && user?.allowedMenus?.includes('reports')) isAllowed = true;
+                if (itemId === 'purchase-orders' && user?.allowedMenus?.includes('purchases')) isAllowed = true;
+                if (itemId === 'stock-inward' && user?.allowedMenus?.includes('purchases')) isAllowed = true;
+                if (itemId === 'parties' && (user?.allowedMenus?.includes('customers') || user?.allowedMenus?.includes('vendors'))) isAllowed = true;
+                if (itemId === 'reports-hub' && user?.allowedMenus?.includes('reports')) isAllowed = true;
             }
             return isAllowed;
         }
 
-        // 2. Admin overrides
-        if (effectiveRole === 'admin' || effectiveRole === 'manager' || effectiveRole === 'inventory_admin' || user?.role === 'admin' || user?.role === 'manager') {
+        // 2. Role-based defaults (if not using specific menus)
+        if (effectiveRole === 'super_admin' || effectiveRole === 'admin' || effectiveRole === 'tenant_owner' || effectiveRole === 'tenant_admin') {
             return true;
         }
 
-        // 3. Apply restrictive roles
-        const normalizedRole = effectiveRole?.toLowerCase() || '';
-        if (['sales_person', 'sales person', 'sales user', 'sales_user'].includes(normalizedRole)) {
-            const salesAllowed = ['dashboard', 'items', 'stocks', 'sales-orders', 'dispatch-management', 'customers', 'customer-ledger'];
-            return salesAllowed.includes(itemId);
+        if (effectiveRole === 'sales_manager') {
+            const allowed = ['dashboard', 'items', 'categories', 'stocks', 'customers', 'sales-orders', 'quotations', 'dispatch-management', 'reports-hub', 'ledger'];
+            return allowed.includes(itemId);
         }
 
-        if (normalizedRole === 'accounts') {
-            const accountsAllowed = ['dashboard', 'items', 'customers', 'vendors', 'customer-ledger', 'vendor-ledger', 'reports', 'ledger-reports', 'custom-reports', 'profit-tracking', 'expenses'];
-            return accountsAllowed.includes(itemId);
+        if (effectiveRole === 'inventory_manager') {
+            const allowed = ['dashboard', 'items', 'categories', 'locations', 'stocks', 'bulk-import', 'stock-adjustment', 'vendors', 'purchase-orders', 'stock-inward', 'stock-return', 'stock-returns-list'];
+            return allowed.includes(itemId);
         }
 
-        if (['godown_staff', 'godown staff'].includes(normalizedRole)) {
-            const godownAllowed = ['dashboard', 'items', 'stocks', 'dispatch-management', 'stock-adjustment', 'stock-return', 'purchase-orders'];
-            return godownAllowed.includes(itemId);
+        if (effectiveRole === 'staff') {
+            const allowed = ['dashboard', 'items', 'stocks', 'customers', 'sales-orders'];
+            return allowed.includes(itemId);
         }
-
-        // 4. Full Access overrides (If no restrictive app role is set)
-        if (user?.menuAccess === 'all') return true;
 
         return false;
     };
 
     return (
         <>
-            {/* Mobile Backdrop */}
-            {isOpen && (
-                <div 
-                    className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm transition-opacity duration-300"
-                    onClick={onClose}
-                />
-            )}
+            <div className={`fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={onClose} />
 
-            <aside className={`
-                w-64 bg-[#1a1f2e] text-slate-300 h-screen flex flex-col fixed inset-y-0 left-0 z-50 
-                transform transition-transform duration-300 ease-in-out
-                lg:relative lg:translate-x-0
-                ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-                print:hidden
-            `}>
-                <div className="p-4 lg:p-6 border-b border-slate-700/50 flex flex-col gap-3 overflow-visible relative">
-                    <div className="flex items-center justify-end lg:hidden">
-                        {/* Close button for mobile */}
-                        <button 
-                            onClick={onClose}
-                            className="lg:hidden p-2 -mr-2 text-slate-400 hover:text-white"
-                        >
-                            ✕
-                        </button>
-                    </div>
-
-                    <div className="relative">
-                        <div
-                            className="flex items-center space-x-3 cursor-pointer hover:bg-slate-800 p-2 -ml-2 rounded-lg transition-colors group"
-                            onClick={() => setShowAppSwitcher(!showAppSwitcher)}
-                        >
-                            <div className={`w-9 h-9 flex-shrink-0 rounded-lg flex items-center justify-center text-white text-xl shadow-inner overflow-hidden ${activeApp === 'assets' ? 'bg-blue-600' : 'bg-white p-1'}`}>
-                                {activeApp === 'assets' ? '🖥️' : <img src="/favicon.png" alt="CoSlive Logo" className="w-full h-full object-contain" />}
+            <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-100 shadow-xl lg:shadow-none lg:static lg:flex lg:flex-col transform transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)] ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+                
+                {/* Header / Logo */}
+                <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100/80 shrink-0">
+                    <div className="flex items-center gap-3">
+                        {companyLogo ? (
+                            <img src={companyLogo} alt="Logo" className="h-8 object-contain" />
+                        ) : (
+                            <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
+                                <span className="text-white font-bold text-sm tracking-tighter">IM</span>
                             </div>
-                            <div className="flex flex-col flex-1 min-w-0">
-                                <h1 className="text-base lg:text-lg font-bold text-white tracking-tight leading-none group-hover:text-blue-400 transition-colors truncate">
-                                    {activeApp === 'assets' ? 'Asset Management' : 'CoSlive Inventory'}
-                                </h1>
-                                <span className="text-[10px] text-slate-400 font-semibold tracking-wide flex items-center mt-0.5">
-                                    CHANGE APP <span className="ml-1 opacity-50 text-[8px]">▼</span>
-                                </span>
-                            </div>
-                        </div>
-
-                        {showAppSwitcher && (
-                            <>
-                                <div className="fixed inset-0 z-40" onClick={() => setShowAppSwitcher(false)}></div>
-                                <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden py-1 animate-in fade-in slide-in-from-top-2 duration-200">
-                                    <div className="px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50/50">Switch Application</div>
-                                    
-                                    <button 
-                                        onClick={() => {
-                                            sessionStorage.setItem('activeApp', 'inventory');
-                                            window.location.href = '/dashboard';
-                                        }}
-                                        className={`w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center space-x-3 transition-colors ${activeApp === 'inventory' ? 'bg-primary-50' : ''}`}
-                                    >
-                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl overflow-hidden ${activeApp === 'inventory' ? 'bg-primary-100' : 'bg-gray-100'} p-1`}>
-                                            <img src="/favicon.png" alt="CoSlive Logo" className="w-full h-full object-contain" />
-                                        </div>
-                                        <div>
-                                            <div className={`text-sm font-bold ${activeApp === 'inventory' ? 'text-primary-700' : 'text-gray-900'}`}>CoSlive Inventory</div>
-                                            <div className="text-xs text-gray-500">Manage Stocks & Sales</div>
-                                        </div>
-                                    </button>
-
-                                    <button 
-                                        onClick={() => {
-                                            sessionStorage.setItem('activeApp', 'assets');
-                                            window.location.href = '/assets/dashboard';
-                                        }}
-                                        className={`w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center space-x-3 border-t border-gray-100 transition-colors ${activeApp === 'assets' ? 'bg-blue-50' : ''}`}
-                                    >
-                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${activeApp === 'assets' ? 'bg-blue-100' : 'bg-gray-100'}`}>🖥️</div>
-                                        <div>
-                                            <div className={`text-sm font-bold ${activeApp === 'assets' ? 'text-blue-700' : 'text-gray-900'}`}>Asset Management</div>
-                                            <div className="text-xs text-gray-500">Manage Hardware & Vehicles</div>
-                                        </div>
-                                    </button>
-                                </div>
-                            </>
                         )}
-
+                        <div>
+                            <span className="text-lg font-bold text-gray-900 tracking-tight">Vasanth</span>
+                            <span className="text-xs font-semibold text-primary-600 block leading-none">Enterprise</span>
+                        </div>
                     </div>
+                    <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg lg:hidden transition-colors">
+                        <span className="text-xl leading-none">&times;</span>
+                    </button>
                 </div>
 
-            <nav className="flex-1 mt-4 overflow-y-auto custom-scrollbar">
-                {navGroups.map((group) => {
-                    const accessibleItems = group.items.filter(item => checkAccess(item.id));
-                    if (accessibleItems.length === 0) return null;
+                {/* App Switcher */}
+                <div className="relative p-4 border-b border-gray-100 shrink-0">
+                    <button 
+                        onClick={() => setShowAppSwitcher(!showAppSwitcher)}
+                        className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200/50"
+                    >
+                        <div className="flex items-center gap-3">
+                            <span className="text-xl">{activeApp === 'inventory' ? '📦' : '🖥️'}</span>
+                            <div className="text-left">
+                                <span className="block text-sm font-semibold text-gray-900 capitalize">{activeApp} Suite</span>
+                                <span className="block text-xs text-gray-500">Switch Application</span>
+                            </div>
+                        </div>
+                        <span className="text-gray-400">▼</span>
+                    </button>
 
-                    const isExpanded = expandedGroup === group.id;
-
-                    return (
-                        <div key={group.id} className="mb-2 px-3">
-                            <button
-                                onClick={() => setExpandedGroup(isExpanded ? null : group.id)}
-                                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${isExpanded ? 'bg-slate-800 text-white' : 'hover:bg-slate-800/50'}`}
+                    {showAppSwitcher && (
+                        <div className="absolute top-full left-4 right-4 mt-2 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
+                            <button 
+                                onClick={() => {
+                                    sessionStorage.setItem('activeApp', 'inventory');
+                                    setShowAppSwitcher(false);
+                                    window.location.href = '/dashboard';
+                                }}
+                                className={`w-full flex items-center gap-3 px-4 py-2 text-sm ${activeApp === 'inventory' ? 'bg-primary-50 text-primary-700 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
                             >
-                                <div className="flex items-center">
-                                    <span className="mr-3 text-lg opacity-80">{group.icon}</span>
-                                    <span className="font-semibold text-sm tracking-wide">{group.name}</span>
-                                </div>
-                                <span className={`text-xs transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>▶</span>
+                                <span className="text-lg">📦</span> Inventory Suite
                             </button>
+                            <button 
+                                onClick={() => {
+                                    sessionStorage.setItem('activeApp', 'assets');
+                                    setShowAppSwitcher(false);
+                                    window.location.href = '/assets/dashboard';
+                                }}
+                                className={`w-full flex items-center gap-3 px-4 py-2 text-sm ${activeApp === 'assets' ? 'bg-primary-50 text-primary-700 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
+                            >
+                                <span className="text-lg">🖥️</span> Asset Suite
+                            </button>
+                        </div>
+                    )}
+                </div>
 
-                            {isExpanded && (
-                                <div className="mt-1 ml-4 space-y-1">
+                {/* Navigation Items */}
+                <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar py-4 px-3 space-y-6">
+                    {navGroups.map((group) => {
+                        const accessibleItems = group.items.filter(item => checkAccess(item.id));
+                        if (accessibleItems.length === 0) return null;
+
+                        const isGroupActive = accessibleItems.some(item => location.pathname.startsWith(item.path));
+                        const isExpanded = expandedGroup === group.id || isGroupActive;
+
+                        return (
+                            <div key={group.name} className="px-1">
+                                <button
+                                    onClick={() => setExpandedGroup(isExpanded ? null : group.id)}
+                                    className="w-full flex items-center justify-between px-3 py-2 text-sm font-bold text-gray-400 uppercase tracking-wider hover:text-gray-600 transition-colors"
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <span>{group.icon}</span>
+                                        {group.name}
+                                    </span>
+                                    <span className={`text-xs transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
+                                </button>
+                                
+                                <div className={`mt-2 space-y-1 transition-all duration-300 ease-in-out overflow-hidden ${isExpanded ? 'opacity-100 max-h-[2000px] translate-y-0' : 'opacity-0 max-h-0 -translate-y-2'}`}>
                                     {accessibleItems.map((item) => {
-                                        const isActive = location.pathname === item.path;
+                                        const isActive = location.pathname.startsWith(item.path);
                                         return (
                                             <Link
-                                                key={item.path}
+                                                key={item.name}
                                                 to={item.path}
                                                 onClick={() => {
                                                     if (window.innerWidth < 1024) onClose();
                                                 }}
-                                                className={`flex items-center px-4 py-2 text-xs font-medium rounded-md transition-all ${isActive
-                                                    ? 'bg-rose-600 text-white'
-                                                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                                                    }`}
+                                                className={`group flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                                                    isActive 
+                                                        ? 'bg-primary-600 text-white shadow-md shadow-primary-500/20' 
+                                                        : 'text-gray-600 hover:bg-primary-50 hover:text-primary-700'
+                                                }`}
                                             >
-                                                {item.name}
+                                                {isActive && (
+                                                    <span className="absolute left-0 w-1 h-8 bg-primary-600 rounded-r-md" />
+                                                )}
+                                                <span className="relative z-10">{item.name}</span>
                                             </Link>
                                         );
                                     })}
                                 </div>
-                            )}
-                        </div>
-                    );
-                })}
-            </nav>
+                            </div>
+                        );
+                    })}
+                </div>
 
-            <div className="p-4 bg-slate-800/30 border-t border-slate-700/50 flex items-center justify-between group">
-                <div className="flex items-center space-x-3 overflow-hidden">
-                    <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center border border-slate-600 text-sm font-bold text-white flex-shrink-0">
-                        {user?.name?.charAt(0)}
+                {/* Footer User Profile */}
+                <div className="shrink-0 p-4 border-t border-gray-100 bg-gray-50/50">
+                    <div className="flex items-center gap-3 px-2 mb-4">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary-600 to-primary-400 flex items-center justify-center text-white font-bold shadow-inner">
+                            {user?.name?.charAt(0)?.toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-gray-900 truncate">{user?.name}</p>
+                            <p className="text-xs text-gray-500 truncate capitalize">{user?.appRoles?.[activeApp] || user?.role?.replace('_', ' ')}</p>
+                        </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-white truncate">{user?.name}</p>
-                        <Link to="/profile" className="text-[10px] text-slate-400 hover:text-white transition-colors uppercase font-bold tracking-tighter">View Profile</Link>
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                        <Link to="/profile" className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-primary-600 transition-colors">
+                            👤 Profile
+                        </Link>
+                        <button onClick={logout} className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-red-600 bg-white border border-red-100 rounded-lg hover:bg-red-50 transition-colors">
+                            🚪 Logout
+                        </button>
                     </div>
                 </div>
-                <button
-                    onClick={toggleTheme}
-                    className="p-1.5 mr-2 text-slate-400 hover:text-yellow-400 hover:bg-slate-700 rounded-lg transition-all"
-                    title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                >
-                    {theme === 'dark' ? '☀️' : '🌙'}
-                </button>
-                <button
-                    onClick={() => {
-                        logout();
-                        navigate('/login');
-                    }}
-                    className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-slate-700 rounded-lg transition-all"
-                    title="Logout"
-                >
-                    🚪
-                </button>
+
             </div>
-        </aside>
         </>
     );
 };

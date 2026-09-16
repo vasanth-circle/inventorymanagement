@@ -1,4 +1,4 @@
-import VendorLedger from '../models/VendorLedger.js';
+import Ledger from '../models/Ledger.js';
 import CustomerLedger from '../models/CustomerLedger.js';
 import Vendor from '../models/Vendor.js';
 import Customer from '../models/Customer.js';
@@ -13,7 +13,7 @@ export const recalculateVendorBalance = async (vendorId, tenantId) => {
     const vendor = await Vendor.findOne({ _id: vendorId, tenantId });
     if (!vendor) return;
 
-    const entries = await VendorLedger.find({ vendor: vendorId, tenantId })
+    const entries = await Ledger.find({ partyType: 'Vendor', party: vendorId, tenantId })
         .sort({ date: 1, createdAt: 1 });
 
     let running = vendor.openingBalance || 0;
@@ -49,7 +49,7 @@ export const getVendorLedger = async (req, res, next) => {
             if (to) query.date.$lte = new Date(new Date(to).setHours(23, 59, 59, 999));
         }
 
-        const ledger = await VendorLedger.find(query)
+        const ledger = await Ledger.find(query)
             .populate({ path: 'createdBy', model: User, select: 'name email' })
             .sort({ date: 1, createdAt: 1 });
 
@@ -58,8 +58,7 @@ export const getVendorLedger = async (req, res, next) => {
         // Calculate Balance Brought Forward (bbf)
         let bbf = vendor?.openingBalance || 0;
         if (from) {
-            const previousEntries = await VendorLedger.find({
-                vendor: vendorId,
+            const previousEntries = await Ledger.find({ partyType: 'Vendor', party: vendorId,
                 ...tenantQuery(req),
                 date: { $lt: new Date(from) }
             });
@@ -69,7 +68,7 @@ export const getVendorLedger = async (req, res, next) => {
         }
 
         // Last entry balance = current balance
-        const lastEntry = await VendorLedger.findOne({ vendor: vendorId, ...tenantQuery(req) })
+        const lastEntry = await Ledger.findOne({ partyType: 'Vendor', party: vendorId, ...tenantQuery(req) })
             .sort({ date: -1, createdAt: -1 });
         const currentBalance = lastEntry ? lastEntry.balance : (vendor?.openingBalance || 0);
 
@@ -91,13 +90,11 @@ export const recordPayment = async (req, res, next) => {
             return sendError(res, 404, 'Vendor not found');
         }
 
-        const lastEntry = await VendorLedger.findOne({ vendor: vendorId, ...tenantQuery(req) }).sort({ date: -1, createdAt: -1 });
+        const lastEntry = await Ledger.findOne({ partyType: 'Vendor', party: vendorId, ...tenantQuery(req) }).sort({ date: -1, createdAt: -1 });
         const previousBalance = lastEntry ? lastEntry.balance : (vendor.openingBalance || 0);
         
         // Debit reduces our liability (balance)
-        const ledgerEntry = await VendorLedger.create({
-            tenantId: req.tenantId,
-            vendor: vendorId,
+        const ledgerEntry = await Ledger.create({ tenantId: req.tenantId, partyType: 'Vendor', party: vendorId,
             date: date || new Date(),
             type: 'payment',
             refType: 'Manual',
@@ -128,7 +125,7 @@ export const updatePayment = async (req, res, next) => {
     try {
         const { amount, paymentMode, date, notes, description, refNumber } = req.body;
 
-        const entry = await VendorLedger.findOne({
+        const entry = await Ledger.findOne({
             _id: req.params.entryId,
             ...tenantQuery(req),
         });
@@ -162,7 +159,7 @@ export const updatePayment = async (req, res, next) => {
 // @access  Private (Admin/Manager)
 export const deletePayment = async (req, res, next) => {
     try {
-        const entry = await VendorLedger.findOne({
+        const entry = await Ledger.findOne({
             _id: req.params.entryId,
             ...tenantQuery(req),
         });
@@ -172,7 +169,7 @@ export const deletePayment = async (req, res, next) => {
         if (entry.type !== 'payment') return sendError(res, 400, 'Only payment entries can be deleted');
 
         const vendorId = entry.vendor;
-        await VendorLedger.deleteOne({ _id: entry._id });
+        await Ledger.deleteOne({ _id: entry._id });
         
         await recalculateVendorBalance(vendorId, req.tenantId);
 
@@ -197,9 +194,7 @@ export const addAdjustment = async (req, res, next) => {
         const debit = type === 'debit' ? amount : 0;
         const credit = type === 'credit' ? amount : 0;
 
-        const ledgerEntry = await VendorLedger.create({
-            tenantId: req.tenantId,
-            vendor: vendorId,
+        const ledgerEntry = await Ledger.create({ tenantId: req.tenantId, partyType: 'Vendor', party: vendorId,
             date: date || new Date(),
             type: 'adjustment',
             refType: 'Manual',
@@ -231,7 +226,7 @@ export const getVendorOverallStatement = async (req, res, next) => {
 
         const statements = await Promise.all(vendors.map(async (vendor) => {
             try {
-                const entries = await VendorLedger.find({ vendor: vendor._id, ...tenantQuery(req) }).sort({ date: 1, createdAt: 1 });
+                const entries = await Ledger.find({ partyType: 'Vendor', party: vendor._id, ...tenantQuery(req) }).sort({ date: 1, createdAt: 1 });
                 
                 let totalBilled = 0;
                 let totalPaid = 0;
@@ -309,7 +304,7 @@ export const getVendorPayables = async (req, res, next) => {
         const payablesData = [];
 
         await Promise.all(vendors.map(async (vendor) => {
-            const entries = await VendorLedger.find({ vendor: vendor._id, ...tenantQuery(req) })
+            const entries = await Ledger.find({ partyType: 'Vendor', party: vendor._id, ...tenantQuery(req) })
                 .sort({ date: 1, createdAt: 1 });
 
             // credit = purchase bill (we owe vendor), debit = we paid
@@ -405,7 +400,7 @@ export const getVendorOutstandingSummary = async (req, res, next) => {
             const openBal = vendor.openingBalance || 0;
 
             // All-time ledger entries
-            const allEntries = await VendorLedger.find(baseQuery).sort({ date: 1, createdAt: 1 });
+            const allEntries = await Ledger.find(baseQuery).sort({ date: 1, createdAt: 1 });
             const ledgerCredit = allEntries.reduce((s, e) => s + (e.credit || 0), 0);
             const ledgerDebit  = allEntries.reduce((s, e) => s + (e.debit  || 0), 0);
 
@@ -422,7 +417,7 @@ export const getVendorOutstandingSummary = async (req, res, next) => {
                 if (toDate)   filteredQuery.date.$lte = toDate;
             }
             const filteredEntries = (fromDate || toDate)
-                ? await VendorLedger.find(filteredQuery).sort({ date: 1, createdAt: 1 })
+                ? await Ledger.find(filteredQuery).sort({ date: 1, createdAt: 1 })
                 : allEntries;
             const lastEntry = filteredEntries.length > 0 ? filteredEntries[filteredEntries.length - 1] : null;
             const closingBalance = lastEntry ? lastEntry.balance : openBal;
@@ -443,7 +438,7 @@ export const getVendorOutstandingSummary = async (req, res, next) => {
 };
 
 // @desc    Get combined ledger for a vendor who is also a customer
-//          Merges Purchase (VendorLedger) + Sales (CustomerLedger) into one
+//          Merges Purchase (Ledger) + Sales (CustomerLedger) into one
 //          chronological statement with a single net running balance
 // @route   GET /api/vendor-ledger/:vendorId/combined
 // @access  Private
@@ -473,7 +468,7 @@ export const getCombinedLedger = async (req, res, next) => {
 
         // 4. Fetch both ledgers in parallel
         const [vendorEntries, customerEntries] = await Promise.all([
-            VendorLedger.find({ vendor: vendorId, ...tenantQuery(req), ...dateFilter })
+            Ledger.find({ partyType: 'Vendor', party: vendorId, ...tenantQuery(req), ...dateFilter })
                 .populate({ path: 'createdBy', model: User, select: 'name email' })
                 .sort({ date: 1, createdAt: 1 }),
             CustomerLedger.find({ customer: vendor.linkedCustomerId, ...tenantQuery(req), ...dateFilter })
@@ -486,8 +481,7 @@ export const getCombinedLedger = async (req, res, next) => {
         let bbf = 0;
         if (from) {
             // All vendor entries before date range: Purchase credits increase our liability (+)
-            const prevVendorEntries = await VendorLedger.find({
-                vendor: vendorId,
+            const prevVendorEntries = await Ledger.find({ partyType: 'Vendor', party: vendorId,
                 ...tenantQuery(req),
                 date: { $lt: new Date(from) },
             }).sort({ date: 1, createdAt: 1 });
@@ -631,7 +625,7 @@ export const getVendorPaymentsReport = async (req, res, next) => {
             if (to) query.date.$lte = new Date(new Date(to).setHours(23, 59, 59, 999));
         }
 
-        const payments = await VendorLedger.find(query)
+        const payments = await Ledger.find(query)
             .populate('vendor', 'name companyName phone')
             .populate('createdBy', 'name')
             .sort({ date: -1, createdAt: -1 });

@@ -14,7 +14,7 @@ const purchaseOrderSchema = new mongoose.Schema({
     },
     vendor: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Vendor',
+        ref: 'Party',
         required: [true, 'Vendor is required'],
     },
     items: [{

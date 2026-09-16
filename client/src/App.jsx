@@ -16,20 +16,20 @@ import StockOutward from './pages/StockOutward';
 import StockReturn from './pages/StockReturn';
 import StockReturnsList from './pages/StockReturnsList';
 import StockAdjustment from './pages/StockAdjustment';
+import ReportsHub from './pages/ReportsHub';
 import Reports from './pages/Reports';
 import Stocks from './pages/Stocks';
 import Categories from './pages/Categories';
 import BulkImport from './pages/BulkImport';
 import Users from './pages/Users';
-import Customers from './pages/Customers';
+import Parties from './pages/Parties';
 import SalesOrders from './pages/SalesOrders';
-import Vendors from './pages/Vendors';
 import PurchaseOrders from './pages/PurchaseOrders';
 import DraftPOs from './pages/DraftPOs';
 import Quotations from './pages/Quotations';
 import DispatchManagement from './pages/DispatchManagement';
 import Settings from './pages/Settings';
-import CustomerLedger from './pages/CustomerLedger';
+import Ledger from './pages/Ledger';
 import Assets from './pages/Assets';
 import AssetDashboard from './pages/AssetDashboard';
 import AssetReports from './pages/AssetReports';
@@ -37,8 +37,7 @@ import Profile from './pages/Profile';
 import ProductShowcase from './pages/ProductShowcase';
 import ProductShowcaseEdit from './pages/ProductShowcaseEdit';
 import PublicProductPage from './pages/PublicProductPage';
-import VendorLedger from './pages/VendorLedger';
-import CombinedLedger from './pages/CombinedLedger';
+
 import BottomNav from './components/BottomNav';
 import HSNManagement from './pages/HSNManagement';
 import LedgerReports from './pages/LedgerReports';
@@ -107,6 +106,7 @@ function App() {
                                             <Route path="/stock-return" element={<StockReturn />} />
                                             <Route path="/stock-returns-list" element={<StockReturnsList />} />
                                             <Route path="/stock-adjustment" element={<StockAdjustment />} />
+                                            <Route path="/reports-hub" element={<ReportsHub />} />
                                             <Route path="/reports" element={<Reports />} />
                                             <Route path="/ledger-reports" element={<LedgerReports />} />
                                             <Route path="/profit-tracking" element={<ProfitTracking />} />
@@ -114,19 +114,15 @@ function App() {
                                             <Route path="/categories" element={<Categories />} />
                                             <Route path="/bulk-import" element={<BulkImport />} />
                                             <Route path="/users" element={<Users />} />
-                                            <Route path="/customers" element={<Customers />} />
-                                            <Route path="/customers/:id/ledger" element={<CustomerLedger />} />
-                                            <Route path="/customer-ledger" element={<CustomerLedger />} />
-                                            <Route path="/customer-ledger/:id" element={<CustomerLedger />} />
+                                            <Route path="/parties" element={<Parties />} />
+                                            <Route path="/ledger" element={<Ledger />} />
+                                            <Route path="/ledger/:id" element={<Ledger />} />
                                             <Route path="/sales-orders" element={<SalesOrders />} />
-                                            <Route path="/vendors" element={<Vendors />} />
                                             <Route path="/purchase-orders" element={<PurchaseOrders />} />
                                             <Route path="/draft-pos" element={<DraftPOs />} />
-                                            <Route path="/vendor-ledger" element={<VendorLedger />} />
-                                            <Route path="/combined-ledger" element={<CombinedLedger />} />
-                                            <Route path="/combined-ledger/:id" element={<CombinedLedger />} />
+
                                             <Route path="/hsn-management" element={<HSNManagement />} />
-                                            <Route path="/vendor-ledger/:id" element={<VendorLedger />} />
+
                                             <Route path="/expenses" element={<Expenses />} />
                                             <Route path="/sizes" element={<Sizes />} />
                                             <Route path="/brands" element={<Brands />} />

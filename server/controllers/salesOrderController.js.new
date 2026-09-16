@@ -5,49 +5,49 @@ import Setting from '../models/Setting.js';
 import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import Ledger from '../models/Ledger.js';
-import Party from '../models/Party.js';
+import Customer from '../models/Customer.js';
 import ActionLog from '../models/ActionLog.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { getNextSequenceValue } from '../utils/sequence.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
 import { allocateFIFO } from '../utils/stock.js';
 
-// Helper for validating party credit lock
-export const validatePartyCreditLock = async (req, res, partyId, newInvoiceAmount) => {
+// Helper for validating customer credit lock
+export const validateCustomerCreditLock = async (req, res, customerId, newInvoiceAmount) => {
     const settings = await Setting.findOne({ tenantId: req.tenantId });
     if (!settings?.creditConfig?.enableAutoLock) return true; // Passed
 
-    const partyDoc = await Party.findOne({ _id: partyId, ...tenantQuery(req) });
-    if (!partyDoc) return true; // Passed (or error handled elsewhere)
+    const customerDoc = await Customer.findOne({ _id: customerId, ...tenantQuery(req) });
+    if (!customerDoc) return true; // Passed (or error handled elsewhere)
 
     let isManuallyUnlocked = false;
-    if (partyDoc.unlockedUntil && new Date(partyDoc.unlockedUntil) > new Date()) {
+    if (customerDoc.unlockedUntil && new Date(customerDoc.unlockedUntil) > new Date()) {
         isManuallyUnlocked = true;
     }
 
     if (!isManuallyUnlocked) {
-        const creditLimit = settings.creditConfig.partyCreditLimit || 0;
-        const creditDays = settings.creditConfig.partyCreditDays || 0;
-        const currentBalance = partyDoc.currentBalance || 0;
+        const creditLimit = settings.creditConfig.customerCreditLimit || 0;
+        const creditDays = settings.creditConfig.customerCreditDays || 0;
+        const currentBalance = customerDoc.currentBalance || 0;
 
         // 1. Check Credit Limit
         if (creditLimit > 0 && (currentBalance + newInvoiceAmount) > creditLimit) {
-            sendError(res, 400, `Cannot create bill: Party Credit Limit (₹${creditLimit}) exceeded. Pending balance: ₹${currentBalance}. New Bill: ₹${newInvoiceAmount}. Contact Admin to unlock.`);
+            sendError(res, 400, `Cannot create bill: Customer Credit Limit (₹${creditLimit}) exceeded. Pending balance: ₹${currentBalance}. New Bill: ₹${newInvoiceAmount}. Contact Admin to unlock.`);
             return false;
         }
 
         // 2. Check Credit Days (FIFO calculation)
         if (creditDays > 0 && currentBalance > 0) {
-            const allLedgerEntries = await Ledger.find({ partyType: 'Party', party: partyId, tenantId: req.tenantId }).sort({ date: 1, createdAt: 1 });
+            const allLedgerEntries = await Ledger.find({ party: customerId, partyType: 'Customer', tenantId: req.tenantId }).sort({ date: 1, createdAt: 1 });
             
             let totalPayments = 0;
             const bills = [];
 
             // Account for opening balance in FIFO calculation
-            if (partyDoc.openingBalance > 0) {
-                bills.push({ date: partyDoc.createdAt || new Date(0), amount: partyDoc.openingBalance });
-            } else if (partyDoc.openingBalance < 0) {
-                totalPayments += Math.abs(partyDoc.openingBalance);
+            if (customerDoc.openingBalance > 0) {
+                bills.push({ date: customerDoc.createdAt || new Date(0), amount: customerDoc.openingBalance });
+            } else if (customerDoc.openingBalance < 0) {
+                totalPayments += Math.abs(customerDoc.openingBalance);
             }
 
             allLedgerEntries.forEach(entry => {
@@ -70,7 +70,7 @@ export const validatePartyCreditLock = async (req, res, partyId, newInvoiceAmoun
                 const daysPending = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 
                 if (daysPending > creditDays) {
-                    sendError(res, 400, `Cannot create bill: Party has an unpaid balance pending for ${daysPending} days (Limit: ${creditDays} days). Contact Admin to unlock.`);
+                    sendError(res, 400, `Cannot create bill: Customer has an unpaid balance pending for ${daysPending} days (Limit: ${creditDays} days). Contact Admin to unlock.`);
                     return false;
                 }
             }
@@ -79,26 +79,26 @@ export const validatePartyCreditLock = async (req, res, partyId, newInvoiceAmoun
     return true; // Passed
 };
 
-// Recalculate party running ledger balance chronologically
-export const recalculatePartyBalance = async (partyId, tenantId) => {
+// Recalculate customer running ledger balance chronologically
+export const recalculateCustomerBalance = async (customerId, tenantId) => {
     try {
-        const party = await Party.findById(partyId);
-        if (!party) return;
+        const customer = await Customer.findById(customerId);
+        if (!customer) return;
 
         // Fetch all ledger entries sorted chronologically
-        const entries = await Ledger.find({ partyType: 'Party', party: partyId, tenantId })
+        const entries = await Ledger.find({ party: customerId, partyType: 'Customer', tenantId })
             .sort({ date: 1, createdAt: 1 });
 
-        let runningBalance = party.openingBalance || 0;
+        let runningBalance = customer.openingBalance || 0;
         for (const entry of entries) {
             runningBalance = runningBalance + (entry.debit || 0) - (entry.credit || 0);
             entry.balance = runningBalance;
             await entry.save();
         }
 
-        await Party.findByIdAndUpdate(partyId, { currentBalance: runningBalance });
+        await Customer.findByIdAndUpdate(customerId, { currentBalance: runningBalance });
     } catch (err) {
-        console.error(`recalculatePartyBalance error for party ${partyId}:`, err.message);
+        console.error(`recalculateCustomerBalance error for customer ${customerId}:`, err.message);
     }
 };
 
@@ -110,12 +110,12 @@ export const syncSalesOrderLedger = async (orderId, tenantId, userId) => {
 
         // An order requires a ledger entry if it's NOT an estimation and is NOT cancelled or void
         const isRealBill = !order.isEstimation && !['cancelled', 'void'].includes(order.status);
-        const existingBillEntry = await Ledger.findOne({ partyType: 'Party', refId: orderId, refType: 'SalesOrder', type: 'bill' });
-        const existingPaymentEntry = await Ledger.findOne({ partyType: 'Party', refId: orderId, refType: 'SalesOrder', type: 'payment' });
+        const existingBillEntry = await Ledger.findOne({ refId: orderId, refType: 'SalesOrder', type: 'bill' });
+        const existingPaymentEntry = await Ledger.findOne({ refId: orderId, refType: 'SalesOrder', type: 'payment' });
 
         if (isRealBill) {
-            let oldParty = null;
-            const newParty = order.party.toString();
+            let oldCustomer = null;
+            const newCustomer = order.customer.toString();
             // The ledger debit = net bill value for THIS invoice only.
             // order.totalAmount has: itemsTotal + charges + taxes + oldBalance - discounts - advance + roundOff
             // We must EXCLUDE oldBalance (already in ledger from previous entries) and ADD BACK advance (it becomes a separate credit entry).
@@ -123,9 +123,9 @@ export const syncSalesOrderLedger = async (orderId, tenantId, userId) => {
 
             // ─── 1. Main Bill Entry (Debit) ───
             if (existingBillEntry) {
-                oldParty = existingBillEntry.party.toString();
+                oldCustomer = existingBillEntry.customer.toString();
                 
-                existingBillEntry.party = order.party;
+                existingBillEntry.customer = order.customer;
                 existingBillEntry.date = order.orderDate || new Date();
                 existingBillEntry.refNumber = order.orderNumber;
                 existingBillEntry.description = `Bill #${order.orderNumber}`;
@@ -135,7 +135,7 @@ export const syncSalesOrderLedger = async (orderId, tenantId, userId) => {
             } else {
                 await Ledger.create({
                     tenantId,
-                    party: order.party,
+                    party: order.customer,
                     date: order.orderDate || new Date(),
                     type: 'bill',
                     refType: 'SalesOrder',
@@ -152,11 +152,11 @@ export const syncSalesOrderLedger = async (orderId, tenantId, userId) => {
             // ─── 2. Advance Payment Entry (Credit) ───
             if (order.advanceAmount > 0) {
                 if (existingPaymentEntry) {
-                    if (existingPaymentEntry.party.toString() !== newParty) {
-                        oldParty = existingPaymentEntry.party.toString();
+                    if (existingPaymentEntry.customer.toString() !== newCustomer) {
+                        oldCustomer = existingPaymentEntry.customer.toString();
                     }
                     
-                    existingPaymentEntry.party = order.party;
+                    existingPaymentEntry.customer = order.customer;
                     existingPaymentEntry.date = order.orderDate || new Date();
                     existingPaymentEntry.refNumber = order.orderNumber;
                     existingPaymentEntry.description = `Advance Payment for Bill #${order.orderNumber}`;
@@ -166,7 +166,7 @@ export const syncSalesOrderLedger = async (orderId, tenantId, userId) => {
                 } else {
                     await Ledger.create({
                         tenantId,
-                        party: order.party,
+                        party: order.customer,
                         date: order.orderDate || new Date(),
                         type: 'payment',
                         refType: 'SalesOrder',
@@ -182,32 +182,32 @@ export const syncSalesOrderLedger = async (orderId, tenantId, userId) => {
             } else {
                 // If advanceAmount is 0 but we have an existing payment entry, delete it!
                 if (existingPaymentEntry) {
-                    if (existingPaymentEntry.party.toString() !== newParty) {
-                        oldParty = existingPaymentEntry.party.toString();
+                    if (existingPaymentEntry.customer.toString() !== newCustomer) {
+                        oldCustomer = existingPaymentEntry.customer.toString();
                     }
                     await Ledger.deleteOne({ _id: existingPaymentEntry._id });
                 }
             }
 
             // ─── 3. Recalculate Balances ───
-            await recalculatePartyBalance(newParty, tenantId);
-            if (oldParty && oldParty !== newParty) {
-                await recalculatePartyBalance(oldParty, tenantId);
+            await recalculateCustomerBalance(newCustomer, tenantId);
+            if (oldCustomer && oldCustomer !== newCustomer) {
+                await recalculateCustomerBalance(oldCustomer, tenantId);
             }
         } else {
             // If it shouldn't have ledger entries (e.g. toggled back to estimation or cancelled)
-            const affectedPartys = new Set();
+            const affectedCustomers = new Set();
             if (existingBillEntry) {
-                affectedPartys.add(existingBillEntry.party.toString());
+                affectedCustomers.add(existingBillEntry.customer.toString());
                 await Ledger.deleteOne({ _id: existingBillEntry._id });
             }
             if (existingPaymentEntry) {
-                affectedPartys.add(existingPaymentEntry.party.toString());
+                affectedCustomers.add(existingPaymentEntry.customer.toString());
                 await Ledger.deleteOne({ _id: existingPaymentEntry._id });
             }
 
-            for (const custId of affectedPartys) {
-                await recalculatePartyBalance(custId, tenantId);
+            for (const custId of affectedCustomers) {
+                await recalculateCustomerBalance(custId, tenantId);
             }
         }
     } catch (err) {
@@ -311,15 +311,15 @@ export const autoDispatchConfirmedOrder = async (orderId, tenantId, userId) => {
 // @access  Private
 export const getSalesOrders = async (req, res, next) => {
     try {
-        const { status = '', party = '', type = '', search = '', page = 1, limit = 10, startDate, endDate, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+        const { status = '', customer = '', type = '', search = '', page = 1, limit = 10, startDate, endDate, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
         const query = { ...tenantQuery(req) };
 
         if (status) {
             query.status = status;
         }
 
-        if (party) {
-            query.party = party;
+        if (customer) {
+            query.customer = customer;
         }
         
         if (type === 'quote') {
@@ -341,20 +341,20 @@ export const getSalesOrders = async (req, res, next) => {
         }
 
         if (search) {
-            const matchingPartys = await Party.find({ 
+            const matchingCustomers = await Customer.find({ 
                 name: { $regex: search, $options: 'i' },
                 ...tenantQuery(req)
             }).select('_id');
-            const partyIds = matchingPartys.map(c => c._id);
+            const customerIds = matchingCustomers.map(c => c._id);
             
             query.$or = [
                 { orderNumber: { $regex: search, $options: 'i' } },
-                { party: { $in: partyIds } }
+                { party: { $in: customerIds } }
             ];
         }
 
         const orders = await SalesOrder.find(query)
-            .populate('party', 'name companyName phone gstin address')
+            .populate('customer', 'name companyName phone gstin address')
             .populate({ path: 'user', model: User, select: 'name phone' })
             .populate('items.item', 'name brand size hsn sku barcode unitType sqFtPerPc pcsPerBox')
             .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 })
@@ -380,7 +380,7 @@ export const getSalesOrders = async (req, res, next) => {
 export const getSalesOrder = async (req, res, next) => {
     try {
         const order = await SalesOrder.findOne({ _id: req.params.id, ...tenantQuery(req) })
-            .populate('party')
+            .populate('customer')
             .populate({ path: 'user', model: User, select: 'name phone' })
             .populate('items.item', 'name sku barcode');
 
@@ -399,11 +399,11 @@ export const getSalesOrder = async (req, res, next) => {
 export const createSalesOrder = async (req, res, next) => {
     try {
         const { 
-            party, items, orderDate, expectedShipmentDate, 
+            customer, items, orderDate, expectedShipmentDate, 
             notes, terms, isEstimation, status,
             loadingCharges, transportCharges, unloadingCharges, oldBalance, advanceAmount, taxAmount,
             siteName, siteAddress, discountAmount, roundOffAmount,
-            partyType, referredBy
+            customerType, referredBy
         } = req.body;
 
         // ── Items Validation ──
@@ -438,7 +438,7 @@ export const createSalesOrder = async (req, res, next) => {
             }
         }
 
-        // ── Duplicate Submission Guard (same user + same party + same items fingerprint within 15s) ──
+        // ── Duplicate Submission Guard (same user + same customer + same items fingerprint within 15s) ──
         if (!isEstimation) {
             const fifteenSecondsAgo = new Date(Date.now() - 15000);
             const itemsFingerprint = (items || [])
@@ -448,7 +448,7 @@ export const createSalesOrder = async (req, res, next) => {
 
             const recentOrders = await SalesOrder.find({
                 tenantId: req.tenantId,
-                party,
+                customer,
                 user: req.user._id,
                 isEstimation: false,
                 createdAt: { $gte: fifteenSecondsAgo }
@@ -478,7 +478,7 @@ export const createSalesOrder = async (req, res, next) => {
             });
             const newInvoiceAmount = itemsTotal + (Number(loadingCharges) || 0) + (Number(unloadingCharges) || 0) + (Number(transportCharges) || 0) + (Number(taxAmount) || 0) + (Number(oldBalance) || 0) - (Number(discountAmount) || 0) - (Number(advanceAmount) || 0);
             
-            const passed = await validatePartyCreditLock(req, res, party, newInvoiceAmount);
+            const passed = await validateCustomerCreditLock(req, res, customer, newInvoiceAmount);
             if (!passed) return; // Error already sent inside helper
         }
 
@@ -494,7 +494,7 @@ export const createSalesOrder = async (req, res, next) => {
             try {
                 order = await SalesOrder.create({
                     orderNumber,
-                    party,
+                    customer,
                     items,
                     orderDate,
                     expectedShipmentDate,
@@ -512,7 +512,7 @@ export const createSalesOrder = async (req, res, next) => {
                     roundOffAmount: roundOffAmount || 0,
                     siteName: siteName || '',
                     siteAddress: siteAddress || '',
-                    partyType: partyType || 'Regular Party',
+                    customerType: customerType || 'Regular Customer',
                     referredBy: referredBy || '',
                     user: req.user._id,
                     tenantId: req.tenantId,
@@ -531,7 +531,7 @@ export const createSalesOrder = async (req, res, next) => {
         }
 
         // ── Auto-create ledger debit entry and auto-dispatch stock ──
-        if (order.party) {
+        if (order.customer) {
             await syncSalesOrderLedger(order._id, req.tenantId, req.user._id);
         }
         if (!order.isEstimation && order.status === 'confirmed') {
@@ -560,8 +560,8 @@ export const updateSOStatus = async (req, res, next) => {
         const wasEstimation = order.isEstimation;
         if (order.isEstimation && ['confirmed', 'dispatched', 'partially_dispatched'].includes(status)) {
             
-            // ── Party Credit & Lock Validation when converting to Invoice ──
-            const passed = await validatePartyCreditLock(req, res, order.party, order.totalAmount);
+            // ── Customer Credit & Lock Validation when converting to Invoice ──
+            const passed = await validateCustomerCreditLock(req, res, order.customer, order.totalAmount);
             if (!passed) return; // Error already sent inside helper
 
             const settings = await Setting.findOne({ tenantId: req.tenantId });
@@ -598,7 +598,7 @@ export const updateSOStatus = async (req, res, next) => {
             await order.save();
         }
 
-        if (order.party) {
+        if (order.customer) {
             await syncSalesOrderLedger(order._id, req.tenantId, req.user._id);
         }
         if (order.status === 'confirmed' && !order.isEstimation) {
@@ -617,11 +617,11 @@ export const updateSOStatus = async (req, res, next) => {
 export const updateSalesOrder = async (req, res, next) => {
     try {
         const { 
-            party, items, orderDate, expectedShipmentDate, 
+            customer, items, orderDate, expectedShipmentDate, 
             notes, terms, isEstimation, status,
             loadingCharges, transportCharges, unloadingCharges, oldBalance, advanceAmount, taxAmount,
             siteName, siteAddress, discountAmount, roundOffAmount,
-            partyType, referredBy
+            customerType, referredBy
         } = req.body;
 
         // ── Items Validation ──
@@ -658,7 +658,7 @@ export const updateSalesOrder = async (req, res, next) => {
         }
 
         // Update fields
-        if (party) order.party = party;
+        if (customer) order.customer = customer;
         if (items) order.items = items;
         if (orderDate) order.orderDate = orderDate;
         if (expectedShipmentDate) order.expectedShipmentDate = expectedShipmentDate;
@@ -696,7 +696,7 @@ export const updateSalesOrder = async (req, res, next) => {
         if (roundOffAmount !== undefined) order.roundOffAmount = roundOffAmount;
         if (siteName !== undefined) order.siteName = siteName;
         if (siteAddress !== undefined) order.siteAddress = siteAddress;
-        if (partyType !== undefined) order.partyType = partyType;
+        if (customerType !== undefined) order.customerType = customerType;
         if (referredBy !== undefined) order.referredBy = referredBy;
 
         // totalAmount calculation
@@ -715,7 +715,7 @@ export const updateSalesOrder = async (req, res, next) => {
 
         await order.save();
 
-        if (order.party) {
+        if (order.customer) {
             await syncSalesOrderLedger(order._id, req.tenantId, req.user._id);
         }
 
@@ -816,10 +816,10 @@ export const deleteSalesOrder = async (req, res, next) => {
             await Dispatch.deleteOne({ _id: dispatch._id });
         }
 
-        // 2. Remove Party Ledger Entries
-        if (order.party) {
-            await Ledger.deleteMany({ partyType: 'Party', refId: order._id, tenantId });
-            await recalculatePartyBalance(order.party, tenantId);
+        // 2. Remove Customer Ledger Entries
+        if (order.customer) {
+            await Ledger.deleteMany({ refId: order._id, tenantId });
+            await recalculateCustomerBalance(order.customer, tenantId);
         }
 
         // 3. Delete the Sales Order

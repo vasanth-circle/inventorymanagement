@@ -70,7 +70,8 @@ const seedDatabase = async () => {
         console.log('Seeding App DB...');
         const categoryCount = await Category.countDocuments();
         if (categoryCount === 0) {
-            const createdCategories = await Category.insertMany(categories);
+            const categoriesWithTenant = categories.map(c => ({...c, tenantId: tenantExists._id}));
+            const createdCategories = await Category.insertMany(categoriesWithTenant);
             console.log(`Created ${createdCategories.length} categories`);
         } else {
             console.log('Categories already exist, skipping...');

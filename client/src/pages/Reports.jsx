@@ -17,15 +17,15 @@ const Reports = () => {
     });
     const [reportData, setReportData] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [customers, setCustomers] = useState([]);
-    const [selectedCustomer, setSelectedCustomer] = useState('');
+    const [parties, setParties] = useState([]);
+    const [selectedParty, setSelectedParty] = useState('');
     const [summary, setSummary] = useState(null); // For detailed ledger summary
     const [selectedUser, setSelectedUser] = useState(null); // For Sales by User details
     const [itemsList, setItemsList] = useState([]);
     const [selectedItem, setSelectedItem] = useState('');
 
     useEffect(() => {
-        api.get('/customers?limit=1000').then(res => setCustomers(res.data.data?.customers || res.data.customers || [])).catch(() => {});
+        api.get('/parties?limit=1000').then(res => setParties(res.data.data?.parties || res.data.parties || [])).catch(() => {});
         api.get('/items?limit=5000').then(res => setItemsList(res.data.items || res.data.data?.items || [])).catch(() => {});
     }, []);
 
@@ -87,8 +87,8 @@ const Reports = () => {
                 const params = {};
                 if (filters.startDate) params.from = filters.startDate;
                 if (filters.endDate) params.to = filters.endDate;
-                if (selectedCustomer) params.customer = selectedCustomer;
-                const response = await api.get('/customers/reports/receivables', { params });
+                if (selectedParty) params.customer = selectedParty;
+                const response = await api.get('/parties/reports/receivables', { params });
                 if (response.data && response.data.data) {
                     setReportData(response.data.data);
                     toast.success('Receivables report generated');
@@ -101,7 +101,7 @@ const Reports = () => {
                     toast.success('Damaged Goods report generated');
                 }
             } else if (reportType === 'detailed_ledger') {
-                if (!selectedCustomer) {
+                if (!selectedParty) {
                     toast.error('Please select a customer first');
                     return;
                 }
@@ -109,7 +109,7 @@ const Reports = () => {
                 if (filters.startDate) params.from = filters.startDate;
                 if (filters.endDate) params.to = filters.endDate;
                 
-                const response = await api.get(`/customers/${selectedCustomer}/statement`, { params });
+                const response = await api.get(`/customers/${selectedParty}/statement`, { params });
                 if (response.data && response.data.data) {
                     setReportData(response.data.data.entries);
                     setSummary(response.data.data); // Stores customer, summary info
@@ -637,8 +637,8 @@ const Reports = () => {
                         <div className="w-[300px]">
                             <SearchableSelect
                                 options={customers.map(c => ({ value: c._id, label: c.companyName || c.name }))}
-                                value={selectedCustomer}
-                                onChange={(e) => setSelectedCustomer(e?.target?.value || e)}
+                                value={selectedParty}
+                                onChange={(e) => setSelectedParty(e?.target?.value || e)}
                                 placeholder="Search & Select Customer..."
                             />
                         </div>

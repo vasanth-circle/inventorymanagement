@@ -5,12 +5,12 @@ import Transaction from '../models/Transaction.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { getNextSequenceValue } from '../utils/sequence.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
-import VendorLedger from '../models/VendorLedger.js';
-import Vendor from '../models/Vendor.js';
-import { recalculateVendorBalance } from './vendorLedgerController.js';
+import Ledger from '../models/Ledger.js';
+import Party from '../models/Party.js';
+import { recalculatePartyBalance } from './salesOrderController.js';
 import Setting from '../models/Setting.js';
 
-const revertPurchaseOrder = async (orderId, vendorId, tenantId, orderNumber) => {
+const revertPurchaseOrder = async (orderId, partyId, tenantId, orderNumber) => {
     try {
         const transactions = await Transaction.find({ 
             reason: `PO ${orderNumber} Received`, 
@@ -35,8 +35,8 @@ const revertPurchaseOrder = async (orderId, vendorId, tenantId, orderNumber) => 
             await Transaction.deleteOne({ _id: tx._id });
         }
 
-        await VendorLedger.deleteOne({ refId: orderId, refType: 'PurchaseOrder', tenantId });
-        await recalculateVendorBalance(vendorId, tenantId);
+        await Ledger.deleteOne({ refId: orderId, refType: 'PurchaseOrder', tenantId });
+        await recalculatePartyBalance(partyId, tenantId);
     } catch (error) {
         console.error('Error reverting PO:', error);
         throw error;
@@ -44,20 +44,20 @@ const revertPurchaseOrder = async (orderId, vendorId, tenantId, orderNumber) => 
 };
 
 // ─── Ledger helper (called after PO receipt/bill, does not change existing flow) ─
-export const createPurchaseLedgerEntry = async ({ orderId, orderNumber, vendorBillNumber, vendorId, amount, tenantId, userId, billDate, orderDate }) => {
+export const createPurchaseLedgerEntry = async ({ orderId, orderNumber, partyBillNumber, partyId, amount, tenantId, userId, billDate, orderDate }) => {
     try {
-        const vendor = await Vendor.findById(vendorId);
-        if (!vendor) return;
+        const party = await Party.findById(partyId);
+        if (!party) return;
 
-        // Use vendor bill number as the ref number; fall back to PO number if not available
-        const displayRef = vendorBillNumber || orderNumber;
+        // Use party bill number as the ref number; fall back to PO number if not available
+        const displayRef = partyBillNumber || orderNumber;
 
-        await VendorLedger.findOneAndUpdate(
+        await Ledger.findOneAndUpdate(
             { refId: orderId, refType: 'PurchaseOrder' },
             {
                 $set: {
                     tenantId,
-                    vendor: vendorId,
+                    party: partyId,
                     date: billDate || orderDate || new Date(),
                     type: 'bill',
                     refNumber: displayRef,
@@ -70,7 +70,7 @@ export const createPurchaseLedgerEntry = async ({ orderId, orderNumber, vendorBi
             { upsert: true, new: true }
         );
 
-        // The recalculateVendorBalance function is always called right after this,
+        // The recalculatePartyBalance function is always called right after this,
         // so we don't need to manually calculate the running balance here anymore.
     } catch (err) {
         console.error('createPurchaseLedgerEntry error:', err.message);
@@ -82,15 +82,15 @@ export const createPurchaseLedgerEntry = async ({ orderId, orderNumber, vendorBi
 // @access  Private
 export const getPurchaseOrders = async (req, res, next) => {
     try {
-        const { status = '', page = 1, limit = 10, from, to, search = '', sortBy = 'createdAt', sortOrder = 'desc', vendor } = req.query;
+        const { status = '', page = 1, limit = 10, from, to, search = '', sortBy = 'createdAt', sortOrder = 'desc', party } = req.query;
         const query = { ...tenantQuery(req) };
 
         if (status) {
             query.status = status;
         }
 
-        if (vendor) {
-            query.vendor = vendor;
+        if (party) {
+            query.party = party;
         }
 
         if (from || to) {
@@ -109,17 +109,17 @@ export const getPurchaseOrders = async (req, res, next) => {
         }
 
         if (search) {
-            const vendorMatch = await Vendor.find({
+            const partyMatch = await Party.find({
                 name: { $regex: search, $options: 'i' },
                 ...tenantQuery(req)
             }).select('_id');
-            const vendorIds = vendorMatch.map(v => v._id);
+            const partyIds = partyMatch.map(v => v._id);
 
             // If query already has an $or from date filter, we use $and
             const searchOr = [
                 { orderNumber: { $regex: search, $options: 'i' } },
-                { vendorBillNumber: { $regex: search, $options: 'i' } },
-                { vendor: { $in: vendorIds } }
+                { partyBillNumber: { $regex: search, $options: 'i' } },
+                { party: { $in: partyIds } }
             ];
 
             if (query.$or) {
@@ -131,7 +131,7 @@ export const getPurchaseOrders = async (req, res, next) => {
         }
 
         const orders = await PurchaseOrder.find(query)
-            .populate('vendor', 'name companyName gstin address phone email')
+            .populate('party', 'name companyName gstin address phone email')
             .populate('items.item', 'name sku barcode size brand unitType pcsPerBox sqFtPerPc')
             .populate({ path: 'user', model: User, select: 'name' })
             .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 })
@@ -160,7 +160,7 @@ export const getPurchaseOrders = async (req, res, next) => {
 export const getPurchaseOrder = async (req, res, next) => {
     try {
         const order = await PurchaseOrder.findOne({ _id: req.params.id, ...tenantQuery(req) })
-            .populate('vendor')
+            .populate('party')
             .populate('items.item', 'name sku barcode size brand unitType pcsPerBox sqFtPerPc')
             .populate({ path: 'user', model: User, select: 'name' });
 
@@ -178,20 +178,20 @@ export const getPurchaseOrder = async (req, res, next) => {
 // @access  Private
 export const createPurchaseOrder = async (req, res, next) => {
     try {
-        const { vendor, items, orderDate, expectedDeliveryDate, notes, vendorBillNumber, billDate, taxRate, taxType, totalAmount, roundOffAmount } = req.body;
+        const { party, items, orderDate, expectedDeliveryDate, notes, partyBillNumber, billDate, taxRate, taxType, totalAmount, roundOffAmount } = req.body;
 
-        if (!vendorBillNumber) {
-            return sendError(res, 400, 'Vendor Bill Number is required');
+        if (!partyBillNumber) {
+            return sendError(res, 400, 'Party Bill Number is required');
         }
 
         const existingPO = await PurchaseOrder.findOne({
-            vendor,
-            vendorBillNumber,
+            party,
+            partyBillNumber,
             ...tenantQuery(req)
         });
 
         if (existingPO) {
-            return sendError(res, 400, `A Purchase Order with Vendor Bill Number '${vendorBillNumber}' already exists for this vendor.`);
+            return sendError(res, 400, `A Purchase Order with Party Bill Number '${partyBillNumber}' already exists for this party.`);
         }
 
         const setting = await Setting.findOne({ tenantId: req.tenantId });
@@ -208,8 +208,8 @@ export const createPurchaseOrder = async (req, res, next) => {
             try {
                 order = await PurchaseOrder.create({
                     orderNumber,
-                    vendor,
-                    vendorBillNumber,
+                    party,
+                    partyBillNumber,
                     billDate,
                     items,
                     taxRate,
@@ -287,15 +287,15 @@ export const createPurchaseOrder = async (req, res, next) => {
             await createPurchaseLedgerEntry({
                 orderId: order._id,
                 orderNumber: order.orderNumber,
-                vendorBillNumber: order.vendorBillNumber,
-                vendorId: order.vendor,
+                partyBillNumber: order.partyBillNumber,
+                partyId: order.party,
                 amount: order.totalAmount,
                 tenantId: req.tenantId,
                 userId: req.user._id,
                 billDate: order.billDate,
                 orderDate: order.orderDate,
             });
-            await recalculateVendorBalance(order.vendor, req.tenantId);
+            await recalculatePartyBalance(order.party, req.tenantId);
         }
 
         sendResponse(res, 201, order, 'Purchase order created successfully');
@@ -319,15 +319,15 @@ export const updatePurchaseOrder = async (req, res, next) => {
 
         const wasReceived = order.status === 'received' || order.status === 'billed';
         if (wasReceived) {
-            await revertPurchaseOrder(order._id, order.vendor, req.tenantId, order.orderNumber);
+            await revertPurchaseOrder(order._id, order.party, req.tenantId, order.orderNumber);
         }
 
-        const { vendor, items, notes, vendorBillNumber, billDate, taxRate, taxType, taxAmount, totalAmount, roundOffAmount } = req.body;
+        const { party, items, notes, partyBillNumber, billDate, taxRate, taxType, taxAmount, totalAmount, roundOffAmount } = req.body;
 
-        order.vendor = vendor;
+        order.party = party;
         order.items = items;
         order.notes = notes;
-        order.vendorBillNumber = vendorBillNumber;
+        order.partyBillNumber = partyBillNumber;
         order.billDate = billDate;
         order.taxRate = taxRate;
         order.taxType = taxType;
@@ -391,15 +391,15 @@ export const updatePurchaseOrder = async (req, res, next) => {
             await createPurchaseLedgerEntry({
                 orderId: order._id,
                 orderNumber: order.orderNumber,
-                vendorBillNumber: order.vendorBillNumber,
-                vendorId: order.vendor,
+                partyBillNumber: order.partyBillNumber,
+                partyId: order.party,
                 amount: order.totalAmount,
                 tenantId: req.tenantId,
                 userId: req.user._id,
                 billDate: order.billDate,
                 orderDate: order.orderDate,
             });
-            await recalculateVendorBalance(order.vendor, req.tenantId);
+            await recalculatePartyBalance(order.party, req.tenantId);
         }
 
         sendResponse(res, 200, order, 'Purchase order updated successfully');
@@ -419,7 +419,7 @@ export const deletePurchaseOrder = async (req, res, next) => {
         }
 
         if (order.status === 'received' || order.status === 'billed') {
-            await revertPurchaseOrder(order._id, order.vendor, req.tenantId, order.orderNumber);
+            await revertPurchaseOrder(order._id, order.party, req.tenantId, order.orderNumber);
         }
 
         await order.deleteOne();
@@ -453,13 +453,13 @@ export const updatePOStatus = async (req, res, next) => {
 
         // If marked as billed, ensure ledger entry exists (if not already received)
         if (status === 'billed') {
-            const alreadyInLedger = await VendorLedger.findOne({ refId: order._id, refType: 'PurchaseOrder' });
+            const alreadyInLedger = await Ledger.findOne({ partyType: 'Party', refId: order._id, refType: 'PurchaseOrder' });
             if (!alreadyInLedger) {
                 createPurchaseLedgerEntry({
                     orderId: order._id,
                     orderNumber: order.orderNumber,
-                    vendorBillNumber: order.vendorBillNumber,
-                    vendorId: order.vendor,
+                    partyBillNumber: order.partyBillNumber,
+                    partyId: order.party,
                     amount: order.totalAmount,
                     tenantId: req.tenantId,
                     userId: req.user._id,
@@ -480,7 +480,7 @@ export const updatePOStatus = async (req, res, next) => {
 // @access  Private
 export const receivePurchaseOrder = async (req, res, next) => {
     try {
-        const { receivedItems, vendorBillNumber } = req.body; 
+        const { receivedItems, partyBillNumber } = req.body; 
         const order = await PurchaseOrder.findOne({ _id: req.params.id, ...tenantQuery(req) });
 
         if (!order) {
@@ -561,19 +561,19 @@ export const receivePurchaseOrder = async (req, res, next) => {
             }
         }
 
-        if (vendorBillNumber) {
-            order.vendorBillNumber = vendorBillNumber;
+        if (partyBillNumber) {
+            order.partyBillNumber = partyBillNumber;
         }
 
         order.status = 'received';
         await order.save();
 
-        // ── Auto-create vendor ledger credit entry ──
+        // ── Auto-create party ledger credit entry ──
         createPurchaseLedgerEntry({
             orderId: order._id,
             orderNumber: order.orderNumber,
-            vendorBillNumber: order.vendorBillNumber,
-            vendorId: order.vendor,
+            partyBillNumber: order.partyBillNumber,
+            partyId: order.party,
             amount: order.totalAmount,
             tenantId: req.tenantId,
             userId: req.user._id,

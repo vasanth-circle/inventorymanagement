@@ -598,7 +598,7 @@ const SalesOrders = () => {
                                         {billingSettings?.industry === 'machinery' ? 'Work Orders & Estimations' : 'Sales Orders & Estimations'}
                                     </p>
                                 </div>
-                                <table className="w-full text-left border-collapse">
+                                <table className="table-premium">
                                     <thead>
                                         <tr className="bg-gray-50 border-bottom border-gray-100">
                                             <th onClick={() => handleSort('orderNumber')} className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase cursor-pointer hover:bg-gray-200 transition-colors">Order #{renderSortIcon('orderNumber')}</th>
@@ -714,7 +714,7 @@ const SalesOrders = () => {
                                                 {/* Share PDF */}
                                                 <button
                                                     onClick={() => setShareMenuOrder(order)}
-                                                    className="flex-shrink-0 flex items-center gap-1.5 h-9 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md transition-colors"
+                                                    className="flex-shrink-0 flex items-center gap-1.5 h-9 px-3 btn-primary rounded-xl text-xs font-bold shadow-md transition-colors"
                                                     title="Share Invoice"
                                                 >
                                                     <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

@@ -154,7 +154,7 @@ const Inventory = () => {
                                             handleChange('sqFtPerPc', sqft.toFixed(3));
                                         }
                                     }}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none font-bold"
+                                    className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none font-bold"
                                 >
                                     <option value="">Select Size</option>
                                     {sizes.map(s => <option key={s._id} value={s.name}>{s.name} ({s.width}×{s.height} {s.unit})</option>)}
@@ -175,7 +175,7 @@ const Inventory = () => {
                             <select
                                 value={formData[field.name] || ''}
                                 onChange={(e) => handleChange(field.name, e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none"
                             >
                                 <option value="">Select {field.label}</option>
                                 {field.name === 'finish'
@@ -187,7 +187,7 @@ const Inventory = () => {
                             <textarea
                                 value={formData[field.name] || ''}
                                 onChange={(e) => handleChange(field.name, e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none h-20"
+                                className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none h-20"
                                 placeholder={field.placeholder}
                             />
                         ) : (
@@ -195,7 +195,7 @@ const Inventory = () => {
                                 type={field.type || 'text'}
                                 value={formData[field.name] || ''}
                                 onChange={(e) => handleChange(field.name, e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none"
                                 placeholder={field.placeholder}
                                 required={field.required}
                             />
@@ -516,7 +516,7 @@ const Inventory = () => {
                     <>
                         {/* Desktop Table View */}
                         <div className="hidden lg:block overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
+                            <table className="table-premium">
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Image</th>
@@ -755,7 +755,7 @@ const Inventory = () => {
                                         required
                                         value={editFormData.name}
                                         onChange={handleEditChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                        className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none"
                                     />
                                 </div>
                                 <div>
@@ -765,7 +765,7 @@ const Inventory = () => {
                                         name="barcode"
                                         value={editFormData.barcode}
                                         onChange={handleEditChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                        className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none"
                                     />
                                 </div>
                                 <div>
@@ -775,7 +775,7 @@ const Inventory = () => {
                                         name="partNumber"
                                         value={editFormData.partNumber}
                                         onChange={handleEditChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                        className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none"
                                     />
                                 </div>
                                 <div>
@@ -797,7 +797,7 @@ const Inventory = () => {
                                         name="price"
                                         value={editFormData.price}
                                         onChange={handleEditChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                        className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none"
                                     />
                                 </div>
                                 <div>
@@ -808,7 +808,7 @@ const Inventory = () => {
                                         name="purchasePrice"
                                         value={editFormData.purchasePrice}
                                         onChange={handleEditChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                        className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none"
                                     />
                                 </div>
                                 <div>
@@ -817,7 +817,7 @@ const Inventory = () => {
                                         name="unitType"
                                         value={['pieces', 'pcs'].includes(editFormData.unitType?.toLowerCase()) ? 'pieces' : editFormData.unitType?.toLowerCase() || 'box'}
                                         onChange={handleEditChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                        className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none"
                                     >
                                         <option value="box">Box</option>
                                         <option value="bag">Bag</option>
@@ -833,7 +833,7 @@ const Inventory = () => {
                                         name="minStockThreshold"
                                         value={editFormData.minStockThreshold}
                                         onChange={handleEditChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                        className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none"
                                     />
                                 </div>
 
@@ -883,7 +883,7 @@ const Inventory = () => {
                                     rows="3"
                                     value={editFormData.description}
                                     onChange={handleEditChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                    className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none"
                                 ></textarea>
                             </div>
 
@@ -965,7 +965,7 @@ const Inventory = () => {
                                         required
                                         value={createFormData.name}
                                         onChange={handleCreateChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                        className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none"
                                     />
                                 </div>
                                 <div>
@@ -974,7 +974,7 @@ const Inventory = () => {
                                         name="unitType"
                                         value={['pieces', 'pcs'].includes(createFormData.unitType?.toLowerCase()) ? 'pieces' : createFormData.unitType?.toLowerCase() || 'box'}
                                         onChange={handleCreateChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                        className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none"
                                     >
                                         <option value="box">Box</option>
                                         <option value="bag">Bag</option>
@@ -990,7 +990,7 @@ const Inventory = () => {
                                         name="partNumber"
                                         value={createFormData.partNumber}
                                         onChange={handleCreateChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                        className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none"
                                     />
                                 </div>
                                 <div>
@@ -1012,7 +1012,7 @@ const Inventory = () => {
                                         name="price"
                                         value={createFormData.price}
                                         onChange={handleCreateChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                        className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none"
                                     />
                                 </div>
                                 <div>
@@ -1023,7 +1023,7 @@ const Inventory = () => {
                                         name="purchasePrice"
                                         value={createFormData.purchasePrice}
                                         onChange={handleCreateChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                        className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none"
                                     />
                                 </div>
                                 <div>
@@ -1033,7 +1033,7 @@ const Inventory = () => {
                                         name="minStockThreshold"
                                         value={createFormData.minStockThreshold}
                                         onChange={handleCreateChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                        className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none"
                                     />
                                 </div>
                                 <div>
@@ -1082,7 +1082,7 @@ const Inventory = () => {
                                     rows="3"
                                     value={createFormData.description}
                                     onChange={handleCreateChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                    className="w-full px-3 py-2 input-premium focus:ring-primary-500 outline-none"
                                 ></textarea>
                             </div>
 
