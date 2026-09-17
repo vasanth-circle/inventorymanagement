@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef, useContext } from 'react';
+﻿import { useState, useEffect, useRef, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { InventoryContext } from '../context/InventoryContext';
 
-// ── Searchable Select Component (inline, lightweight) ──────────────────────
+// â”€â”€ Searchable Select Component (inline, lightweight) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const SearchableDropdown = ({ options = [], value, onChange, placeholder = 'Search...', disabled = false }) => {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
@@ -39,7 +39,7 @@ const SearchableDropdown = ({ options = [], value, onChange, placeholder = 'Sear
                 <span className={selected ? 'text-gray-800' : 'text-gray-400'}>
                     {selected ? selected.label : placeholder}
                 </span>
-                <span className="text-gray-400 text-xs">{open ? '▲' : '▼'}</span>
+                <span className="text-gray-400 text-xs">{open ? 'â–²' : 'â–¼'}</span>
             </button>
             {open && (
                 <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
@@ -75,7 +75,7 @@ const SearchableDropdown = ({ options = [], value, onChange, placeholder = 'Sear
     );
 };
 
-// ── Main Component ─────────────────────────────────────────────────────────
+// â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const StockReturn = () => {
     const navigate = useNavigate();
     const { billingSettings, calculateItemValues } = useContext(InventoryContext);
@@ -89,7 +89,7 @@ const StockReturn = () => {
     const [selectedCustomer, setSelectedCustomer] = useState('');
     const [selectedVendor, setSelectedVendor] = useState('');
 
-    // Bills (invoices only — not quotations)
+    // Bills (invoices only â€” not quotations)
     const [invoices, setInvoices] = useState([]);
     const [loadingInvoices, setLoadingInvoices] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState(null);
@@ -183,7 +183,7 @@ const StockReturn = () => {
         }
     };
 
-    // When an invoice is selected — populate return items table
+    // When an invoice is selected â€” populate return items table
     const handleInvoiceSelect = (invoiceId) => {
         const invoice = invoices.find(i => i._id === invoiceId);
         setSelectedInvoice(invoice || null);
@@ -415,7 +415,7 @@ const StockReturn = () => {
                         settlementType,
                     });
                 }
-                toast.success(`Return recorded! ₹${refundTotal.toLocaleString('en-IN')} refunded to customer ledger.`);
+                toast.success(`Return recorded! â‚¹${refundTotal.toLocaleString('en-IN')} refunded to customer ledger.`);
                 if (window.confirm('Return recorded successfully! Would you like to print the return slip?')) {
                     const returnTx = {
                         returnType: 'customer',
@@ -533,7 +533,7 @@ const StockReturn = () => {
 
     const customerOptions = customers.map(c => ({
         value: c._id,
-        label: `${c.companyName || c.name}${c.phone ? ` — ${c.phone}` : ''}`,
+        label: `${c.companyName || c.name}${c.phone ? ` â€” ${c.phone}` : ''}`,
     }));
 
     const vendorOptions = vendors.map(v => ({
@@ -548,12 +548,12 @@ const StockReturn = () => {
 
     const invoiceOptions = invoices.map(inv => ({
         value: inv._id,
-        label: `${inv.orderNumber}  •  ${new Date(inv.orderDate).toLocaleDateString('en-IN')}  •  ₹${(inv.totalAmount || 0).toLocaleString('en-IN')}`,
+        label: `${inv.orderNumber}  â€¢  ${new Date(inv.orderDate).toLocaleDateString('en-IN')}  â€¢  â‚¹${(inv.totalAmount || 0).toLocaleString('en-IN')}`,
     }));
 
     const poOptions = purchaseOrders.map(po => ({
         value: po._id,
-        label: `${po.vendorBillNumber ? `Bill: ${po.vendorBillNumber}` : `PO: ${po.orderNumber}`}  •  ${new Date(po.orderDate || po.createdAt).toLocaleDateString('en-IN')}  •  ₹${(po.totalAmount || 0).toLocaleString('en-IN')}`
+        label: `${po.vendorBillNumber ? `Bill: ${po.vendorBillNumber}` : `PO: ${po.orderNumber}`}  â€¢  ${new Date(po.orderDate || po.createdAt).toLocaleDateString('en-IN')}  â€¢  â‚¹${(po.totalAmount || 0).toLocaleString('en-IN')}`
     }));
 
     const allVendorItems = purchaseOrders.flatMap(po => 
@@ -593,341 +593,191 @@ const StockReturn = () => {
     ];
 
     return (
-        <div className="p-1 space-y-6 max-w-[1000px] mx-auto">
-            {/* Header */}
-            <div className="flex justify-between items-end pb-2 border-b border-gray-100">
-                <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-white shadow-sm border border-gray-100 rounded-lg flex items-center justify-center text-xl">↩️</div>
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-800">Stock Return Management</h1>
-                        <p className="text-xs text-gray-400 font-medium">Record returns from customers or to vendors</p>
-                    </div>
+        <div className="animate-in space-y-5">
+            {/* Page Header */}
+            <div className="page-header">
+                <div>
+                    <h1 className="page-title">Stock Returns</h1>
+                    <p className="page-subtitle">Manage customer returns and refunds</p>
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-visible">
-                <form onSubmit={handleSubmit} className="divide-y divide-gray-50">
-
-                    {/* ── Section 1: Return Type + Customer/Vendor ── */}
-                    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Return Type */}
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Return Type</label>
-                            <select
-                                value={returnType}
-                                onChange={e => {
-                                    setReturnType(e.target.value);
-                                    setSelectedCustomer('');
-                                    setSelectedVendor('');
-                                    setSelectedInvoice(null);
-                                    setSelectedPO(null);
-                                    setPurchaseOrders([]);
-                                    setReturnItems([]);
-                                    setInvoices([]);
-                                }}
-                                className="w-full h-11 px-4 bg-gray-50 border-none rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all cursor-pointer"
-                            >
-                                <option value="customer">Return from Customer (Stock In)</option>
-                                <option value="vendor">Return to Vendor (Stock Out)</option>
-                            </select>
-                        </div>
-
-                        {/* Customer or Vendor selector — FIRST after type */}
-                        <div className="space-y-1">
-                            {returnType === 'customer' ? (
-                                <>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
-                                        👤 Customer <span className="text-rose-500">*</span>
-                                    </label>
-                                    <SearchableDropdown
-                                        options={customerOptions}
-                                        value={selectedCustomer}
-                                        onChange={handleCustomerSelect}
-                                        placeholder="Search & select customer..."
-                                    />
-                                </>
-                            ) : (
-                                <>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
-                                        🏭 Vendor <span className="text-rose-500">*</span>
-                                    </label>
-                                    <SearchableDropdown
-                                        options={vendorOptions}
-                                        value={selectedVendor}
-                                        onChange={handleVendorSelect}
-                                        placeholder="Search & select vendor..."
-                                    />
-                                </>
-                            )}
-                        </div>
+            {/* Stat Cards */}
+            <div className="stat-cards">
+                <div className="stat-card">
+                    <div className="stat-card-value">{returns.length}</div>
+                    <div className="stat-card-label">Total Returns</div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-card-value text-green-600">
+                        {'Rs.'}{(returns.filter(r => r.returnType === 'customer').reduce((sum, r) => sum + (r.total || 0), 0) / 1000).toFixed(1)}k
                     </div>
-
-                    {/* ── Section 2: Items Selection (Customer & Vendor) ── */}
-                    {(returnType === 'customer' && selectedCustomer) || (returnType === 'vendor' && selectedVendor) ? (
-                        <div className={`p-6 space-y-4 ${returnType === 'customer' ? 'bg-rose-50/30' : 'bg-slate-50/30'}`}>
-                            
-                            {/* Bill/PO Selection */}
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
-                                    {returnType === 'customer' ? '📄 Select Invoice to Return From' : '📄 Select Bill / PO to Return From (Optional)'}
-                                    {loadingInvoices && returnType === 'customer' && <span className="ml-2 text-rose-400 animate-pulse">⏳ Loading...</span>}
-                                    {loadingPOs && returnType === 'vendor' && <span className="ml-2 text-slate-400 animate-pulse">⏳ Loading...</span>}
-                                </label>
-                                {returnType === 'customer' ? (
-                                    <SearchableDropdown
-                                        options={invoiceOptions}
-                                        value={selectedInvoice?._id || ''}
-                                        onChange={handleInvoiceSelect}
-                                        placeholder="Search invoice by number or date..."
-                                        disabled={loadingInvoices || invoices.length === 0}
-                                    />
-                                ) : (
-                                    <div className="flex gap-4">
-                                        <div className="flex-1">
-                                            <SearchableDropdown
-                                                options={poOptions}
-                                                value={selectedPO?._id || ''}
-                                                onChange={handlePOSelect}
-                                                placeholder="Optional: Select PO to autofill items..."
-                                                disabled={loadingPOs || purchaseOrders.length === 0}
-                                            />
-                                        </div>
-                                        <div className="flex-1">
-                                            <SearchableDropdown
-                                                options={vendorItemOptions}
-                                                value={''}
-                                                onChange={handleVendorItemSelect}
-                                                placeholder="Or manually search & add item..."
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {selectedInvoice && returnType === 'customer' && (
-                                    <div className="mt-2 flex items-center gap-3 px-3 py-2 bg-white border border-rose-100 rounded-lg">
-                                        <span className="text-xs text-gray-500">Invoice:</span>
-                                        <span className="font-black text-rose-600 text-sm">{selectedInvoice.orderNumber}</span>
-                                        <span className="text-xs text-gray-400">•</span>
-                                        <span className="text-xs text-gray-500">{new Date(selectedInvoice.orderDate).toLocaleDateString('en-IN')}</span>
-                                        <span className="text-xs text-gray-400">•</span>
-                                        <span className="text-xs font-bold text-gray-700">₹{(selectedInvoice.totalAmount || 0).toLocaleString('en-IN')}</span>
-                                        <span className={`ml-auto px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${selectedInvoice.status === 'confirmed' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-                                            {selectedInvoice.status}
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Reference Order input for Vendors */}
-                            {returnType === 'vendor' && (
-                                <div className="space-y-1 w-1/2">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Order # / Ref</label>
-                                    <input
-                                        type="text"
-                                        value={referenceOrder}
-                                        onChange={e => setReferenceOrder(e.target.value)}
-                                        placeholder="Reference number"
-                                        className="w-full h-11 px-4 bg-white border border-gray-100 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-slate-500 transition-all"
-                                    />
-                                </div>
-                            )}
-
-                            {/* ── Return Items Table ── */}
-                            {returnItems.length > 0 && (
-                                <div className="space-y-2 mt-4">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
-                                        📦 Items to Return
-                                    </label>
-                                    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-                                        <table className="w-full text-sm">
-                                            <thead>
-                                                <tr className="bg-gray-50 border-b border-gray-100">
-                                                    <th className="text-left px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Item</th>
-                                                    <th className="text-center px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-28">Billed Qty</th>
-                                                    <th className="text-center px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-32">Return Qty</th>
-                                                    <th className="text-right px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-32">Rate</th>
-                                                    <th className="text-right px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-32">Refund Amt</th>
-                                                    <th className="text-center px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-12"></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-50">
-                                                {returnItems.map((row, idx) => {
-                                                    const returnQty = parseFloat(row.returnQty) || 0;
-                                                    const rowRefund = row.total || 0;
-                                                    const isOverReturn = !row.isManual && returnQty > row.billedQty;
-                                                    return (
-                                                        <tr key={idx} className={`hover:bg-gray-50 transition-colors ${isOverReturn ? 'bg-red-50' : ''}`}>
-                                                            <td className="px-4 py-3">
-                                                                <div className="font-bold text-gray-800 text-sm">{row.itemName}</div>
-                                                                <div className="text-xs text-gray-500">{row.brand || ''} {row.size ? `- ${row.size}` : ''}</div>
-                                                                {returnType === 'vendor' && row.poNumber && (
-                                                                    <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
-                                                                        <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-bold">Bill: {row.poNumber}</span>
-                                                                    </div>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-4 py-3 text-center">
-                                                                {row.isManual ? (
-                                                                    <span className="text-xs text-gray-400 font-bold">—</span>
-                                                                ) : (
-                                                                    <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 font-black text-xs rounded-lg">
-                                                                        {row.billedQty}
-                                                                    </span>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-4 py-3">
-                                                                <input
-                                                                    type="number"
-                                                                    min="0"
-                                                                    max={row.isManual ? undefined : row.billedQty}
-                                                                    step="0.01"
-                                                                    value={row.returnQty}
-                                                                    onChange={e => handleReturnQtyChange(idx, e.target.value)}
-                                                                    placeholder="0"
-                                                                    className={`w-full px-3 py-2 text-center font-bold rounded-lg border outline-none focus:ring-2 ${returnType === 'customer' ? 'focus:ring-rose-500' : 'focus:ring-slate-500'} text-sm ${isOverReturn ? 'border-red-400 bg-red-50 text-red-700' : 'border-gray-200 bg-gray-50'}`}
-                                                                />
-                                                                {isOverReturn && (
-                                                                    <div className="text-[9px] text-red-500 font-bold text-center mt-0.5">Exceeds!</div>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-4 py-3">
-                                                                {row.isManual ? (
-                                                                    <input
-                                                                        type="number"
-                                                                        min="0"
-                                                                        step="0.01"
-                                                                        value={row.rate || ''}
-                                                                        onChange={e => handleRateChange(idx, e.target.value)}
-                                                                        placeholder="0.00"
-                                                                        className={`w-full px-3 py-2 text-right font-bold rounded-lg border border-gray-200 bg-gray-50 outline-none focus:ring-2 ${returnType === 'customer' ? 'focus:ring-rose-500' : 'focus:ring-slate-500'} text-sm`}
-                                                                    />
-                                                                ) : (
-                                                                    <div className="text-right text-gray-600 font-medium text-sm pt-2">
-                                                                        ₹{row.rate.toLocaleString('en-IN')}
-                                                                    </div>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-4 py-3 text-right font-black text-gray-800">
-                                                                {rowRefund > 0 ? (
-                                                                    <span className={returnType === 'customer' ? 'text-rose-600' : 'text-slate-700'}>
-                                                                        ₹{rowRefund.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="text-gray-300">—</span>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-4 py-3 text-center">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => removeReturnItem(idx)}
-                                                                    className="text-gray-400 hover:text-red-500 transition-colors"
-                                                                    title="Remove Item"
-                                                                >
-                                                                    🗑️
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                            {/* Summary Row */}
-                                            {refundTotal > 0 && (
-                                                <tfoot>
-                                                    <tr className={returnType === 'customer' ? 'bg-rose-600 text-white' : 'bg-slate-700 text-white'}>
-                                                        <td colSpan={4} className="px-4 py-3 font-black text-sm uppercase tracking-wider text-right">
-                                                            Total Refunded Amount:
-                                                        </td>
-                                                        <td className="px-4 py-3 text-right font-black text-lg">
-                                                            ₹{refundTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                        </td>
-                                                        <td></td>
-                                                    </tr>
-                                                </tfoot>
-                                            )}
-                                        </table>
-                                    </div>
-                                    {returnType === 'customer' && (
-                                        <p className="text-[10px] text-gray-400 pl-1 mt-2">
-                                            💡 Only invoices (converted from quotation or directly created) can be returned. Quotations cannot be returned.
-                                        </p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    ) : null}
-
-                    {/* ── Section 3: Reason & Notes ── */}
-                    <div className="p-6 space-y-6">
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Return Reason</label>
-                            <input
-                                type="text"
-                                value={reason}
-                                onChange={e => setReason(e.target.value)}
-                                placeholder="e.g., Wrong Size, Damaged on arrival, Customer Choice"
-                                className="w-full h-11 px-4 bg-gray-50 border-none rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all"
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Internal Notes</label>
-                            <textarea
-                                value={notes}
-                                onChange={e => setNotes(e.target.value)}
-                                rows="3"
-                                placeholder="Any additional internal details..."
-                                className="w-full p-4 bg-gray-50 border-none rounded-lg text-sm font-medium text-gray-700 focus:ring-2 focus:ring-rose-500 transition-all"
-                            />
-                        </div>
-                        <div className="space-y-2 pt-4 border-t border-gray-100">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Settlement Method</label>
-                            <div className="flex flex-col sm:flex-row gap-4">
-                                <label className={`flex-1 flex items-center gap-3 p-4 border rounded-xl cursor-pointer transition-all ${settlementType === 'ledger' ? 'border-rose-500 bg-rose-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
-                                    <input type="radio" name="settlementType" value="ledger" checked={settlementType === 'ledger'} onChange={() => setSettlementType('ledger')} className="w-4 h-4 text-rose-600 focus:ring-rose-500 border-gray-300" />
-                                    <div>
-                                        <div className="text-sm font-bold text-gray-900">Add to Ledger Balance (Credit)</div>
-                                        <div className="text-[10px] font-medium text-gray-500">Refund amount will be added to the outstanding ledger balance.</div>
-                                    </div>
-                                </label>
-                                <label className={`flex-1 flex items-center gap-3 p-4 border rounded-xl cursor-pointer transition-all ${settlementType === 'cash' ? 'border-rose-500 bg-rose-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
-                                    <input type="radio" name="settlementType" value="cash" checked={settlementType === 'cash'} onChange={() => setSettlementType('cash')} className="w-4 h-4 text-rose-600 focus:ring-rose-500 border-gray-300" />
-                                    <div>
-                                        <div className="text-sm font-bold text-gray-900">Immediate Cash Refund</div>
-                                        <div className="text-[10px] font-medium text-gray-500">A secondary cash payment entry will be created to settle the return immediately.</div>
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* ── Action Bar ── */}
-                    <div className="p-6 bg-gray-50 flex items-center justify-between">
-                        {/* Refund summary badge */}
-                        {returnType === 'customer' && refundTotal > 0 && (
-                            <div className="flex items-center gap-2 bg-rose-50 border border-rose-100 rounded-xl px-4 py-2">
-                                <span className="text-xs font-black text-rose-600 uppercase tracking-widest">{settlementType === 'cash' ? 'Cash to Pay:' : 'Refund to Ledger:'}</span>
-                                <span className="text-lg font-black text-rose-700">₹{refundTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                            </div>
-                        )}
-                        {returnType !== 'customer' && <span />}
-                        <div className="flex items-center space-x-3">
-                            <button
-                                type="button"
-                                onClick={() => navigate('/inventory')}
-                                className="px-6 py-2.5 text-xs font-black text-gray-400 uppercase tracking-widest hover:text-gray-600"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="px-8 py-2.5 bg-rose-600 text-white rounded-lg text-xs font-black uppercase tracking-widest hover:bg-rose-700 transition-all shadow-lg hover:shadow-rose-100 disabled:opacity-50"
-                            >
-                                {loading ? 'Processing...' : 'Confirm Stock Return ↩️'}
-                            </button>
-                        </div>
-                    </div>
-                </form>
+                    <div className="stat-card-label">Total Refunded</div>
+                </div>
             </div>
+
+            {/* Main Tabs */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="tab-bar">
+                    <button className={`tab-btn ${activeTab === 'new' ? 'active' : ''}`} onClick={() => setActiveTab('new')}>
+                        + New Return
+                    </button>
+                    <button className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>
+                        Return History
+                    </button>
+                </div>
+            </div>
+
+            {/* --- NEW RETURN TAB --- */}
+            {activeTab === 'new' && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <FormSection icon="🧑" title="Customer & Invoice Selection" color="#eff6ff">
+                        <div className="form-grid-2">
+                            <FormField label="Select Ledger Name" required>
+                                <SearchableDropdown
+                                    options={customers.map(c => ({ value: c._id, label: `${c.companyName || c.name} - ${c.phone}` }))}
+                                    value={selectedCustomer}
+                                    onChange={setSelectedCustomer}
+                                    placeholder="Search Customer..."
+                                />
+                            </FormField>
+                            <FormField label="Select Invoice" required>
+                                <select
+                                    value={selectedInvoice}
+                                    onChange={(e) => setSelectedInvoice(e.target.value)}
+                                    disabled={!selectedCustomer || loadingInvoices}
+                                    className="w-full h-11 px-4 bg-gray-50 border-none rounded-lg text-sm focus:ring-2 focus:ring-rose-500"
+                                >
+                                    <option value="">{loadingInvoices ? 'Loading...' : 'Select Invoice'}</option>
+                                    {customerInvoices.map(inv => (
+                                        <option key={inv._id} value={inv._id}>{inv.orderNumber} ({new Date(inv.orderDate).toLocaleDateString()}) - Rs.{inv.totalAmount}</option>
+                                    ))}
+                                </select>
+                            </FormField>
+                        </div>
+                    </FormSection>
+
+                    {selectedInvoice && (
+                        <FormSection icon="📦" title="Select Items to Return" color="#faf5ff">
+                            <div className="table-wrapper">
+                                <table className="table-premium">
+                                    <thead>
+                                        <tr>
+                                            <th>Item Details</th>
+                                            <th className="text-center">Billed Qty</th>
+                                            <th className="text-right">Price</th>
+                                            <th className="text-center">Return Qty</th>
+                                            <th className="text-right">Refund Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {returnItems.map((item, idx) => {
+                                            const isTile = billingSettings?.industry === 'tiles' && item.sqFtPerPc > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((item.unitType || '').toLowerCase());
+                                            return (
+                                                <tr key={idx}>
+                                                    <td>
+                                                        <div className="font-bold text-gray-900">{item.itemName}</div>
+                                                        <div className="text-[10px] text-gray-500 mt-1">
+                                                            {item.brand && <span className="mr-2">Brand: {item.brand}</span>}
+                                                            {item.size && <span>Size: {item.size}</span>}
+                                                        </div>
+                                                    </td>
+                                                    <td className="text-center">
+                                                        <div className="font-bold">{item.billedQty} {isTile ? 'Boxes' : item.unitType}</div>
+                                                        {isTile && <div className="text-[10px] text-gray-400">{(item.billedQty * item.sqFtPerPc * item.pcsPerBox).toFixed(2)} sqft</div>}
+                                                    </td>
+                                                    <td className="text-right font-medium">Rs.{item.rate}</td>
+                                                    <td className="w-40 text-center">
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            max={item.billedQty}
+                                                            step="0.01"
+                                                            value={item.returnQty}
+                                                            onChange={(e) => handleReturnQtyChange(idx, e.target.value)}
+                                                            className="w-full text-center py-2 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                                                        />
+                                                    </td>
+                                                    <td className="text-right font-bold text-green-600">
+                                                        Rs.{item.total > 0 ? item.total.toFixed(2) : '0.00'}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div className="mt-6">
+                                <FormSection icon="💰" title="Return Summary" color="#fef9c3">
+                                    <div className="form-grid-2">
+                                        <FormField label="Reason for Return" required className="form-full">
+                                            <textarea rows="2" value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Damaged, Excess quantity" />
+                                        </FormField>
+                                        <FormField label="Additional Notes" className="form-full">
+                                            <textarea rows="2" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional internal notes" />
+                                        </FormField>
+                                        <div className="bg-green-50 p-4 rounded-xl border border-green-100 flex justify-between items-center form-full">
+                                            <span className="font-bold text-green-800">Total Refund Amount:</span>
+                                            <span className="text-2xl font-black text-green-600">Rs.{refundTotal.toLocaleString('en-IN')}</span>
+                                        </div>
+                                    </div>
+                                    <div className="mt-6 flex justify-end">
+                                        <button onClick={handleSubmit} disabled={loading} className="btn-primary" style={{background:'#10b981'}}>
+                                            {loading ? 'Processing...' : '✓ Confirm & Record Return'}
+                                        </button>
+                                    </div>
+                                </FormSection>
+                            </div>
+                        </FormSection>
+                    )}
+                </div>
+            )}
+
+            {/* --- HISTORY TAB --- */}
+            {activeTab === 'history' && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                    {loadingReturns ? (
+                        <div className="flex justify-center items-center h-40">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        </div>
+                    ) : returns.length === 0 ? (
+                        <EmptyState icon="📦" title="No returns found" description="You have not processed any returns yet." />
+                    ) : (
+                        <div className="table-wrapper">
+                            <table className="table-premium">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Ledger Name</th>
+                                        <th>Items Returned</th>
+                                        <th className="text-right">Refund Amount</th>
+                                        <th>Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {returns.map(r => (
+                                        <tr key={r._id}>
+                                            <td className="text-sm font-medium">{new Date(r.createdAt).toLocaleDateString()}</td>
+                                            <td>
+                                                <div className="font-bold text-gray-900">{r.customer?.companyName || r.customer?.name || r.vendor?.companyName || r.vendor?.name}</div>
+                                                <div className="text-xs text-gray-500">Ref: {r.referenceOrder}</div>
+                                            </td>
+                                            <td>
+                                                <span className="badge badge-primary">{r.quantity} qty</span>
+                                            </td>
+                                            <td className="text-right font-bold text-green-600">
+                                                Rs.{r.total?.toLocaleString('en-IN')}
+                                            </td>
+                                            <td className="text-xs text-gray-600">{r.reason}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };

@@ -1,7 +1,9 @@
-import { useState, useContext, useMemo } from 'react';
+﻿import { useState, useContext, useMemo } from 'react';
 import { InventoryContext } from '../context/InventoryContext';
 import toast from 'react-hot-toast';
-
+import Drawer from '../components/ui/Drawer';
+import FormField, { FormSection } from '../components/ui/FormField';
+import EmptyState from '../components/ui/EmptyState';
 const Categories = () => {
     const { categories, addCategory, editCategory, removeCategory, loading, confirmDelete } = useContext(InventoryContext);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -50,118 +52,113 @@ const Categories = () => {
         });
     };
 
+    // Helper: avatar color
+    const avatarColor = (name = '') => {
+        const colors = ['avatar-blue','avatar-purple','avatar-green','avatar-orange','avatar-red','avatar-gray'];
+        return colors[(name.charCodeAt(0) || 0) % colors.length];
+    };
+
     return (
-        <div className="space-y-4">
-            {/* Header */}
-            <div className="flex flex-wrap gap-3 items-center justify-between">
-                <h1 className="text-2xl font-bold text-gray-900">Categories</h1>
-                <button
-                    onClick={() => handleOpenModal()}
-                    className="px-3 py-1.5 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition-colors font-medium flex items-center gap-1.5 shadow-sm"
-                >
-                    ➕ Add Category
+        <div className="animate-in space-y-5">
+            <div className="page-header">
+                <div>
+                    <h1 className="page-title">Categories</h1>
+                    <p className="page-subtitle">Manage item classifications and groups</p>
+                </div>
+                <button className="btn-primary" onClick={() => handleOpenModal()}>
+                    + Add Category
                 </button>
             </div>
 
-            {/* Search */}
-            <div className="relative max-w-sm">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+            <div className="stat-cards">
+                <div className="stat-card">
+                    <div className="stat-card-value">{categories.length}</div>
+                    <div className="stat-card-label">Total Categories</div>
+                </div>
+            </div>
+
+            <div className="filter-bar">
+                <span style={{color:'#94a3b8',fontSize:'14px',marginLeft:'4px'}}>search</span>
                 <input
                     type="text"
                     placeholder="Search categories..."
                     value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+                    onChange={(e) => setSearch(e.target.value)}
                 />
-                {search && (
-                    <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs">✕</button>
-                )}
             </div>
 
-            {/* Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-100">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
-                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
-                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</th>
-                            <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-50">
-                        {loading ? (
-                            <tr><td colSpan="4" className="px-4 py-6 text-center text-sm text-gray-400">Loading...</td></tr>
-                        ) : filtered.length > 0 ? (
-                            filtered.map((category, idx) => (
-                                <tr key={category._id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-4 py-2 text-xs text-gray-400 w-8">{idx + 1}</td>
-                                    <td className="px-4 py-2 text-sm font-semibold text-gray-800">{category.name}</td>
-                                    <td className="px-4 py-2 text-xs text-gray-500 max-w-xs truncate">{category.description || <span className="italic text-gray-300">—</span>}</td>
-                                    <td className="px-4 py-2 text-right">
-                                        <button onClick={() => handleOpenModal(category)} className="text-xs text-primary-600 hover:text-primary-800 font-semibold mr-3">Edit</button>
-                                        <button onClick={() => handleDelete(category._id)} className="text-xs text-red-500 hover:text-red-700 font-semibold">Delete</button>
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td colSpan="4" className="px-4 py-6 text-center text-sm text-gray-400">
-                                    {search ? `No categories matching "${search}"` : 'No categories found'}
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-                {filtered.length > 0 && (
-                    <div className="px-4 py-2 border-t border-gray-100 bg-gray-50 text-xs text-gray-400">
-                        Showing {filtered.length} of {categories.length} categories
-                    </div>
-                )}
-            </div>
-
-            {/* Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                            <h2 className="text-lg font-bold text-gray-800">{editingCategory ? 'Edit Category' : 'Add Category'}</h2>
-                            <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            {loading ? (
+                <div className="table-wrapper" style={{display:'flex',justifyContent:'center',alignItems:'center',height:'240px'}}>
+                    <div style={{width:'40px',height:'40px',border:'3px solid #dbeafe',borderTop:'3px solid #2563eb',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}></div>
+                </div>
+            ) : filtered.length === 0 ? (
+                <div className="table-wrapper">
+                    <EmptyState
+                        icon="📁"
+                        title="No categories found"
+                        description="Create your first category to organize your items."
+                        action={<button className="btn-primary" onClick={() => handleOpenModal()}>+ Add Category</button>}
+                    />
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filtered.map(cat => (
+                        <div key={cat._id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className={`avatar ${avatarColor(cat.name)}`}>
+                                        {cat.name.substring(0, 2).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-gray-900 text-sm">{cat.name}</h3>
+                                        {cat.description && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{cat.description}</p>}
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button className="btn-icon edit" onClick={() => handleOpenModal(cat)} title="Edit">✏️</button>
+                                    <button className="btn-icon delete" onClick={() => handleDelete(cat._id)} title="Delete">🗑️</button>
+                                </div>
+                            </div>
                         </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">Name <span className="text-red-500">*</span></label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-gray-50 focus:bg-white"
-                                    placeholder="e.g. Electronics, Furniture"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
-                                <textarea
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-gray-50 focus:bg-white"
-                                    rows="2"
-                                    placeholder="Optional description"
-                                />
-                            </div>
-                            <div className="flex gap-3 pt-2 border-t border-gray-100">
-                                <button type="submit" className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-bold shadow">
-                                    {editingCategory ? 'Update' : 'Create'}
-                                </button>
-                                <button type="button" onClick={handleCloseModal} className="flex-1 px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-bold">
-                                    Cancel
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+                    ))}
                 </div>
             )}
+
+            <Drawer
+                open={isModalOpen}
+                onClose={handleCloseModal}
+                title={editingCategory ? 'Edit Category' : 'Add New Category'}
+                size="sm"
+                footer={
+                    <>
+                        <button type="button" className="btn-secondary" onClick={handleCloseModal}>Cancel</button>
+                        <button type="submit" form="category-form" className="btn-primary">
+                            {editingCategory ? 'Update' : 'Save Category'}
+                        </button>
+                    </>
+                }
+            >
+                <form id="category-form" onSubmit={handleSubmit} className="space-y-4">
+                    <FormField label="Category Name" required>
+                        <input
+                            type="text"
+                            required
+                            autoFocus
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            placeholder="e.g. Electronics, Building Materials"
+                        />
+                    </FormField>
+                    <FormField label="Description">
+                        <textarea
+                            rows="3"
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            placeholder="Brief description of this category..."
+                        />
+                    </FormField>
+                </form>
+            </Drawer>
         </div>
     );
 };

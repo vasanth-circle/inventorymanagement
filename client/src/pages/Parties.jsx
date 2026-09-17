@@ -1,9 +1,12 @@
-import { useState, useEffect, useContext } from 'react';
+﻿import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { toast } from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
-import { KeyIcon, BookOpenIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { BookOpenIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import Drawer from '../components/ui/Drawer';
+import FormField, { FormSection } from '../components/ui/FormField';
+import EmptyState from '../components/ui/EmptyState';
 
 const Parties = () => {
     const navigate = useNavigate();
@@ -227,548 +230,416 @@ const Parties = () => {
         }
     };
 
-    const filteredLockedParties = lockedParties.filter(c => 
-        !searchQuery || 
-        (c.name && c.name.toLowerCase().includes(searchQuery.toLowerCase())) || 
+
+    const filteredLockedParties = lockedParties.filter(c =>
+        !searchQuery ||
+        (c.name && c.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (c.phone && c.phone.includes(searchQuery))
     );
 
+    // Avatar color by name initial
+    const avatarColor = (name = '') => {
+        const colors = ['avatar-blue','avatar-purple','avatar-green','avatar-orange','avatar-red','avatar-gray'];
+        return colors[(name.charCodeAt(0) || 0) % colors.length];
+    };
+
+    const totalDr = Object.values(balances).filter(b => b > 0).reduce((s, b) => s + b, 0);
+    const totalCr = Object.values(balances).filter(b => b < 0).reduce((s, b) => s + Math.abs(b), 0);
+
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center mb-2">
-                <h1 className="text-2xl font-bold text-gray-800">Parties</h1>
-                <div className="flex gap-3">
-                    <div className="relative">
-                        <input 
-                            type="text" 
-                            placeholder="Search parties..." 
-                            value={searchQuery}
-                            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                            className="px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none w-64"
-                        />
-                        <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
-                    </div>
-                    <button
-                        onClick={() => handleOpenModal()}
-                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shrink-0"
-                    >
-                        Add Party
+        <div className="animate-in space-y-5">
+
+            {/* Page Header */}
+            <div className="page-header">
+                <div>
+                    <h1 className="page-title">Parties</h1>
+                    <p className="page-subtitle">Manage customers, vendors and their ledger balances</p>
+                </div>
+                <button className="btn-primary" onClick={() => handleOpenModal()}>+ Add Party</button>
+            </div>
+
+            {/* Stat Cards */}
+            <div className="stat-cards">
+                <div className="stat-card">
+                    <div className="stat-card-value">{totalParties}</div>
+                    <div className="stat-card-label">Total Parties</div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-card-value" style={{color:'#c2410c'}}>{'Rs.'}{(totalDr/1000).toFixed(1)}k</div>
+                    <div className="stat-card-label">Total Receivable</div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-card-value" style={{color:'#059669'}}>{'Rs.'}{(totalCr/1000).toFixed(1)}k</div>
+                    <div className="stat-card-label">Total Payable</div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-card-value" style={{color:'#dc2626'}}>{lockedParties.length}</div>
+                    <div className="stat-card-label">Locked Parties</div>
+                </div>
+            </div>
+
+            {/* Tab Bar + Search */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="tab-bar">
+                    <button className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`} onClick={() => setActiveTab('all')}>
+                        All Parties
+                    </button>
+                    <button className={`tab-btn ${activeTab === 'locked' ? 'active' : ''}`} onClick={() => { setActiveTab('locked'); fetchLockedParties(); }}>
+                        Locked
+                        {lockedParties.length > 0 && <span className="badge badge-danger" style={{marginLeft:'4px'}}>{lockedParties.length}</span>}
                     </button>
                 </div>
-            </div>
-
-            <div className="flex border-b border-gray-200">
-                <button 
-                    className={`py-3 px-6 text-sm font-medium border-b-2 transition-colors ${activeTab === 'all' ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                    onClick={() => setActiveTab('all')}
-                >
-                    All Parties
-                </button>
-                <button 
-                    className={`py-3 px-6 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'locked' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                    onClick={() => setActiveTab('locked')}
-                >
-                    {lockedParties.length > 0 && <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-[10px] font-bold">{lockedParties.length}</span>}
-                    Locked Parties
-                </button>
-            </div>
-
-            {activeTab === 'all' && (
-                <>
-            {loading ? (
-                <div className="flex justify-center items-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+                <div style={{display:'flex',alignItems:'center',gap:'8px',background:'white',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'8px 12px',boxShadow:'0 1px 3px rgba(0,0,0,0.04)',minWidth:'260px'}}>
+                    <span style={{color:'#94a3b8',fontSize:'14px'}}>search</span>
+                    <input
+                        type="text"
+                        placeholder="Search by name or phone..."
+                        value={searchQuery}
+                        onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                        style={{flex:1,border:'none',outline:'none',fontSize:'14px',background:'transparent',color:'#0f172a'}}
+                    />
+                    {searchQuery && <button onClick={() => setSearchQuery('')} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:'18px',lineHeight:1}}>x</button>}
                 </div>
-            ) : (
-                <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-gray-50 border-bottom border-gray-100">
-                                <th className="px-6 py-4 text-sm font-semibold text-gray-600">Company / Name</th>
-                                <th className="px-6 py-4 text-sm font-semibold text-gray-600">Email</th>
-                                <th className="px-6 py-4 text-sm font-semibold text-gray-600">Phone</th>
-                                <th className="px-6 py-4 text-sm font-semibold text-gray-600">GSTIN</th>
-                                <th className="px-6 py-4 text-sm font-semibold text-gray-600">Sites</th>
-                                <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-right">Balance</th>
-                                <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {parties.map((party) => {
-                                const bal = balances[party._id] ?? party.currentBalance ?? 0;
-                                const activeSites = (party.sites || []).filter(s => s.isActive !== false);
-                                return (
-                                <tr 
-                                    key={party._id} 
-                                    className="hover:bg-gray-50 transition-colors cursor-pointer"
-                                    onClick={() => navigate(`/party-ledger/${party._id}`)}
-                                >
-                                    <td className="px-6 py-4">
-                                        <div className="font-medium text-gray-900 flex items-center gap-2">
-                                            {party.companyName || party.name}
-                                            {party.unlockedUntil && new Date(party.unlockedUntil) > new Date() ? (
-                                                <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full" title={`Unlocked until ${new Date(party.unlockedUntil).toLocaleString()}`}>
-                                                    🔓 Unlocked
-                                                </span>
-                                            ) : lockedStatuses[party._id] ? (
-                                                <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full" title="Locked due to pending balance over limit">
-                                                    🔒 Locked
-                                                </span>
-                                            ) : null}
-                                        </div>
-                                        {party.companyName && <div className="text-xs text-gray-500">{party.name}</div>}
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-600">{party.email}</td>
-                                    <td className="px-6 py-4 text-gray-600">
-                                        <div>{party.phone}</div>
-                                        {party.phone2 && <div className="text-xs text-gray-400">{party.phone2}</div>}
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-600">{party.gstin || '-'}</td>
-                                    <td className="px-6 py-4">
-                                        {activeSites.length > 0 ? (
-                                            <div className="flex flex-wrap gap-1">
-                                                {activeSites.slice(0, 2).map((s, i) => (
-                                                    <span key={i} className="inline-block bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-100">
-                                                        🏗️ {s.name}
-                                                    </span>
-                                                ))}
-                                                {activeSites.length > 2 && (
-                                                    <span className="inline-block bg-gray-100 text-gray-500 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                                        +{activeSites.length - 2}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <span className="text-gray-300 text-xs">—</span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <span className={`inline-block px-2.5 py-1 rounded-lg text-sm font-bold ${bal > 0 ? 'bg-orange-100 text-orange-700' : bal < 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                                            {bal !== 0 ? `₹${Math.abs(bal).toLocaleString('en-IN')} ${bal > 0 ? 'Dr' : 'Cr'}` : '—'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right space-x-3" onClick={(e) => e.stopPropagation()}>
-                                        <button
-                                            onClick={() => navigate(`/ledger/${party._id}`)}
-                                            className="text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 p-1.5 rounded-lg transition-colors inline-flex items-center justify-center"
-                                            title="View Party Ledger"
-                                        >
-                                            <BookOpenIcon className="w-5 h-5" />
-                                        </button>
-                                        <button
-                                            onClick={() => handleOpenModal(party)}
-                                            className="text-primary-500 hover:text-primary-700 hover:bg-primary-50 p-1.5 rounded-lg transition-colors inline-flex items-center justify-center"
-                                            title="Edit Party"
-                                        >
-                                            <PencilSquareIcon className="w-5 h-5" />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(party._id, bal)}
-                                            className={`${bal !== 0 ? 'text-gray-300 cursor-not-allowed' : 'text-red-400 hover:text-red-600 hover:bg-red-50'} p-1.5 rounded-lg transition-colors inline-flex items-center justify-center`}
-                                            title={bal !== 0 ? "Cannot delete party with outstanding balance" : "Delete Party"}
-                                            disabled={bal !== 0}
-                                        >
-                                            <TrashIcon className="w-5 h-5" />
-                                        </button>
-                                    </td>
-                                </tr>
-                                );
-                            })}
-                            
-                            {parties.length === 0 && (
-                                <tr>
-                                    <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
-                                        <div className="flex flex-col items-center">
-                                            <span className="text-4xl mb-3">🔍</span>
-                                            <p className="text-lg font-medium">No parties found</p>
-                                            <p className="text-sm">Try adjusting your search or add a new party.</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+            </div>
 
-                    {/* Pagination */}
-                    {totalParties > 0 && (
-                    <div className="flex items-center justify-between px-6 py-3 bg-white border-t border-gray-200">
-                        <div className="flex flex-1 justify-between sm:hidden">
-                            <button
-                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                disabled={currentPage === 1}
-                                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                            >
-                                Previous
-                            </button>
-                            <button
-                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                disabled={currentPage === totalPages}
-                                className="relative ml-3 inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                            >
-                                Next
-                            </button>
-                        </div>
-                        <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                            <div className="flex items-center gap-4">
-                                <p className="text-sm text-gray-700">
-                                    Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalParties)}</span> of <span className="font-medium">{totalParties}</span> results
-                                </p>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm text-gray-700">Rows per page:</span>
+            {/* All Parties */}
+            {activeTab === 'all' && (
+                loading ? (
+                    <div className="table-wrapper" style={{display:'flex',justifyContent:'center',alignItems:'center',height:'240px'}}>
+                        <div style={{width:'40px',height:'40px',border:'3px solid #dbeafe',borderTop:'3px solid #2563eb',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}></div>
+                    </div>
+                ) : parties.length === 0 ? (
+                    <div className="table-wrapper">
+                        <EmptyState icon="person" title="No parties yet" description="Add your first customer or vendor to get started." action={<button className="btn-primary" onClick={() => handleOpenModal()}>+ Add Party</button>} />
+                    </div>
+                ) : (
+                    <div className="table-wrapper">
+                        <table className="table-premium">
+                            <thead>
+                                <tr>
+                                    <th>Party</th>
+                                    <th>Contact</th>
+                                    <th>GSTIN</th>
+                                    <th>Sites</th>
+                                    <th style={{textAlign:'right'}}>Balance</th>
+                                    <th style={{textAlign:'right'}}>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {parties.map((party) => {
+                                    const bal = balances[party._id] ?? party.currentBalance ?? 0;
+                                    const activeSites = (party.sites || []).filter(s => s.isActive !== false);
+                                    const displayName = party.companyName || party.name;
+                                    const initials = displayName.substring(0,2).toUpperCase();
+                                    const isLocked = lockedStatuses[party._id];
+                                    const isUnlocked = party.unlockedUntil && new Date(party.unlockedUntil) > new Date();
+                                    return (
+                                        <tr key={party._id} style={{cursor:'pointer'}} onClick={() => navigate(`/party-ledger/${party._id}`)}>
+                                            <td>
+                                                <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
+                                                    <div className={`avatar ${avatarColor(displayName)}`}>{initials}</div>
+                                                    <div>
+                                                        <div style={{fontWeight:'600',color:'#0f172a',display:'flex',alignItems:'center',gap:'6px',flexWrap:'wrap'}}>
+                                                            {displayName}
+                                                            {isUnlocked ? <span className="badge badge-purple">Unlocked</span>
+                                                                : isLocked ? <span className="badge badge-danger">Locked</span> : null}
+                                                        </div>
+                                                        {party.companyName && <div style={{fontSize:'12px',color:'#94a3b8',marginTop:'2px'}}>{party.name}</div>}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div style={{fontWeight:'500',color:'#374151'}}>{party.phone}</div>
+                                                {party.phone2 && <div style={{fontSize:'12px',color:'#94a3b8'}}>{party.phone2}</div>}
+                                                {party.email && <div style={{fontSize:'12px',color:'#94a3b8'}}>{party.email}</div>}
+                                            </td>
+                                            <td>
+                                                {party.gstin
+                                                    ? <span style={{fontFamily:'monospace',fontSize:'12px',background:'#f8fafc',border:'1px solid #e2e8f0',padding:'3px 8px',borderRadius:'6px',color:'#475569'}}>{party.gstin}</span>
+                                                    : <span style={{color:'#cbd5e1'}}>-</span>}
+                                            </td>
+                                            <td>
+                                                {activeSites.length > 0 ? (
+                                                    <div style={{display:'flex',flexWrap:'wrap',gap:'4px'}}>
+                                                        {activeSites.slice(0,2).map((s,i) => <span key={i} className="badge badge-primary">{s.name}</span>)}
+                                                        {activeSites.length > 2 && <span className="badge badge-gray">+{activeSites.length-2}</span>}
+                                                    </div>
+                                                ) : <span style={{color:'#cbd5e1',fontSize:'12px'}}>-</span>}
+                                            </td>
+                                            <td style={{textAlign:'right'}}>
+                                                {bal > 0 ? <span className="balance-dr">Rs.{Math.abs(bal).toLocaleString('en-IN')} Dr</span>
+                                                    : bal < 0 ? <span className="balance-cr">Rs.{Math.abs(bal).toLocaleString('en-IN')} Cr</span>
+                                                        : <span className="balance-nil">-</span>}
+                                            </td>
+                                            <td style={{textAlign:'right'}} onClick={(e) => e.stopPropagation()}>
+                                                <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',gap:'2px'}}>
+                                                    <button className="btn-icon ledger" onClick={() => navigate(`/ledger/${party._id}`)} title="View Ledger">
+                                                        <BookOpenIcon style={{width:'16px',height:'16px'}} />
+                                                    </button>
+                                                    <button className="btn-icon edit" onClick={() => handleOpenModal(party)} title="Edit">
+                                                        <PencilSquareIcon style={{width:'16px',height:'16px'}} />
+                                                    </button>
+                                                    <button
+                                                        className="btn-icon delete"
+                                                        onClick={() => handleDelete(party._id, bal)}
+                                                        title={bal !== 0 ? "Cannot delete with outstanding balance" : "Delete"}
+                                                        disabled={bal !== 0}
+                                                        style={{opacity: bal !== 0 ? 0.3 : 1, cursor: bal !== 0 ? 'not-allowed' : 'pointer'}}
+                                                    >
+                                                        <TrashIcon style={{width:'16px',height:'16px'}} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+
+                        {totalParties > 0 && (
+                            <div className="pagination">
+                                <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
+                                    <span className="pagination-info">
+                                        Showing {(currentPage-1)*itemsPerPage+1}--{Math.min(currentPage*itemsPerPage,totalParties)} of {totalParties}
+                                    </span>
                                     <select
                                         value={itemsPerPage}
                                         onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-                                        className="text-sm border border-gray-300 rounded-md py-1 px-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                                        style={{fontSize:'12px',border:'1px solid #e2e8f0',borderRadius:'8px',padding:'4px 8px',outline:'none'}}
                                     >
-                                        <option value="10">10</option>
-                                        <option value="20">20</option>
-                                        <option value="50">50</option>
-                                        <option value="100">100</option>
-                                        <option value="500">500</option>
+                                        {[10,20,50,100].map(n => <option key={n} value={n}>{n} / page</option>)}
                                     </select>
                                 </div>
+                                <div className="pagination-controls">
+                                    <button className="page-btn" onClick={() => setCurrentPage(1)} disabled={currentPage===1}>first</button>
+                                    <button className="page-btn" onClick={() => setCurrentPage(p => Math.max(1,p-1))} disabled={currentPage===1}>prev</button>
+                                    <span className="page-btn active">{currentPage} / {totalPages}</span>
+                                    <button className="page-btn" onClick={() => setCurrentPage(p => Math.min(totalPages,p+1))} disabled={currentPage===totalPages}>next</button>
+                                    <button className="page-btn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage===totalPages}>last</button>
+                                </div>
                             </div>
-                            <div>
-                                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                                    <button
-                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                        disabled={currentPage === 1}
-                                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                                    >
-                                        <span className="sr-only">Previous</span>
-                                        &larr;
-                                    </button>
-                                    <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                                        Page {currentPage} of {totalPages}
-                                    </span>
-                                    <button
-                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                        disabled={currentPage === totalPages}
-                                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                                    >
-                                        <span className="sr-only">Next</span>
-                                        &rarr;
-                                    </button>
-                                </nav>
-                            </div>
-                        </div>
+                        )}
                     </div>
-                    )}
-                </div>
-            )}
-            </>
+                )
             )}
 
+            {/* Locked Parties Tab */}
             {activeTab === 'locked' && (
-                <div className="space-y-4">
-                    {loadingLocked ? (
-                        <div className="flex justify-center items-center h-64">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
-                        </div>
-                    ) : filteredLockedParties.length === 0 ? (
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center flex flex-col items-center">
-                            <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center text-green-500 mb-4">
-                                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" /></svg>
-                            </div>
-                            <h3 className="text-lg font-bold text-gray-900">No Locked Parties</h3>
-                            <p className="text-gray-500 text-sm mt-1 max-w-sm">All parties are within their credit limits and payment terms.</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {filteredLockedParties.map(party => (
-                                <div key={party._id} className="bg-white rounded-2xl shadow-sm border border-red-200 overflow-hidden flex flex-col p-6 hover:shadow-md transition-shadow">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div>
-                                            <span className="text-[10px] font-bold text-red-600 uppercase tracking-widest bg-red-50 px-2 py-0.5 rounded-full inline-flex items-center gap-1 mb-2">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                                                Billing Locked
-                                            </span>
-                                            <h3 className="text-base font-black text-gray-900">{party.name}</h3>
-                                            <p className="text-xs text-gray-500 mt-1">{party.phone} • {party.email}</p>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="bg-gray-50 rounded-xl p-4 mb-4 grid grid-cols-2 gap-4">
-                                        <div>
-                                            <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-1">Current Balance</span>
-                                            <span className="font-bold text-red-600 text-sm">₹{party.currentBalance?.toLocaleString('en-IN') || 0} Dr</span>
-                                            {party.creditLimit > 0 && <span className="block text-[10px] text-gray-400 mt-0.5">Limit: ₹{party.creditLimit.toLocaleString('en-IN')}</span>}
-                                        </div>
-                                        <div>
-                                            <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-1">Oldest Pending</span>
-                                            <span className="font-bold text-gray-900 text-sm">{party.oldestPendingDays} Days</span>
-                                            {party.creditDays > 0 && <span className="block text-[10px] text-gray-400 mt-0.5">Limit: {party.creditDays} Days</span>}
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="mt-auto pt-4 border-t border-gray-100 flex gap-3">
-                                        <button
-                                            onClick={() => navigate(`/party-ledger/${party._id}`)}
-                                            className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 font-bold text-xs rounded-xl hover:bg-gray-200 transition-colors"
-                                        >
-                                            View Ledger
-                                        </button>
-                                        <button
-                                            onClick={() => { setUnlockPartyData(party); setUnlockModalOpen(true); }}
-                                            className="flex-1 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-2"
-                                        >
-                                            🔓 Unlock
-                                        </button>
+                loadingLocked ? (
+                    <div className="table-wrapper" style={{display:'flex',justifyContent:'center',alignItems:'center',height:'240px'}}>
+                        <div style={{width:'40px',height:'40px',border:'3px solid #fee2e2',borderTop:'3px solid #dc2626',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}></div>
+                    </div>
+                ) : filteredLockedParties.length === 0 ? (
+                    <div className="table-wrapper">
+                        <EmptyState icon="check" title="No Locked Parties" description="All parties are within their credit limits and payment terms." />
+                    </div>
+                ) : (
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:'16px'}}>
+                        {filteredLockedParties.map(party => (
+                            <div key={party._id} style={{background:'white',borderRadius:'16px',border:'1px solid #fecaca',padding:'20px',boxShadow:'0 1px 3px rgba(0,0,0,0.04)'}}>
+                                <div style={{display:'flex',alignItems:'center',gap:'12px',marginBottom:'14px'}}>
+                                    <div className="avatar avatar-red">{(party.companyName||party.name).substring(0,2).toUpperCase()}</div>
+                                    <div>
+                                        <span className="badge badge-danger" style={{marginBottom:'4px',display:'block',width:'fit-content'}}>Billing Locked</span>
+                                        <div style={{fontWeight:'700',fontSize:'14px',color:'#0f172a'}}>{party.companyName||party.name}</div>
+                                        <div style={{fontSize:'12px',color:'#94a3b8'}}>{party.phone}</div>
                                     </div>
                                 </div>
-                            ))}
+                                <div style={{background:'#fef2f2',borderRadius:'12px',padding:'12px',marginBottom:'14px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+                                    <div>
+                                        <div style={{fontSize:'10px',color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:'4px'}}>Balance</div>
+                                        <div style={{fontWeight:'700',color:'#dc2626',fontSize:'14px'}}>Rs.{party.currentBalance?.toLocaleString('en-IN')||0} Dr</div>
+                                        {party.creditLimit > 0 && <div style={{fontSize:'10px',color:'#94a3b8',marginTop:'2px'}}>Limit: Rs.{party.creditLimit.toLocaleString('en-IN')}</div>}
+                                    </div>
+                                    <div>
+                                        <div style={{fontSize:'10px',color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:'4px'}}>Oldest Pending</div>
+                                        <div style={{fontWeight:'700',color:'#0f172a',fontSize:'14px'}}>{party.oldestPendingDays} Days</div>
+                                        {party.creditDays > 0 && <div style={{fontSize:'10px',color:'#94a3b8',marginTop:'2px'}}>Limit: {party.creditDays} Days</div>}
+                                    </div>
+                                </div>
+                                <div style={{display:'flex',gap:'8px'}}>
+                                    <button onClick={() => navigate(`/party-ledger/${party._id}`)} className="btn-secondary" style={{flex:1,padding:'8px',fontSize:'12px',justifyContent:'center'}}>View Ledger</button>
+                                    <button onClick={() => { setUnlockPartyData(party); setUnlockModalOpen(true); }} style={{flex:1,padding:'8px',fontSize:'12px',fontWeight:'600',background:'#fef2f2',color:'#dc2626',border:'1px solid #fecaca',borderRadius:'10px',cursor:'pointer'}}>Unlock</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )
+            )}
+
+            {/* Add/Edit Party Drawer */}
+            <Drawer
+                open={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                title={editingParty ? 'Edit Party' : 'Add New Party'}
+                subtitle={editingParty ? `Editing: ${editingParty.companyName || editingParty.name}` : 'Fill in the details below'}
+                footer={
+                    <>
+                        <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
+                        <button type="submit" form="party-form" className="btn-primary">{editingParty ? 'Update Party' : 'Add Party'}</button>
+                    </>
+                }
+            >
+                <form id="party-form" onSubmit={handleSubmit}>
+
+                    <FormSection icon="person" title="Basic Information" color="#eff6ff">
+                        <div className="form-grid-2">
+                            <FormField label="Display Name" required>
+                                <input required type="text" value={formData.name}
+                                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                    placeholder="e.g. Ravi Kumar" />
+                            </FormField>
+                            <FormField label="Company Name">
+                                <input type="text" value={formData.companyName}
+                                    onChange={(e) => setFormData({...formData, companyName: e.target.value})}
+                                    placeholder="e.g. Ravi Constructions" />
+                            </FormField>
+                            <FormField label="Primary Phone" required>
+                                <input required type="tel" maxLength={10} value={formData.phone}
+                                    onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/\D/g,'').slice(0,10)})}
+                                    placeholder="10-digit number" />
+                            </FormField>
+                            <FormField label="Alternate Phone">
+                                <input type="tel" maxLength={10} value={formData.phone2}
+                                    onChange={(e) => setFormData({...formData, phone2: e.target.value.replace(/\D/g,'').slice(0,10)})}
+                                    placeholder="Optional" />
+                            </FormField>
+                            <FormField label="Email" className="form-full">
+                                <input type="email" value={formData.email}
+                                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                    placeholder="email@example.com" />
+                            </FormField>
+                        </div>
+                    </FormSection>
+
+                    <FormSection icon="money" title="GST and Finance" color="#f0fdf4">
+                        <div className="form-grid-2">
+                            <FormField label="GSTIN">
+                                <input type="text" value={formData.gstin} maxLength={15}
+                                    onChange={(e) => setFormData({...formData, gstin: e.target.value.toUpperCase()})}
+                                    placeholder="22AAAAA0000A1Z5" />
+                            </FormField>
+                            <FormField label="Opening Balance (Rs.)" hint="Positive = Party owes you. Negative = Advance paid.">
+                                <input type="number" step="0.01" value={formData.openingBalance}
+                                    onChange={(e) => setFormData({...formData, openingBalance: e.target.value==='' ? '' : parseFloat(e.target.value)})}
+                                    placeholder="e.g. 5000 or -1000" />
+                            </FormField>
+                        </div>
+                    </FormSection>
+
+                    <FormSection icon="house" title="Billing Address" color="#fef9c3">
+                        <div className="form-grid-2">
+                            <FormField label="Street" className="form-full">
+                                <input type="text" value={formData.billingAddress.street}
+                                    onChange={(e) => setFormData({...formData, billingAddress:{...formData.billingAddress, street: e.target.value}})}
+                                    placeholder="Door no., Street name" />
+                            </FormField>
+                            <FormField label="City">
+                                <input type="text" value={formData.billingAddress.city}
+                                    onChange={(e) => setFormData({...formData, billingAddress:{...formData.billingAddress, city: e.target.value}})}
+                                    placeholder="City" />
+                            </FormField>
+                            <FormField label="State">
+                                <input type="text" value={formData.billingAddress.state}
+                                    onChange={(e) => setFormData({...formData, billingAddress:{...formData.billingAddress, state: e.target.value}})}
+                                    placeholder="State" />
+                            </FormField>
+                        </div>
+                    </FormSection>
+
+                    <FormSection icon="build" title="Project Sites" color="#faf5ff">
+                        {formData.sites.length > 0 && (
+                            <div style={{display:'flex',flexDirection:'column',gap:'8px',marginBottom:'12px'}}>
+                                {formData.sites.map((site,idx) => (
+                                    <div key={idx} style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:'#eff6ff',border:'1px solid #dbeafe',borderRadius:'10px',padding:'10px 14px'}}>
+                                        <div>
+                                            <div style={{fontWeight:'700',fontSize:'13px',color:'#1e40af'}}>{site.name}</div>
+                                            {site.address && <div style={{fontSize:'11px',color:'#3b82f6',marginTop:'2px'}}>{site.address}</div>}
+                                        </div>
+                                        <button type="button" onClick={() => handleRemoveSite(idx)} style={{background:'none',border:'none',color:'#ef4444',fontSize:'18px',cursor:'pointer',lineHeight:1}}>x</button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {!showAddSite && (
+                            <button type="button" onClick={() => setShowAddSite(true)} style={{background:'none',border:'none',color:'#2563eb',fontSize:'13px',cursor:'pointer',padding:'0',fontWeight:'600'}}>+ Add Site</button>
+                        )}
+                        {showAddSite && (
+                            <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'16px',display:'flex',flexDirection:'column',gap:'12px'}}>
+                                <FormField label="Site Name" required>
+                                    <input type="text" autoFocus value={newSiteName}
+                                        onChange={e => setNewSiteName(e.target.value)}
+                                        placeholder="e.g. Phase 1 Building"
+                                        onKeyDown={e => { if(e.key==='Enter'){e.preventDefault();handleAddSite();} }} />
+                                </FormField>
+                                <FormField label="Site Address">
+                                    <input type="text" value={newSiteAddress}
+                                        onChange={e => setNewSiteAddress(e.target.value)}
+                                        placeholder="e.g. 12 Raja St, Chennai"
+                                        onKeyDown={e => { if(e.key==='Enter'){e.preventDefault();handleAddSite();} }} />
+                                </FormField>
+                                <div style={{display:'flex',gap:'8px'}}>
+                                    <button type="button" onClick={handleAddSite} className="btn-primary" style={{padding:'8px 16px',fontSize:'13px'}}>Save Site</button>
+                                    <button type="button" onClick={() => {setShowAddSite(false);setNewSiteName('');setNewSiteAddress('');}} className="btn-secondary" style={{padding:'8px 16px',fontSize:'13px'}}>Cancel</button>
+                                </div>
+                            </div>
+                        )}
+                    </FormSection>
+
+                    {editingParty && lockedStatuses[editingParty._id] && (
+                        <div style={{display:'flex',alignItems:'center',gap:'12px',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:'12px',padding:'14px',marginTop:'8px'}}>
+                            <span style={{fontSize:'20px'}}>warning</span>
+                            <div style={{flex:1}}>
+                                <div style={{fontWeight:'700',fontSize:'13px',color:'#92400e'}}>Party is Credit Locked</div>
+                                <div style={{fontSize:'12px',color:'#b45309',marginTop:'2px'}}>Temporarily allow billing for this party.</div>
+                            </div>
+                            <button type="button"
+                                onClick={() => {setUnlockPartyData(editingParty);setUnlockModalOpen(true);setIsModalOpen(false);}}
+                                style={{padding:'8px 14px',background:'#f59e0b',border:'none',borderRadius:'8px',color:'white',fontWeight:'700',fontSize:'12px',cursor:'pointer',whiteSpace:'nowrap'}}>
+                                Unlock
+                            </button>
                         </div>
                     )}
-                </div>
-            )}
+                </form>
+            </Drawer>
 
-
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60] overflow-y-auto">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl my-8">
-                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                            <h2 className="text-xl font-bold text-gray-800">{editingParty ? 'Edit Party' : 'Add New Party'}</h2>
-                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
-                        </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-                            {/* ── Basic Info ── */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Display Name *</label>
-                                    <input required type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
-                                    <input type="text" value={formData.companyName} onChange={(e) => setFormData({ ...formData, companyName: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                    <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone * <span className="text-gray-400 text-xs">(10 digits)</span></label>
-                                    <input
-                                        required
-                                        type="tel"
-                                        maxLength={10}
-                                        pattern="[0-9]{10}"
-                                        value={formData.phone}
-                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                        placeholder="e.g. 9876543210"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone 2 <span className="text-gray-400 text-xs">(optional, 10 digits)</span></label>
-                                    <input
-                                        type="tel"
-                                        maxLength={10}
-                                        pattern="[0-9]{10}"
-                                        value={formData.phone2}
-                                        onChange={(e) => setFormData({ ...formData, phone2: e.target.value.replace(/\D/g, '').slice(0, 10) })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                        placeholder="Optional alternate number"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">GSTIN</label>
-                                    <input type="text" value={formData.gstin} onChange={(e) => setFormData({ ...formData, gstin: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Opening Balance (₹)</label>
-                                    <input type="number" step="0.01" value={formData.openingBalance} onChange={(e) => setFormData({ ...formData, openingBalance: e.target.value === '' ? '' : parseFloat(e.target.value) })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" placeholder="e.g. 5000 (Owed by party) or -100 (Advance paid)" />
-                                    <p className="text-[10px] text-gray-500 mt-1">Positive = Owed to you. Negative = Advance paid.</p>
-                                </div>
-                            </div>
-
-                            {/* ── Billing Address ── */}
-                            <h3 className="font-semibold text-gray-700 border-b pb-1">Billing Address</h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Street</label>
-                                    <input type="text" value={formData.billingAddress.street} onChange={(e) => setFormData({ ...formData, billingAddress: { ...formData.billingAddress, street: e.target.value } })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                                    <input type="text" value={formData.billingAddress.city} onChange={(e) => setFormData({ ...formData, billingAddress: { ...formData.billingAddress, city: e.target.value } })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-                                    <input type="text" value={formData.billingAddress.state} onChange={(e) => setFormData({ ...formData, billingAddress: { ...formData.billingAddress, state: e.target.value } })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" />
-                                </div>
-                            </div>
-
-                            {/* ── Sites / Projects ── */}
-                            <div className="border-t pt-4">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div>
-                                        <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-                                            🏗️ Project Sites
-                                            <span className="text-[10px] font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                                                Optional — for builders with multiple sites
-                                            </span>
-                                        </h3>
-                                    </div>
-                                    {!showAddSite && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowAddSite(true)}
-                                            className="text-sm font-bold text-primary-600 hover:text-primary-700 bg-primary-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
-                                        >
-                                            + Add Site
-                                        </button>
-                                    )}
-                                </div>
-
-                                {/* Existing sites list */}
-                                {formData.sites.length > 0 && (
-                                    <div className="space-y-2 mb-3">
-                                        {formData.sites.map((site, idx) => (
-                                            <div key={idx} className="flex items-start justify-between bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 group">
-                                                <div>
-                                                    <div className="font-bold text-blue-800 text-sm">🏗️ {site.name}</div>
-                                                    {site.address && <div className="text-xs text-blue-600 mt-0.5">{site.address}</div>}
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleRemoveSite(idx)}
-                                                    className="text-red-400 hover:text-red-600 text-lg font-bold ml-3 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    title="Remove site"
-                                                >
-                                                    ×
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {formData.sites.length === 0 && !showAddSite && (
-                                    <p className="text-xs text-gray-400 italic mb-2">No sites added yet. Click "Add Site" to add construction sites for this party.</p>
-                                )}
-
-                                {/* Inline add-site form */}
-                                {showAddSite && (
-                                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Site Name *</label>
-                                            <input
-                                                type="text"
-                                                value={newSiteName}
-                                                onChange={e => setNewSiteName(e.target.value)}
-                                                placeholder="e.g. Raja Street Site, Phase 2 Building"
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm"
-                                                autoFocus
-                                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddSite(); } }}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Site Address (Optional)</label>
-                                            <input
-                                                type="text"
-                                                value={newSiteAddress}
-                                                onChange={e => setNewSiteAddress(e.target.value)}
-                                                placeholder="e.g. 12 Raja St, Chennai"
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm"
-                                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddSite(); } }}
-                                            />
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={handleAddSite}
-                                                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-bold"
-                                            >
-                                                ✓ Save Site
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => { setShowAddSite(false); setNewSiteName(''); setNewSiteAddress(''); }}
-                                                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
-                                            >
-                                                Cancel
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {editingParty && lockedStatuses[editingParty._id] && (
-                                <div className="flex justify-between items-center bg-yellow-50 p-4 rounded-xl border border-yellow-200 mt-6 mb-2">
-                                    <div>
-                                        <div className="font-bold text-sm text-yellow-800">Credit Lock Bypass</div>
-                                        <div className="text-xs text-yellow-700 mt-1">Temporarily allow billing if this party is locked due to pending balances.</div>
-                                    </div>
-                                    <button 
-                                        type="button"
-                                        onClick={() => { setUnlockPartyData(editingParty); setUnlockModalOpen(true); setIsModalOpen(false); }}
-                                        className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-sm rounded-lg whitespace-nowrap ml-4 transition-colors"
-                                    >
-                                        Unlock Temporarily
-                                    </button>
-                                </div>
-                            )}
-
-                            <div className="flex justify-end gap-3 pt-4 border-t">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-                                <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium">
-                                    {editingParty ? 'Update Party' : 'Add Party'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Unlock Party Modal */}
-            {unlockModalOpen && unlockPartyData && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[70]">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                                🔓 Unlock Party
-                            </h2>
-                            <button onClick={() => setUnlockModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
-                        </div>
-                        
-                        <p className="text-sm text-gray-600 mb-4">
-                            You are temporarily unlocking <strong>{unlockPartyData.companyName || unlockPartyData.name}</strong> for billing.
-                        </p>
-                        
-                        <form onSubmit={handleUnlockSubmit} className="space-y-4">
+            {/* Unlock Party Drawer */}
+            <Drawer
+                open={unlockModalOpen && !!unlockPartyData}
+                onClose={() => setUnlockModalOpen(false)}
+                size="sm"
+                title="Unlock Party"
+                subtitle={unlockPartyData ? `Temporarily unlock ${unlockPartyData.companyName || unlockPartyData.name}` : ''}
+                footer={
+                    <>
+                        <button type="button" className="btn-secondary" onClick={() => setUnlockModalOpen(false)}>Cancel</button>
+                        <button type="submit" form="unlock-form" className="btn-primary" style={{background:'linear-gradient(135deg,#9333ea,#7c3aed)'}}>Unlock Account</button>
+                    </>
+                }
+            >
+                <form id="unlock-form" onSubmit={handleUnlockSubmit} style={{display:'flex',flexDirection:'column',gap:'18px'}}>
+                    {unlockPartyData && (
+                        <div style={{display:'flex',alignItems:'center',gap:'12px',padding:'12px',background:'#f8fafc',borderRadius:'12px',border:'1px solid #f1f5f9'}}>
+                            <div className="avatar avatar-red">{(unlockPartyData.companyName||unlockPartyData.name).substring(0,2).toUpperCase()}</div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Days to Unlock *</label>
-                                <input 
-                                    type="number"
-                                    min="1"
-                                    max="365"
-                                    required
-                                    value={unlockDays}
-                                    onChange={(e) => setUnlockDays(Number(e.target.value))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm"
-                                />
+                                <div style={{fontWeight:'700',fontSize:'14px',color:'#0f172a'}}>{unlockPartyData.companyName||unlockPartyData.name}</div>
+                                <div style={{fontSize:'12px',color:'#94a3b8'}}>Currently locked due to pending balance</div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Reason for Unlock (Required) *</label>
-                                <textarea 
-                                    required
-                                    rows="3"
-                                    value={unlockComment}
-                                    onChange={(e) => setUnlockComment(e.target.value)}
-                                    placeholder="e.g., Payment expected tomorrow, Manager approved."
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm"
-                                ></textarea>
-                            </div>
-                            
-                            <div className="flex justify-end gap-3 pt-2">
-                                <button type="button" onClick={() => setUnlockModalOpen(false)} className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">Cancel</button>
-                                <button type="submit" className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium text-sm">
-                                    Unlock Account
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+                        </div>
+                    )}
+                    <FormField label="Days to Unlock" required hint="Party will be re-locked automatically after this period.">
+                        <input type="number" min="1" max="365" required value={unlockDays}
+                            onChange={(e) => setUnlockDays(Number(e.target.value))} placeholder="e.g. 3" />
+                    </FormField>
+                    <FormField label="Reason for Unlock" required>
+                        <textarea required rows="3" value={unlockComment}
+                            onChange={(e) => setUnlockComment(e.target.value)}
+                            placeholder="e.g. Payment expected tomorrow, Manager approved."
+                            style={{resize:'vertical'}} />
+                    </FormField>
+                </form>
+            </Drawer>
+
         </div>
     );
 };

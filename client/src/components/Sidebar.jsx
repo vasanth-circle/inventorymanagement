@@ -179,67 +179,73 @@ const Sidebar = ({ isOpen, onClose }) => {
 
             <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-100 shadow-xl lg:shadow-none lg:static lg:flex lg:flex-col transform transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)] ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
                 
-                {/* Header / Logo */}
-                <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100/80 shrink-0">
-                    <div className="flex items-center gap-3">
-                        {companyLogo ? (
-                            <img src={companyLogo} alt="Logo" className="h-8 object-contain" />
-                        ) : (
-                            <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
-                                <span className="text-white font-bold text-sm tracking-tighter">IM</span>
-                            </div>
-                        )}
-                        <div>
-                            <span className="text-lg font-bold text-gray-900 tracking-tight">Vasanth</span>
-                            <span className="text-xs font-semibold text-primary-600 block leading-none">Enterprise</span>
-                        </div>
-                    </div>
-                    <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg lg:hidden transition-colors">
-                        <span className="text-xl leading-none">&times;</span>
-                    </button>
-                </div>
-
-                {/* App Switcher */}
-                <div className="relative p-4 border-b border-gray-100 shrink-0">
-                    <button 
+                {/* Header / Logo — also serves as App Switcher toggle */}
+                <div className="relative shrink-0">
+                    <button
                         onClick={() => setShowAppSwitcher(!showAppSwitcher)}
-                        className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200/50"
+                        className="w-full h-16 flex items-center justify-between px-5 border-b border-gray-100/80 hover:bg-gray-50 transition-colors"
                     >
                         <div className="flex items-center gap-3">
-                            <span className="text-xl">{activeApp === 'inventory' ? '📦' : '🖥️'}</span>
+                            {companyLogo ? (
+                                <img src={companyLogo} alt="Logo" className="h-8 object-contain" />
+                            ) : (
+                                <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
+                                    <span className="text-white font-bold text-sm tracking-tighter">IM</span>
+                                </div>
+                            )}
                             <div className="text-left">
-                                <span className="block text-sm font-semibold text-gray-900 capitalize">{activeApp} Suite</span>
-                                <span className="block text-xs text-gray-500">Switch Application</span>
+                                <span className="text-base font-bold text-gray-900 tracking-tight block leading-tight">Vasanth</span>
+                                <span className="text-[11px] font-semibold text-primary-600 block leading-none">
+                                    {activeApp === 'inventory' ? '📦 Inventory Suite' : '🖥️ Asset Suite'}
+                                </span>
                             </div>
                         </div>
-                        <span className="text-gray-400">▼</span>
+                        <span className={`text-gray-400 text-[10px] transition-transform duration-200 ${showAppSwitcher ? 'rotate-180' : ''}`}>▼</span>
                     </button>
+                    {/* Mobile close button — separate from the toggle button to avoid nesting */}
+                    <div
+                        onClick={onClose}
+                        className="absolute top-4 right-12 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg lg:hidden transition-colors cursor-pointer"
+                    >
+                        <span className="text-lg leading-none">&times;</span>
+                    </div>
 
                     {showAppSwitcher && (
-                        <div className="absolute top-full left-4 right-4 mt-2 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
-                            <button 
+                        <div className="absolute top-full left-0 right-0 bg-white border-b border-gray-100 shadow-md z-50">
+                            <button
                                 onClick={() => {
                                     sessionStorage.setItem('activeApp', 'inventory');
                                     setShowAppSwitcher(false);
                                     window.location.href = '/dashboard';
                                 }}
-                                className={`w-full flex items-center gap-3 px-4 py-2 text-sm ${activeApp === 'inventory' ? 'bg-primary-50 text-primary-700 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
+                                className={`w-full flex items-center gap-3 px-5 py-3 text-sm border-b border-gray-50 ${activeApp === 'inventory' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}
                             >
-                                <span className="text-lg">📦</span> Inventory Suite
+                                <span>📦</span>
+                                <div className="text-left">
+                                    <span className="block font-semibold">Inventory Suite</span>
+                                    <span className="text-[10px] text-gray-400">Stock, Sales & Purchases</span>
+                                </div>
+                                {activeApp === 'inventory' && <span className="ml-auto text-primary-600 text-xs font-black">✓</span>}
                             </button>
-                            <button 
+                            <button
                                 onClick={() => {
                                     sessionStorage.setItem('activeApp', 'assets');
                                     setShowAppSwitcher(false);
                                     window.location.href = '/assets/dashboard';
                                 }}
-                                className={`w-full flex items-center gap-3 px-4 py-2 text-sm ${activeApp === 'assets' ? 'bg-primary-50 text-primary-700 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
+                                className={`w-full flex items-center gap-3 px-5 py-3 text-sm ${activeApp === 'assets' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}
                             >
-                                <span className="text-lg">🖥️</span> Asset Suite
+                                <span>🖥️</span>
+                                <div className="text-left">
+                                    <span className="block font-semibold">Asset Suite</span>
+                                    <span className="text-[10px] text-gray-400">Track company assets</span>
+                                </div>
+                                {activeApp === 'assets' && <span className="ml-auto text-primary-600 text-xs font-black">✓</span>}
                             </button>
                         </div>
                     )}
                 </div>
+
 
                 {/* Navigation Items */}
                 <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar py-4 px-3 space-y-6">
