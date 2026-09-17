@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import SearchableSelect from '../components/SearchableSelect';
@@ -98,7 +98,354 @@ const PurchaseOrders = () => {
         const delayDebounceFn = setTimeout(() => {
             fetchOrders(1);
         }, 500);
-        // Helper: avatar color
+        return () => clearTimeout(delayDebounceFn);
+    }, [search, from, to, sortBy, sortOrder]);
+
+    const fetchOrders = async (page = 1) => {
+        try {
+            setLoading(true);
+            const params = { page, limit: 10, sortBy, sortOrder };
+            if (from) params.from = from;
+            if (to) params.to = to;
+            if (search) params.search = search;
+            const res = await axios.get(API_URL, {
+                params,
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+            });
+            setOrders(res.data.data.orders);
+            setTotalPages(res.data.data.totalPages || 1);
+            setCurrentPage(res.data.data.currentPage || 1);
+        } catch (error) {
+            toast.error('Failed to fetch purchase orders');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchVendorsAndItems = async () => {
+        try {
+            const [vendRes, itemRes, hsnRes, catRes] = await Promise.allSettled([
+                axios.get('/api/vendors', { params: { limit: 1000 }, headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } }),
+                axios.get('/api/items', { params: { limit: 10000 }, headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } }),
+                axios.get('/api/hsn', { headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } }),
+                axios.get('/api/categories', { headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` } })
+            ]);
+            if (vendRes.status === 'fulfilled') setVendors(vendRes.value.data.data?.vendors || []);
+            if (itemRes.status === 'fulfilled') setItems(itemRes.value.data.items || []);
+            if (hsnRes.status === 'fulfilled') setHsnCodes(hsnRes.value.data.data || hsnRes.value.data || []);
+            if (catRes.status === 'fulfilled') setCategories(Array.isArray(catRes.value.data) ? catRes.value.data : (catRes.value.data?.categories || []));
+        } catch (error) {
+            console.error('Error fetching dependencies');
+        }
+    };
+
+    const handleAddItem = () => {
+        setFormData({
+            ...formData,
+            items: [...formData.items, { 
+                item: '', 
+                quantity: '', 
+                damagedQuantity: '',
+                price: '', 
+                taxRate: formData.taxRate,
+                boxCount: '', 
+                totalPcs: '', 
+                totalSqFt: '',
+                brand: '',
+                size: '',
+                billingUnit: billingSettings?.industry === 'tiles' ? 'boxes' : 'pieces'
+            }]
+        });
+    };
+
+    const handleRemoveItem = (index) => {
+        if (formData.items.length === 1) return; // Keep at least one row
+        const newItems = formData.items.filter((_, i) => i !== index);
+        setFormData({ ...formData, items: newItems });
+    };
+
+    const handleQuickAddItemSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const dataToSubmit = {
+                ...quickAddItemData,
+                unitType: billingSettings?.unitConfig?.quantityBasis || 'pieces'
+            };
+            const res = await axios.post('/api/items', dataToSubmit, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+            });
+            toast.success('Item added successfully');
+            setItems([...items, res.data.data]);
+            setIsQuickAddItemOpen(false);
+            setQuickAddItemData({ name: '', sku: '', purchasePrice: '', category: '', hsn: '', unitType: 'pieces', size: '', pcsPerBox: '', sqFtPerPc: '' });
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Error adding item');
+        }
+    };
+
+    const handleItemChange = (index, field, value) => {
+        try {
+            const newItems = [...formData.items];
+            
+            // Handle item selection correctly since SearchableSelect sends an event object
+            if (field === 'item') {
+                const selectedItemId = (value && value.target) ? value.target.value : value;
+                const selectedItem = items.find(i => i._id === selectedItemId);
+                if (selectedItem) {
+                    // Look up HSN gstRate for this item
+                    const hsnEntry = hsnCodes.find(h => h.code === selectedItem.hsn);
+                    let autoTaxRate = hsnEntry ? hsnEntry.gstRate : (formData.taxRate || 0);
+                    
+                    const vendorGstin = vendors.find(v => v._id === formData.vendor)?.gstin;
+                    if (!vendorGstin) autoTaxRate = 0;
+
+                    newItems[index] = {
+                        ...newItems[index],
+                        item: selectedItemId,
+                        name: selectedItem.name || 'Unknown',
+                        price: Number(selectedItem.purchasePrice || selectedItem.price) || 0,
+                        brand: selectedItem.brand || '',
+                        size: selectedItem.size || '',
+                        hsnCode: selectedItem.hsn || '',
+                        taxRate: autoTaxRate,
+                        unitType: selectedItem.unitType || 'pieces',
+                        sqFtPerPc: Number(selectedItem.sqFtPerPc) || 0,
+                        pcsPerBox: Math.max(1, Number(selectedItem.pcsPerBox) || 1),
+                        billingUnit: (billingSettings?.industry === 'tiles' && Number(selectedItem.sqFtPerPc) > 0 && !['pieces', 'pcs', 'nos', 'piece'].includes((selectedItem.unitType || '').toLowerCase())) ? 'boxes' : (['box', 'boxes'].includes((selectedItem.unitType || '').toLowerCase()) ? 'boxes' : 'pieces')
+                    };
+                    
+                    // Initial calculation
+                    newItems[index].total = 0;
+                }
+            } else if (field === 'piecesCount' || field === 'boxCount' || field === 'price' || field === 'billingUnit' || field === 'quantity' || field === 'damagedQuantity') {
+                const row = newItems[index];
+                if (field === 'piecesCount') row.totalPcs = Number(value || 0);
+                if (field === 'boxCount') row.boxCount = Number(value || 0);
+                if (field === 'price') row.price = Number(value || 0);
+                if (field === 'billingUnit') row.billingUnit = value;
+                if (field === 'quantity') row.quantity = Number(value || 0);
+                if (field === 'damagedQuantity') row.damagedQuantity = Number(value || 0);
+
+                if (billingSettings?.industry === 'tiles' && row.sqFtPerPc > 0) {
+                    if (field === 'piecesCount') {
+                        row.boxCount = row.pcsPerBox > 0 ? row.totalPcs / row.pcsPerBox : 0;
+                    } else if (field === 'boxCount') {
+                        row.totalPcs = row.boxCount * (row.pcsPerBox || 1);
+                    }
+                    row.quantity = row.billingUnit === 'boxes' ? row.boxCount : row.totalPcs;
+                }
+                row.total = Number(((row.quantity || 0) * (row.price || 0)).toFixed(2));
+            } else {
+                newItems[index][field] = value;
+            }
+
+            setFormData({ ...formData, items: newItems });
+        } catch (err) {
+            console.error("handleItemChange error:", err);
+            toast.error("Error updating item: " + err.message);
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            let itemsTotal = formData.items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
+            // Calculate tax per item using each row's individual tax rate
+            let taxAmount = formData.items.reduce((sum, item) => {
+                const rate = parseFloat(item.taxRate ?? formData.taxRate) || 0;
+                return sum + ((parseFloat(item.total) || 0) * rate / 100);
+            }, 0);
+            let netTotal = itemsTotal + taxAmount;
+            let roundOffAmount = 0;
+            if (billingSettings?.documentConfig?.enableRoundOff) {
+                const roundedTotal = Math.round(netTotal);
+                roundOffAmount = roundedTotal - netTotal;
+                netTotal = roundedTotal;
+            }
+            
+            const submissionData = {
+                ...formData,
+                taxType,
+                itemsTotal,
+                taxAmount,
+                totalAmount: netTotal,
+                roundOffAmount
+            };
+
+            if (editingOrder) {
+                await axios.put(`${API_URL}/${editingOrder._id}`, submissionData, {
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+                });
+                toast.success('Purchase order updated successfully');
+            } else {
+                const res = await axios.post(API_URL, submissionData, {
+                    headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+                });
+                
+                if (billingSettings?.directPurchaseInward) {
+                    const newOrder = res.data.data;
+                    await axios.patch(`${API_URL}/${newOrder._id}/status`, { status: 'issued' }, {
+                        headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+                    });
+                    const receivedItems = newOrder.items.map((i, idx) => ({
+                        item: i.item?._id || i.item,
+                        receivedQuantity: i.quantity,
+                        damagedQuantity: formData.items[idx]?.damagedQuantity || i.damagedQuantity || 0,
+                        price: i.price,
+                        batchNumber: `PO-${newOrder.orderNumber}`
+                    }));
+                    await axios.post(`${API_URL}/${newOrder._id}/receive`, {
+                        receivedItems,
+                        vendorBillNumber: newOrder.vendorBillNumber
+                    }, {
+                        headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+                    });
+                }
+                toast.success('Purchase order created successfully');
+            }
+            setIsModalOpen(false);
+            setEditingOrder(null);
+            fetchOrders();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Error saving order');
+        }
+    };
+
+    const handleEdit = (order) => {
+        setEditingOrder(order);
+        setFormData({
+            vendor: order.vendor?._id || order.vendor,
+            vendorBillNumber: order.vendorBillNumber || '',
+            billDate: order.billDate ? new Date(order.billDate).toISOString().split('T')[0] : (order.orderDate ? new Date(order.orderDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
+            roundOffAmount: order.roundOffAmount !== undefined && order.roundOffAmount !== null && order.roundOffAmount !== 0 ? order.roundOffAmount : '',
+            taxRate: order.taxRate ?? 0,
+            notes: order.notes || '',
+            items: order.items.map(i => ({
+                item: i.item?._id || i.item,
+                quantity: i.quantity,
+                damagedQuantity: i.damagedQuantity || '',
+                price: i.price,
+                taxRate: i.taxRate ?? order.taxRate ?? 0,
+                boxCount: i.boxCount || '',
+                totalPcs: i.totalPcs || '',
+                brand: i.item?.brand || i.brand || '',
+                size: i.item?.size || i.size || '',
+                unitType: i.item?.unitType || i.unitType || 'pieces',
+                sqFtPerPc: Number(i.item?.sqFtPerPc || i.sqFtPerPc || 0),
+                pcsPerBox: Math.max(1, Number(i.item?.pcsPerBox || i.pcsPerBox || 1)),
+                billingUnit: i.billingUnit || (billingSettings?.industry === 'tiles' ? 'boxes' : 'pieces'),
+                total: i.total || (i.quantity * i.price)
+            }))
+        });
+        setTaxType(order.taxType || 'cgst');
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (orderId) => {
+        if (!window.confirm("Are you sure you want to delete this purchase order?")) return;
+        try {
+            await axios.delete(`${API_URL}/${orderId}`, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+            });
+            toast.success('Purchase order deleted successfully');
+            fetchOrders();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Error deleting order');
+        }
+    };
+
+    const handleStatusUpdate = async (id, status) => {
+        try {
+            await axios.patch(`${API_URL}/${id}/status`, { status }, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+            });
+            toast.success(`Order marked as ${status}`);
+            fetchOrders();
+        } catch (error) {
+            toast.error('Failed to update status');
+        }
+    };
+
+    const openViewModal = (order) => {
+        setSelectedOrder(order);
+        setIsViewModalOpen(true);
+    };
+
+    const handlePrintOrder = (order) => {
+        if (!billingSettings) return;
+        const html = generatePurchaseOrderHtml(order, billingSettings);
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(html);
+        printWindow.document.close();
+        setTimeout(() => {
+            printWindow.print();
+        }, 500);
+    };
+
+    const openReceiveModal = (order) => {
+        setSelectedOrder(order);
+        setReceiveVendorBillNo(order.vendorBillNumber || '');
+        // order.items have item populated with name and sku
+        const initialReceiveData = order.items.map(i => ({
+            item: i.item?._id || i.item,
+            name: `${i.item?.name || i.name || 'Unknown Item'}${i.item?.size ? ` - ${i.item?.size}` : ''}`,
+            expected: i.quantity, // This is totalSqFt
+            receivedQuantity: i.quantity,
+            damagedQuantity: 0,
+            price: i.price, // Preserve the PO rate
+            batchNumber: `PO-${order.orderNumber}` // Default batch name
+        }));
+        setReceiveData(initialReceiveData);
+        setIsReceiveModalOpen(true);
+    };
+
+    const handleReceiveDataChange = (index, field, value) => {
+        const newData = [...receiveData];
+        newData[index][field] = value;
+        setReceiveData(newData);
+    };
+
+    const handleReceiveSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            await axios.post(`${API_URL}/${selectedOrder._id}/receive`, {
+                receivedItems: receiveData,
+                vendorBillNumber: receiveVendorBillNo
+            }, {
+                headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+            });
+            toast.success(`Purchase order received successfully`);
+            setIsReceiveModalOpen(false);
+            fetchOrders();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to receive order');
+        }
+    };
+
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'draft': return 'bg-gray-100 text-gray-800';
+            case 'issued': return 'bg-blue-100 text-blue-800';
+            case 'received': return 'bg-green-100 text-green-800';
+            case 'billed': return 'bg-purple-100 text-purple-800';
+            default: return 'bg-gray-100 text-gray-800';
+        }
+    };
+
+    const handleSort = (field) => {
+        if (sortBy === field) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortBy(field);
+            setSortOrder('desc');
+        }
+    };
+
+    const renderSortIcon = (field) => {
+        if (sortBy !== field) return null;
+        return <span className="ml-1 inline-block">{sortOrder === 'asc' ? 'Î“Ã¥Ã¦' : 'Î“Ã¥Ã´'}</span>;
+    };
+    // Helper: avatar color
     const avatarColor = (name = '') => {
         const colors = ['avatar-blue','avatar-purple','avatar-green','avatar-orange','avatar-red','avatar-gray'];
         return colors[(name.charCodeAt(0) || 0) % colors.length];
@@ -113,7 +460,13 @@ const PurchaseOrders = () => {
                     <p className="page-subtitle">Manage supplier orders, vendor bills, and inwards</p>
                 </div>
                 {!isGodown && (
-                    <button className="btn-primary" onClick={() => { resetForm(); setIsModalOpen(true); }}>
+                    <button className="btn-primary" onClick={() => {
+                        setFormData({
+                            vendor: '', vendorBillNumber: '', billDate: new Date().toISOString().split('T')[0], roundOffAmount: '', taxRate: 0,
+                            items: [{ item: '', quantity: '', damagedQuantity: '', price: '', taxRate: 0, discount: 0, freeQuantity: 0 }]
+                        });
+                        setIsModalOpen(true);
+                    }}>
                         + Create PO
                     </button>
                 )}
@@ -168,7 +521,13 @@ const PurchaseOrders = () => {
                         icon="📋"
                         title="No purchase orders"
                         description="Try adjusting your search filters or create a new purchase order."
-                        action={!isGodown && <button className="btn-primary" onClick={() => { resetForm(); setIsModalOpen(true); }}>+ Create PO</button>}
+                        action={!isGodown && <button className="btn-primary" onClick={() => {
+                        setFormData({
+                            vendor: '', vendorBillNumber: '', billDate: new Date().toISOString().split('T')[0], roundOffAmount: '', taxRate: 0,
+                            items: [{ item: '', quantity: '', damagedQuantity: '', price: '', taxRate: 0, discount: 0, freeQuantity: 0 }]
+                        });
+                        setIsModalOpen(true);
+                    }}>+ Create PO</button>}
                     />
                 </div>
             ) : (
@@ -215,13 +574,13 @@ const PurchaseOrders = () => {
                                         </td>
                                         <td style={{textAlign:'right'}}>
                                             <div style={{display:'flex',justifyContent:'flex-end',gap:'4px'}}>
-                                                <button className="btn-icon ledger" onClick={() => handleView(order)} title="View Order">👁️</button>
-                                                <button className="btn-icon" onClick={() => handlePrint(order)} title="Print Document">📄</button>
+                                                <button className="btn-icon ledger" onClick={() => openViewModal(order)} title="View Order">👁️</button>
+                                                <button className="btn-icon" onClick={() => handlePrintOrder(order)} title="Print Document">📄</button>
                                                 {!isGodown && order.status !== 'received' && (
                                                     <button className="btn-icon edit" onClick={() => handleEdit(order)} title="Edit">✏️</button>
                                                 )}
                                                 {(order.status === 'pending' || order.status === 'partially_received') && (
-                                                    <button className="btn-icon edit" onClick={() => handleReceive(order)} title="Receive Items">📥</button>
+                                                    <button className="btn-icon edit" onClick={() => openReceiveModal(order)} title="Receive Items">📥</button>
                                                 )}
                                             </div>
                                         </td>
@@ -249,7 +608,6 @@ const PurchaseOrders = () => {
                 </div>
             )}
 
-            {/* Create/Edit Modal Placeholder (Assuming the logic is complex, just wrapped in Drawer) */}
             <Drawer
                 open={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
@@ -278,7 +636,7 @@ const PurchaseOrders = () => {
                                     value={formData.vendor}
                                     onChange={(val) => {
                                         setFormData(prev => ({ ...prev, vendor: val }));
-                                        handleVendorSelect(val);
+                                        handleVendorChange(val);
                                     }}
                                     placeholder="Search Vendor..."
                                     displayKey="name"
@@ -373,7 +731,7 @@ const PurchaseOrders = () => {
                     <FormField label="Purchase Price">
                         <input type="number" value={quickAddItemData.purchasePrice} onChange={(e) => setQuickAddItemData({...quickAddItemData, purchasePrice: e.target.value})} />
                     </FormField>
-                    <button type="button" onClick={handleQuickAddItem} className="btn-primary w-full justify-center">Save Item</button>
+                    <button type="button" onClick={handleQuickAddItemSubmit} className="btn-primary w-full justify-center">Save Item</button>
                 </div>
             </Drawer>
 
@@ -381,7 +739,7 @@ const PurchaseOrders = () => {
             <Drawer open={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title="View Purchase Order" size="lg">
                 <div className="p-4">
                     {/* View rendering logic (kept simple to avoid huge code blocks) */}
-                    <button className="btn-primary mb-4" onClick={() => handlePrint(selectedOrder)}>Print PO</button>
+                    <button className="btn-primary mb-4" onClick={() => handlePrintOrder(selectedOrder)}>Print PO</button>
                     <pre style={{fontSize:'11px',whiteSpace:'pre-wrap'}}>{JSON.stringify(selectedOrder, null, 2)}</pre>
                 </div>
             </Drawer>
