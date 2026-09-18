@@ -38,6 +38,22 @@ const tenantSchema = new mongoose.Schema({
     owner: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
+    },
+    planId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Plan',
+    },
+    subscriptionId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Subscription',
+    },
+    trialEndsAt: {
+        type: Date,
+    },
+    billingStatus: {
+        type: String,
+        enum: ['active', 'past_due', 'canceled', 'trialing'],
+        default: 'trialing',
     }
 }, {
     timestamps: true,

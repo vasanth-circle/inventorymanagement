@@ -253,13 +253,13 @@ const Sidebar = ({ isOpen, onClose }) => {
                         const accessibleItems = group.items.filter(item => checkAccess(item.id));
                         if (accessibleItems.length === 0) return null;
 
-                        const isGroupActive = accessibleItems.some(item => location.pathname.startsWith(item.path));
-                        const isExpanded = expandedGroup === group.id || isGroupActive;
+                        const isGroupActive = accessibleItems.some(item => location.pathname === item.path || location.pathname.startsWith(item.path + '/'));
+                        const isExpanded = expandedGroup !== null ? expandedGroup === group.id : isGroupActive;
 
                         return (
                             <div key={group.name} className="px-1">
                                 <button
-                                    onClick={() => setExpandedGroup(isExpanded ? null : group.id)}
+                                    onClick={() => setExpandedGroup(isExpanded ? 'NONE' : group.id)}
                                     className="w-full flex items-center justify-between px-3 py-2 text-sm font-bold text-gray-400 uppercase tracking-wider hover:text-gray-600 transition-colors"
                                 >
                                     <span className="flex items-center gap-2">
@@ -271,7 +271,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 
                                 <div className={`mt-2 space-y-1 transition-all duration-300 ease-in-out overflow-hidden ${isExpanded ? 'opacity-100 max-h-[2000px] translate-y-0' : 'opacity-0 max-h-0 -translate-y-2'}`}>
                                     {accessibleItems.map((item) => {
-                                        const isActive = location.pathname.startsWith(item.path);
+                                        const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
                                         return (
                                             <Link
                                                 key={item.name}
@@ -299,25 +299,20 @@ const Sidebar = ({ isOpen, onClose }) => {
                 </div>
 
                 {/* Footer User Profile */}
-                <div className="shrink-0 p-4 border-t border-gray-100 bg-gray-50/50">
-                    <div className="flex items-center gap-3 px-2 mb-4">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary-600 to-primary-400 flex items-center justify-center text-white font-bold shadow-inner">
+                <div className="shrink-0 p-3 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                    <Link to="/profile" className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity flex-1" title="Go to Profile">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary-600 to-primary-400 flex items-center justify-center text-white text-sm font-bold shadow-inner shrink-0">
                             {user?.name?.charAt(0)?.toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-gray-900 truncate">{user?.name}</p>
-                            <p className="text-xs text-gray-500 truncate capitalize">{user?.appRoles?.[activeApp] || user?.role?.replace('_', ' ')}</p>
+                            <p className="text-xs font-bold text-gray-900 truncate leading-tight">{user?.name}</p>
+                            <p className="text-[10px] text-gray-500 truncate capitalize leading-tight">{user?.appRoles?.[activeApp] || user?.role?.replace('_', ' ')}</p>
                         </div>
-                    </div>
+                    </Link>
                     
-                    <div className="grid grid-cols-2 gap-2">
-                        <Link to="/profile" className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-primary-600 transition-colors">
-                            👤 Profile
-                        </Link>
-                        <button onClick={logout} className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-red-600 bg-white border border-red-100 rounded-lg hover:bg-red-50 transition-colors">
-                            🚪 Logout
-                        </button>
-                    </div>
+                    <button onClick={logout} className="shrink-0 ml-2 w-8 h-8 flex items-center justify-center text-gray-400 rounded-md hover:bg-red-50 hover:text-red-600 transition-colors" title="Logout">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    </button>
                 </div>
 
             </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -170,6 +171,9 @@ const ProfitTracking = () => {
         <div className="space-y-4 pb-24 lg:pb-8">
             <div className="flex justify-between items-center pb-2 border-b border-gray-100">
                 <div className="flex items-center space-x-3">
+                    <Link to="/reports-hub" className="p-2 bg-gray-50 text-gray-500 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition-colors group">
+                        <svg className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                    </Link>
                     <div className="w-8 h-8 bg-white shadow-sm border border-gray-100 rounded flex items-center justify-center text-lg">💰</div>
                     <div>
                         <h1 className="text-lg font-bold text-gray-800 leading-tight">Profit Tracking</h1>

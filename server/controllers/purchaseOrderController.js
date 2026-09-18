@@ -9,6 +9,8 @@ import Ledger from '../models/Ledger.js';
 import Party from '../models/Party.js';
 import { recalculatePartyBalance } from './salesOrderController.js';
 import Setting from '../models/Setting.js';
+import { isValidTransition } from '../utils/stateMachine.js';
+import { sendNotification } from '../utils/notificationService.js';
 
 const revertPurchaseOrder = async (orderId, partyId, tenantId, orderNumber) => {
     try {
@@ -198,6 +200,16 @@ export const createPurchaseOrder = async (req, res, next) => {
         const isDirectInward = setting?.workflowConfig?.directPurchaseInward || false;
         const shouldReceive = isDirectInward && (totalAmount > 0);
 
+        // Phase 3: Standardized Approval Workflows
+        const APPROVAL_THRESHOLD = 10000;
+        let initialApprovalStatus = 'not_required';
+        let initialStatus = shouldReceive ? 'received' : 'draft';
+
+        if (totalAmount > APPROVAL_THRESHOLD) {
+            initialApprovalStatus = 'pending';
+            initialStatus = 'draft'; // Force to draft if approval is needed
+        }
+
         // Generate Order Number with retry logic
         let order;
         let retries = 0;
@@ -218,12 +230,12 @@ export const createPurchaseOrder = async (req, res, next) => {
                     orderDate,
                     expectedDeliveryDate,
                     notes,
-                    status: shouldReceive ? 'received' : 'draft',
+                    status: initialStatus,
+                    approvalStatus: initialApprovalStatus,
                     user: req.user._id,
                     ...tenantQuery(req),
                 });
             } catch (error) {
-                // If it's a duplicate key error on orderNumber, retry with next sequence
                 if (error.code === 11000 && (error.message.includes('orderNumber') || (error.keyPattern && error.keyPattern.orderNumber))) {
                     retries++;
                     continue;
@@ -236,7 +248,18 @@ export const createPurchaseOrder = async (req, res, next) => {
             return sendError(res, 500, 'Failed to generate a unique order number after multiple attempts');
         }
 
-        if (shouldReceive) {
+        // Notify Admins if approval is needed
+        if (initialApprovalStatus === 'pending') {
+            await sendNotification({
+                tenantId: req.tenantId,
+                role: 'admin', // Send to all admins
+                title: 'Purchase Order Approval Required',
+                message: `PO #${order.orderNumber} for ₹${order.totalAmount} requires your approval.`,
+                type: 'warning',
+            });
+        }
+
+        if (shouldReceive && initialApprovalStatus !== 'pending') {
             for (const item of items) {
                 const itemId = item.item?._id || item.item;
                 const itemDoc = await Item.findOne({ _id: itemId, ...tenantQuery(req) });
@@ -442,6 +465,16 @@ export const updatePOStatus = async (req, res, next) => {
             return sendError(res, 404, 'Purchase order not found');
         }
 
+        // Check if transition is valid
+        if (!isValidTransition('PurchaseOrder', order.status, status)) {
+            return sendError(res, 400, `Invalid state transition from '${order.status}' to '${status}'`);
+        }
+
+        // Check approvals
+        if (status !== 'draft' && order.approvalStatus === 'pending') {
+            return sendError(res, 400, "Cannot change status. This Purchase Order is pending approval.");
+        }
+
         // Logic for inventory update is now handled in receivePurchaseOrder
         // If status is updated manually without receiving items, we just update the text
         if (status === 'received' && order.status !== 'received') {
@@ -470,6 +503,57 @@ export const updatePOStatus = async (req, res, next) => {
         }
 
         sendResponse(res, 200, order, `Purchase order status updated to ${status}`);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Approve or Reject a purchase order
+// @route   PATCH /api/purchase-orders/:id/approve
+// @access  Private (Admin/Manager only)
+export const approvePurchaseOrder = async (req, res, next) => {
+    try {
+        const { approvalStatus, approvalNotes } = req.body;
+        
+        if (!['approved', 'rejected'].includes(approvalStatus)) {
+            return sendError(res, 400, "Invalid approval status. Must be 'approved' or 'rejected'.");
+        }
+
+        const order = await PurchaseOrder.findOne({ _id: req.params.id, ...tenantQuery(req) });
+
+        if (!order) {
+            return sendError(res, 404, 'Purchase order not found');
+        }
+
+        if (order.approvalStatus !== 'pending') {
+            return sendError(res, 400, `Cannot approve/reject. Current approval status is '${order.approvalStatus}'.`);
+        }
+
+        order.approvalStatus = approvalStatus;
+        order.approvedBy = req.user._id;
+        if (approvalNotes) {
+            order.approvalNotes = approvalNotes;
+        }
+        
+        // If approved, we can move the status to issued or received depending on settings
+        if (approvalStatus === 'approved') {
+            order.status = 'issued';
+        } else if (approvalStatus === 'rejected') {
+            order.status = 'void';
+        }
+
+        await order.save();
+
+        // Notify the creator
+        await sendNotification({
+            tenantId: req.tenantId,
+            userId: order.user, 
+            title: `Purchase Order ${approvalStatus === 'approved' ? 'Approved' : 'Rejected'}`,
+            message: `PO #${order.orderNumber} has been ${approvalStatus} by ${req.user.name}.`,
+            type: approvalStatus === 'approved' ? 'success' : 'error',
+        });
+
+        sendResponse(res, 200, order, `Purchase order has been ${approvalStatus}.`);
     } catch (error) {
         next(error);
     }

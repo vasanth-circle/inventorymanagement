@@ -1,4 +1,5 @@
-﻿import { useEffect } from "react";
+import { useEffect } from "react";
+import { createPortal } from "react-dom";
 
 const Drawer = ({ open, onClose, title, subtitle, size = "", children, footer }) => {
     useEffect(() => {
@@ -12,7 +13,7 @@ const Drawer = ({ open, onClose, title, subtitle, size = "", children, footer })
 
     if (!open) return null;
 
-    return (
+    return createPortal(
         <>
             <div className="drawer-overlay" onClick={onClose} />
             <div className={`drawer ${size === "sm" ? "drawer-sm" : size === "lg" ? "drawer-lg" : ""}`}>
@@ -30,7 +31,8 @@ const Drawer = ({ open, onClose, title, subtitle, size = "", children, footer })
                     <div className="drawer-footer">{footer}</div>
                 )}
             </div>
-        </>
+        </>,
+        document.body
     );
 };
 

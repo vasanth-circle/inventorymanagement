@@ -3,6 +3,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import Drawer from '../components/ui/Drawer';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -299,92 +300,89 @@ export default function ProductShowcase() {
                 )}
             </div>
 
-            {/* ── Create / Edit Modal ─────────────────────────────────────────── */}
-            {showModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md">
-                        <div className="p-6 border-b border-gray-100 dark:border-gray-800">
-                            <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                                {editingShowcase ? 'Edit Showcase' : 'New Product Showcase'}
-                            </h2>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Product Name *</label>
-                                <input
-                                    type="text"
-                                    value={formData.name}
-                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                    placeholder="e.g. Wooden Chair"
-                                    className="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 dark:bg-gray-800 dark:text-white"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
-                                <textarea
-                                    rows={3}
-                                    value={formData.description}
-                                    onChange={e => setFormData({ ...formData, description: e.target.value })}
-                                    placeholder="Brief product description (optional)"
-                                    className="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 dark:bg-gray-800 dark:text-white resize-none"
-                                />
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        className="sr-only peer"
-                                        checked={formData.isActive}
-                                        onChange={e => setFormData({ ...formData, isActive: e.target.checked })}
-                                    />
-                                    <div className="w-10 h-5 bg-gray-200 peer-focus:ring-2 peer-focus:ring-rose-400 rounded-full peer peer-checked:bg-rose-500 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-5"></div>
-                                </label>
-                                <span className="text-sm text-gray-600 dark:text-gray-300">Active (visible to public)</span>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    {editingShowcase ? 'Add Images (Optional)' : 'Images'}
-                                </label>
-                                <div 
-                                    className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 text-center cursor-pointer hover:border-rose-400 dark:hover:border-rose-500 transition-colors"
-                                    onClick={() => fileInputRef.current?.click()}
-                                >
-                                    <input 
-                                        type="file" 
-                                        multiple 
-                                        accept="image/*" 
-                                        className="hidden" 
-                                        ref={fileInputRef} 
-                                        onChange={(e) => {
-                                            if (e.target.files.length) {
-                                                setImages(Array.from(e.target.files));
-                                            }
-                                        }}
-                                    />
-                                    {images.length > 0 ? (
-                                        <p className="text-sm text-rose-600 font-medium">{images.length} file(s) selected</p>
-                                    ) : (
-                                        <div className="text-sm text-gray-500">
-                                            <span className="text-2xl block mb-1">📸</span>
-                                            Click to select images
-                                        </div>
-                                    )}
+            {/* ── Create / Edit Drawer ─────────────────────────────────────────── */}
+            <Drawer
+                open={showModal}
+                onClose={closeModal}
+                title={editingShowcase ? 'Edit Showcase' : 'New Product Showcase'}
+                subtitle={editingShowcase ? 'Update showcase details and images.' : 'Create a new public product showcase.'}
+                size="md"
+            >
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Product Name *</label>
+                        <input
+                            type="text"
+                            value={formData.name}
+                            onChange={e => setFormData({ ...formData, name: e.target.value })}
+                            placeholder="e.g. Wooden Chair"
+                            className="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 dark:bg-gray-800 dark:text-white"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                        <textarea
+                            rows={3}
+                            value={formData.description}
+                            onChange={e => setFormData({ ...formData, description: e.target.value })}
+                            placeholder="Brief product description (optional)"
+                            className="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 dark:bg-gray-800 dark:text-white resize-none"
+                        />
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                className="sr-only peer"
+                                checked={formData.isActive}
+                                onChange={e => setFormData({ ...formData, isActive: e.target.checked })}
+                            />
+                            <div className="w-10 h-5 bg-gray-200 peer-focus:ring-2 peer-focus:ring-rose-400 rounded-full peer peer-checked:bg-rose-500 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-5"></div>
+                        </label>
+                        <span className="text-sm text-gray-600 dark:text-gray-300">Active (visible to public)</span>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            {editingShowcase ? 'Add Images (Optional)' : 'Images'}
+                        </label>
+                        <div 
+                            className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 text-center cursor-pointer hover:border-rose-400 dark:hover:border-rose-500 transition-colors"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <input 
+                                type="file" 
+                                multiple 
+                                accept="image/*" 
+                                className="hidden" 
+                                ref={fileInputRef} 
+                                onChange={(e) => {
+                                    if (e.target.files.length) {
+                                        setImages(Array.from(e.target.files));
+                                    }
+                                }}
+                            />
+                            {images.length > 0 ? (
+                                <p className="text-sm text-rose-600 font-medium">{images.length} file(s) selected</p>
+                            ) : (
+                                <div className="text-sm text-gray-500">
+                                    <span className="text-2xl block mb-1">📸</span>
+                                    Click to select images
                                 </div>
-                            </div>
-                        </div>
-                        <div className="p-6 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">
-                            <button onClick={closeModal} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">Cancel</button>
-                            <button
-                                onClick={handleSave}
-                                disabled={saving}
-                                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
-                            >
-                                {saving ? 'Saving…' : (editingShowcase ? 'Save Changes' : 'Create Showcase')}
-                            </button>
+                            )}
                         </div>
                     </div>
                 </div>
-            )}
+                <div className="p-4 sm:p-6 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3 bg-gray-50 dark:bg-gray-800/50 mt-auto">
+                    <button onClick={closeModal} className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-900 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors">Cancel</button>
+                    <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm disabled:opacity-50"
+                    >
+                        {saving ? 'Saving…' : (editingShowcase ? 'Save Changes' : 'Create Showcase')}
+                    </button>
+                </div>
+            </Drawer>
 
             {/* ── Delete Confirmation ─────────────────────────────────────────── */}
             {deleteTarget && (

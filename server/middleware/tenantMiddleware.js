@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import Tenant from '../models/Tenant.js';
+import { tenantContext } from '../utils/tenantContext.js';
 
 /**
  * Middleware to check if the tenant (business) is active and has app access.
@@ -14,7 +15,6 @@ export const checkTenantStatus = async (req, res, next) => {
         // 1. Identify tenant
         if (req.user && req.user.tenantId) {
             req.tenantId = req.user.tenantId;
-            console.log(`Tenant identified from user: ${req.tenantId}`);
             
             // Find tenant object to check status and app access
             const query = {
@@ -66,8 +66,23 @@ export const checkTenantStatus = async (req, res, next) => {
                     console.warn(`Access denied for tenant ${req.tenantId}: status=${tenant.status}, isAppEnabled=${isAppEnabled}, appKeys=[${appKeys}]`);
                     return res.status(403).json({
                         success: false,
-                        message: 'Your access to this application has been disabled or your trial has expired. Please contact support.',
+                        message: 'Your access to this application has been disabled. Please contact support.',
                         code: 'TENANT_DISABLED'
+                    });
+                }
+                
+                // NEW: Billing Check (Phase 2)
+                const now = new Date();
+                const isTrialExpired = tenant.billingStatus === 'trialing' && tenant.trialEndsAt && tenant.trialEndsAt < now;
+                const isPastDue = tenant.billingStatus === 'past_due' || tenant.billingStatus === 'canceled';
+
+                if (isTrialExpired || isPastDue) {
+                    return res.status(402).json({
+                        success: false,
+                        message: 'Payment Required: Your trial has expired or your subscription is past due. Please update your billing information.',
+                        code: 'PAYMENT_REQUIRED',
+                        billingStatus: tenant.billingStatus,
+                        trialEndsAt: tenant.trialEndsAt
                     });
                 }
                 
@@ -81,11 +96,9 @@ export const checkTenantStatus = async (req, res, next) => {
                 // If we have a tenantId from user but no tenant object, we still allow it for now 
                 // but log the warning. In a strict system, we would block here.
             }
-        } else {
-            console.warn('No user or tenantId found in request');
         }
 
-        next();
+        tenantContext.run({ tenantId: req.tenantId }, () => next());
     } catch (error) {
         console.error('Tenant Check Error:', error);
         // If DB check fails, we might want to fail-safe or block. Blocking is safer.

@@ -2,6 +2,10 @@ import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import Tenant from '../models/Tenant.js';
+import Role from '../models/Role.js';
+import Setting from '../models/Setting.js';
+import Subscription from '../models/Subscription.js';
+import Plan from '../models/Plan.js';
 
 // Generate JWT token
 const generateToken = (id) => {
@@ -52,6 +56,78 @@ export const register = async (req, res, next) => {
             }
         });
 
+        // Create Default Setting for Tenant
+        await Setting.create({
+            tenantId: tenant._id,
+            companyName: companyName,
+            contactEmail: email,
+            unitConfig: {
+                quantityBasis: 'units',
+                rateBasis: 'per_unit'
+            },
+            documentConfig: {
+                currency: 'INR',
+                currencySymbol: '₹',
+                taxLabel: 'GST'
+            },
+            workflowConfig: {
+                allowNegativeStock: true,
+                enableAutoDispatch: true
+            }
+        });
+
+        // Create Default Roles
+        const adminRole = await Role.create({
+            tenantId: tenant._id,
+            name: 'Admin',
+            description: 'Full administrative access',
+            permissions: ['dashboard', 'inventory', 'sales', 'purchases', 'reports', 'settings', 'users']
+        });
+
+        await Role.create({
+            tenantId: tenant._id,
+            name: 'Manager',
+            description: 'Can manage daily operations but not settings',
+            permissions: ['dashboard', 'inventory', 'sales', 'purchases', 'reports']
+        });
+
+        await Role.create({
+            tenantId: tenant._id,
+            name: 'Staff',
+            description: 'Basic access to sales and inventory',
+            permissions: ['dashboard', 'inventory', 'sales']
+        });
+
+        // Setup Trial Subscription
+        // Look for a default basic plan, or create one if it doesn't exist (superadmin setup usually does this)
+        let defaultPlan = await Plan.findOne({ name: 'Trial Plan' });
+        if (!defaultPlan) {
+            defaultPlan = await Plan.create({
+                name: 'Trial Plan',
+                priceMonthly: 0,
+                priceYearly: 0,
+                maxUsers: 5,
+                maxInvoicesPerMonth: 100,
+            });
+        }
+
+        const trialEndsAt = new Date();
+        trialEndsAt.setDate(trialEndsAt.getDate() + 14); // 14 days trial
+
+        const subscription = await Subscription.create({
+            tenantId: tenant._id,
+            planId: defaultPlan._id,
+            status: 'trialing',
+            currentPeriodStart: new Date(),
+            currentPeriodEnd: trialEndsAt
+        });
+
+        // Link subscription and trial data to tenant
+        tenant.planId = defaultPlan._id;
+        tenant.subscriptionId = subscription._id;
+        tenant.trialEndsAt = trialEndsAt;
+        tenant.billingStatus = 'trialing';
+
         // Create user
         const user = await User.create({
             name,
@@ -60,6 +136,7 @@ export const register = async (req, res, next) => {
             phone,
             termsAccepted: termsAccepted || true,
             role: 'tenant_admin',
+            roleId: adminRole._id, // Attach dynamic role
             menuAccess: 'all',
             tenantId: tenant._id,
             isActive: true,
@@ -84,6 +161,7 @@ export const register = async (req, res, next) => {
             email: user.email,
             phone: user.phone,
             role: user.role,
+            roleId: user.roleId,
             tenantId: user.tenantId,
             menuAccess: user.menuAccess,
             allowedMenus: user.allowedMenus,
@@ -151,26 +229,19 @@ export const addUser = async (req, res, next) => {
 export const login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
-        console.log(`Login attempt for email: ${email}`);
-
         // Check for user
         const user = await User.findOne({ email }).select('+password');
         if (!user) {
-            console.log(`Login failed: User not found for email ${email}`);
             return res.status(401).json({ message: 'Invalid credentials' });
         }
-
-        console.log(`User found: ${user.name || user.email}. Checking password...`);
 
         // Check password
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
-            console.log(`Login failed: Password mismatch for user ${email}`);
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
         if (user.isActive === false) {
-            console.log(`Login failed: User ${email} is inactive`);
             return res.status(401).json({ message: 'User account is inactive' });
         }
 
@@ -247,7 +318,6 @@ export const login = async (req, res, next) => {
             }
         }
 
-        console.log(`Login successful for user: ${email}`);
         res.json({
             _id: user._id,
             name: user.name,
@@ -300,7 +370,6 @@ export const getUsers = async (req, res, next) => {
                 { tenantId: req.user.tenantId.toString() }
             ]
         }).select('-password');
-        console.log(`getUsers: Found ${users.length} users for tenant ${req.user.tenantId}`);
         res.json(users);
     } catch (error) {
         console.error('getUsers error:', error);
@@ -351,7 +420,6 @@ export const updateProfile = async (req, res, next) => {
 // @route   PUT /api/auth/users/:id
 // @access  Private/Admin
 export const updateUser = async (req, res, next) => {
-    console.log('UpdateUser Request Body:', JSON.stringify(req.body, null, 2));
     try {
         const { name, email, phone, role, inventoryRole, isActive, menuAccess, allowedMenus } = req.body;
         const userId = req.params.id;

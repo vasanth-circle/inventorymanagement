@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SearchableSelect from '../components/SearchableSelect';
 import { InventoryContext } from '../context/InventoryContext';
@@ -59,6 +59,43 @@ const StockInward = () => {
             fetchPurchaseOrders({ status: 'issued' });
         }
     }, [billingSettings?.workflowConfig?.enforcePO]);
+
+    const renderDynamicFields = (formData, setFormData) => {
+        if (!activePreset?.productFields?.length) return null;
+
+        const handleDynamicChange = (name, value) => {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        };
+
+        return (
+            <FormSection icon="⚙️" title="Custom Fields" color="#fef2f2">
+                <div className="form-grid-3">
+                    {activePreset.productFields.map((field) => (
+                        <FormField key={field.name} label={field.label} required={field.required}>
+                            {field.type === 'select' ? (
+                                <select 
+                                    value={formData[field.name] || ''} 
+                                    onChange={(e) => handleDynamicChange(field.name, e.target.value)}
+                                    required={field.required}
+                                >
+                                    <option value="">Select...</option>
+                                    {field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                </select>
+                            ) : (
+                                <input
+                                    type={field.type || 'text'}
+                                    value={formData[field.name] || ''}
+                                    onChange={(e) => handleDynamicChange(field.name, e.target.value)}
+                                    placeholder={`Enter ${field.label.toLowerCase()}`}
+                                    required={field.required}
+                                />
+                            )}
+                        </FormField>
+                    ))}
+                </div>
+            </FormSection>
+        );
+    };
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -164,7 +201,8 @@ const StockInward = () => {
             // Calculate actual submission quantity (e.g. for tiles, convert boxes to sqft)
             let actualQuantity = parseFloat(formData.quantity) || 0;
             let actualDamaged = parseFloat(formData.damagedQuantity) || 0;
-            const isTile = activePreset?.id === 'tiles' && !['pieces', 'pcs', 'nos', 'piece'].includes((item.unitType || '').toLowerCase());
+            const currentItem = isNewItem ? formData : (items.find(i => i._id === selectedItem) || {});
+            const isTile = activePreset?.id === 'tiles' && !['pieces', 'pcs', 'nos', 'piece'].includes((currentItem.unitType || '').toLowerCase());
             
             if (isTile) {
                 const pcsPerBox = parseFloat(formData.pcsPerBox) || 1;

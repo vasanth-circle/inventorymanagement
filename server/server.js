@@ -50,11 +50,13 @@ const app = express();
 // Enable trust proxy for CapRover (behind Nginx)
 app.set('trust proxy', 1);
 
-// Rate limiting disabled temporarily due to proxy IP issues
+// Rate limiting enabled with reasonable limits for API calls
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100000, // effectively disabled
-    message: 'Too many requests from this IP, please try again later.',
+    max: 300, // 300 requests per 15 minutes per IP
+    message: { message: 'Too many requests from this IP, please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
 });
 
 // Middleware
@@ -70,6 +72,7 @@ import { appConn, coreConn } from './config/db.js';
 import { checkTenantStatus } from './middleware/tenantMiddleware.js';
 
 import { protect } from './middleware/authMiddleware.js';
+import { auditLogMiddleware } from './middleware/auditMiddleware.js';
 
 // Apply tenant check middleware to all /api routes (except health and auth)
 app.use('/api', (req, res, next) => {
@@ -79,7 +82,10 @@ app.use('/api', (req, res, next) => {
     // Run protect first to get req.user, then checkTenantStatus to get req.tenantId
     protect(req, res, (err) => {
         if (err) return next(err);
-        checkTenantStatus(req, res, next);
+        checkTenantStatus(req, res, (err2) => {
+            if (err2) return next(err2);
+            auditLogMiddleware(req, res, next);
+        });
     });
 });
 

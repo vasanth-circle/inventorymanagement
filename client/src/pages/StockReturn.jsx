@@ -1,8 +1,10 @@
-﻿import { useState, useEffect, useRef, useContext } from 'react';
+import { useState, useEffect, useRef, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { InventoryContext } from '../context/InventoryContext';
+import FormField, { FormSection } from '../components/ui/FormField';
+import EmptyState from '../components/ui/EmptyState';
 
 // â”€â”€ Searchable Select Component (inline, lightweight) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const SearchableDropdown = ({ options = [], value, onChange, placeholder = 'Search...', disabled = false }) => {
@@ -84,6 +86,10 @@ const StockReturn = () => {
     const [vendors, setVendors] = useState([]);
     const [allItems, setAllItems] = useState([]);
 
+    const [activeTab, setActiveTab] = useState('new');
+    const [returns, setReturns] = useState([]);
+    const [loadingReturns, setLoadingReturns] = useState(false);
+
     // Step state
     const [returnType, setReturnType] = useState('customer');
     const [selectedCustomer, setSelectedCustomer] = useState('');
@@ -117,15 +123,17 @@ const StockReturn = () => {
 
     const fetchInitialData = async () => {
         try {
-            const [custRes, vendRes, itemsRes] = await Promise.allSettled([
+            const [custRes, vendRes, itemsRes, returnsRes] = await Promise.allSettled([
                 api.get('/customers?limit=5000'),
                 api.get('/vendors?limit=1000'),
                 api.get('/items?limit=5000'),
+                api.get('/transactions?type=return&limit=100')
             ]);
             
             if (custRes.status === 'fulfilled') setCustomers(custRes.value.data.data?.customers || []);
             if (vendRes.status === 'fulfilled') setVendors(vendRes.value.data.data?.vendors || []);
             if (itemsRes.status === 'fulfilled') setAllItems(itemsRes.value.data.items || itemsRes.value.data.data?.items || []);
+            if (returnsRes.status === 'fulfilled') setReturns(returnsRes.value.data.data?.transactions || returnsRes.value.data.data || []);
 
             if (custRes.status === 'rejected' && vendRes.status === 'rejected' && itemsRes.status === 'rejected') {
                 throw new Error('All initial data requests failed');
@@ -644,12 +652,12 @@ const StockReturn = () => {
                             <FormField label="Select Invoice" required>
                                 <select
                                     value={selectedInvoice}
-                                    onChange={(e) => setSelectedInvoice(e.target.value)}
+                                    onChange={(e) => handleInvoiceSelect(e.target.value)}
                                     disabled={!selectedCustomer || loadingInvoices}
                                     className="w-full h-11 px-4 bg-gray-50 border-none rounded-lg text-sm focus:ring-2 focus:ring-rose-500"
                                 >
                                     <option value="">{loadingInvoices ? 'Loading...' : 'Select Invoice'}</option>
-                                    {customerInvoices.map(inv => (
+                                    {invoices.map(inv => (
                                         <option key={inv._id} value={inv._id}>{inv.orderNumber} ({new Date(inv.orderDate).toLocaleDateString()}) - Rs.{inv.totalAmount}</option>
                                     ))}
                                 </select>

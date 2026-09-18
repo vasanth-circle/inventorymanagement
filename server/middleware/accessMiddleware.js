@@ -3,6 +3,15 @@ export const checkMenuAccess = (menuName) => {
         const { user } = req;
         const inventoryRole = user.appRoles?.inventory || user.role;
 
+        // 0. Dynamic Role Check (Highest priority)
+        if (user.roleId && Array.isArray(user.roleId.permissions)) {
+            // Note: Some systems use 'all' as a wildcard permission
+            if (user.roleId.permissions.includes('all') || user.roleId.permissions.includes(menuName)) {
+                return next();
+            }
+            return res.status(403).json({ message: `Access denied: Role does not have permission for '${menuName}'.` });
+        }
+
         // 1. Specific menu access check (Highest priority)
         if (user.menuAccess === 'specific') {
             let isAllowed = user.allowedMenus?.includes(menuName) || false;

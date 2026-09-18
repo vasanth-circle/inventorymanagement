@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import html2pdf from 'html2pdf.js';
@@ -1808,9 +1809,14 @@ const CustomReports = () => {
     return (
         <div className="space-y-6 pb-24 lg:pb-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-4 border-b border-gray-100">
-                <div>
-                    <h1 className="text-2xl font-black text-gray-900">Custom Reports</h1>
-                    <p className="text-sm text-gray-500 mt-0.5">Ledger, Purchases, Receivables, Payables &amp; Outstanding Summary</p>
+                <div className="flex items-center gap-3">
+                    <Link to="/reports-hub" className="p-2 bg-gray-50 text-gray-500 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition-colors group">
+                        <svg className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                    </Link>
+                    <div>
+                        <h1 className="text-2xl font-black text-gray-900">Custom Reports</h1>
+                        <p className="text-sm text-gray-500 mt-0.5">Ledger, Purchases, Receivables, Payables &amp; Outstanding Summary</p>
+                    </div>
                 </div>
             </div>
 

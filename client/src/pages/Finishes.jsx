@@ -1,6 +1,8 @@
 import { useState, useContext, useMemo } from 'react';
 import { InventoryContext } from '../context/InventoryContext';
 import toast from 'react-hot-toast';
+import Drawer from '../components/ui/Drawer';
+import FormField from '../components/ui/FormField';
 
 const Finishes = () => {
     const { finishes, addFinish, editFinish, removeFinish, loading, confirmDelete } = useContext(InventoryContext);
@@ -130,48 +132,52 @@ const Finishes = () => {
                 )}
             </div>
 
-            {/* Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                            <h2 className="text-lg font-bold text-gray-800">{editingFinish ? 'Edit Finish' : 'Add Finish'}</h2>
-                            <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
-                        </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">Finish Name <span className="text-red-500">*</span></label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-gray-50 focus:bg-white"
-                                    placeholder="e.g. Glossy, Matte"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
-                                <textarea
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-gray-50 focus:bg-white"
-                                    rows="2"
-                                    placeholder="Optional description"
-                                />
-                            </div>
-                            <div className="flex gap-3 pt-2 border-t border-gray-100">
-                                <button type="submit" className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-bold shadow">
-                                    {editingFinish ? 'Update' : 'Create'}
-                                </button>
-                                <button type="button" onClick={handleCloseModal} className="flex-1 px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-bold">
-                                    Cancel
-                                </button>
-                            </div>
-                        </form>
+            <Drawer 
+                open={isModalOpen} 
+                onClose={handleCloseModal}
+                title={editingFinish ? 'Edit Finish' : 'Add Finish'}
+                subtitle="Manage finish styles for your items."
+                footer={
+                    <div className="flex justify-end gap-3 w-full">
+                        <button
+                            type="button"
+                            onClick={handleCloseModal}
+                            className="btn-secondary"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSubmit}
+                            className="btn-primary"
+                        >
+                            {editingFinish ? 'Update' : 'Create'}
+                        </button>
                     </div>
-                </div>
-            )}
+                }
+            >
+                <form id="finish-form" onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <FormField label="Finish Name" required>
+                        <input
+                            type="text"
+                            required
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-gray-50 focus:bg-white"
+                            placeholder="e.g. Glossy, Matte"
+                        />
+                    </FormField>
+                    <FormField label="Description">
+                        <textarea
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-gray-50 focus:bg-white"
+                            rows="2"
+                            placeholder="Optional description"
+                        />
+                    </FormField>
+                </form>
+            </Drawer>
         </div>
     );
 };

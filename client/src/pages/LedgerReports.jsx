@@ -59,9 +59,14 @@ const LedgerReports = () => {
     return (
         <div className="p-6 max-w-7xl mx-auto animate-in">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-gray-900">Financial Ledgers</h1>
-                    <p className="text-gray-500 mt-1">Overview of balances for all parties.</p>
+                <div className="flex items-center gap-4">
+                    <button onClick={() => navigate('/reports-hub')} className="p-2 bg-white text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg shadow-sm border border-gray-200 transition-colors group">
+                        <svg className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                    </button>
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Financial Ledgers</h1>
+                        <p className="text-gray-500 mt-1">Overview of balances for all parties.</p>
+                    </div>
                 </div>
                 <div className="flex items-center gap-3">
                     <button onClick={handleExport} className="btn-secondary">

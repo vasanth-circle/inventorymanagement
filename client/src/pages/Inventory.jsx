@@ -68,10 +68,87 @@ const Inventory = () => {
     // Auto-calculate SqFt from Size text ONLY when no managed size selected
     // (Only applies to small numbers that are likely in feet, e.g. '2x4' = 8 sqft)
     // For mm/cm sizes like '2400X800', user should use managed sizes list or enter sqFtPerPc manually
+
+    const handleSearch = debounce((value) => {
+        setFilters(prev => ({ ...prev, search: value, page: 1 }));
+    }, 500);
+
+    const handleExport = () => {
+        exportToCSV(items, 'inventory-export.csv');
+    };
+
+    const handlePageChange = (newPage) => {
+        setFilters(prev => ({ ...prev, page: newPage }));
+    };
+
+    const handleEdit = (item) => {
+        setEditingItem(item);
+        setEditFormData({
+            name: item.name || '',
+            barcode: item.barcode || '',
+            category: item.category?._id || item.category || '',
+            price: item.price || '',
+            purchasePrice: item.purchasePrice || '',
+            minStockThreshold: item.minStockThreshold || '',
+            location: item.location?._id || item.location || '',
+            description: item.description || '',
+            brand: item.brand || '',
+            partNumber: item.partNumber || '',
+            size: item.size || '',
+            hsn: item.hsn || '',
+            pcsPerBox: item.pcsPerBox || '',
+            sqFtPerPc: item.sqFtPerPc || '',
+            unitType: item.unitType || 'box',
+        });
+    };
+
+    const handleCreateSubmit = async (e) => {
+        e.preventDefault();
+        setCreateLoading(true);
+        try {
+            await createItem(createFormData);
+            setIsCreateModalOpen(false);
+            setCreateFormData({
+                name: '', barcode: '', category: '', price: '', purchasePrice: '', minStockThreshold: '',
+                location: '', description: '', brand: '', partNumber: '', size: '', hsn: '', pcsPerBox: '', sqFtPerPc: '', unitType: 'box'
+            });
+            toast.success("Item created successfully");
+        } catch (error) {
+            toast.error("Failed to create item");
+        } finally {
+            setCreateLoading(false);
+        }
+    };
+
+    const handleUpdateSubmit = async (e) => {
+        e.preventDefault();
+        setEditLoading(true);
+        try {
+            await updateItem(editingItem._id, editFormData);
+            setEditingItem(null);
+            toast.success("Item updated successfully");
+        } catch (error) {
+            toast.error("Failed to update item");
+        } finally {
+            setEditLoading(false);
+        }
+    };
+
+    const loadItems = async () => {
+        try {
+            const data = await fetchItems(filters);
+            if (data && data.pagination) {
+                setPagination(data.pagination);
+            }
+        } catch (error) {
+            console.error("Error loading items:", error);
+        }
+    };
+
     useEffect(() => {
         if (billingSettings?.industry === 'tiles' && createFormData.size) {
             // Skip auto-calc if a managed size matches (dropdown already handled it)
-            if (sizes.find(s => s.name === createFormData.size)) return;
+            if (sizes && sizes.find(s => s.name === createFormData.size)) return;
             const parts = createFormData.size.split(/[x*]/i);
             if (parts.length === 2) {
                 const w = parseFloat(parts[0]);
@@ -87,7 +164,7 @@ const Inventory = () => {
     useEffect(() => {
         if (billingSettings?.industry === 'tiles' && editFormData.size) {
             // Skip auto-calc if a managed size matches (dropdown already handled it)
-            if (sizes.find(s => s.name === editFormData.size)) return;
+            if (sizes && sizes.find(s => s.name === editFormData.size)) return;
             const parts = editFormData.size.split(/[x*]/i);
             if (parts.length === 2) {
                 const w = parseFloat(parts[0]);
@@ -102,8 +179,8 @@ const Inventory = () => {
 
     useEffect(() => {
         loadItems();
-        fetchLocations();
-        fetchHsnCodes();
+        if (fetchLocations) fetchLocations();
+        if (fetchHsnCodes) fetchHsnCodes();
     }, [filters]);
 
     /**
@@ -115,6 +192,36 @@ const Inventory = () => {
         const handleChange = (name, value) => {
             setFormData(prev => ({ ...prev, [name]: value }));
         };
+
+        return (
+            <FormSection icon="⚙️" title="Custom Fields" color="#fef2f2">
+                <div className="form-grid-3">
+                    {activePreset.productFields.map((field) => (
+                        <FormField key={field.name} label={field.label} required={field.required}>
+                            {field.type === 'select' ? (
+                                <select 
+                                    value={formData[field.name] || ''} 
+                                    onChange={(e) => handleChange(field.name, e.target.value)}
+                                    required={field.required}
+                                >
+                                    <option value="">Select...</option>
+                                    {field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                </select>
+                            ) : (
+                                <input
+                                    type={field.type || 'text'}
+                                    value={formData[field.name] || ''}
+                                    onChange={(e) => handleChange(field.name, e.target.value)}
+                                    placeholder={field.placeholder || ''}
+                                    required={field.required}
+                                />
+                            )}
+                        </FormField>
+                    ))}
+                </div>
+            </FormSection>
+        );
+    };
 
         // Helper: avatar color by category
     const avatarColor = (name = '') => {
@@ -161,7 +268,6 @@ const Inventory = () => {
                 <select
                     value={filters.category}
                     onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value, page: 1 }))}
-                    style={{border:'none',background:'transparent',fontSize:'13px',color:'#475569',outline:'none',cursor:'pointer'}}
                 >
                     <option value="">All Categories</option>
                     {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
@@ -170,7 +276,6 @@ const Inventory = () => {
                 <select
                     value={filters.location}
                     onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value, page: 1 }))}
-                    style={{border:'none',background:'transparent',fontSize:'13px',color:'#475569',outline:'none',cursor:'pointer'}}
                 >
                     <option value="">All Locations</option>
                     {locations.map(l => <option key={l._id} value={l._id}>{l.name}</option>)}
@@ -179,7 +284,6 @@ const Inventory = () => {
                 <select
                     value={filters.status}
                     onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value, page: 1 }))}
-                    style={{border:'none',background:'transparent',fontSize:'13px',color:'#475569',outline:'none',cursor:'pointer'}}
                 >
                     <option value="">All Statuses</option>
                     <option value="In Stock">In Stock</option>

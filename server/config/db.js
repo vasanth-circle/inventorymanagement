@@ -1,7 +1,9 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import tenantPlugin from '../utils/tenantPlugin.js';
 
 dotenv.config();
+mongoose.plugin(tenantPlugin);
 
 const maskURI = (uri) => {
     if (!uri) return 'undefined';

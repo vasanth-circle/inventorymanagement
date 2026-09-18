@@ -25,6 +25,10 @@ const userSchema = new mongoose.Schema({
         enum: ['admin', 'manager', 'sales_person', 'sales person', 'sales user', 'sales_user', 'accounts', 'godown_staff', 'godown staff', 'staff', 'tenant_owner', 'tenant_admin', 'super_admin', 'tenant user', 'tenant_user'],
         default: 'staff',
     },
+    roleId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Role',
+    },
     phone: {
         type: String,
         trim: true,

@@ -1,6 +1,8 @@
 import { useState, useEffect, useContext } from 'react';
 import { InventoryContext } from '../context/InventoryContext';
 import toast from 'react-hot-toast';
+import Drawer from '../components/ui/Drawer';
+import FormField from '../components/ui/FormField';
 
 const Locations = () => {
     const { locations, assetLocations, addLocation, editLocation, removeLocation, loading, confirmDelete, fetchLocations, fetchAssetLocations } = useContext(InventoryContext);
@@ -140,55 +142,50 @@ const Locations = () => {
                 </table>
             </div>
 
-            {/* Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                            <h2 className="text-xl font-bold text-gray-900">
-                                {editingLocation ? 'Edit Location' : 'Add New Location'}
-                            </h2>
-                            <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600">✕</button>
-                        </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                <textarea
-                                    rows="3"
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                ></textarea>
-                            </div>
-                            <div className="flex space-x-3 pt-4">
-                                <button
-                                    type="submit"
-                                    className="flex-1 bg-primary-600 text-white py-2 rounded-lg font-bold hover:bg-primary-700 transition-colors"
-                                >
-                                    {editingLocation ? 'Update Location' : 'Save Location'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleCloseModal}
-                                    className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-bold"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        </form>
+            <Drawer 
+                open={isModalOpen} 
+                onClose={handleCloseModal}
+                title={editingLocation ? 'Edit Location' : 'Add New Location'}
+                subtitle={`Manage your ${locationType === 'asset' ? 'office branches and asset storage points' : 'warehouses and stock storage points'}.`}
+                footer={
+                    <div className="flex justify-end gap-3 w-full">
+                        <button
+                            type="button"
+                            onClick={handleCloseModal}
+                            className="btn-secondary"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSubmit}
+                            className="btn-primary"
+                        >
+                            {editingLocation ? 'Update Location' : 'Save Location'}
+                        </button>
                     </div>
-                </div>
-            )}
+                }
+            >
+                <form id="location-form" onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <FormField label="Name" required>
+                        <input
+                            type="text"
+                            required
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                        />
+                    </FormField>
+                    <FormField label="Description">
+                        <textarea
+                            rows="3"
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                        ></textarea>
+                    </FormField>
+                </form>
+            </Drawer>
         </div>
     );
 };

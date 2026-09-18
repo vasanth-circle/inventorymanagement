@@ -3,6 +3,8 @@ import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { InventoryContext } from '../context/InventoryContext';
 import { confirmDelete } from '../utils/confirmHelper';
+import Drawer from '../components/ui/Drawer';
+import FormField from '../components/ui/FormField';
 
 const HSNManagement = () => {
     const { fetchHsnCodes } = useContext(InventoryContext);
@@ -151,60 +153,63 @@ const HSNManagement = () => {
                 )}
             </div>
 
-            {/* Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                            <h2 className="text-lg font-bold text-gray-800">{editingHsn ? 'Edit HSN Code' : 'Add HSN Code'}</h2>
-                            <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
-                        </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">HSN Code <span className="text-red-500">*</span></label>
-                                <input
-                                    type="text"
-                                    value={formData.code}
-                                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-gray-50 focus:bg-white"
-                                    required
-                                    placeholder="e.g. 6907"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
-                                <textarea
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-gray-50 focus:bg-white"
-                                    rows="2"
-                                    placeholder="Optional description"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">GST Rate (%)</label>
-                                <input
-                                    type="number"
-                                    value={formData.gstRate}
-                                    onChange={(e) => setFormData({ ...formData, gstRate: parseFloat(e.target.value) })}
-                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-gray-50 focus:bg-white"
-                                    required
-                                    min="0"
-                                    step="0.01"
-                                />
-                            </div>
-                            <div className="flex gap-3 pt-2 border-t border-gray-100">
-                                <button type="submit" className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-bold shadow">
-                                    {editingHsn ? 'Update' : 'Create'}
-                                </button>
-                                <button type="button" onClick={handleCloseModal} className="flex-1 px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-bold">
-                                    Cancel
-                                </button>
-                            </div>
-                        </form>
+            <Drawer 
+                open={isModalOpen} 
+                onClose={handleCloseModal}
+                title={editingHsn ? 'Edit HSN Code' : 'Add HSN Code'}
+                subtitle="Manage HSN codes and their corresponding GST rates."
+                footer={
+                    <div className="flex justify-end gap-3 w-full">
+                        <button
+                            type="button"
+                            onClick={handleCloseModal}
+                            className="btn-secondary"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSubmit}
+                            className="btn-primary"
+                        >
+                            {editingHsn ? 'Update' : 'Create'}
+                        </button>
                     </div>
-                </div>
-            )}
+                }
+            >
+                <form id="hsn-form" onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <FormField label="HSN Code" required>
+                        <input
+                            type="text"
+                            value={formData.code}
+                            onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-gray-50 focus:bg-white"
+                            required
+                            placeholder="e.g. 6907"
+                        />
+                    </FormField>
+                    <FormField label="Description">
+                        <textarea
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-gray-50 focus:bg-white"
+                            rows="2"
+                            placeholder="Optional description"
+                        />
+                    </FormField>
+                    <FormField label="GST Rate (%)" required>
+                        <input
+                            type="number"
+                            value={formData.gstRate}
+                            onChange={(e) => setFormData({ ...formData, gstRate: parseFloat(e.target.value) })}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-gray-50 focus:bg-white"
+                            required
+                            min="0"
+                            step="0.01"
+                        />
+                    </FormField>
+                </form>
+            </Drawer>
         </div>
     );
 };

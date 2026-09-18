@@ -92,6 +92,21 @@ const purchaseOrderSchema = new mongoose.Schema({
         enum: ['draft', 'issued', 'received', 'billed', 'void'],
         default: 'draft',
     },
+    approvalStatus: {
+        type: String,
+        enum: ['not_required', 'pending', 'approved', 'rejected'],
+        default: 'not_required',
+    },
+    approvedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    approvalNotes: {
+        type: String,
+        trim: true,
+        default: ''
+    },
     vendorBillNumber: {
         type: String,
         trim: true,

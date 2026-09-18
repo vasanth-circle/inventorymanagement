@@ -11,6 +11,7 @@ import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { getNextSequenceValue } from '../utils/sequence.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
 import { allocateFIFO } from '../utils/stock.js';
+import { isValidTransition } from '../utils/stateMachine.js';
 
 // Helper for validating party credit lock
 export const validatePartyCreditLock = async (req, res, partyId, newInvoiceAmount) => {
@@ -555,6 +556,10 @@ export const updateSOStatus = async (req, res, next) => {
 
         if (!order) {
             return sendError(res, 404, 'Sales order not found');
+        }
+
+        if (!isValidTransition('SalesOrder', order.status, status)) {
+            return sendError(res, 400, `Invalid state transition from '${order.status}' to '${status}'`);
         }
 
         const wasEstimation = order.isEstimation;

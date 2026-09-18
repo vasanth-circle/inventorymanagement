@@ -1,7 +1,8 @@
 import { useState, useContext, useEffect } from 'react';
 import { InventoryContext } from '../context/InventoryContext';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
-import FullScreenModal from '../components/FullScreenModal';
+import Drawer from '../components/ui/Drawer';
+import FormField from '../components/ui/FormField';
 
 const CustomerTypes = () => {
     const { customerTypes, addCustomerType, updateCustomerType, deleteCustomerType, fetchCustomerTypes } = useContext(InventoryContext);
@@ -114,51 +115,54 @@ const CustomerTypes = () => {
                 </div>
             </div>
 
-            <FullScreenModal 
-                isOpen={isModalOpen} 
+            <Drawer 
+                open={isModalOpen} 
                 onClose={() => !isSubmitting && setIsModalOpen(false)}
                 title={editingId ? 'Edit Customer Type' : 'Add Customer Type'}
+                subtitle="Manage classification tags for your customers"
+                footer={
+                    <div className="flex justify-end gap-3 w-full">
+                        <button
+                            type="button"
+                            onClick={() => setIsModalOpen(false)}
+                            disabled={isSubmitting}
+                            className="btn-secondary"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSubmit}
+                            disabled={isSubmitting}
+                            className="btn-primary"
+                        >
+                            {isSubmitting ? 'Saving...' : (editingId ? 'Save Changes' : 'Add Type')}
+                        </button>
+                    </div>
+                }
             >
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                    <div className="space-y-1">
-                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Name <span className="text-red-500">*</span></label>
+                <form id="customer-type-form" onSubmit={handleSubmit} className="p-6 space-y-6">
+                    <FormField label="Name" required>
                         <input
                             type="text"
                             required
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 outline-none transition-all font-semibold text-sm"
+                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-semibold text-sm"
                             placeholder="e.g. Wholesale, Retail"
                         />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Description</label>
+                    </FormField>
+                    
+                    <FormField label="Description">
                         <textarea
                             value={formData.description}
                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 outline-none transition-all font-medium text-sm min-h-[100px]"
+                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium text-sm min-h-[100px]"
                             placeholder="Optional description"
                         />
-                    </div>
-                    <div className="flex gap-3 pt-6 border-t border-gray-100">
-                        <button
-                            type="button"
-                            onClick={() => setIsModalOpen(false)}
-                            disabled={isSubmitting}
-                            className="flex-1 px-6 py-3 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 font-bold transition-colors disabled:opacity-50 text-sm"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className="flex-1 px-6 py-3 bg-gray-900 text-white rounded-xl hover:bg-gray-800 font-bold shadow-lg shadow-gray-900/20 transition-all disabled:opacity-50 text-sm"
-                        >
-                            {isSubmitting ? 'Saving...' : (editingId ? 'Save Changes' : 'Add Type')}
-                        </button>
-                    </div>
+                    </FormField>
                 </form>
-            </FullScreenModal>
+            </Drawer>
         </div>
     );
 };

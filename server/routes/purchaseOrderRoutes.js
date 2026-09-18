@@ -6,9 +6,10 @@ import {
     updatePOStatus,
     receivePurchaseOrder,
     updatePurchaseOrder,
-    deletePurchaseOrder
+    deletePurchaseOrder,
+    approvePurchaseOrder
 } from '../controllers/purchaseOrderController.js';
-// import { protect } from '../middleware/authMiddleware.js';
+import { protect, authorize } from '../middleware/authMiddleware.js';
 import { checkMenuAccess } from '../middleware/accessMiddleware.js';
 
 const router = express.Router();
@@ -19,6 +20,9 @@ router.use(checkMenuAccess('purchases'));
 router.route('/')
     .get(getPurchaseOrders)
     .post(createPurchaseOrder);
+
+// Requires admin or manager access for approvals
+router.patch('/:id/approve', authorize('super_admin', 'admin', 'tenant_owner', 'tenant_admin', 'manager'), approvePurchaseOrder);
 
 router.route('/:id')
     .get(getPurchaseOrder)

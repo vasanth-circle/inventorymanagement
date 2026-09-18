@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { toast } from 'react-hot-toast';
@@ -64,10 +64,10 @@ const Parties = () => {
         try {
             setLoading(true);
             const res = await api.get(API_URL, { params: { page, limit, search } });
-            const list = res.data.data.parties;
+            const list = res.data.data.parties || res.data.data.partys || [];
             setParties(list);
             setTotalPages(res.data.data.totalPages || 1);
-            setTotalParties(res.data.data.totalParties || 0);
+            setTotalParties(res.data.data.totalParties || res.data.data.totalPartys || 0);
             
             // Fetch balances in parallel (non-blocking, silent on individual failures)
             const balanceMap = {};
@@ -329,7 +329,7 @@ const Parties = () => {
                                 {parties.map((party) => {
                                     const bal = balances[party._id] ?? party.currentBalance ?? 0;
                                     const activeSites = (party.sites || []).filter(s => s.isActive !== false);
-                                    const displayName = party.companyName || party.name;
+                                    const displayName = party.companyName || party.name || 'Unknown';
                                     const initials = displayName.substring(0,2).toUpperCase();
                                     const isLocked = lockedStatuses[party._id];
                                     const isUnlocked = party.unlockedUntil && new Date(party.unlockedUntil) > new Date();
@@ -438,7 +438,7 @@ const Parties = () => {
                         {filteredLockedParties.map(party => (
                             <div key={party._id} style={{background:'white',borderRadius:'16px',border:'1px solid #fecaca',padding:'20px',boxShadow:'0 1px 3px rgba(0,0,0,0.04)'}}>
                                 <div style={{display:'flex',alignItems:'center',gap:'12px',marginBottom:'14px'}}>
-                                    <div className="avatar avatar-red">{(party.companyName||party.name).substring(0,2).toUpperCase()}</div>
+                                    <div className="avatar avatar-red">{(party.companyName || party.name || 'Unknown').substring(0,2).toUpperCase()}</div>
                                     <div>
                                         <span className="badge badge-danger" style={{marginBottom:'4px',display:'block',width:'fit-content'}}>Billing Locked</span>
                                         <div style={{fontWeight:'700',fontSize:'14px',color:'#0f172a'}}>{party.companyName||party.name}</div>
@@ -620,7 +620,7 @@ const Parties = () => {
                 <form id="unlock-form" onSubmit={handleUnlockSubmit} style={{display:'flex',flexDirection:'column',gap:'18px'}}>
                     {unlockPartyData && (
                         <div style={{display:'flex',alignItems:'center',gap:'12px',padding:'12px',background:'#f8fafc',borderRadius:'12px',border:'1px solid #f1f5f9'}}>
-                            <div className="avatar avatar-red">{(unlockPartyData.companyName||unlockPartyData.name).substring(0,2).toUpperCase()}</div>
+                            <div className="avatar avatar-red">{(unlockPartyData.companyName || unlockPartyData.name || 'Unknown').substring(0,2).toUpperCase()}</div>
                             <div>
                                 <div style={{fontWeight:'700',fontSize:'14px',color:'#0f172a'}}>{unlockPartyData.companyName||unlockPartyData.name}</div>
                                 <div style={{fontSize:'12px',color:'#94a3b8'}}>Currently locked due to pending balance</div>

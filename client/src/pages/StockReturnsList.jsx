@@ -4,6 +4,8 @@ import toast from 'react-hot-toast';
 import { printReturnSlip } from '../utils/printTemplates';
 import { InventoryContext } from '../context/InventoryContext';
 import { PencilSquareIcon, TrashIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import Drawer from '../components/ui/Drawer';
+import FormField from '../components/ui/FormField';
 
 const API_URL = '/api/transactions';
 const authHeader = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
@@ -52,107 +54,97 @@ const EditModal = ({ tx, onClose, onSave }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-                {/* Header */}
-                <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-4 text-white">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <h2 className="text-lg font-black">Edit Return Entry</h2>
-                            <p className="text-indigo-200 text-xs mt-0.5">
-                                {entityName} · {tx.item?.name} · {tx.returnType === 'customer' ? 'Customer Return' : 'Vendor Return'}
-                            </p>
-                        </div>
-                        <button onClick={onClose} className="text-indigo-200 hover:text-white text-2xl font-bold">×</button>
-                    </div>
+        <Drawer
+            isOpen={true}
+            onClose={onClose}
+            title="Edit Return Entry"
+            description={`${entityName} · ${tx.item?.name} · ${tx.returnType === 'customer' ? 'Customer Return' : 'Vendor Return'}`}
+            size="md"
+            footer={
+                <div className="flex gap-3 w-full justify-end">
+                    <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={saving}
+                        className="px-5 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 transition-colors shadow-md shadow-indigo-500/20"
+                    >
+                        {saving ? 'Saving...' : 'Save Changes'}
+                    </button>
                 </div>
+            }
+        >
+            <div className="flex gap-3 px-6 py-3 bg-amber-50 border border-amber-100 rounded-xl mb-6">
+                <span className="text-amber-600 text-sm">⚠️</span>
+                <p className="text-xs text-amber-700 font-medium">
+                    <strong>Item and Party are fixed.</strong> To change those, delete this entry and create a new one.
+                </p>
+            </div>
 
-                {/* Read-only info */}
-                <div className="flex gap-3 px-6 py-3 bg-amber-50 border-b border-amber-100">
-                    <span className="text-amber-600 text-sm">⚠️</span>
-                    <p className="text-xs text-amber-700 font-medium">
-                        <strong>Item and Party are fixed.</strong> To change those, delete this entry and create a new one.
-                    </p>
-                </div>
-
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold text-gray-600 mb-1">Quantity *</label>
-                            <input
-                                type="number" min="1" required
-                                value={form.quantity}
-                                onChange={e => handleQtyOrRateChange('quantity', e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-400"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-600 mb-1">Rate (₹)</label>
-                            <input
-                                type="number" min="0" step="0.01"
-                                value={form.rate}
-                                onChange={e => handleQtyOrRateChange('rate', e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-400"
-                            />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-600 mb-1">Total Amount (₹)</label>
+            <form id="edit-return-form" onSubmit={handleSubmit} className="space-y-5 px-1">
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField label="Quantity" required>
+                        <input
+                            type="number" min="1" required
+                            value={form.quantity}
+                            onChange={e => handleQtyOrRateChange('quantity', e.target.value)}
+                            className="w-full px-4 py-2.5 bg-gray-50 border-none rounded-xl text-sm font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                    </FormField>
+                    <FormField label="Rate (₹)">
                         <input
                             type="number" min="0" step="0.01"
-                            value={form.total}
-                            onChange={e => setForm({ ...form, total: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-400 bg-gray-50"
+                            value={form.rate}
+                            onChange={e => handleQtyOrRateChange('rate', e.target.value)}
+                            className="w-full px-4 py-2.5 bg-gray-50 border-none rounded-xl text-sm font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none"
                         />
-                        <p className="text-[10px] text-gray-400 mt-1">Auto-calculated from Qty × Rate, or override manually.</p>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-600 mb-1">Settlement Type</label>
-                        <select
-                            value={form.settlementType}
-                            onChange={e => setForm({ ...form, settlementType: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-400"
-                        >
-                            <option value="ledger">📒 Ledger Credit</option>
-                            <option value="cash">💵 Cash</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-600 mb-1">Reason</label>
-                        <input
-                            type="text"
-                            value={form.reason}
-                            onChange={e => setForm({ ...form, reason: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-400"
-                            placeholder="e.g. Damaged goods, Wrong item"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-600 mb-1">Notes</label>
-                        <textarea
-                            value={form.notes}
-                            onChange={e => setForm({ ...form, notes: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
-                            rows={2}
-                            placeholder="Any additional notes..."
-                        />
-                    </div>
+                    </FormField>
+                </div>
+                
+                <FormField label="Total Amount (₹)">
+                    <input
+                        type="number" min="0" step="0.01"
+                        value={form.total}
+                        onChange={e => setForm({ ...form, total: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-indigo-50 border border-indigo-100 rounded-xl text-sm font-bold text-indigo-900 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                    <p className="text-[10px] text-gray-500 mt-1.5 ml-1">Auto-calculated from Qty × Rate, or override manually.</p>
+                </FormField>
 
-                    <div className="flex gap-3 pt-2">
-                        <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-bold text-sm hover:bg-gray-50">
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={saving}
-                            className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                        >
-                            {saving ? 'Saving...' : 'Save Changes'}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+                <FormField label="Settlement Type">
+                    <select
+                        value={form.settlementType}
+                        onChange={e => setForm({ ...form, settlementType: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-gray-50 border-none rounded-xl text-sm font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
+                    >
+                        <option value="ledger">📒 Ledger Credit</option>
+                        <option value="cash">💵 Cash</option>
+                    </select>
+                </FormField>
+
+                <FormField label="Reason">
+                    <input
+                        type="text"
+                        value={form.reason}
+                        onChange={e => setForm({ ...form, reason: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-gray-50 border-none rounded-xl text-sm font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none"
+                        placeholder="e.g. Damaged goods, Wrong item"
+                    />
+                </FormField>
+
+                <FormField label="Notes">
+                    <textarea
+                        value={form.notes}
+                        onChange={e => setForm({ ...form, notes: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-gray-50 border-none rounded-xl text-sm font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                        rows={3}
+                        placeholder="Any additional notes..."
+                    />
+                </FormField>
+            </form>
+        </Drawer>
     );
 };
 

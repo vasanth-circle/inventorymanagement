@@ -1,4 +1,13 @@
-import { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
+import {
+    DndContext, closestCenter, KeyboardSensor, PointerSensor,
+    useSensor, useSensors,
+} from '@dnd-kit/core';
+import {
+    arrayMove, SortableContext, sortableKeyboardCoordinates,
+    rectSortingStrategy, useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { formatCurrency } from '../utils/helpers';
@@ -32,7 +41,7 @@ const relDate = (d) => {
 };
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
-const KpiCard = ({ icon, label, value, sub, color = 'indigo', onClick, urgent }) => {
+const KpiCard = React.forwardRef(({ icon, label, value, sub, color = 'indigo', onClick, urgent, style, attributes, listeners }, ref) => {
     const colors = {
         indigo: 'border-indigo-100 bg-indigo-50 text-indigo-600',
         emerald:'border-emerald-100 bg-emerald-50 text-emerald-600',
@@ -45,6 +54,10 @@ const KpiCard = ({ icon, label, value, sub, color = 'indigo', onClick, urgent })
     };
     return (
         <div
+            ref={ref}
+            style={style}
+            {...(attributes || {})}
+            {...(listeners || {})}
             onClick={onClick}
             className={`bg-white rounded-xl border shadow-sm p-3 sm:p-4 flex flex-col gap-2 transition-all hover:shadow-md ${onClick ? 'cursor-pointer hover:scale-[1.02]' : ''} ${urgent ? 'ring-2 ring-rose-300' : 'border-gray-100'}`}
         >
@@ -58,7 +71,13 @@ const KpiCard = ({ icon, label, value, sub, color = 'indigo', onClick, urgent })
             </div>
         </div>
     );
-};
+});
+
+function SortableKpiCard(props) {
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: props.id });
+    const style = { transform: CSS.Transform.toString(transform), transition, cursor: 'grab' };
+    return <KpiCard ref={setNodeRef} style={style} attributes={attributes} listeners={listeners} {...props} />;
+}
 
 const SectionCard = ({ title, icon, children, action, noPad }) => (
     <div className="glass-panel overflow-hidden">
@@ -147,6 +166,32 @@ const Dashboard = () => {
     // Also keep old stats for existing KPIs used by other card styles
     const [oldStats, setOldStats] = useState(null);
     const [trendData, setTrendData] = useState([]);
+
+    // ─── Dashboard card order (drag-and-drop) ───────────────────────────────
+    const defaultCardOrder = [
+        'total_products', 'total_skus', 'inventory_value', 'available_stock',
+        'low_stock', 'out_of_stock', 'overstocked', 'damaged_units',
+        'pending_pos', 'purchase_this_month', 'today_stock_in', 'today_stock_out',
+    ];
+    const [cardOrder, setCardOrder] = useState(() => {
+        try {
+            const saved = localStorage.getItem('inventory_dashboard_layout');
+            if (saved) { const p = JSON.parse(saved); if (Array.isArray(p) && p.length > 0) return p; }
+        } catch {}
+        return defaultCardOrder;
+    });
+    const dndSensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+    const handleDragEnd = ({ active, over }) => {
+        if (!over || active.id === over.id) return;
+        setCardOrder(items => {
+            const newOrder = arrayMove(items, items.indexOf(active.id), items.indexOf(over.id));
+            localStorage.setItem('inventory_dashboard_layout', JSON.stringify(newOrder));
+            return newOrder;
+        });
+    };
 
     const isFinancialAdmin = ['super_admin','admin','tenant_owner','tenant_admin','manager','accounts'].includes(user?.role);
     // Machinery-specific adaptations — only affects machinery industry
@@ -261,50 +306,28 @@ const Dashboard = () => {
                 </div>
             )}
 
-            {/* ─── KPI Cards ───────────────────────────────────────── */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3">
-                <KpiCard
-                    icon={isMachinery ? '⚙️' : '📦'}
-                    label={isMachinery ? 'Machines & Parts' : 'Total Products'}
-                    value={kpi.totalProducts?.toLocaleString() ?? '—'}
-                    sub={isMachinery ? 'Unique machines & spares' : 'Unique items in catalog'}
-                    color="indigo" onClick={() => navigate('/inventory')} />
-                <KpiCard icon="🏷️" label="Total SKUs" value={kpi.totalSKUs?.toLocaleString() ?? '—'} sub="Items with SKU codes" color="sky" />
-                {isFinancialAdmin && <KpiCard icon="💰" label={isMachinery ? 'Parts Stock Value' : 'Inventory Value'} value={fmtCompact(kpi.inventoryValue)} sub="Based on purchase price" color="emerald" />}
-                <KpiCard
-                    icon={isMachinery ? '🔩' : '📊'}
-                    label={isMachinery ? 'Parts in Stock' : 'Available Stock'}
-                    value={kpi.availableStock?.toLocaleString() ?? '—'}
-                    sub={isMachinery ? 'Total parts in hand' : 'Total units in hand'}
-                    color="violet" />
-                <KpiCard
-                    icon="⚠️"
-                    label={isMachinery ? 'Low Parts Alert' : 'Low Stock'}
-                    value={kpi.lowStockCount ?? '—'}
-                    sub="At or below threshold" color="amber" urgent={kpi.lowStockCount > 0} onClick={() => setStockTab('low')} />
-                <KpiCard
-                    icon="🔴"
-                    label={isMachinery ? 'Parts Out of Stock' : 'Out of Stock'}
-                    value={kpi.outOfStockCount ?? '—'}
-                    sub="Zero quantity items" color="rose" urgent={kpi.outOfStockCount > 0} onClick={() => setStockTab('out')} />
-                <KpiCard icon="📈" label="Overstocked" value={kpi.overStockedCount ?? '—'} sub="3x above threshold" color="orange" />
-                {isFinancialAdmin && <KpiCard icon="🔧" label={isMachinery ? 'Damaged Parts' : 'Damaged Units'} value={kpi.damagedTotal?.toLocaleString() ?? '—'} sub={kpi.damagedValue > 0 ? `Value: ${fmtCompact(kpi.damagedValue)} · ${kpi.damagedCount ?? 0} items` : `Total damaged qty · ${kpi.damagedCount ?? 0} items`} color="slate" onClick={() => setStockTab('damaged')} />}
-                {isFinancialAdmin && <KpiCard
-                    icon={isMachinery ? '🔩' : '🛒'}
-                    label={isMachinery ? 'Pending Part Orders' : 'Pending POs'}
-                    value={kpi.pendingPOs ?? '—'} sub="Awaiting delivery" color="indigo" onClick={() => navigate('/purchase-orders')} />}
-                {isFinancialAdmin && <KpiCard icon="📅" label={isMachinery ? 'Parts Purchase This Month' : 'Purchase This Month'} value={fmtCompact(kpi.purchaseThisMonth)} sub="Current month spend" color="sky" />}
-                <KpiCard
-                    icon="📥"
-                    label={isMachinery ? 'Parts Received Today' : 'Today Stock In'}
-                    value={oldStats?.todayInward?.total ?? '—'}
-                    sub={`${oldStats?.todayInward?.count ?? 0} transactions`} color="emerald" />
-                <KpiCard
-                    icon="📤"
-                    label={isMachinery ? 'Parts Dispatched Today' : 'Today Stock Out'}
-                    value={oldStats?.todayOutward?.total ?? '—'}
-                    sub={`${oldStats?.todayOutward?.count ?? 0} transactions`} color="rose" />
-            </div>
+            {/* ─── KPI Cards (drag to reorder) ─────────────────────── */}
+            <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={cardOrder} strategy={rectSortingStrategy}>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3">
+                        {cardOrder.map(id => {
+                            if (id === 'total_products') return <SortableKpiCard key={id} id={id} icon={isMachinery ? '⚙️' : '📦'} label={isMachinery ? 'Machines & Parts' : 'Total Products'} value={kpi.totalProducts?.toLocaleString() ?? '—'} sub={isMachinery ? 'Unique machines & spares' : 'Unique items in catalog'} color="indigo" onClick={() => navigate('/inventory')} />;
+                            if (id === 'total_skus') return <SortableKpiCard key={id} id={id} icon="🏷️" label="Total SKUs" value={kpi.totalSKUs?.toLocaleString() ?? '—'} sub="Items with SKU codes" color="sky" />;
+                            if (id === 'inventory_value') return isFinancialAdmin ? <SortableKpiCard key={id} id={id} icon="💰" label={isMachinery ? 'Parts Stock Value' : 'Inventory Value'} value={fmtCompact(kpi.inventoryValue)} sub="Based on purchase price" color="emerald" /> : null;
+                            if (id === 'available_stock') return <SortableKpiCard key={id} id={id} icon={isMachinery ? '🔩' : '📊'} label={isMachinery ? 'Parts in Stock' : 'Available Stock'} value={kpi.availableStock?.toLocaleString() ?? '—'} sub={isMachinery ? 'Total parts in hand' : 'Total units in hand'} color="violet" />;
+                            if (id === 'low_stock') return <SortableKpiCard key={id} id={id} icon="⚠️" label={isMachinery ? 'Low Parts Alert' : 'Low Stock'} value={kpi.lowStockCount ?? '—'} sub="At or below threshold" color="amber" urgent={kpi.lowStockCount > 0} onClick={() => setStockTab('low')} />;
+                            if (id === 'out_of_stock') return <SortableKpiCard key={id} id={id} icon="🔴" label={isMachinery ? 'Parts Out of Stock' : 'Out of Stock'} value={kpi.outOfStockCount ?? '—'} sub="Zero quantity items" color="rose" urgent={kpi.outOfStockCount > 0} onClick={() => setStockTab('out')} />;
+                            if (id === 'overstocked') return <SortableKpiCard key={id} id={id} icon="📈" label="Overstocked" value={kpi.overStockedCount ?? '—'} sub="3x above threshold" color="orange" />;
+                            if (id === 'damaged_units') return isFinancialAdmin ? <SortableKpiCard key={id} id={id} icon="🔧" label={isMachinery ? 'Damaged Parts' : 'Damaged Units'} value={kpi.damagedTotal?.toLocaleString() ?? '—'} sub={kpi.damagedValue > 0 ? `Value: ${fmtCompact(kpi.damagedValue)} · ${kpi.damagedCount ?? 0} items` : `Total damaged qty · ${kpi.damagedCount ?? 0} items`} color="slate" onClick={() => setStockTab('damaged')} /> : null;
+                            if (id === 'pending_pos') return isFinancialAdmin ? <SortableKpiCard key={id} id={id} icon={isMachinery ? '🔩' : '🛒'} label={isMachinery ? 'Pending Part Orders' : 'Pending POs'} value={kpi.pendingPOs ?? '—'} sub="Awaiting delivery" color="indigo" onClick={() => navigate('/purchase-orders')} /> : null;
+                            if (id === 'purchase_this_month') return isFinancialAdmin ? <SortableKpiCard key={id} id={id} icon="📅" label={isMachinery ? 'Parts Purchase This Month' : 'Purchase This Month'} value={fmtCompact(kpi.purchaseThisMonth)} sub="Current month spend" color="sky" /> : null;
+                            if (id === 'today_stock_in') return <SortableKpiCard key={id} id={id} icon="📥" label={isMachinery ? 'Parts Received Today' : 'Today Stock In'} value={oldStats?.todayInward?.total ?? '—'} sub={`${oldStats?.todayInward?.count ?? 0} transactions`} color="emerald" />;
+                            if (id === 'today_stock_out') return <SortableKpiCard key={id} id={id} icon="📤" label={isMachinery ? 'Parts Dispatched Today' : 'Today Stock Out'} value={oldStats?.todayOutward?.total ?? '—'} sub={`${oldStats?.todayOutward?.count ?? 0} transactions`} color="rose" />;
+                            return null;
+                        })}
+                    </div>
+                </SortableContext>
+            </DndContext>
 
             {/* ─── Analytics Row ───────────────────────────────────── */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
