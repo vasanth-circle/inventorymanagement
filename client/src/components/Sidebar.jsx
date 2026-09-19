@@ -103,7 +103,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 id: 'asset-dashboard',
                 icon: '📊',
                 items: [
-                    { name: 'Overview', path: '/assets/dashboard', id: 'assets' }
+                    { name: 'Overview', path: '/assets/dashboard', id: 'asset-dashboard-overview' }
                 ]
             },
             {
@@ -111,8 +111,9 @@ const Sidebar = ({ isOpen, onClose }) => {
                 id: 'assets-main',
                 icon: '🖥️',
                 items: [
-                    { name: 'Manage Assets', path: '/assets', id: 'assets' },
-                    { name: 'Asset Reports', path: '/assets/reports', id: 'assets' }
+                    { name: 'Manage Assets', path: '/assets', id: 'asset-manage', exact: true },
+                    { name: 'Asset Reports', path: '/assets/reports', id: 'asset-reports' },
+                    { name: 'Maintenance Logs', path: '/assets/maintenance', id: 'asset-maintenance' }
                 ]
             }
         ];
@@ -271,7 +272,9 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 
                                 <div className={`mt-2 space-y-1 transition-all duration-300 ease-in-out overflow-hidden ${isExpanded ? 'opacity-100 max-h-[2000px] translate-y-0' : 'opacity-0 max-h-0 -translate-y-2'}`}>
                                     {accessibleItems.map((item) => {
-                                        const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+                                        const isActive = item.exact
+                                            ? location.pathname === item.path
+                                            : location.pathname === item.path || location.pathname.startsWith(item.path + '/');
                                         return (
                                             <Link
                                                 key={item.name}

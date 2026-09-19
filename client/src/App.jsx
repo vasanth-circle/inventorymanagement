@@ -33,6 +33,7 @@ import Ledger from './pages/Ledger';
 import Assets from './pages/Assets';
 import AssetDashboard from './pages/AssetDashboard';
 import AssetReports from './pages/AssetReports';
+import AssetMaintenance from './pages/AssetMaintenance';
 import Profile from './pages/Profile';
 import ProductShowcase from './pages/ProductShowcase';
 import ProductShowcaseEdit from './pages/ProductShowcaseEdit';
@@ -137,6 +138,7 @@ function App() {
                                             <Route path="/assets" element={<Assets />} />
                                             <Route path="/assets/dashboard" element={<AssetDashboard />} />
                                             <Route path="/assets/reports" element={<AssetReports />} />
+                                            <Route path="/assets/maintenance" element={<AssetMaintenance />} />
                                             <Route path="/product-showcase" element={<ProductShowcase />} />
                                             <Route path="/product-showcase/:id/images" element={<ProductShowcaseEdit />} />
                                             <Route path="/" element={<Navigate to={fallbackRoute} replace />} />

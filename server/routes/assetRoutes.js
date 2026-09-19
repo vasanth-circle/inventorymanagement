@@ -5,12 +5,15 @@ import {
     createAsset,
     updateAsset,
     deleteAsset,
-    getAssetStats
+    getAssetStats,
+    addMaintenanceLog,
+    getAllMaintenanceLogs,
 } from '../controllers/assetController.js';
 
 const router = express.Router();
 
 router.route('/dashboard').get(getAssetStats);
+router.route('/maintenance/all').get(getAllMaintenanceLogs);
 
 router.route('/')
     .get(getAssets)
@@ -20,5 +23,8 @@ router.route('/:id')
     .get(getAssetById)
     .put(updateAsset)
     .delete(deleteAsset);
+
+router.route('/:id/maintenance')
+    .post(addMaintenanceLog);
 
 export default router;
