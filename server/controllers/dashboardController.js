@@ -6,7 +6,7 @@ import Category from '../models/Category.js';
 import SalesOrder from '../models/SalesOrder.js';
 import PurchaseOrder from '../models/PurchaseOrder.js';
 import Tenant from '../models/Tenant.js';
-import Vendor from '../models/Vendor.js';
+import Party from '../models/Party.js';
 
 // @desc    Get dashboard statistics
 // @route   GET /api/dashboard/stats
@@ -187,11 +187,11 @@ export const getInventoryDashboard = async (req, res, next) => {
         // Supplier analytics
         const supplierAnalytics = await PurchaseOrder.aggregate([
             { $match: { ...tenantQuery, status: { $ne: 'void' } } },
-            { $group: { _id: '$vendor', totalValue: { $sum: '$totalAmount' }, count: { $sum: 1 } } },
+            { $group: { _id: '$party', totalValue: { $sum: '$totalAmount' }, count: { $sum: 1 } } },
             { $sort: { totalValue: -1 } }, { $limit: 5 },
-            { $lookup: { from: 'vendors', localField: '_id', foreignField: '_id', as: 'vendorInfo' } },
-            { $unwind: { path: '$vendorInfo', preserveNullAndEmptyArrays: true } },
-            { $project: { name: { $ifNull: ['$vendorInfo.name', 'Unknown'] }, totalValue: 1, count: 1 } }
+            { $lookup: { from: 'parties', localField: '_id', foreignField: '_id', as: 'partyInfo' } },
+            { $unwind: { path: '$partyInfo', preserveNullAndEmptyArrays: true } },
+            { $project: { name: { $ifNull: ['$partyInfo.name', 'Unknown'] }, totalValue: 1, count: 1 } }
         ]);
 
         // --- CATEGORY DISTRIBUTION ---
@@ -263,14 +263,14 @@ export const getInventoryDashboard = async (req, res, next) => {
         // --- RECENT ACTIVITY ---
         const [recentTransactions, recentSales, recentPOs] = await Promise.all([
             Transaction.find(tenantQuery).populate('item', 'name sku').populate('user', 'name').sort({ createdAt: -1 }).limit(8).lean(),
-            SalesOrder.find({ ...tenantQuery, isEstimation: { $ne: true } }).select('orderNumber totalAmount status orderDate customer').populate('customer', 'name companyName').sort({ createdAt: -1 }).limit(5).lean(),
-            PurchaseOrder.find(tenantQuery).select('orderNumber totalAmount status orderDate vendor').populate('vendor', 'name').sort({ createdAt: -1 }).limit(5).lean(),
+            SalesOrder.find({ ...tenantQuery, isEstimation: { $ne: true } }).select('orderNumber totalAmount status orderDate party').populate('party', 'name companyName').sort({ createdAt: -1 }).limit(5).lean(),
+            PurchaseOrder.find(tenantQuery).select('orderNumber totalAmount status orderDate party').populate('party', 'name').sort({ createdAt: -1 }).limit(5).lean(),
         ]);
 
         const activityFeed = [
             ...recentTransactions.map(t => ({ type: t.type === 'inward' ? 'stock_in' : t.type === 'outward' ? 'stock_out' : t.type, label: t.item?.name || 'Item', sub: t.reason || '', qty: t.quantity, user: t.user?.name, date: t.createdAt })),
-            ...recentSales.map(s => ({ type: 'sale', label: s.orderNumber, sub: s.customer?.companyName || s.customer?.name || '', amount: s.totalAmount, status: s.status, date: s.orderDate || s.createdAt })),
-            ...recentPOs.map(p => ({ type: 'purchase', label: p.orderNumber, sub: p.vendor?.name || '', amount: p.totalAmount, status: p.status, date: p.orderDate || p.createdAt })),
+            ...recentSales.map(s => ({ type: 'sale', label: s.orderNumber, sub: s.party?.companyName || s.party?.name || '', amount: s.totalAmount, status: s.status, date: s.orderDate || s.createdAt })),
+            ...recentPOs.map(p => ({ type: 'purchase', label: p.orderNumber, sub: p.party?.name || '', amount: p.totalAmount, status: p.status, date: p.orderDate || p.createdAt })),
         ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 15);
 
         // --- ALERTS ---

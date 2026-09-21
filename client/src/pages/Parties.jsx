@@ -334,7 +334,7 @@ const Parties = () => {
                                     const isLocked = lockedStatuses[party._id];
                                     const isUnlocked = party.unlockedUntil && new Date(party.unlockedUntil) > new Date();
                                     return (
-                                        <tr key={party._id} style={{cursor:'pointer'}} onClick={() => navigate(`/party-ledger/${party._id}`)}>
+                                        <tr key={party._id} style={{cursor:'pointer'}} onClick={() => navigate(`/ledger/${party._id}`)}>
                                             <td>
                                                 <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
                                                     <div className={`avatar ${avatarColor(displayName)}`}>{initials}</div>
@@ -458,7 +458,7 @@ const Parties = () => {
                                     </div>
                                 </div>
                                 <div style={{display:'flex',gap:'8px'}}>
-                                    <button onClick={() => navigate(`/party-ledger/${party._id}`)} className="btn-secondary" style={{flex:1,padding:'8px',fontSize:'12px',justifyContent:'center'}}>View Ledger</button>
+                                    <button onClick={() => navigate(`/ledger/${party._id}`)} className="btn-secondary" style={{flex:1,padding:'8px',fontSize:'12px',justifyContent:'center'}}>View Ledger</button>
                                     <button onClick={() => { setUnlockPartyData(party); setUnlockModalOpen(true); }} style={{flex:1,padding:'8px',fontSize:'12px',fontWeight:'600',background:'#fef2f2',color:'#dc2626',border:'1px solid #fecaca',borderRadius:'10px',cursor:'pointer'}}>Unlock</button>
                                 </div>
                             </div>

@@ -80,11 +80,11 @@ const Quotations = () => {
             setLoading(true);
             const [quotRes, custRes, itemsRes] = await Promise.all([
                 api.get('/quotations'),
-                api.get('/customers?limit=5000'),
+                api.get('/parties?limit=5000'),
                 api.get('/items?limit=5000'),
             ]);
             setQuotations(quotRes.data.data?.quotations || []);
-            setCustomers(custRes.data.data?.customers || []);
+            setCustomers(custRes.data.data?.partys || []);
             setAllItems(itemsRes.data?.items || []);
         } catch (err) {
             toast.error('Failed to load data');

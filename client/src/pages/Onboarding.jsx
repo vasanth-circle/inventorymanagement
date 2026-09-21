@@ -66,7 +66,15 @@ const Onboarding = () => {
         }
     };
 
-    const handleSkip = () => {
+    const handleSkip = async () => {
+        // Mark as skipped so Dashboard doesn't redirect back to onboarding
+        sessionStorage.setItem('onboarding_skipped', 'true');
+        // Save industry as 'generic' (confirmed) so the dashboard loop check is satisfied
+        try {
+            await updateBillingSettings({ industry: 'generic' });
+        } catch (_) {
+            // If update fails, still allow navigation via sessionStorage flag
+        }
         navigate('/dashboard');
     };
 

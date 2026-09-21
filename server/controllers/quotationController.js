@@ -5,6 +5,7 @@ import User from '../models/User.js';
 import CustomerLedger from '../models/CustomerLedger.js';
 import { sendResponse, sendError } from '../utils/standardResponse.js';
 import { tenantQuery } from '../utils/tenantQuery.js';
+import Party from '../models/Party.js';
 import { getNextSequenceValue } from '../utils/sequence.js';
 import Setting from '../models/Setting.js';
 import { syncSalesOrderLedger } from './salesOrderController.js';

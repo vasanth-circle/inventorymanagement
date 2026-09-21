@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext } from 'react';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import SearchableSelect from '../components/SearchableSelect';
@@ -33,7 +34,8 @@ const PurchaseOrders = () => {
     const [taxType, setTaxType] = useState('cgst'); // 'cgst' (intra) or 'igst' (inter)
     const [from, setFrom] = useState('');
     const [to, setTo] = useState('');
-    const [search, setSearch] = useState('');
+    const location = useLocation();
+    const [search, setSearch] = useState(location.state?.searchOrderNumber || '');
     const [sortBy, setSortBy] = useState('createdAt');
     const [sortOrder, setSortOrder] = useState('desc');
     const [isQuickAddItemOpen, setIsQuickAddItemOpen] = useState(false);

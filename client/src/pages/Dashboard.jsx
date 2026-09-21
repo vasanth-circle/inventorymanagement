@@ -198,7 +198,8 @@ const Dashboard = () => {
     const isMachinery = billingSettings?.industry === 'machinery';
 
     useEffect(() => {
-        if (!settingsLoading && billingSettings && (!billingSettings.industry || billingSettings.industry === 'generic')) {
+        const skipped = sessionStorage.getItem('onboarding_skipped');
+        if (!skipped && !settingsLoading && billingSettings && (!billingSettings.industry || billingSettings.industry === 'generic')) {
             navigate('/onboarding');
         }
     }, [billingSettings, settingsLoading, navigate]);

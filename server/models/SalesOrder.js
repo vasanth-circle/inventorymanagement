@@ -12,10 +12,10 @@ const salesOrderSchema = new mongoose.Schema({
         required: [true, 'Tenant ID is required'],
         index: true,
     },
-    customer: {
+    party: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Party',
-        required: [true, 'Customer is required'],
+        required: [true, 'Party is required'],
     },
     items: [{
         item: {
@@ -185,7 +185,7 @@ const salesOrderSchema = new mongoose.Schema({
 });
 
 salesOrderSchema.index({ orderNumber: 1, tenantId: 1 }, { unique: true });
-salesOrderSchema.index({ customer: 1, tenantId: 1 });
+salesOrderSchema.index({ party: 1, tenantId: 1 });
 salesOrderSchema.index({ status: 1, tenantId: 1 });
 // Performance indexes — list sorting, dashboard aggregations, duplicate guard
 salesOrderSchema.index({ tenantId: 1, createdAt: -1 });               // list page sort

@@ -12,10 +12,10 @@ const purchaseOrderSchema = new mongoose.Schema({
         required: [true, 'Tenant ID is required'],
         index: true,
     },
-    vendor: {
+    party: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Party',
-        required: [true, 'Vendor is required'],
+        required: [true, 'Party is required'],
     },
     items: [{
         item: {
@@ -107,7 +107,7 @@ const purchaseOrderSchema = new mongoose.Schema({
         trim: true,
         default: ''
     },
-    vendorBillNumber: {
+    partyBillNumber: {
         type: String,
         trim: true,
     },
@@ -150,7 +150,7 @@ purchaseOrderSchema.pre('validate', function (next) {
 });
 
 purchaseOrderSchema.index({ orderNumber: 1, tenantId: 1 }, { unique: true });
-purchaseOrderSchema.index({ vendor: 1, tenantId: 1 });
+purchaseOrderSchema.index({ party: 1, tenantId: 1 });
 
 const PurchaseOrder = appConn.model('PurchaseOrder', purchaseOrderSchema);
 

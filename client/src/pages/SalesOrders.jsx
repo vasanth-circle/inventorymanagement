@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
@@ -11,7 +12,7 @@ import Drawer from '../components/ui/Drawer';
 import FormField, { FormSection } from '../components/ui/FormField';
 import EmptyState from '../components/ui/EmptyState';
 const API_URL = '/api/sales-orders';
-const CUSTOMERS_API = '/api/customers';
+const CUSTOMERS_API = '/api/parties';
 const ITEMS_API = '/api/items';
 
 const SalesOrders = () => {
@@ -25,7 +26,8 @@ const SalesOrders = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingOrder, setEditingOrder] = useState(null);
     const [fetchingBalance, setFetchingBalance] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
+    const location = useLocation();
+    const [searchTerm, setSearchTerm] = useState(location.state?.searchOrderNumber || '');
     const [userFilter, setUserFilter] = useState('');
     const [typeFilter, setTypeFilter] = useState('');
     const [fromDate, setFromDate] = useState('');
@@ -119,7 +121,7 @@ const SalesOrders = () => {
             const res = await axios.get(`${CUSTOMERS_API}?limit=5000`, {
                 headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
             });
-            setCustomers(res.data.data?.customers || res.data.customers || []);
+            setCustomers(res.data.data?.partys || res.data.partys || []);
         } catch (error) {
             console.error('Failed to fetch customers');
         }
