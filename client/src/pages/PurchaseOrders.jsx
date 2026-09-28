@@ -214,6 +214,26 @@ const PurchaseOrders = () => {
                     
                     // Initial calculation
                     newItems[index].total = 0;
+                    
+                    // Auto-add new row if this is the last row
+                    if (index === newItems.length - 1) {
+                        newItems.push({ 
+                            item: '', 
+                            quantity: '', 
+                            damagedQuantity: '',
+                            price: '', 
+                            taxRate: formData.taxRate,
+                            boxCount: '', 
+                            totalPcs: '', 
+                            totalSqFt: '',
+                            brand: '',
+                            size: '',
+                            billingUnit: billingSettings?.industry === 'tiles' ? 'boxes' : 'pieces'
+                        });
+                    }
+                } else if (!selectedItemId && index === newItems.length - 2 && newItems[newItems.length - 1].item === '') {
+                   // Optional: remove auto-added row if they clear the item
+                   // This is complex, so let's stick to simple auto-add
                 }
             } else if (field === 'piecesCount' || field === 'boxCount' || field === 'price' || field === 'billingUnit' || field === 'quantity' || field === 'damagedQuantity') {
                 const row = newItems[index];
