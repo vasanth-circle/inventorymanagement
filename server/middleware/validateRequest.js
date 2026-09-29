@@ -70,7 +70,7 @@ export const schemas = {
         barcode: Joi.string().optional().allow('').trim(),
         partNumber: Joi.string().optional().allow('').trim(),
         hsn: Joi.string().optional().allow('').trim(),
-        sku: Joi.string().optional().trim(),
+        sku: Joi.string().optional().allow('').trim(),
         category: Joi.string().required(),
         quantity: Joi.number().min(0).default(0),
         minStockThreshold: Joi.number().min(0).allow('', null).empty('').default(0),
