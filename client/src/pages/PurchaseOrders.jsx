@@ -173,7 +173,9 @@ const PurchaseOrders = () => {
                 headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
             });
             toast.success('Item added successfully');
-            setItems([...items, res.data.data]);
+            // createItem returns the item directly (not wrapped in data:{}) so use res.data
+            const newItem = res.data?.data || res.data;
+            setItems(prev => [...prev, newItem]);
             setIsQuickAddItemOpen(false);
             setQuickAddItemData({ name: '', sku: '', purchasePrice: '', category: '', hsn: '', unitType: 'pieces', size: '', pcsPerBox: '', sqFtPerPc: '' });
         } catch (error) {
@@ -267,9 +269,16 @@ const PurchaseOrders = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            let itemsTotal = formData.items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
+            // Filter out empty placeholder rows (rows with no item selected)
+            const validItems = formData.items.filter(item => item.item && item.item !== '');
+            if (validItems.length === 0) {
+                toast.error('Please add at least one item to the purchase order.');
+                return;
+            }
+
+            let itemsTotal = validItems.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
             // Calculate tax per item using each row's individual tax rate
-            let taxAmount = formData.items.reduce((sum, item) => {
+            let taxAmount = validItems.reduce((sum, item) => {
                 const rate = parseFloat(item.taxRate ?? formData.taxRate) || 0;
                 return sum + ((parseFloat(item.total) || 0) * rate / 100);
             }, 0);
@@ -283,6 +292,7 @@ const PurchaseOrders = () => {
             
             const submissionData = {
                 ...formData,
+                items: validItems,
                 taxType,
                 itemsTotal,
                 taxAmount,
@@ -699,7 +709,7 @@ const PurchaseOrders = () => {
                                                             </div>
                                                         ) : (
                                                             <input 
-                                                                required 
+                                                                required={!!row.item}
                                                                 type="number" 
                                                                 step="any"
                                                                 min="0" 
@@ -723,7 +733,7 @@ const PurchaseOrders = () => {
                                                     </td>
                                                     {!isGodown && (
                                                         <td className="px-2 py-2 min-w-[100px]">
-                                                            <input required type="number" step="any" value={row.price === 0 ? '' : row.price} onChange={(e) => handleItemChange(index, 'price', e.target.value)} className="w-full px-2 py-2 border rounded-lg border-gray-200 text-right font-bold focus:ring-1 focus:ring-primary-400 outline-none" placeholder="Rate" />
+                                                            <input required={!!row.item} type="number" step="any" value={row.price === 0 ? '' : row.price} onChange={(e) => handleItemChange(index, 'price', e.target.value)} className="w-full px-2 py-2 border rounded-lg border-gray-200 text-right font-bold focus:ring-1 focus:ring-primary-400 outline-none" placeholder="Rate" />
                                                         </td>
                                                     )}
                                                     {!isGodown && (
