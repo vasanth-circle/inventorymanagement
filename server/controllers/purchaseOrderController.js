@@ -9,6 +9,7 @@ import VendorLedger from '../models/VendorLedger.js';
 import Vendor from '../models/Vendor.js';
 import { recalculateVendorBalance } from './vendorLedgerController.js';
 import Setting from '../models/Setting.js';
+import Counter from '../models/Counter.js';
 
 const revertPurchaseOrder = async (orderId, vendorId, tenantId, orderNumber) => {
     try {
@@ -198,11 +199,31 @@ export const createPurchaseOrder = async (req, res, next) => {
         const isDirectInward = setting?.workflowConfig?.directPurchaseInward || false;
         const shouldReceive = isDirectInward && (totalAmount > 0);
 
-        // Generate Order Number with retry logic
+        // ── Self-healing sequence: find the highest existing PO number for this
+        //    tenant and fast-forward the counter past it if needed. This prevents
+        //    the "failed after 10 retries" error when the counter has reset or drifted.
+        const latestPO = await PurchaseOrder.findOne({ ...tenantQuery(req) })
+            .sort({ orderNumber: -1 })
+            .select('orderNumber')
+            .lean();
+        if (latestPO?.orderNumber) {
+            const match = latestPO.orderNumber.match(/PO-(\d+)/);
+            if (match) {
+                const highestSeq = parseInt(match[1], 10);
+                // Ensure our counter is at least at the highest existing number
+                await Counter.findOneAndUpdate(
+                    { id: 'PO', tenantId: req.tenantId },
+                    [{ $set: { seq: { $max: ['$seq', highestSeq] } } }],
+                    { upsert: true }
+                );
+            }
+        }
+
+        // Generate Order Number with retry logic (maxSeq=99999 to avoid rollover)
         let order;
         let retries = 0;
-        while (!order && retries < 10) {
-            const seq = await getNextSequenceValue('PO', req.tenantId);
+        while (!order && retries < 20) {
+            const seq = await getNextSequenceValue('PO', req.tenantId, 99999);
             const orderNumber = `PO-${String(seq).padStart(5, '0')}`;
             
             try {
@@ -223,7 +244,7 @@ export const createPurchaseOrder = async (req, res, next) => {
                     ...tenantQuery(req),
                 });
             } catch (error) {
-                // If it's a duplicate key error on orderNumber, retry with next sequence
+                // If it's a duplicate key error on orderNumber, skip and retry
                 if (error.code === 11000 && (error.message.includes('orderNumber') || (error.keyPattern && error.keyPattern.orderNumber))) {
                     retries++;
                     continue;
