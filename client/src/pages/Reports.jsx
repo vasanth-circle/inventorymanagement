@@ -138,6 +138,18 @@ const Reports = () => {
                     setReportData(combined);
                     toast.success('Item History report generated');
                 }
+            } else if (reportType === 'customers') {
+                const response = await api.get('/customers?limit=5000');
+                if (response.data && (response.data.data || response.data.customers)) {
+                    setReportData(response.data.data?.customers || response.data.customers || []);
+                    toast.success('Client Directory report generated');
+                }
+            } else if (reportType === 'vendors') {
+                const response = await api.get('/vendors?limit=5000');
+                if (response.data && (response.data.data || response.data.vendors)) {
+                    setReportData(response.data.data?.vendors || response.data.vendors || []);
+                    toast.success('Vendor Directory report generated');
+                }
             }
         } catch (error) {
             toast.error('Failed to generate report');
@@ -239,6 +251,24 @@ const Reports = () => {
                 'Quantity': tx.quantity,
                 'Rate': formatCurrency(tx.rate || 0),
                 'Total': formatCurrency((tx.quantity || 0) * (tx.rate || 0))
+            }));
+        } else if (reportType === 'customers') {
+            exportData = reportData.map(c => ({
+                'Name': c.companyName || c.name || 'N/A',
+                'Contact Person': c.name || 'N/A',
+                'Phone': c.phone || 'N/A',
+                'Email': c.email || 'N/A',
+                'GSTIN': c.gstin || 'N/A',
+                'Address': c.address ? `${c.address.street || ''} ${c.address.city || ''} ${c.address.state || ''} ${c.address.zipCode || ''}`.trim() : 'N/A'
+            }));
+        } else if (reportType === 'vendors') {
+            exportData = reportData.map(v => ({
+                'Company Name': v.companyName || v.name || 'N/A',
+                'Contact Person': v.name || 'N/A',
+                'Phone': v.phone || 'N/A',
+                'Email': v.email || 'N/A',
+                'GSTIN': v.gstin || 'N/A',
+                'Address': v.address ? `${v.address.street || ''} ${v.address.city || ''} ${v.address.state || ''} ${v.address.zipCode || ''}`.trim() : 'N/A'
             }));
         }
 
@@ -584,6 +614,39 @@ const Reports = () => {
                     </table>
                 </div>
             );
+        } else if (reportType === 'customers' || reportType === 'vendors') {
+            return (
+                <div className="overflow-x-auto">
+                    <table className="min-w-full">
+                        <thead className="bg-white border-b border-gray-100">
+                            <tr>
+                                <th className="px-3 py-2 sm:px-6 sm:py-4 text-left text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Name</th>
+                                <th className="px-3 py-2 sm:px-6 sm:py-4 text-left text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Contact Info</th>
+                                <th className="px-3 py-2 sm:px-6 sm:py-4 text-left text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">GSTIN</th>
+                                <th className="px-3 py-2 sm:px-6 sm:py-4 text-left text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Address</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 font-medium">
+                            {reportData.map((entity, idx) => (
+                                <tr key={idx} className="hover:bg-gray-50/50">
+                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs font-bold text-gray-900">
+                                        {entity.companyName || entity.name}
+                                        {entity.companyName && entity.name && <div className="text-[9px] font-normal text-gray-400">{entity.name}</div>}
+                                    </td>
+                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs text-gray-700">
+                                        <div>{entity.phone || 'N/A'}</div>
+                                        <div className="text-[9px] text-gray-500">{entity.email || ''}</div>
+                                    </td>
+                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs font-mono text-gray-600">{entity.gstin || '-'}</td>
+                                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-[11px] sm:text-xs text-gray-600">
+                                        {entity.address ? `${entity.address.street || ''} ${entity.address.city || ''}`.trim() || '-' : '-'}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
         }
     };
 
@@ -597,6 +660,8 @@ const Reports = () => {
         { id: 'detailed_ledger', label: '📒 Detailed Ledger' },
         { id: 'damaged_goods', label: '❌ Damaged Goods' },
         { id: 'returns', label: '↩️ Stock Returns' },
+        { id: 'customers', label: '👥 Client Directory' },
+        { id: 'vendors', label: '🏢 Vendor Directory' },
     ];
 
     return (

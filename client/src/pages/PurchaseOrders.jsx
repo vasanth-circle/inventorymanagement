@@ -284,7 +284,11 @@ const PurchaseOrders = () => {
             }, 0);
             let netTotal = itemsTotal + taxAmount;
             let roundOffAmount = 0;
-            if (billingSettings?.documentConfig?.enableRoundOff) {
+            
+            if (formData.roundOffAmount !== '' && !isNaN(parseFloat(formData.roundOffAmount))) {
+                roundOffAmount = parseFloat(formData.roundOffAmount);
+                netTotal += roundOffAmount;
+            } else if (billingSettings?.documentConfig?.enableRoundOff) {
                 const roundedTotal = Math.round(netTotal);
                 roundOffAmount = roundedTotal - netTotal;
                 netTotal = roundedTotal;
