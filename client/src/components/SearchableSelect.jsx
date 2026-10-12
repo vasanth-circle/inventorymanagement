@@ -1,12 +1,15 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 
 /**
  * SearchableSelect - A searchable dropdown that replaces native <select>
  */
-const SearchableSelect = ({
+const SearchableSelect = forwardRef(({
+    id,
     value = '',
     onChange,
+    onSelect,
+    onSelectNext,
     options = [],
     placeholder = 'Select...',
     searchPlaceholder = 'Search...',
@@ -14,14 +17,32 @@ const SearchableSelect = ({
     className = '',
     name = '',
     allowCreate = false,
-}) => {
+    tabIndex = 0,
+}, ref) => {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const [dropdownStyles, setDropdownStyles] = useState({});
     const wrapperRef = useRef(null);
+    const triggerRef = useRef(null);
     const searchRef = useRef(null);
     const optionsRef = useRef([]);
+
+    useImperativeHandle(ref, () => ({
+        focus: () => {
+            triggerRef.current?.focus();
+        },
+        open: () => {
+            setOpen(true);
+        },
+        focusAndOpen: () => {
+            triggerRef.current?.focus();
+            setOpen(true);
+        },
+        get element() {
+            return triggerRef.current;
+        }
+    }));
 
     // Close on outside click or scroll
     useEffect(() => {
@@ -52,6 +73,10 @@ const SearchableSelect = ({
         };
     }, [open]);
 
+    const filtered = options.filter(opt =>
+        opt.label?.toLowerCase().includes(search.toLowerCase())
+    );
+
     // Update position when opened
     useEffect(() => {
         if (open && wrapperRef.current) {
@@ -61,16 +86,14 @@ const SearchableSelect = ({
                 left: rect.left + window.scrollX + 'px',
                 width: rect.width + 'px',
             });
-            if (searchRef.current) {
-                searchRef.current.focus({ preventScroll: true });
-                setHighlightedIndex(0);
-            }
+            setTimeout(() => {
+                if (searchRef.current) {
+                    searchRef.current.focus({ preventScroll: true });
+                    setHighlightedIndex(filtered.length > 0 ? 1 : 0);
+                }
+            }, 10);
         }
     }, [open]);
-
-    const filtered = options.filter(opt =>
-        opt.label?.toLowerCase().includes(search.toLowerCase())
-    );
 
     const selectedLabel = options.find(o => String(o.value) === String(value))?.label || value || '';
 
@@ -81,6 +104,16 @@ const SearchableSelect = ({
         if (onChange) {
             onChange({ target: { name, value: val } });
         }
+        if (onSelect) {
+            onSelect(val);
+        }
+        setTimeout(() => {
+            if (onSelectNext) {
+                onSelectNext();
+            } else if (triggerRef.current) {
+                triggerRef.current.focus();
+            }
+        }, 40);
     };
 
     const handleKeyDown = (e) => {
@@ -102,12 +135,35 @@ const SearchableSelect = ({
                 }
                 return next;
             });
-        } else if (e.key === 'Enter' || e.key === ' ') {
+        } else if (e.key === 'Escape') {
             e.preventDefault();
-            if (highlightedIndex === 0) {
-                handleSelect('');
-            } else if (highlightedIndex > 0 && highlightedIndex <= filtered.length) {
+            setOpen(false);
+            setTimeout(() => triggerRef.current?.focus(), 30);
+        } else if (e.key === 'Tab') {
+            e.preventDefault();
+            if (highlightedIndex > 0 && highlightedIndex <= filtered.length) {
                 handleSelect(filtered[highlightedIndex - 1].value);
+            } else if (filtered.length > 0) {
+                handleSelect(filtered[0].value);
+            } else if (highlightedIndex === 0 && !search) {
+                handleSelect('');
+            } else {
+                setOpen(false);
+                setTimeout(() => {
+                    if (onSelectNext) onSelectNext();
+                    else triggerRef.current?.focus();
+                }, 30);
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (highlightedIndex > 0 && highlightedIndex <= filtered.length) {
+                handleSelect(filtered[highlightedIndex - 1].value);
+            } else if (filtered.length > 0) {
+                handleSelect(filtered[0].value);
+            } else if (highlightedIndex === 0 && !search) {
+                handleSelect('');
+            } else if (allowCreate && search) {
+                handleSelect(search);
             }
         }
     };
@@ -125,7 +181,14 @@ const SearchableSelect = ({
                         ref={searchRef}
                         type="text"
                         value={search}
-                        onChange={e => { setSearch(e.target.value); setHighlightedIndex(0); }}
+                        onChange={e => {
+                            const val = e.target.value;
+                            setSearch(val);
+                            const newFiltered = options.filter(opt =>
+                                opt.label?.toLowerCase().includes(val.toLowerCase())
+                            );
+                            setHighlightedIndex(newFiltered.length > 0 ? 1 : 0);
+                        }}
                         onKeyDown={handleKeyDown}
                         placeholder={searchPlaceholder}
                         className="flex-1 text-sm bg-transparent outline-none text-gray-700 placeholder-gray-400 min-w-0"
@@ -201,12 +264,21 @@ const SearchableSelect = ({
         <div ref={wrapperRef} className={`relative ${className}`}>
             {/* Trigger */}
             <button
+                ref={triggerRef}
+                id={id}
+                tabIndex={tabIndex}
                 type="button"
                 disabled={disabled}
                 onClick={() => setOpen(o => !o)}
+                onKeyDown={(e) => {
+                    if (e.key === 'ArrowDown' || e.key === 'Enter') {
+                        e.preventDefault();
+                        setOpen(true);
+                    }
+                }}
                 className={`w-full flex items-center justify-between px-3 py-2 border rounded-lg text-sm text-left transition-all outline-none
                     ${open ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-300'}
-                    ${disabled ? 'bg-gray-100 cursor-not-allowed text-gray-400' : 'bg-white hover:border-gray-400 cursor-pointer'}
+                    ${disabled ? 'bg-gray-100 cursor-not-allowed text-gray-400' : 'bg-white hover:border-gray-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 cursor-pointer'}
                 `}
             >
                 <span className={selectedLabel ? 'text-gray-900' : 'text-gray-400'}>
@@ -217,6 +289,6 @@ const SearchableSelect = ({
             {portalContent}
         </div>
     );
-};
+});
 
 export default SearchableSelect;

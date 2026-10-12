@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useRef } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import SearchableSelect from '../components/SearchableSelect';
@@ -18,6 +18,59 @@ const PurchaseOrders = () => {
     const [items, setItems] = useState([]);
     const [hsnCodes, setHsnCodes] = useState([]);
     const [categories, setCategories] = useState([]);
+
+    // Keyboard navigation refs
+    const vendorSelectRef = useRef(null);
+    const vendorBillNoRef = useRef(null);
+    const billDateRef = useRef(null);
+    const itemSelectRefs = useRef({});
+    const rowFieldRefs = useRef({});
+
+    const focusItemSelect = (index) => {
+        setTimeout(() => {
+            if (itemSelectRefs.current[index]?.focusAndOpen) {
+                itemSelectRefs.current[index].focusAndOpen();
+            } else if (itemSelectRefs.current[index]?.focus) {
+                itemSelectRefs.current[index].focus();
+            }
+        }, 50);
+    };
+
+    const focusRowField = (index, fieldName) => {
+        setTimeout(() => {
+            const el = rowFieldRefs.current[`${index}-${fieldName}`];
+            if (el) {
+                el.focus();
+                if (el.select) el.select();
+            }
+        }, 40);
+    };
+
+    const handleRowComplete = (index) => {
+        if (index === formData.items.length - 1) {
+            setFormData(prev => ({
+                ...prev,
+                items: [...prev.items, { 
+                    item: '', 
+                    quantity: '', 
+                    damagedQuantity: '',
+                    price: '', 
+                    taxRate: prev.taxRate,
+                    boxCount: '', 
+                    totalPcs: '', 
+                    totalSqFt: '',
+                    brand: '',
+                    size: '',
+                    billingUnit: billingSettings?.industry === 'tiles' ? 'boxes' : 'pieces'
+                }]
+            }));
+            setTimeout(() => {
+                focusItemSelect(index + 1);
+            }, 80);
+        } else {
+            focusItemSelect(index + 1);
+        }
+    };
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
@@ -138,14 +191,15 @@ const PurchaseOrders = () => {
     };
 
     const handleAddItem = () => {
-        setFormData({
-            ...formData,
-            items: [...formData.items, { 
+        const nextIdx = formData.items.length;
+        setFormData(prev => ({
+            ...prev,
+            items: [...prev.items, { 
                 item: '', 
                 quantity: '', 
                 damagedQuantity: '',
                 price: '', 
-                taxRate: formData.taxRate,
+                taxRate: prev.taxRate,
                 boxCount: '', 
                 totalPcs: '', 
                 totalSqFt: '',
@@ -153,7 +207,10 @@ const PurchaseOrders = () => {
                 size: '',
                 billingUnit: billingSettings?.industry === 'tiles' ? 'boxes' : 'pieces'
             }]
-        });
+        }));
+        setTimeout(() => {
+            focusItemSelect(nextIdx);
+        }, 80);
     };
 
     const handleRemoveItem = (index) => {
@@ -216,26 +273,6 @@ const PurchaseOrders = () => {
                     
                     // Initial calculation
                     newItems[index].total = 0;
-                    
-                    // Auto-add new row if this is the last row
-                    if (index === newItems.length - 1) {
-                        newItems.push({ 
-                            item: '', 
-                            quantity: '', 
-                            damagedQuantity: '',
-                            price: '', 
-                            taxRate: formData.taxRate,
-                            boxCount: '', 
-                            totalPcs: '', 
-                            totalSqFt: '',
-                            brand: '',
-                            size: '',
-                            billingUnit: billingSettings?.industry === 'tiles' ? 'boxes' : 'pieces'
-                        });
-                    }
-                } else if (!selectedItemId && index === newItems.length - 2 && newItems[newItems.length - 1].item === '') {
-                   // Optional: remove auto-added row if they clear the item
-                   // This is complex, so let's stick to simple auto-add
                 }
             } else if (field === 'piecesCount' || field === 'boxCount' || field === 'price' || field === 'billingUnit' || field === 'quantity' || field === 'damagedQuantity') {
                 const row = newItems[index];
@@ -637,8 +674,10 @@ const PurchaseOrders = () => {
                                 <div className="w-1/3 min-w-[220px]">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Vendor *</label>
                                     <SearchableSelect
+                                        ref={vendorSelectRef}
                                         value={formData.vendor}
                                         onChange={(val) => handleVendorChange(val && val.target ? val.target.value : val)}
+                                        onSelectNext={() => vendorBillNoRef.current?.focus()}
                                         options={vendors.map(v => ({ value: v._id, label: `${v.name}${v.gstin ? ` (${v.gstin})` : ''}` }))}
                                         placeholder="Select Vendor"
                                         searchPlaceholder="Search Vendor..."
@@ -647,11 +686,37 @@ const PurchaseOrders = () => {
                                 </div>
                                 <div className="w-1/4 min-w-[150px]">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Bill No. *</label>
-                                    <input required type="text" value={formData.vendorBillNumber} onChange={(e) => setFormData({ ...formData, vendorBillNumber: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" placeholder="Enter Bill No." />
+                                    <input 
+                                        ref={vendorBillNoRef}
+                                        required 
+                                        type="text" 
+                                        value={formData.vendorBillNumber} 
+                                        onChange={(e) => setFormData({ ...formData, vendorBillNumber: e.target.value })} 
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                billDateRef.current?.focus();
+                                            }
+                                        }}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" 
+                                        placeholder="Enter Bill No." 
+                                    />
                                 </div>
                                 <div className="w-1/4 min-w-[150px]">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Bill Date</label>
-                                    <input type="date" value={formData.billDate} onChange={(e) => setFormData({ ...formData, billDate: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" />
+                                    <input 
+                                        ref={billDateRef}
+                                        type="date" 
+                                        value={formData.billDate} 
+                                        onChange={(e) => setFormData({ ...formData, billDate: e.target.value })} 
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                focusItemSelect(0);
+                                            }
+                                        }}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none" 
+                                    />
                                 </div>
                                 <div className="flex items-end min-w-[140px]">
                                     <div className={`px-3 py-2 rounded-lg text-sm font-bold border-2 ${ taxType === 'igst' ? 'bg-orange-50 border-orange-300 text-orange-700' : 'bg-green-50 border-green-300 text-green-700'}`}>
@@ -688,8 +753,10 @@ const PurchaseOrders = () => {
                                                         <div className="flex gap-1 items-center">
                                                             <div className="flex-1">
                                                                 <SearchableSelect
+                                                                    ref={el => itemSelectRefs.current[index] = el}
                                                                     value={row.item}
                                                                     onChange={(e) => handleItemChange(index, 'item', e.target.value)}
+                                                                    onSelectNext={() => focusRowField(index, isTile ? 'boxCount' : 'quantity')}
                                                                     options={items.map(i => ({ value: i._id, label: `${i.name}${i.size ? ` - ${i.size}` : ''} (${i.sku || 'No SKU'})` }))}
                                                                     placeholder="Select Item"
                                                                     searchPlaceholder="Search Item..."
@@ -705,20 +772,57 @@ const PurchaseOrders = () => {
                                                         {isTile ? (
                                                             <div className="flex flex-col gap-1">
                                                                 <div className="flex gap-1 items-center">
-                                                                    <input type="number" step="any" min="0" value={row.boxCount || ''} onChange={(e) => handleItemChange(index, 'boxCount', e.target.value)} placeholder="Boxes" className="w-16 px-1 py-1 border rounded-md text-center text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none" />
+                                                                    <input 
+                                                                        ref={el => rowFieldRefs.current[`${index}-boxCount`] = el}
+                                                                        type="number" 
+                                                                        step="any" 
+                                                                        min="0" 
+                                                                        value={row.boxCount || ''} 
+                                                                        onChange={(e) => handleItemChange(index, 'boxCount', e.target.value)} 
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') {
+                                                                                e.preventDefault();
+                                                                                focusRowField(index, 'piecesCount');
+                                                                            }
+                                                                        }}
+                                                                        placeholder="Boxes" 
+                                                                        className="w-16 px-1 py-1 border rounded-md text-center text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none" 
+                                                                    />
                                                                     <span className="text-[10px] text-gray-400">Bx</span>
-                                                                    <input type="number" step="1" min="0" value={row.totalPcs || ''} onChange={(e) => handleItemChange(index, 'piecesCount', e.target.value)} placeholder="Pcs" className="w-16 px-1 py-1 border rounded-md text-center text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none" />
+                                                                    <input 
+                                                                        ref={el => rowFieldRefs.current[`${index}-piecesCount`] = el}
+                                                                        type="number" 
+                                                                        step="1" 
+                                                                        min="0" 
+                                                                        value={row.totalPcs || ''} 
+                                                                        onChange={(e) => handleItemChange(index, 'piecesCount', e.target.value)} 
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') {
+                                                                                e.preventDefault();
+                                                                                focusRowField(index, 'damagedQuantity');
+                                                                            }
+                                                                        }}
+                                                                        placeholder="Pcs" 
+                                                                        className="w-16 px-1 py-1 border rounded-md text-center text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none" 
+                                                                    />
                                                                     <span className="text-[10px] text-gray-400">Pc</span>
                                                                 </div>
                                                             </div>
                                                         ) : (
                                                             <input 
+                                                                ref={el => rowFieldRefs.current[`${index}-quantity`] = el}
                                                                 required={!!row.item}
                                                                 type="number" 
-                                                                step="any"
+                                                                step="any" 
                                                                 min="0" 
                                                                 value={row.quantity || ''} 
                                                                 onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} 
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') {
+                                                                        e.preventDefault();
+                                                                        focusRowField(index, 'damagedQuantity');
+                                                                    }
+                                                                }}
                                                                 placeholder="Qty"
                                                                 className="w-full px-2 py-2 border rounded-lg border-gray-200 outline-none focus:ring-1 focus:ring-primary-400 text-center font-bold" 
                                                             />
@@ -726,18 +830,44 @@ const PurchaseOrders = () => {
                                                     </td>
                                                     <td className="px-2 py-2 min-w-[100px]">
                                                         <input 
+                                                            ref={el => rowFieldRefs.current[`${index}-damagedQuantity`] = el}
                                                             type="number" 
                                                             step="any" 
                                                             min="0" 
                                                             value={row.damagedQuantity || ''} 
                                                             onChange={(e) => handleItemChange(index, 'damagedQuantity', e.target.value)} 
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    e.preventDefault();
+                                                                    if (!isGodown) {
+                                                                        focusRowField(index, 'price');
+                                                                    } else {
+                                                                        handleRowComplete(index);
+                                                                    }
+                                                                }
+                                                            }}
                                                             placeholder="Damaged"
                                                             className="w-full px-2 py-2 border rounded-lg border-red-200 outline-none focus:ring-1 focus:ring-red-400 text-center font-bold text-red-600" 
                                                         />
                                                     </td>
                                                     {!isGodown && (
                                                         <td className="px-2 py-2 min-w-[100px]">
-                                                            <input required={!!row.item} type="number" step="any" value={row.price === 0 ? '' : row.price} onChange={(e) => handleItemChange(index, 'price', e.target.value)} className="w-full px-2 py-2 border rounded-lg border-gray-200 text-right font-bold focus:ring-1 focus:ring-primary-400 outline-none" placeholder="Rate" />
+                                                            <input 
+                                                                ref={el => rowFieldRefs.current[`${index}-price`] = el}
+                                                                required={!!row.item} 
+                                                                type="number" 
+                                                                step="any" 
+                                                                value={row.price === 0 ? '' : row.price} 
+                                                                onChange={(e) => handleItemChange(index, 'price', e.target.value)} 
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') {
+                                                                        e.preventDefault();
+                                                                        focusRowField(index, 'taxRate');
+                                                                    }
+                                                                }}
+                                                                className="w-full px-2 py-2 border rounded-lg border-gray-200 text-right font-bold focus:ring-1 focus:ring-primary-400 outline-none" 
+                                                                placeholder="Rate" 
+                                                            />
                                                         </td>
                                                     )}
                                                     {!isGodown && (
@@ -747,7 +877,18 @@ const PurchaseOrders = () => {
                                                                     HSN: {row.hsnCode}
                                                                 </div>
                                                             )}
-                                                            <select value={row.taxRate ?? formData.taxRate} onChange={(e) => { const newItems = [...formData.items]; newItems[index] = {...newItems[index], taxRate: Number(e.target.value)}; setFormData({...formData, items: newItems}); }} className="w-full px-1 py-1 border rounded-lg border-gray-200 text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none">
+                                                            <select 
+                                                                ref={el => rowFieldRefs.current[`${index}-taxRate`] = el}
+                                                                value={row.taxRate ?? formData.taxRate} 
+                                                                onChange={(e) => { const newItems = [...formData.items]; newItems[index] = {...newItems[index], taxRate: Number(e.target.value)}; setFormData({...formData, items: newItems}); }} 
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') {
+                                                                        e.preventDefault();
+                                                                        handleRowComplete(index);
+                                                                    }
+                                                                }}
+                                                                className="w-full px-1 py-1 border rounded-lg border-gray-200 text-xs font-bold focus:ring-1 focus:ring-primary-400 outline-none"
+                                                            >
                                                                 <option value={0}>0%</option>
                                                                 <option value={5}>5%</option>
                                                                 <option value={12}>12%</option>

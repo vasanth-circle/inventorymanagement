@@ -34,7 +34,10 @@ const createConnection = (uri, dbName, fallbackUri = null) => {
 
     const options = {
         family: 4, // Force IPv4 to avoid DNS resolution issues (EAI_AGAIN)
-        serverSelectionTimeoutMS: 15000,
+        serverSelectionTimeoutMS: 30000,
+        bufferTimeoutMS: 30000,
+        connectTimeoutMS: 30000,
+        socketTimeoutMS: 45000,
         heartbeatFrequencyMS: 10000,
     };
 
@@ -77,8 +80,8 @@ const clusterUri = process.env.APP_MONGODB_URI || process.env.MONGODB_URI || pro
 const baseConn = createConnection(clusterUri, 'Cluster-Base');
 
 // Export specific database connections sharing the same pool
-export const appConn = baseConn.useDb(getDbNameFromUri(process.env.APP_MONGODB_URI || process.env.MONGODB_URI, 'inventorymanagement'));
-export const coreConn = baseConn.useDb(getDbNameFromUri(process.env.CORE_MONGODB_URI, 'triomar_core'));
+export const appConn = baseConn.useDb(getDbNameFromUri(process.env.APP_MONGODB_URI || process.env.MONGODB_URI, 'inventorymanagement'), { useCache: true });
+export const coreConn = baseConn.useDb(getDbNameFromUri(process.env.CORE_MONGODB_URI, 'triomar_core'), { useCache: true });
 
 console.log('✅ Shared connection pool established for App and Core databases');
 
