@@ -89,6 +89,20 @@ const SalesOrders = () => {
     }, []);
 
     useEffect(() => {
+        const handleOpenCreate = () => {
+            handleOpenCreateModal();
+        };
+        window.addEventListener('open-create-order', handleOpenCreate);
+
+        const params = new URLSearchParams(location.search);
+        if (params.get('create') === 'true' || location.state?.openCreate) {
+            handleOpenCreate();
+        }
+
+        return () => window.removeEventListener('open-create-order', handleOpenCreate);
+    }, [location.search, location.state]);
+
+    useEffect(() => {
         setCurrentPage(1);
     }, [searchTerm, userFilter, typeFilter, fromDate, toDate]);
 
@@ -292,8 +306,7 @@ const SalesOrders = () => {
         setIsModalOpen(true);
     };
 
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
+    const resetForm = () => {
         setEditingOrder(null);
         setSelectedCustomerSites([]);
         setFormData({
@@ -322,6 +335,16 @@ const SalesOrders = () => {
             customerType: 'Regular Customer',
             referredBy: ''
         });
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        resetForm();
+    };
+
+    const handleOpenCreateModal = () => {
+        resetForm();
+        setIsModalOpen(true);
     };
 
     const handleSubmit = async (e) => {
@@ -515,7 +538,7 @@ const SalesOrders = () => {
                     <h1 className="page-title">{billingSettings?.industry === 'machinery' ? 'Sales / Quotations' : 'Sales Orders'}</h1>
                     <p className="page-subtitle">Manage your sales, estimates, and billing</p>
                 </div>
-                <button className="btn-primary" onClick={() => { resetForm(); setIsModalOpen(true); }}>
+                <button className="btn-primary" onClick={handleOpenCreateModal}>
                     + Create New
                 </button>
             </div>
@@ -585,7 +608,7 @@ const SalesOrders = () => {
                         icon="🧾"
                         title="No orders found"
                         description="Try adjusting your filters or create a new order."
-                        action={<button className="btn-primary" onClick={() => { resetForm(); setIsModalOpen(true); }}>+ Create New</button>}
+                        action={<button className="btn-primary" onClick={handleOpenCreateModal}>+ Create New</button>}
                     />
                 </div>
             ) : (

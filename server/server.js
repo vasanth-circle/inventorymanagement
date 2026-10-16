@@ -38,6 +38,7 @@ import profitRoutes from './routes/profitRoutes.js';
 import expenseRoutes from './routes/expenseRoutes.js';
 import customerTypeRoutes from './routes/customerTypeRoutes.js';
 import draftPORoutes from './routes/draftPORoutes.js';
+import aiChatRoutes from './routes/aiChatRoutes.js';
 import fixLegacyIndexes from './utils/fixIndexes.js';
 // Ensure User model is registered on appConn for cross-connection populate
 import { AppUser } from './models/User.js';
@@ -118,6 +119,7 @@ app.use('/api/logs', logRoutes);
 app.use('/api/profit', profitRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/customer-types', customerTypeRoutes);
+app.use('/api/ai-chat', aiChatRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

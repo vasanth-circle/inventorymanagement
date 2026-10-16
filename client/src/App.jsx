@@ -7,6 +7,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
+import AIChatbox from './components/AIChatbox';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -57,7 +58,7 @@ function AppLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
-        <div className="flex h-screen print:h-auto print:block bg-gray-100 overflow-hidden print:overflow-visible">
+        <div className="flex h-screen print:h-auto print:block overflow-hidden print:overflow-visible" style={{ background: 'var(--bg-color)' }}>
             {/* Sidebar with mobile responsiveness */}
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             
@@ -67,6 +68,7 @@ function AppLayout({ children }) {
                     {children}
                 </main>
                 <BottomNav />
+                <AIChatbox />
             </div>
         </div>
     );

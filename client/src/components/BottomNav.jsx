@@ -1,4 +1,6 @@
+import { useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { ThemeContext } from '../context/ThemeContext';
 import { 
     HomeIcon, 
     CubeIcon, 
@@ -16,6 +18,8 @@ import {
 
 const BottomNav = () => {
     const location = useLocation();
+    const { theme } = useContext(ThemeContext);
+    const isDark = theme === 'dark';
 
     const navItems = [
         { name: 'Home', path: '/dashboard', icon: HomeIcon, activeIcon: HomeIconSolid },
@@ -26,8 +30,17 @@ const BottomNav = () => {
     ];
 
     return (
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-2 py-1 z-30 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] print:hidden">
-            <div className="flex justify-around items-center">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 print:hidden" style={{
+            background: isDark ? 'rgba(15, 23, 42, 0.97)' : 'rgba(255, 255, 255, 0.97)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            borderTop: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #e2e8f0',
+            boxShadow: isDark ? '0 -4px 20px rgba(0,0,0,0.3)' : '0 -4px 20px rgba(0,0,0,0.04)',
+            padding: '6px 4px 10px',
+            zIndex: 30,
+            transition: 'background 0.2s ease, border-color 0.2s ease'
+        }}>
+            <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
                 {navItems.map((item) => {
                     const isActive = location.pathname === item.path;
                     const Icon = isActive ? item.activeIcon : item.icon;
@@ -36,16 +49,28 @@ const BottomNav = () => {
                         <Link
                             key={item.path}
                             to={item.path}
-                            className={`flex flex-col items-center p-2 min-w-[64px] transition-all duration-200 ${
-                                isActive ? 'text-rose-600' : 'text-gray-400'
-                            }`}
+                            style={{
+                                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                                padding: '5px 12px', minWidth: '56px', textDecoration: 'none',
+                                borderRadius: '10px', transition: 'all 0.15s ease',
+                                color: isActive
+                                    ? (isDark ? '#818cf8' : '#4f46e5')
+                                    : (isDark ? 'rgba(255,255,255,0.45)' : '#64748b'),
+                                background: isActive
+                                    ? (isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff')
+                                    : 'transparent',
+                            }}
                         >
-                            <Icon className="w-6 h-6" />
-                            <span className="text-[10px] font-bold mt-1 uppercase tracking-tight">
+                            <Icon style={{ width: '20px', height: '20px' }} />
+                            <span style={{
+                                fontSize: '9px', fontWeight: 700, marginTop: '2px',
+                                textTransform: 'uppercase', letterSpacing: '0.04em',
+                                fontFamily: 'Outfit, sans-serif',
+                            }}>
                                 {item.name}
                             </span>
                             {isActive && (
-                                <div className="w-1 h-1 bg-rose-600 rounded-full mt-0.5" />
+                                <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#6366f1', marginTop: '2px' }} />
                             )}
                         </Link>
                     );
