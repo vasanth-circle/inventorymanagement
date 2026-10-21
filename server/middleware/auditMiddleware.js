@@ -31,7 +31,7 @@ export const auditLogMiddleware = (req, res, next) => {
                         userRole: req.user.role,
                         action: action,
                         entityType: entity,
-                        entityId: req.user._id, // Ideally, we'd capture the actual created entity ID from res.body, but res.on('finish') doesn't have it easily. Using user ID as fallback.
+                        entityId: req.params?.id || req.body?._id || req.user._id,
                         description: `${action} operation on ${entity} via ${req.originalUrl}`
                     }).catch(err => {
                         console.error('Audit Log Error:', err.message);

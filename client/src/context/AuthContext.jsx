@@ -116,6 +116,43 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Tenant Role Management
+    const fetchRoles = async () => {
+        try {
+            const { data } = await api.get('/roles');
+            return { success: true, data };
+        } catch (error) {
+            return { success: false, message: error.response?.data?.message || 'Failed to fetch roles' };
+        }
+    };
+
+    const addRole = async (roleData) => {
+        try {
+            const { data } = await api.post('/roles', roleData);
+            return { success: true, data };
+        } catch (error) {
+            return { success: false, message: error.response?.data?.message || 'Failed to create role' };
+        }
+    };
+
+    const updateRoleDetails = async (id, roleData) => {
+        try {
+            const { data } = await api.put(`/roles/${id}`, roleData);
+            return { success: true, data };
+        } catch (error) {
+            return { success: false, message: error.response?.data?.message || 'Failed to update role' };
+        }
+    };
+
+    const removeRole = async (id) => {
+        try {
+            const { data } = await api.delete(`/roles/${id}`);
+            return { success: true, data };
+        } catch (error) {
+            return { success: false, message: error.response?.data?.message || 'Failed to delete role' };
+        }
+    };
+
     const confirmDelete = async (message, callback) => {
         return await customConfirmDelete(message, callback);
     };
@@ -132,6 +169,10 @@ export const AuthProvider = ({ children }) => {
             updateUserDetails,
             changeUserStatus,
             removeUser,
+            fetchRoles,
+            addRole,
+            updateRoleDetails,
+            removeRole,
             confirmDelete
         }}>
             {children}

@@ -200,6 +200,21 @@ const Sidebar = ({ isOpen, onClose }) => {
             return isAllowed;
         }
 
+        // Dynamic tenant role permissions check
+        if (user?.roleId && Array.isArray(user.roleId.permissions)) {
+            if (user.roleId.permissions.includes('all')) return true;
+            let roleHasAccess = user.roleId.permissions.includes(itemId);
+            if (!roleHasAccess) {
+                if (itemId === 'items' && user.roleId.permissions.includes('inventory')) roleHasAccess = true;
+                if (itemId === 'dispatch-management' && user.roleId.permissions.includes('stock-outward')) roleHasAccess = true;
+                if (itemId === 'purchase-orders' && user.roleId.permissions.includes('purchases')) roleHasAccess = true;
+                if (itemId === 'stock-inward' && user.roleId.permissions.includes('purchases')) roleHasAccess = true;
+                if (itemId === 'parties' && (user.roleId.permissions.includes('customers') || user.roleId.permissions.includes('vendors'))) roleHasAccess = true;
+                if (itemId === 'reports-hub' && user.roleId.permissions.includes('reports')) roleHasAccess = true;
+            }
+            if (roleHasAccess) return true;
+        }
+
         if (effectiveRole === 'super_admin' || effectiveRole === 'admin' || effectiveRole === 'tenant_owner' || effectiveRole === 'tenant_admin') {
             return true;
         }

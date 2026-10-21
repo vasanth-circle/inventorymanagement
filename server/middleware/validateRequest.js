@@ -2,13 +2,15 @@ import Joi from 'joi';
 
 export const validateRequest = (schema) => {
     return (req, res, next) => {
-        if (req.body.role) {
-            console.log(`Validating role: "${req.body.role}"`);
+        if (process.env.NODE_ENV === 'development' && req.body.role) {
+            console.log(`[Dev] Validating role: "${req.body.role}"`);
         }
         const { error } = schema.validate(req.body, { abortEarly: false });
 
         if (error) {
-            console.log('Validation Error details:', error.details.map(d => d.message));
+            if (process.env.NODE_ENV === 'development') {
+                console.log('[Dev] Validation Error:', error.details.map(d => d.message));
+            }
             const errors = error.details.map(detail => detail.message);
             return res.status(400).json({ message: 'Validation Error', errors });
         }
@@ -48,6 +50,7 @@ export const schemas = {
         email: Joi.string().email().optional().trim().lowercase(),
         phone: Joi.string().optional().allow('', null).trim(),
         role: Joi.string().optional().allow(''),
+        roleId: Joi.string().optional().allow('', null), // ObjectId string for dynamic role assignment
         inventoryRole: Joi.string().optional().allow('', null),
         menuAccess: Joi.string().valid('all', 'specific', null).optional(),
         allowedMenus: Joi.array().items(Joi.string().allow('')).optional(),
@@ -59,6 +62,7 @@ export const schemas = {
         email: Joi.string().email().required().trim().lowercase(),
         password: Joi.string().min(6).required(),
         role: Joi.string().optional().allow('').default('staff'),
+        roleId: Joi.string().optional().allow('', null), // ObjectId string for dynamic role assignment
         inventoryRole: Joi.string().optional().allow('', null),
         isActive: Joi.boolean().optional().default(true),
         menuAccess: Joi.string().valid('all', 'specific', null).optional().default('all'),

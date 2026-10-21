@@ -37,13 +37,18 @@ export const protect = async (req, res, next) => {
 
 export const authorize = (...roles) => {
     return (req, res, next) => {
-        if (req.user.role === 'super_admin') {
-            return next();
+        // super_admin always passes
+        if (req.user.role === 'super_admin') return next();
+
+        // Dynamic role check: if user has a roleId with 'all' permission, treat as full access
+        if (req.user.roleId && Array.isArray(req.user.roleId.permissions)) {
+            if (req.user.roleId.permissions.includes('all')) return next();
         }
 
+        // Static role enum check
         if (!roles.includes(req.user.role)) {
             return res.status(403).json({
-                message: `User role '${req.user.role}' is not authorized to access this route`
+                message: `Access denied: your role '${req.user.role}' is not authorized for this action`
             });
         }
         next();

@@ -68,6 +68,40 @@
   --shadow-drawer: -16px 0 48px rgba(0, 0, 0, 0.12);
 }
 
+.dark {
+  /* Dark Mode Palette */
+  --bg-color: #0b0f19;
+  --bg-secondary: #0f172a;
+  --surface-color: #1e293b;
+  --surface-color-glass: rgba(15, 23, 42, 0.88);
+  
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-light: #64748b;
+  
+  --border-color: #1e293b;
+  --border-light: #334155;
+
+  color-scheme: dark;
+}
+
+.dark body {
+  background: var(--bg-color);
+  color: var(--text-main);
+}
+
+.dark .glass-panel {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+}
+
+.dark .surface-card {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
 * { box-sizing: border-box; }
 
 body {

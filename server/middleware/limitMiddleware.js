@@ -7,7 +7,7 @@ import SalesOrder from '../models/SalesOrder.js';
  */
 export const checkUserLimit = async (req, res, next) => {
     try {
-        const tenantId = req.tenantId;
+        const tenantId = req.tenantId || req.user?.tenantId;
         if (!tenantId) return next();
 
         const tenant = await Tenant.findById(tenantId).populate('planId');

@@ -58,6 +58,14 @@ export const updateBillingSettings = async (req, res, next) => {
             }
         }
 
+        // Store dashboardConfig cleanly as a complete object
+        if (req.body.dashboardConfig !== undefined) {
+            Object.keys(updateData).forEach(k => {
+                if (k === 'dashboardConfig' || k.startsWith('dashboardConfig.')) delete updateData[k];
+            });
+            updateData.dashboardConfig = req.body.dashboardConfig;
+        }
+
         const settings = await Setting.findOneAndUpdate(
             { tenantId: req.tenantId },
             { $set: updateData },

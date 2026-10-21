@@ -103,6 +103,12 @@ const settingSchema = new mongoose.Schema({
         branchName: { type: String, default: '' },
         termsAndConditions: { type: String, default: '1. Goods once sold will not be taken back.\n2. No responsibility for breakages after leaving premises.\n3. E. & O.E.' },
     },
+
+    // ── Tenant Dashboard Customization ──────────────────────────────────
+    dashboardConfig: {
+        type: mongoose.Schema.Types.Mixed,
+        default: null,
+    },
 }, { timestamps: true });
 
 const Setting = appConn.model('Setting', settingSchema);

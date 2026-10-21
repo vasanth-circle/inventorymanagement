@@ -39,6 +39,7 @@ import expenseRoutes from './routes/expenseRoutes.js';
 import customerTypeRoutes from './routes/customerTypeRoutes.js';
 import draftPORoutes from './routes/draftPORoutes.js';
 import aiChatRoutes from './routes/aiChatRoutes.js';
+import roleRoutes from './routes/roleRoutes.js';
 import fixLegacyIndexes from './utils/fixIndexes.js';
 // Ensure User model is registered on appConn for cross-connection populate
 import { AppUser } from './models/User.js';
@@ -51,7 +52,7 @@ const app = express();
 // Enable trust proxy for CapRover (behind Nginx)
 app.set('trust proxy', 1);
 
-// Rate limiting enabled with reasonable limits for API calls
+// Rate limiting: general API + strict auth limiter
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 300, // 300 requests per 15 minutes per IP
@@ -60,11 +61,33 @@ const limiter = rateLimit({
     legacyHeaders: false,
 });
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// Stricter limiter specifically for auth routes to prevent brute-force
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20, // Only 20 login/register attempts per 15 min per IP
+    message: { message: 'Too many authentication attempts. Please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// CORS — restrict to known frontend origins
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost,http://localhost:80,http://localhost:3000,http://localhost:5173')
+    .split(',').map(o => o.trim());
+
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (e.g. mobile apps, curl)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        callback(new Error(`CORS: Origin '${origin}' not allowed`));
+    },
+    credentials: true,
+}));
+app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use('/api', limiter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -92,6 +115,7 @@ app.use('/api', (req, res, next) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/roles', roleRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/dashboard', dashboardRoutes);
@@ -120,6 +144,7 @@ app.use('/api/profit', profitRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/customer-types', customerTypeRoutes);
 app.use('/api/ai-chat', aiChatRoutes);
+app.use('/api/roles', roleRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -188,4 +213,3 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 export default app;
-// Server restart triggered by role update

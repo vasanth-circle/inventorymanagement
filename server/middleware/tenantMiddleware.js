@@ -92,9 +92,12 @@ export const checkTenantStatus = async (req, res, next) => {
                 req.tenantCode = tenant.tenantCode || tenant.tenantId || null;
 
             } else {
-                console.warn(`Tenant object not found in DB for tenantId: ${req.user.tenantId}`);
-                // If we have a tenantId from user but no tenant object, we still allow it for now 
-                // but log the warning. In a strict system, we would block here.
+                console.error(`Tenant not found in DB for tenantId: ${req.user.tenantId}. Blocking access.`);
+                return res.status(403).json({
+                    success: false,
+                    message: 'Tenant record not found. Please contact support.',
+                    code: 'TENANT_NOT_FOUND'
+                });
             }
         }
 

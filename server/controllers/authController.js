@@ -10,7 +10,7 @@ import Plan from '../models/Plan.js';
 // Generate JWT token
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
-        expiresIn: '30d',
+        expiresIn: '7d', // 7-day expiry — shorter window limits token theft impact
     });
 };
 
@@ -76,26 +76,29 @@ export const register = async (req, res, next) => {
             }
         });
 
-        // Create Default Roles
+        // Create Default Roles — marked isDefault so they cannot be deleted
         const adminRole = await Role.create({
             tenantId: tenant._id,
             name: 'Admin',
             description: 'Full administrative access',
-            permissions: ['dashboard', 'inventory', 'sales', 'purchases', 'reports', 'settings', 'users']
+            permissions: ['all'],
+            isDefault: true,
         });
 
         await Role.create({
             tenantId: tenant._id,
             name: 'Manager',
             description: 'Can manage daily operations but not settings',
-            permissions: ['dashboard', 'inventory', 'sales', 'purchases', 'reports']
+            permissions: ['dashboard', 'inventory', 'sales', 'purchases', 'reports'],
+            isDefault: true,
         });
 
         await Role.create({
             tenantId: tenant._id,
             name: 'Staff',
             description: 'Basic access to sales and inventory',
-            permissions: ['dashboard', 'inventory', 'sales']
+            permissions: ['dashboard', 'inventory', 'sales'],
+            isDefault: true,
         });
 
         // Setup Trial Subscription
@@ -177,15 +180,28 @@ export const register = async (req, res, next) => {
 // @access  Private/Admin
 export const addUser = async (req, res, next) => {
     try {
-        const { name, email, password, role, inventoryRole, isActive, menuAccess, allowedMenus } = req.body;
+        const { name, email, password, role, roleId, inventoryRole, isActive, menuAccess, allowedMenus } = req.body;
 
-        // Check if user exists
+        // Check if user email already exists (global uniqueness — email is the login key)
         const userExists = await User.findOne({ email });
         if (userExists) {
-            return res.status(400).json({ message: 'User already exists' });
+            return res.status(400).json({ message: 'A user with this email already exists' });
         }
 
         const tenantId = req.user.tenantId;
+        if (!tenantId) {
+            return res.status(403).json({ message: 'Tenant context missing' });
+        }
+
+        // If a roleId is provided, verify it belongs to this tenant
+        let resolvedRoleId = null;
+        if (roleId) {
+            const roleDoc = await Role.findOne({ _id: roleId, tenantId });
+            if (!roleDoc) {
+                return res.status(400).json({ message: 'Invalid roleId — role not found for this tenant' });
+            }
+            resolvedRoleId = roleDoc._id;
+        }
 
         // Create user
         const user = await User.create({
@@ -193,16 +209,17 @@ export const addUser = async (req, res, next) => {
             email,
             password,
             role: role || 'staff',
+            roleId: resolvedRoleId,
             menuAccess: menuAccess || 'all',
             allowedMenus: allowedMenus || [],
-            tenantId: tenantId, // Automatically associate with requester's tenant
+            tenantId,
             isActive: isActive !== undefined ? isActive : true,
             appRoles: {
                 crm: null,
                 proposal: null,
                 hr: null,
                 task: null,
-                inventory: inventoryRole || (['admin', 'manager', 'super_admin', 'tenant_admin', 'tenant_owner'].includes(role) ? "inventory_admin" : "inventory_user"),
+                inventory: inventoryRole || (['admin', 'manager', 'super_admin', 'tenant_admin', 'tenant_owner'].includes(role) ? 'inventory_admin' : 'inventory_user'),
                 billing: null,
                 whatsapp: null
             }
@@ -213,6 +230,7 @@ export const addUser = async (req, res, next) => {
             name: user.name,
             email: user.email,
             role: user.role,
+            roleId: user.roleId,
             isActive: user.isActive,
             appRoles: user.appRoles,
             menuAccess: user.menuAccess,
@@ -318,11 +336,15 @@ export const login = async (req, res, next) => {
             }
         }
 
+        // Populate roleId if assigned
+        await user.populate('roleId');
+
         res.json({
             _id: user._id,
             name: user.name,
             email: user.email,
             role: user.role,
+            roleId: user.roleId,
             tenantId: user.tenantId,
             menuAccess: user.menuAccess,
             allowedMenus: user.allowedMenus,
@@ -339,7 +361,7 @@ export const login = async (req, res, next) => {
 // @access  Private
 export const getMe = async (req, res, next) => {
     try {
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user._id).populate('roleId');
         res.json(user);
     } catch (error) {
         next(error);
@@ -353,7 +375,7 @@ export const getUsers = async (req, res, next) => {
     try {
         // Super admin can see all users only if they don't have a specific tenant assigned
         if (req.user.role === 'super_admin' && !req.user.tenantId) {
-            const users = await User.find({}).select('-password');
+            const users = await User.find({}).select('-password').populate('roleId');
             return res.json(users);
         }
 
@@ -362,14 +384,13 @@ export const getUsers = async (req, res, next) => {
             return res.status(403).json({ success: false, message: 'Tenant context missing' });
         }
 
-
         // Match both ObjectId and String formats for robustness during transition
         const users = await User.find({ 
             $or: [
                 { tenantId: req.user.tenantId },
                 { tenantId: req.user.tenantId.toString() }
             ]
-        }).select('-password');
+        }).select('-password').populate('roleId');
         res.json(users);
     } catch (error) {
         console.error('getUsers error:', error);
@@ -421,10 +442,11 @@ export const updateProfile = async (req, res, next) => {
 // @access  Private/Admin
 export const updateUser = async (req, res, next) => {
     try {
-        const { name, email, phone, role, inventoryRole, isActive, menuAccess, allowedMenus } = req.body;
+        const { name, email, phone, role, roleId, inventoryRole, isActive, menuAccess, allowedMenus } = req.body;
         const userId = req.params.id;
 
         const tenantId = req.user.tenantId ? req.user.tenantId.toString() : null;
+        if (!tenantId) return res.status(403).json({ message: 'Tenant context missing' });
 
         // Check if user exists and belongs to the same tenant
         const user = await User.findOne({ 
@@ -446,6 +468,17 @@ export const updateUser = async (req, res, next) => {
             }
         }
 
+        // If a roleId is provided, verify it belongs to this tenant
+        if (roleId) {
+            const roleDoc = await Role.findOne({ _id: roleId, tenantId });
+            if (!roleDoc) {
+                return res.status(400).json({ message: 'Invalid roleId — role not found for this tenant' });
+            }
+            user.roleId = roleDoc._id;
+        } else if (roleId === null || roleId === '') {
+            user.roleId = null;
+        }
+
         // Update user fields
         if (name) user.name = name;
         if (email) user.email = email;
@@ -461,11 +494,11 @@ export const updateUser = async (req, res, next) => {
                 user.appRoles = { inventory: inventoryRole };
             } else {
                 user.appRoles.inventory = inventoryRole;
-                user.markModified('appRoles'); // Important for Mixed type
+                user.markModified('appRoles');
             }
-        } else if (role && !user.appRoles.inventory) {
-            // Default mapping if not set
-            user.appRoles.inventory = (['admin', 'manager', 'super_admin', 'tenant_admin', 'tenant_owner'].includes(role) ? "inventory_admin" : "inventory_user");
+        } else if (role && !user.appRoles?.inventory) {
+            user.appRoles = user.appRoles || {};
+            user.appRoles.inventory = (['admin', 'manager', 'super_admin', 'tenant_admin', 'tenant_owner'].includes(role) ? 'inventory_admin' : 'inventory_user');
             user.markModified('appRoles');
         }
 
@@ -476,6 +509,7 @@ export const updateUser = async (req, res, next) => {
             name: user.name,
             email: user.email,
             role: user.role,
+            roleId: user.roleId,
             isActive: user.isActive,
             appRoles: user.appRoles,
             menuAccess: user.menuAccess,

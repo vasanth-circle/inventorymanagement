@@ -30,34 +30,44 @@ const Login = () => {
     };
 
     return (
-        <div style={{
-            minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 40%, #312e81 100%)',
-            padding: '24px 16px', position: 'relative', overflow: 'hidden'
-        }}>
+        <div
+            className="login-page-container"
+            style={{
+                height: '100vh',
+                minHeight: '100vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 40%, #312e81 100%)',
+                padding: '16px',
+                position: 'relative',
+                overflow: 'hidden',
+                boxSizing: 'border-box'
+            }}
+        >
             {/* Decorative blobs */}
-            <div style={{ position: 'absolute', top: '-100px', right: '-100px', width: '500px', height: '500px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
-            <div style={{ position: 'absolute', bottom: '-120px', left: '-80px', width: '450px', height: '450px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
-            <div style={{ position: 'absolute', top: '40%', left: '20%', width: '200px', height: '200px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(14,165,233,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', top: '-100px', right: '-100px', width: '450px', height: '450px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', bottom: '-120px', left: '-80px', width: '400px', height: '400px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', top: '40%', left: '20%', width: '180px', height: '180px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(14,165,233,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-            <div style={{ width: '100%', maxWidth: '420px', position: 'relative', zIndex: 1 }}>
+            <div style={{ width: '100%', maxWidth: '400px', position: 'relative', zIndex: 1 }}>
                 {/* Logo / Brand */}
-                <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                     <div style={{
-                        width: '56px', height: '56px', borderRadius: '16px',
+                        width: '48px', height: '48px', borderRadius: '14px',
                         background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        margin: '0 auto 16px', boxShadow: '0 8px 32px rgba(99,102,241,0.4)',
+                        margin: '0 auto 12px', boxShadow: '0 8px 24px rgba(99,102,241,0.35)',
                     }}>
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
                             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
                             <polyline points="3.27 6.96 12 12.01 20.73 6.96" stroke="#fff" strokeWidth="1" fill="none"/><line x1="12" y1="22.08" x2="12" y2="12" stroke="#fff" strokeWidth="1" fill="none"/>
                         </svg>
                     </div>
-                    <h1 style={{ color: 'white', fontSize: '1.75rem', fontWeight: 800, margin: '0 0 8px', fontFamily: 'Outfit, sans-serif', letterSpacing: '-0.03em' }}>
+                    <h1 style={{ color: 'white', fontSize: '1.5rem', fontWeight: 800, margin: '0 0 4px', fontFamily: 'Outfit, sans-serif', letterSpacing: '-0.03em' }}>
                         InventoryPro
                     </h1>
-                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem', margin: 0, fontFamily: 'Inter, sans-serif' }}>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem', margin: 0, fontFamily: 'Inter, sans-serif' }}>
                         Sign in to your workspace
                     </p>
                 </div>
@@ -69,12 +79,12 @@ const Login = () => {
                     WebkitBackdropFilter: 'blur(24px) saturate(180%)',
                     border: '1px solid rgba(255,255,255,0.1)',
                     borderRadius: '20px',
-                    padding: '36px 32px',
+                    padding: '28px 28px 24px',
                     boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
                 }}>
-                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         <div>
-                            <label htmlFor="email" style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', fontFamily: 'Outfit, sans-serif' }}>
+                            <label htmlFor="email" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px', fontFamily: 'Outfit, sans-serif' }}>
                                 Email Address
                             </label>
                             <input
@@ -87,9 +97,9 @@ const Login = () => {
                                 onChange={e => setEmail(e.target.value)}
                                 placeholder="you@company.com"
                                 style={{
-                                    width: '100%', padding: '12px 16px', borderRadius: '12px',
+                                    width: '100%', padding: '11px 14px', borderRadius: '12px',
                                     background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
-                                    color: 'white', fontSize: '0.9rem', fontFamily: 'Inter, sans-serif',
+                                    color: 'white', fontSize: '0.88rem', fontFamily: 'Inter, sans-serif',
                                     outline: 'none', boxSizing: 'border-box', transition: 'all 0.2s',
                                 }}
                                 onFocus={e => { e.target.style.borderColor = '#6366f1'; e.target.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.2)'; e.target.style.background = 'rgba(255,255,255,0.1)'; }}
@@ -98,7 +108,7 @@ const Login = () => {
                         </div>
 
                         <div>
-                            <label htmlFor="password" style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', fontFamily: 'Outfit, sans-serif' }}>
+                            <label htmlFor="password" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px', fontFamily: 'Outfit, sans-serif' }}>
                                 Password
                             </label>
                             <div style={{ position: 'relative' }}>
@@ -112,9 +122,9 @@ const Login = () => {
                                     onChange={e => setPassword(e.target.value)}
                                     placeholder="Enter your password"
                                     style={{
-                                        width: '100%', padding: '12px 44px 12px 16px', borderRadius: '12px',
+                                        width: '100%', padding: '11px 42px 11px 14px', borderRadius: '12px',
                                         background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
-                                        color: 'white', fontSize: '0.9rem', fontFamily: 'Inter, sans-serif',
+                                        color: 'white', fontSize: '0.88rem', fontFamily: 'Inter, sans-serif',
                                         outline: 'none', boxSizing: 'border-box', transition: 'all 0.2s',
                                     }}
                                     onFocus={e => { e.target.style.borderColor = '#6366f1'; e.target.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.2)'; e.target.style.background = 'rgba(255,255,255,0.1)'; }}
@@ -141,12 +151,12 @@ const Login = () => {
                             type="submit"
                             disabled={loading}
                             style={{
-                                width: '100%', padding: '13px', borderRadius: '12px', border: 'none',
+                                width: '100%', padding: '12px', borderRadius: '12px', border: 'none',
                                 background: loading ? 'rgba(99,102,241,0.5)' : 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-                                color: 'white', fontSize: '0.95rem', fontWeight: 700,
+                                color: 'white', fontSize: '0.92rem', fontWeight: 700,
                                 fontFamily: 'Outfit, sans-serif', cursor: loading ? 'not-allowed' : 'pointer',
                                 boxShadow: loading ? 'none' : '0 8px 24px rgba(99,102,241,0.4)',
-                                transition: 'all 0.2s', marginTop: '4px',
+                                transition: 'all 0.2s', marginTop: '2px',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                             }}
                         >
@@ -161,15 +171,15 @@ const Login = () => {
                         </button>
                     </form>
 
-                    <div style={{ marginTop: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'Inter, sans-serif' }}>Don't have an account?</span>
-                        <Link to="/register" style={{ fontSize: '0.82rem', fontWeight: 600, color: '#818cf8', fontFamily: 'Inter, sans-serif', textDecoration: 'none' }}>
+                    <div style={{ marginTop: '18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'Inter, sans-serif' }}>Don't have an account?</span>
+                        <Link to="/register" style={{ fontSize: '0.8rem', fontWeight: 600, color: '#818cf8', fontFamily: 'Inter, sans-serif', textDecoration: 'none' }}>
                             Sign Up Free →
                         </Link>
                     </div>
                 </div>
 
-                <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', fontSize: '0.75rem', marginTop: '24px', fontFamily: 'Inter, sans-serif' }}>
+                <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', fontSize: '0.72rem', marginTop: '16px', fontFamily: 'Inter, sans-serif' }}>
                     © 2026 InventoryPro · Secure & Encrypted
                 </p>
             </div>
@@ -177,6 +187,15 @@ const Login = () => {
             <style>{`
                 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
                 #email::placeholder, #password::placeholder { color: rgba(255,255,255,0.25); }
+                @media (max-height: 520px) {
+                    .login-page-container {
+                        height: auto !important;
+                        min-height: 100vh !important;
+                        overflow-y: auto !important;
+                        padding-top: 24px !important;
+                        padding-bottom: 24px !important;
+                    }
+                }
             `}</style>
         </div>
     );
