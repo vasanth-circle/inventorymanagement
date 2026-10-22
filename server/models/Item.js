@@ -91,9 +91,46 @@ const itemSchema = new mongoose.Schema({
     },
     unitType: {
         type: String,
-        default: 'box', // e.g. box, bag, pieces
+        default: 'box', // e.g. box, bag, pieces, coils, meters, strips, kg
         trim: true,
     },
+    // ── Multi-Industry Specialized Fields ──
+    // Medical & Pharmacy
+    batchNumber: { type: String, trim: true },
+    expiryDate: { type: String, trim: true },
+    mfgDate: { type: String, trim: true },
+    composition: { type: String, trim: true },
+    schedule: { type: String, trim: true },
+    tabletsPerStrip: { type: Number, default: 0 },
+    stripsPerBox: { type: Number, default: 0 },
+    rackShelf: { type: String, trim: true },
+    // Electrical & Hardware
+    wireGauge: { type: String, trim: true },
+    voltageRating: { type: String, trim: true },
+    material: { type: String, trim: true },
+    rollLengthMeters: { type: Number, default: 0 },
+    packQuantity: { type: Number, default: 0 },
+    warrantyMonths: { type: Number, default: 0 },
+    // Supermarket & FMCG
+    mrp: { type: Number, default: 0 },
+    netWeight: { type: String, trim: true },
+    casePack: { type: Number, default: 0 },
+    isPerishable: { type: String, trim: true },
+    aisleNumber: { type: String, trim: true },
+    // Machinery & Spare Parts
+    machineType: { type: String, trim: true },
+    modelNumber: { type: String, trim: true },
+    serialNumber: { type: String, trim: true },
+    manufacturer: { type: String, trim: true },
+    horsePower: { type: String, trim: true },
+    capacity: { type: String, trim: true },
+    sparePartNo: { type: String, trim: true },
+    condition: { type: String, trim: true },
+    // Retail & Apparel
+    color: { type: String, trim: true },
+    gender: { type: String, trim: true },
+    shadeNumber: { type: String, trim: true },
+    finish: { type: String, trim: true },
     customFields: {
         type: Map,
         of: mongoose.Schema.Types.Mixed,

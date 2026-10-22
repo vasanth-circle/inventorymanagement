@@ -11,7 +11,8 @@ const Inventory = () => {
     const {
         items, fetchItems, deleteItem, createItem, updateItem,
         categories, locations, fetchLocations, loading, confirmDelete,
-        billingSettings, activePreset, hsnCodes, fetchHsnCodes, sizes, brands, finishes
+        billingSettings, activePreset, hsnCodes, fetchHsnCodes, sizes, brands, finishes,
+        currencySymbol = '₹'
     } = useContext(InventoryContext);
     const [filters, setFilters] = useState({
         search: '',
@@ -83,6 +84,12 @@ const Inventory = () => {
 
     const handleEdit = (item) => {
         setEditingItem(item);
+        const dynamicValues = {};
+        if (activePreset?.productFields) {
+            activePreset.productFields.forEach(f => {
+                dynamicValues[f.name] = item[f.name] !== undefined ? item[f.name] : (item.customFields && item.customFields[f.name] !== undefined ? item.customFields[f.name] : '');
+            });
+        }
         setEditFormData({
             name: item.name || '',
             barcode: item.barcode || '',
@@ -99,6 +106,8 @@ const Inventory = () => {
             pcsPerBox: item.pcsPerBox || '',
             sqFtPerPc: item.sqFtPerPc || '',
             unitType: item.unitType || 'box',
+            ...dynamicValues,
+            ...(item.customFields ? (item.customFields instanceof Map ? Object.fromEntries(item.customFields) : item.customFields) : {})
         });
     };
 
@@ -336,6 +345,55 @@ const Inventory = () => {
                                                         {item.brand && <span className="badge badge-primary">{item.brand}</span>}
                                                         {item.size && <span className="badge badge-purple">{item.size}</span>}
                                                         {item.hsn && <span className="badge badge-gray">HSN:{item.hsn}</span>}
+                                                        
+                                                        {/* Medical / Pharmacy Badges */}
+                                                        {item.batchNumber && (
+                                                            <span className="badge badge-primary" title="Batch Number">
+                                                                Batch: {item.batchNumber}
+                                                            </span>
+                                                        )}
+                                                        {item.expiryDate && (
+                                                            <span className={`badge ${
+                                                                new Date(item.expiryDate) < new Date() ? 'badge-danger' :
+                                                                (new Date(item.expiryDate) - new Date()) / (1000 * 60 * 60 * 24) < 90 ? 'badge-warning' : 'badge-success'
+                                                            }`} title="Expiry Date">
+                                                                Exp: {item.expiryDate}
+                                                            </span>
+                                                        )}
+                                                        {item.schedule && (
+                                                            <span className="badge badge-purple" title="Drug Schedule">
+                                                                {item.schedule}
+                                                            </span>
+                                                        )}
+
+                                                        {/* Electrical & Hardware Badges */}
+                                                        {item.wireGauge && (
+                                                            <span className="badge badge-purple" title="Gauge / Specification">
+                                                                {item.wireGauge}
+                                                            </span>
+                                                        )}
+                                                        {item.voltageRating && (
+                                                            <span className="badge badge-warning" title="Voltage / Rating">
+                                                                ⚡ {item.voltageRating}
+                                                            </span>
+                                                        )}
+                                                        {item.rollLengthMeters > 0 && (
+                                                            <span className="badge badge-primary" title="Roll Length">
+                                                                {item.rollLengthMeters}m / Roll
+                                                            </span>
+                                                        )}
+
+                                                        {/* Supermarket / FMCG Badges */}
+                                                        {item.mrp > 0 && item.mrp > item.price && (
+                                                            <span className="badge badge-success" title="MRP Discount">
+                                                                MRP {formatCurrency(item.mrp)} ({Math.round(((item.mrp - item.price) / item.mrp) * 100)}% OFF)
+                                                            </span>
+                                                        )}
+                                                        {item.netWeight && (
+                                                            <span className="badge badge-gray" title="Weight / Volume">
+                                                                ⚖️ {item.netWeight}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -351,7 +409,7 @@ const Inventory = () => {
                                         </td>
                                         <td>
                                             <div style={{fontSize:'14px',fontWeight:'800',color:'#0f172a'}}>{formatCurrency(item.price)}</div>
-                                            {item.purchasePrice && <div style={{fontSize:'10px',color:'#94a3b8',textDecoration:'line-through'}}>₹{item.purchasePrice}</div>}
+                                            {item.purchasePrice > 0 && <div style={{fontSize:'10px',color:'#94a3b8',textDecoration:'line-through'}}>{formatCurrency(item.purchasePrice)}</div>}
                                         </td>
                                         <td>
                                             <span className={`badge ${item.stockStatus === 'In Stock' ? 'badge-success' : item.stockStatus === 'Low Stock' ? 'badge-warning' : 'badge-danger'}`}>
@@ -414,10 +472,10 @@ const Inventory = () => {
                                     {categories.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
                                 </select>
                             </FormField>
-                            <FormField label="Selling Price (₹)" required>
+                            <FormField label={`Selling Price (${currencySymbol})`} required>
                                 <input required type="number" step="0.01" value={createFormData.price} onChange={(e) => setCreateFormData({ ...createFormData, price: e.target.value })} placeholder="0.00" />
                             </FormField>
-                            <FormField label="Purchase Price (₹)">
+                            <FormField label={`Purchase Price (${currencySymbol})`}>
                                 <input type="number" step="0.01" value={createFormData.purchasePrice} onChange={(e) => setCreateFormData({ ...createFormData, purchasePrice: e.target.value })} placeholder="0.00" />
                             </FormField>
                             <FormField label="Barcode">
@@ -438,9 +496,16 @@ const Inventory = () => {
                                 <select value={createFormData.unitType} onChange={(e) => setCreateFormData({ ...createFormData, unitType: e.target.value })}>
                                     <option value="box">Box</option>
                                     <option value="pcs">Pieces (Pcs)</option>
-                                    <option value="sqft">Sq.Ft</option>
-                                    <option value="kg">Kilograms (Kg)</option>
+                                    <option value="coils">Coils / Rolls (Wire/Pipes)</option>
                                     <option value="meters">Meters (M)</option>
+                                    <option value="strips">Strips (Pharmacy)</option>
+                                    <option value="tablets">Tablets / Capsules</option>
+                                    <option value="sqft">Sq.Ft (Tiles)</option>
+                                    <option value="kg">Kilograms (Kg)</option>
+                                    <option value="grams">Grams (g)</option>
+                                    <option value="liters">Liters (L)</option>
+                                    <option value="packets">Packets / Packs</option>
+                                    <option value="cartons">Cartons / Cases</option>
                                 </select>
                             </FormField>
                             <FormField label="Location">
@@ -484,10 +549,10 @@ const Inventory = () => {
                                     {categories.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
                                 </select>
                             </FormField>
-                            <FormField label="Selling Price (₹)" required>
+                            <FormField label={`Selling Price (${currencySymbol})`} required>
                                 <input required type="number" step="0.01" value={editFormData.price} onChange={(e) => setEditFormData({ ...editFormData, price: e.target.value })} placeholder="0.00" />
                             </FormField>
-                            <FormField label="Purchase Price (₹)">
+                            <FormField label={`Purchase Price (${currencySymbol})`}>
                                 <input type="number" step="0.01" value={editFormData.purchasePrice} onChange={(e) => setEditFormData({ ...editFormData, purchasePrice: e.target.value })} placeholder="0.00" />
                             </FormField>
                             <FormField label="Barcode">
@@ -508,9 +573,16 @@ const Inventory = () => {
                                 <select value={editFormData.unitType} onChange={(e) => setEditFormData({ ...editFormData, unitType: e.target.value })}>
                                     <option value="box">Box</option>
                                     <option value="pcs">Pieces (Pcs)</option>
-                                    <option value="sqft">Sq.Ft</option>
-                                    <option value="kg">Kilograms (Kg)</option>
+                                    <option value="coils">Coils / Rolls (Wire/Pipes)</option>
                                     <option value="meters">Meters (M)</option>
+                                    <option value="strips">Strips (Pharmacy)</option>
+                                    <option value="tablets">Tablets / Capsules</option>
+                                    <option value="sqft">Sq.Ft (Tiles)</option>
+                                    <option value="kg">Kilograms (Kg)</option>
+                                    <option value="grams">Grams (g)</option>
+                                    <option value="liters">Liters (L)</option>
+                                    <option value="packets">Packets / Packs</option>
+                                    <option value="cartons">Cartons / Cases</option>
                                 </select>
                             </FormField>
                             <FormField label="Location">

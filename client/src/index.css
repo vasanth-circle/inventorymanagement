@@ -5,82 +5,89 @@
 @tailwind utilities;
 
 :root {
-  /* Premium Indigo + Violet Theme */
-  --primary-50: #eef2ff;
-  --primary-100: #e0e7ff;
-  --primary-200: #c7d2fe;
-  --primary-300: #a5b4fc;
-  --primary-400: #818cf8;
-  --primary-500: #6366f1;
-  --primary-600: #4f46e5;
-  --primary-700: #4338ca;
-  --primary-800: #3730a3;
+  /* Google Workspace / Material 3 Palette */
+  --primary-50: #eaf1fb;
+  --primary-100: #d3e3fd;
+  --primary-200: #a8c7fa;
+  --primary-300: #7cacf8;
+  --primary-400: #4285f4;
+  --primary-500: #0b57d0;
+  --primary-600: #0842a0;
+  --primary-700: #041e49;
+  --primary-800: #02122c;
   
-  /* Accent Colors */
-  --accent-cyan: #06b6d4;
-  --accent-violet: #8b5cf6;
-  --accent-rose: #f43f5e;
-  --accent-amber: #f59e0b;
-  --accent-emerald: #10b981;
-  --accent-sky: #0ea5e9;
+  /* Accent Colors - Calibrated Google Tones */
+  --accent-cyan: #0288d1;
+  --accent-violet: #673ab7;
+  --accent-rose: #d93025;
+  --accent-amber: #b06000;
+  --accent-emerald: #137333;
+  --accent-sky: #1a73e8;
 
-  --success-50: #f0fdf4;
-  --success-500: #10b981;
-  --success-600: #059669;
+  --success-50: #e6f4ea;
+  --success-500: #137333;
+  --success-600: #0d652d;
   
-  --warning-50: #fffbeb;
-  --warning-500: #f59e0b;
+  --warning-50: #fef7e0;
+  --warning-500: #b06000;
   
-  --danger-50: #fef2f2;
-  --danger-500: #ef4444;
-  --danger-600: #dc2626;
+  --danger-50: #fce8e6;
+  --danger-500: #d93025;
+  --danger-600: #c5221f;
   
-  /* Core Colors */
-  --bg-color: #f1f5f9;
-  --bg-secondary: #f8fafc;
+  /* Core Surfaces - Google Clean Off-White */
+  --bg-color: #f6f8fc;
+  --bg-secondary: #f0f4f9;
   --surface-color: #ffffff;
-  --surface-color-glass: rgba(255, 255, 255, 0.88);
+  --surface-color-glass: rgba(255, 255, 255, 0.95);
   
   /* Text Hierarchy */
-  --text-main: #0f172a;
-  --text-muted: #475569;
-  --text-light: #94a3b8;
+  --text-main: #1f1f1f;
+  --text-muted: #444746;
+  --text-light: #747775;
   
   /* Borders */
-  --border-color: #e2e8f0;
-  --border-light: #f1f5f9;
+  --border-color: #dadce0;
+  --border-light: #e0e2ec;
   
   /* Typography */
-  --font-heading: "Outfit", sans-serif;
-  --font-body: "Inter", sans-serif;
+  --font-heading: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   
   /* Geometry */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 24px;
+  --radius-pill: 9999px;
   
-  /* Premium SaaS Shadows */
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.06), 0 2px 6px -2px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.08), 0 4px 8px -2px rgba(0, 0, 0, 0.04);
-  --shadow-glow: 0 0 0 4px rgba(99, 102, 241, 0.18), 0 8px 24px rgba(99, 102, 241, 0.2);
-  --shadow-drawer: -16px 0 48px rgba(0, 0, 0, 0.12);
+  /* Google Workspace Elevation Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(60, 64, 67, 0.08), 0 1px 3px 1px rgba(60, 64, 67, 0.06);
+  --shadow-md: 0 1px 3px 0 rgba(60, 64, 67, 0.2), 0 4px 8px 3px rgba(60, 64, 67, 0.1);
+  --shadow-lg: 0 4px 12px 0 rgba(60, 64, 67, 0.15), 0 8px 24px 4px rgba(60, 64, 67, 0.12);
+  --shadow-glow: 0 0 0 3px rgba(11, 87, 208, 0.18);
+  --shadow-drawer: -8px 0 32px rgba(60, 64, 67, 0.15);
 }
 
 .dark {
-  /* Dark Mode Palette */
-  --bg-color: #0b0f19;
-  --bg-secondary: #0f172a;
-  --surface-color: #1e293b;
-  --surface-color-glass: rgba(15, 23, 42, 0.88);
+  /* Dark Mode Palette - Google Workspace Dark */
+  --bg-color: #131314;
+  --bg-secondary: #1e1f20;
+  --surface-color: #1e1f20;
+  --surface-color-glass: rgba(30, 31, 32, 0.95);
   
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --text-light: #64748b;
+  --text-main: #e3e3e3;
+  --text-muted: #c4c7c5;
+  --text-light: #8e918f;
   
-  --border-color: #1e293b;
-  --border-light: #334155;
+  --border-color: #444746;
+  --border-light: #282a2c;
+
+  --primary-50: #041e49;
+  --primary-100: #004a77;
+  --primary-500: #a8c7fa;
+  --primary-600: #8ab4f8;
+  --primary-700: #c2e7ff;
 
   color-scheme: dark;
 }
@@ -91,15 +98,15 @@
 }
 
 .dark .glass-panel {
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(30, 31, 32, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .dark .surface-card {
-  background: #1e293b;
-  border-color: #334155;
-  color: #f8fafc;
+  background: #1e1f20;
+  border-color: #444746;
+  color: #e3e3e3;
 }
 
 * { box-sizing: border-box; }
@@ -179,39 +186,25 @@ h1,h2,h3,h4,h5,h6 {
 
 .stat-card {
   background: white;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 20px;
   box-shadow: var(--shadow-sm);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: var(--shadow-md);
-  border-color: var(--primary-100);
-}
-
-.stat-card::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--primary-400), var(--primary-600));
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.stat-card:hover::after {
-  opacity: 1;
+  border-color: #c4c7c5;
 }
 
 .stat-card-value { 
   font-family: var(--font-heading); 
   font-size: 1.75rem; 
-  font-weight: 800; 
+  font-weight: 700; 
   color: var(--text-main); 
   line-height: 1; 
   margin-top: 8px;
@@ -221,25 +214,25 @@ h1,h2,h3,h4,h5,h6 {
   font-size: 0.75rem; 
   font-weight: 600; 
   text-transform: uppercase; 
-  letter-spacing: 0.05em; 
+  letter-spacing: 0.04em; 
   color: var(--text-muted); 
 }
 
 /* ─────────────────────────────────────────────────────────
-   BUTTONS
+   BUTTONS - Google Workspace / Material 3
    ───────────────────────────────────────────────────────── */
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-700) 100%);
+  background: var(--primary-500);
   color: white;
   border: none;
-  padding: 10px 22px;
-  border-radius: var(--radius-sm);
+  padding: 8px 20px;
+  border-radius: var(--radius-pill);
   font-family: var(--font-heading);
-  font-weight: 600;
-  font-size: 0.9rem;
+  font-weight: 500;
+  font-size: 0.875rem;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+  box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.3);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -247,35 +240,33 @@ h1,h2,h3,h4,h5,h6 {
   white-space: nowrap;
 }
 .btn-primary:hover { 
-  transform: translateY(-1px); 
-  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4); 
-  filter: brightness(1.05);
+  background: var(--primary-600);
+  box-shadow: 0 1px 3px 1px rgba(60, 64, 67, 0.15); 
 }
 .btn-primary:active { 
   transform: translateY(0); 
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+  box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.3);
 }
 
 .btn-secondary {
   background: white;
   color: var(--text-main);
   border: 1px solid var(--border-color);
-  padding: 10px 22px;
-  border-radius: var(--radius-sm);
+  padding: 8px 18px;
+  border-radius: var(--radius-pill);
   font-family: var(--font-heading);
-  font-weight: 600;
-  font-size: 0.9rem;
+  font-weight: 500;
+  font-size: 0.875rem;
   cursor: pointer;
   transition: all 0.2s;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  box-shadow: var(--shadow-sm);
 }
 .btn-secondary:hover { 
-  background: var(--bg-color); 
-  border-color: var(--primary-300); 
-  color: var(--primary-700); 
+  background: var(--bg-secondary); 
+  border-color: #c4c7c5; 
+  color: var(--text-main); 
 }
 
 .btn-ghost {
@@ -283,7 +274,7 @@ h1,h2,h3,h4,h5,h6 {
   color: var(--text-muted);
   border: none;
   padding: 8px 14px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -294,7 +285,7 @@ h1,h2,h3,h4,h5,h6 {
 }
 .btn-ghost:hover { 
   background: var(--primary-50); 
-  color: var(--primary-700); 
+  color: var(--primary-600); 
 }
 
 .btn-icon {

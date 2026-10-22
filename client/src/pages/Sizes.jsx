@@ -68,7 +68,9 @@ const Sizes = () => {
             {/* Header */}
             <div className="flex flex-wrap gap-3 items-center justify-between">
                 <h1 className="text-2xl font-bold text-gray-800">
-                    {billingSettings?.industry === 'machinery' ? 'Manage Part Sizes' : 'Manage Tile Sizes'}
+                    {billingSettings?.industry === 'machinery' ? 'Manage Part Sizes' :
+                     billingSettings?.industry === 'electrical_hardware' || billingSettings?.industry === 'hardware' ? 'Manage Gauges & Dimensions' :
+                     'Manage Tile Sizes'}
                 </h1>
                 <button
                     onClick={openCreateModal}

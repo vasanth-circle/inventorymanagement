@@ -18,12 +18,33 @@ export const formatDateTime = (date) => {
     });
 };
 
-// Format currency
-export const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-        style: 'currency',
-        currency: 'INR',
-    }).format(amount);
+// Multi-Currency helpers
+import { formatCurrencyAmount, getCurrencyConfig } from '../config/currencies';
+
+export const getAppCurrency = () => {
+    try {
+        return {
+            currency: localStorage.getItem('app_currency') || 'INR',
+            symbol: localStorage.getItem('app_currency_symbol') || '₹'
+        };
+    } catch (_) {
+        return { currency: 'INR', symbol: '₹' };
+    }
+};
+
+export const setAppCurrency = (currency = 'INR', symbol = '₹') => {
+    try {
+        if (currency) localStorage.setItem('app_currency', currency);
+        if (symbol) localStorage.setItem('app_currency_symbol', symbol);
+    } catch (_) {}
+};
+
+// Format currency dynamically based on active tenant currency
+export const formatCurrency = (amount, overrideCurrency = null, overrideSymbol = null, decimals = null) => {
+    const { currency: savedCurrency, symbol: savedSymbol } = getAppCurrency();
+    const curr = overrideCurrency || savedCurrency || 'INR';
+    const sym = overrideSymbol || savedSymbol || '₹';
+    return formatCurrencyAmount(amount, curr, sym, decimals);
 };
 
 // Export to CSV

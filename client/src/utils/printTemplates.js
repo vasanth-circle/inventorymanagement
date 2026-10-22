@@ -83,32 +83,81 @@ export const executeDownload = (html, filename = 'document.pdf', pdfMargin = 0) 
     }, 500);
 };
 
-// Shared Indian number formatting utility
+// Multi-Currency and number formatting utility
 // ─────────────────────────────────────────────────────────────────────────────
-export const formatIndianNumber = (num, decimals = 2) => {
+import { getCurrencyConfig } from '../config/currencies';
+
+export const formatIndianNumber = (num, decimals = 2, currencyCode = null) => {
     if (num === null || num === undefined || isNaN(num) || num === '') return '0.00';
-    return Number(num).toLocaleString('en-IN', {
+    let code = currencyCode;
+    if (!code) {
+        try { code = localStorage.getItem('app_currency') || 'INR'; } catch (_) { code = 'INR'; }
+    }
+    const config = getCurrencyConfig(code);
+    return Number(num).toLocaleString(config.locale || 'en-IN', {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals
     });
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared number-to-words utility
+// Multi-currency number-to-words utility
 // ─────────────────────────────────────────────────────────────────────────────
-export const numberToWords = (num) => {
+export const numberToWords = (num, currencyCode = null) => {
+    let code = currencyCode;
+    if (!code) {
+        try { code = localStorage.getItem('app_currency') || 'INR'; } catch (_) { code = 'INR'; }
+    }
+    const config = getCurrencyConfig(code);
+    const unitName = config.wordsUnit || 'Rupees';
+
     const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
     const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-    if ((num = num.toString()).length > 9) return 'Amount too large';
-    let n = ('000000000' + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
-    if (!n) return '';
-    let str = '';
-    str += (n[1] != 0) ? (a[Number(n[1])] || b[n[1][0]] + ' ' + a[n[1][1]]) + 'Crore ' : '';
-    str += (n[2] != 0) ? (a[Number(n[2])] || b[n[2][0]] + ' ' + a[n[2][1]]) + 'Lakh ' : '';
-    str += (n[3] != 0) ? (a[Number(n[3])] || b[n[3][0]] + ' ' + a[n[3][1]]) + 'Thousand ' : '';
-    str += (n[4] != 0) ? (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) + 'Hundred ' : '';
-    str += (n[5] != 0) ? ((str !== '') ? 'and ' : '') + (a[Number(n[5])] || b[n[5][0]] + ' ' + a[n[5][1]]) + 'Only' : 'Only';
-    return 'Rupees ' + str;
+    
+    const nInt = Math.floor(Math.abs(Number(num) || 0));
+    if (nInt === 0) return `${unitName} Zero Only`;
+    if (nInt > 999999999) return `${unitName} ${nInt.toLocaleString()} Only`;
+
+    // For Indian format
+    if (config.format === 'indian') {
+        let n = ('000000000' + nInt).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+        if (!n) return `${unitName} ${nInt} Only`;
+        let str = '';
+        str += (n[1] != 0) ? (a[Number(n[1])] || b[n[1][0]] + ' ' + a[n[1][1]]) + 'Crore ' : '';
+        str += (n[2] != 0) ? (a[Number(n[2])] || b[n[2][0]] + ' ' + a[n[2][1]]) + 'Lakh ' : '';
+        str += (n[3] != 0) ? (a[Number(n[3])] || b[n[3][0]] + ' ' + a[n[3][1]]) + 'Thousand ' : '';
+        str += (n[4] != 0) ? (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) + 'Hundred ' : '';
+        str += (n[5] != 0) ? ((str !== '') ? 'and ' : '') + (a[Number(n[5])] || b[n[5][0]] + ' ' + a[n[5][1]]) + 'Only' : 'Only';
+        return `${unitName} ${str}`.trim();
+    }
+
+    // For International/Standard format (Millions, Thousands, Hundreds)
+    const convertThreeDigits = (n) => {
+        let s = '';
+        if (n >= 100) {
+            s += a[Math.floor(n / 100)] + 'Hundred ';
+            n %= 100;
+        }
+        if (n >= 20) {
+            s += b[Math.floor(n / 10)] + ' ';
+            n %= 10;
+        }
+        if (n > 0) {
+            s += a[n];
+        }
+        return s;
+    };
+
+    let millions = Math.floor(nInt / 1000000);
+    let thousands = Math.floor((nInt % 1000000) / 1000);
+    let remainder = nInt % 1000;
+
+    let res = '';
+    if (millions > 0) res += convertThreeDigits(millions) + 'Million ';
+    if (thousands > 0) res += convertThreeDigits(thousands) + 'Thousand ';
+    if (remainder > 0) res += convertThreeDigits(remainder);
+
+    return `${unitName} ${res}Only`.trim();
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

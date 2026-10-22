@@ -55,7 +55,12 @@ import CustomerTypes from './pages/CustomerTypes';
 import Locations from './pages/Locations';
 
 function AppLayout({ children }) {
-    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return window.innerWidth >= 1024;
+        }
+        return true;
+    });
 
     return (
         <div className="flex h-screen print:h-auto print:block overflow-hidden print:overflow-visible" style={{ background: 'var(--bg-color)' }}>

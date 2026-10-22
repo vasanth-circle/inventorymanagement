@@ -2,6 +2,7 @@ import { useState, useContext, useEffect, useRef } from 'react';
 import { InventoryContext } from '../context/InventoryContext';
 import { AuthContext } from '../context/AuthContext';
 import { generatePreviewHtml } from '../utils/printTemplates';
+import { CURRENCIES, getCurrencyConfig, formatCurrencyAmount } from '../config/currencies';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 
@@ -213,6 +214,33 @@ const Settings = () => {
                 secondaryLabel: 'Box',
                 rateLabel: 'Rate (SqFt)'
             };
+        } else if (industry === 'electrical_hardware' || industry === 'hardware') {
+            unitConfig = {
+                quantityBasis: 'coils',
+                secondaryUnit: 'meters',
+                rateBasis: 'per_coil',
+                quantityLabel: 'Coils / Pcs',
+                secondaryLabel: 'Meters',
+                rateLabel: 'Rate'
+            };
+        } else if (industry === 'medical') {
+            unitConfig = {
+                quantityBasis: 'strips',
+                secondaryUnit: 'boxes',
+                rateBasis: 'per_strip',
+                quantityLabel: 'Strips',
+                secondaryLabel: 'Boxes',
+                rateLabel: 'Rate / Strip'
+            };
+        } else if (industry === 'supermarket' || industry === 'grocery') {
+            unitConfig = {
+                quantityBasis: 'pieces',
+                secondaryUnit: 'cartons',
+                rateBasis: 'per_piece',
+                quantityLabel: 'Qty',
+                secondaryLabel: 'Case/Pack',
+                rateLabel: 'Sale Price'
+            };
         } else if (industry === 'retail') {
             unitConfig = {
                 quantityBasis: 'pieces',
@@ -222,14 +250,14 @@ const Settings = () => {
                 secondaryLabel: 'Packing',
                 rateLabel: 'Rate'
             };
-        } else if (industry === 'machine_shop') {
+        } else if (industry === 'machine_shop' || industry === 'machinery') {
             unitConfig = {
                 quantityBasis: 'pieces',
                 secondaryUnit: 'none',
                 rateBasis: 'per_piece',
-                quantityLabel: 'Qty',
+                quantityLabel: 'Qty / Pcs',
                 secondaryLabel: '',
-                rateLabel: 'Rate'
+                rateLabel: 'Unit Rate'
             };
         } else if (industry === 'electronics') {
             unitConfig = {
@@ -240,23 +268,14 @@ const Settings = () => {
                 secondaryLabel: '',
                 rateLabel: 'Rate'
             };
-        } else if (industry === 'medical') {
+        } else {
             unitConfig = {
-                quantityBasis: 'pieces',
-                secondaryUnit: 'boxes',
-                rateBasis: 'per_piece',
-                quantityLabel: 'Strips / Pcs',
-                secondaryLabel: 'Packing',
-                rateLabel: 'Rate'
-            };
-        } else if (industry === 'machinery') {
-            unitConfig = {
-                quantityBasis: 'pieces',
+                quantityBasis: 'units',
                 secondaryUnit: 'none',
-                rateBasis: 'per_piece',
-                quantityLabel: 'Qty / Pcs',
+                rateBasis: 'per_unit',
+                quantityLabel: 'Qty',
                 secondaryLabel: '',
-                rateLabel: 'Unit Rate'
+                rateLabel: 'Rate'
             };
         }
 
@@ -265,7 +284,28 @@ const Settings = () => {
             industry,
             unitConfig
         }));
-        toast.success(`Applied ${industry} preset! Don't forget to save.`);
+        toast.success(`Applied ${industry.replace('_', ' ')} preset! Don't forget to save.`);
+    };
+
+    const handleCurrencySelect = (currencyCode) => {
+        const config = getCurrencyConfig(currencyCode);
+        setFormData(prev => {
+            let suggestedTaxLabel = prev.documentConfig.taxLabel;
+            if (currencyCode === 'INR') suggestedTaxLabel = 'GST';
+            else if (['USD'].includes(currencyCode)) suggestedTaxLabel = 'Sales Tax';
+            else if (['EUR', 'GBP', 'AED', 'SAR'].includes(currencyCode)) suggestedTaxLabel = 'VAT';
+
+            return {
+                ...prev,
+                documentConfig: {
+                    ...prev.documentConfig,
+                    currency: config.code,
+                    currencySymbol: config.symbol,
+                    taxLabel: suggestedTaxLabel,
+                }
+            };
+        });
+        toast.success(`Currency switched to ${config.name}`);
     };
 
     const handleNested = (section, key, value) => {
@@ -465,20 +505,21 @@ const Settings = () => {
                                             name="industry" value={formData.industry}
                                             onChange={handleIndustryChange}
                                             options={[
-                                                { value: 'generic', label: 'Generic (Manual Config)' },
-                                                { value: 'retail', label: 'Fancy Store / Retail' },
-                                                { value: 'tiles', label: 'Tiles & Sanitary Ware' },
-                                                { value: 'machinery', label: 'Machinery & Spare Parts' },
-                                                { value: 'machine_shop', label: 'Machine Shop / Fabrication' },
-                                                { value: 'electronics', label: 'Electronics / Appliances' },
-                                                { value: 'medical', label: 'Pharmacy / Medical' },
+                                                { value: 'generic', label: '📦 Generic Business (Manual Config)' },
+                                                { value: 'tiles', label: '🧱 Tiles & Sanitary Ware' },
+                                                { value: 'electrical_hardware', label: '🔌 Electricals & Hardware' },
+                                                { value: 'medical', label: '💊 Pharmacy & Medical Store' },
+                                                { value: 'supermarket', label: '🛒 Supermarket & Grocery / FMCG' },
+                                                { value: 'machinery', label: '⚙️ Machinery & Spare Parts' },
+                                                { value: 'retail', label: '👕 Fancy Store / Retail Apparel' },
+                                                { value: 'electronics', label: '⚡ Electronics & Appliances' },
                                             ]}
                                         />
                                     ) : (
                                         <div className="space-y-1">
                                             <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Industry Template</label>
                                             <div className="flex items-center gap-3 px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl">
-                                                <span className="text-lg">{formData.industry === 'tiles' ? '🧱' : formData.industry === 'electronics' ? '⚡' : formData.industry === 'retail' ? '👕' : formData.industry === 'medical' ? '💊' : formData.industry === 'machinery' ? '⚙️' : '📦'}</span>
+                                                <span className="text-lg">{formData.industry === 'tiles' ? '🧱' : formData.industry === 'electrical_hardware' ? '🔌' : formData.industry === 'medical' ? '💊' : formData.industry === 'supermarket' ? '🛒' : formData.industry === 'electronics' ? '⚡' : formData.industry === 'retail' ? '👕' : formData.industry === 'machinery' ? '⚙️' : '📦'}</span>
                                                 <div>
                                                     <div className="font-black text-gray-800 capitalize">{formData.industry.replace('_', ' ')}</div>
                                                     <div className="text-[10px] text-gray-400 font-medium">🔒 Industry is locked. Contact admin to change.</div>
@@ -752,14 +793,49 @@ const Settings = () => {
                                             value={formData.documentConfig.invoiceTitle}
                                             onChange={e => handleNested('documentConfig', 'invoiceTitle', e.target.value)}
                                             placeholder="Tax Invoice" />
-                                        <InputField label="Currency Symbol" name="currencySymbol"
+
+                                        {/* Multi-Currency Selector */}
+                                        <div className="space-y-1">
+                                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">
+                                                Currency (Select Multi-Currency)
+                                            </label>
+                                            <select
+                                                value={formData.documentConfig.currency || 'INR'}
+                                                onChange={e => handleCurrencySelect(e.target.value)}
+                                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 outline-none transition-all font-semibold text-sm cursor-pointer"
+                                            >
+                                                {CURRENCIES.map(curr => (
+                                                    <option key={curr.code} value={curr.code}>
+                                                        {curr.flag} {curr.name} ({curr.symbol})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <InputField label="Currency Symbol (Customizable)" name="currencySymbol"
                                             value={formData.documentConfig.currencySymbol}
                                             onChange={e => handleNested('documentConfig', 'currencySymbol', e.target.value)}
-                                            placeholder="₹" />
-                                        <InputField label="Tax Label (CGST/SGST/VAT/GST)"
+                                            placeholder="e.g. $, ₹, €, £" />
+
+                                        {/* Live Currency Preview Card */}
+                                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between">
+                                            <div>
+                                                <div className="text-[10px] font-black text-emerald-800 uppercase tracking-wider">Active Currency Preview</div>
+                                                <div className="text-lg font-black text-emerald-700">
+                                                    {formatCurrencyAmount(12450.50, formData.documentConfig.currency, formData.documentConfig.currencySymbol)}
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="inline-block px-2 py-0.5 bg-emerald-200 text-emerald-900 rounded font-bold text-xs">
+                                                    {formData.documentConfig.currency || 'INR'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <InputField label="Tax Label (CGST/SGST/VAT/GST/Sales Tax)"
                                             name="taxLabel" value={formData.documentConfig.taxLabel}
                                             onChange={e => handleNested('documentConfig', 'taxLabel', e.target.value)}
-                                            placeholder="GST" />
+                                            placeholder="GST / VAT / Sales Tax" />
                                         <InputField label="Default Tax Rate (%)" type="number"
                                             name="defaultTaxRate" value={formData.documentConfig.defaultTaxRate}
                                             onChange={e => handleNested('documentConfig', 'defaultTaxRate', parseFloat(e.target.value))}

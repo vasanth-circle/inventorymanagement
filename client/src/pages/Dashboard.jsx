@@ -137,7 +137,7 @@ const Icons = {
     ),
 };
 
-// ─── Modern Glassmorphic KPI Card Component ──────────────────────────────────
+// ─── Google Workspace Style KPI Card Component ─────────────────────────────
 const KpiCard = React.forwardRef(({ 
     id,
     icon, 
@@ -152,63 +152,47 @@ const KpiCard = React.forwardRef(({
     attributes, 
     listeners 
 }, ref) => {
-    // Curated high-contrast aesthetic themes
+    // Google Workspace toned palettes: clean surfaces, subtle soft-tinted icons, calm chips
     const schemes = {
         indigo: {
-            border: 'hover:border-indigo-300 dark:hover:border-indigo-600',
-            glow: 'group-hover:shadow-indigo-500/10',
-            iconBg: 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-indigo-200 dark:shadow-none',
-            topBar: 'bg-gradient-to-r from-indigo-500 to-indigo-600',
-            pill: 'bg-indigo-50 text-indigo-700 border-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800'
+            border: 'hover:border-[#b4b7b9] dark:hover:border-[#747775]',
+            iconBg: 'bg-[#f0f4f9] text-[#0b57d0] dark:bg-[#282a2c] dark:text-[#a8c7fa]',
+            pill: 'bg-[#f0f4f9] text-[#444746] border-[#dadce0] dark:bg-[#282a2c] dark:text-[#c4c7c5] dark:border-[#444746]'
         },
         sky: {
-            border: 'hover:border-sky-300 dark:hover:border-sky-600',
-            glow: 'group-hover:shadow-sky-500/10',
-            iconBg: 'bg-gradient-to-br from-sky-400 to-blue-500 text-white shadow-sky-200 dark:shadow-none',
-            topBar: 'bg-gradient-to-r from-sky-400 to-blue-500',
-            pill: 'bg-sky-50 text-sky-700 border-sky-100 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800'
+            border: 'hover:border-[#b4b7b9] dark:hover:border-[#747775]',
+            iconBg: 'bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#004a77] dark:text-[#c2e7ff]',
+            pill: 'bg-[#e8f0fe] text-[#1a73e8] border-[#d3e3fd] dark:bg-[#004a77]/50 dark:text-[#c2e7ff] dark:border-[#004a77]'
         },
         emerald: {
-            border: 'hover:border-emerald-300 dark:hover:border-emerald-600',
-            glow: 'group-hover:shadow-emerald-500/10',
-            iconBg: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-200 dark:shadow-none',
-            topBar: 'bg-gradient-to-r from-emerald-500 to-teal-600',
-            pill: 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800'
+            border: 'hover:border-[#b4b7b9] dark:hover:border-[#747775]',
+            iconBg: 'bg-[#e6f4ea] text-[#137333] dark:bg-[#0f5223]/30 dark:text-[#81c995]',
+            pill: 'bg-[#e6f4ea] text-[#137333] border-[#ceead6] dark:bg-[#0f5223]/40 dark:text-[#81c995] dark:border-[#137333]/40'
         },
         violet: {
-            border: 'hover:border-violet-300 dark:hover:border-violet-600',
-            glow: 'group-hover:shadow-violet-500/10',
-            iconBg: 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-violet-200 dark:shadow-none',
-            topBar: 'bg-gradient-to-r from-violet-500 to-purple-600',
-            pill: 'bg-violet-50 text-violet-700 border-violet-100 dark:bg-violet-950/50 dark:text-violet-300 dark:border-violet-800'
+            border: 'hover:border-[#b4b7b9] dark:hover:border-[#747775]',
+            iconBg: 'bg-[#f3e8fd] text-[#7627bb] dark:bg-[#3c1e5c]/30 dark:text-[#d7aefb]',
+            pill: 'bg-[#f3e8fd] text-[#7627bb] border-[#e9d5ff] dark:bg-[#3c1e5c]/40 dark:text-[#d7aefb] dark:border-[#3c1e5c]'
         },
         amber: {
-            border: 'hover:border-amber-300 dark:hover:border-amber-600',
-            glow: 'group-hover:shadow-amber-500/10',
-            iconBg: 'bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-amber-200 dark:shadow-none',
-            topBar: 'bg-gradient-to-r from-amber-400 to-orange-500',
-            pill: 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800'
+            border: 'hover:border-[#b4b7b9] dark:hover:border-[#747775]',
+            iconBg: 'bg-[#fef7e0] text-[#b06000] dark:bg-[#5c3800]/30 dark:text-[#fdd663]',
+            pill: 'bg-[#fef7e0] text-[#b06000] border-[#feefc3] dark:bg-[#5c3800]/40 dark:text-[#fdd663] dark:border-[#b06000]/40'
         },
         rose: {
-            border: 'hover:border-rose-300 dark:hover:border-rose-600',
-            glow: 'group-hover:shadow-rose-500/10',
-            iconBg: 'bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-rose-200 dark:shadow-none',
-            topBar: 'bg-gradient-to-r from-rose-500 to-red-600',
-            pill: 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800'
+            border: 'hover:border-[#f28b82] dark:hover:border-[#f28b82]',
+            iconBg: 'bg-[#fce8e6] text-[#c5221f] dark:bg-[#5c1d1d]/30 dark:text-[#f28b82]',
+            pill: 'bg-[#fce8e6] text-[#c5221f] border-[#fad2cf] dark:bg-[#5c1d1d]/40 dark:text-[#f28b82] dark:border-[#c5221f]/40'
         },
         orange: {
-            border: 'hover:border-orange-300 dark:hover:border-orange-600',
-            glow: 'group-hover:shadow-orange-500/10',
-            iconBg: 'bg-gradient-to-br from-orange-400 to-amber-500 text-white shadow-orange-200 dark:shadow-none',
-            topBar: 'bg-gradient-to-r from-orange-400 to-amber-500',
-            pill: 'bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-950/50 dark:text-orange-300 dark:border-orange-800'
+            border: 'hover:border-[#b4b7b9] dark:hover:border-[#747775]',
+            iconBg: 'bg-[#feefe3] text-[#c26401] dark:bg-[#5a2e0a]/30 dark:text-[#fcad70]',
+            pill: 'bg-[#feefe3] text-[#c26401] border-[#fedfc8] dark:bg-[#5a2e0a]/40 dark:text-[#fcad70] dark:border-[#5a2e0a]'
         },
         slate: {
-            border: 'hover:border-slate-300 dark:hover:border-slate-600',
-            glow: 'group-hover:shadow-slate-500/10',
-            iconBg: 'bg-gradient-to-br from-slate-600 to-gray-700 text-white shadow-slate-200 dark:shadow-none',
-            topBar: 'bg-gradient-to-r from-slate-500 to-gray-600',
-            pill: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+            border: 'hover:border-[#b4b7b9] dark:hover:border-[#747775]',
+            iconBg: 'bg-[#f1f3f4] text-[#444746] dark:bg-[#282a2c] dark:text-[#c4c7c5]',
+            pill: 'bg-[#f1f3f4] text-[#444746] border-[#dadce0] dark:bg-[#282a2c] dark:text-[#c4c7c5] dark:border-[#444746]'
         }
     };
 
@@ -219,29 +203,26 @@ const KpiCard = React.forwardRef(({
             ref={ref}
             style={style}
             onClick={onClick}
-            className={`group relative bg-white dark:bg-slate-900 rounded-2xl border transition-all duration-200 p-4 sm:p-5 flex flex-col justify-between overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 ${scheme.border} ${scheme.glow} ${
+            className={`group relative bg-white dark:bg-[#1e1f20] rounded-2xl border transition-all duration-150 p-4 sm:p-5 flex flex-col justify-between overflow-hidden shadow-none hover:shadow-md ${scheme.border} ${
                 onClick ? 'cursor-pointer' : ''
-            } ${urgent ? 'border-rose-300 dark:border-rose-700 ring-2 ring-rose-200 dark:ring-rose-900/50' : 'border-gray-100 dark:border-slate-800/80'}`}
+            } ${urgent ? 'border-[#f28b82] dark:border-[#c5221f] ring-1 ring-[#fce8e6] dark:ring-[#5c1d1d]' : 'border-[#dadce0] dark:border-[#444746]/40'}`}
         >
-            {/* Top Accent Gradient Bar */}
-            <div className={`absolute top-0 left-0 right-0 h-1 ${scheme.topBar} opacity-90`} />
-
-            {/* Header: Icon + Drag Grip + Badge */}
+            {/* Header: Clean Icon + Drag Grip + Chip */}
             <div className="flex items-start justify-between gap-2 mb-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-md ${scheme.iconBg}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform duration-150 ${scheme.iconBg}`}>
                     {icon}
                 </div>
 
                 <div className="flex items-center gap-1.5">
                     {badge && (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${scheme.pill}`}>
+                        <span className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full border ${scheme.pill}`}>
                             {badge}
                         </span>
                     )}
                     {urgent && (
                         <span className="flex h-2 w-2 relative">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#f28b82] opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#d93025]"></span>
                         </span>
                     )}
                     {/* Drag handle button */}
@@ -249,7 +230,7 @@ const KpiCard = React.forwardRef(({
                         type="button"
                         {...(attributes || {})}
                         {...(listeners || {})}
-                        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing"
+                        className="p-1 rounded-md hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] text-[#747775] hover:text-[#1f1f1f] dark:hover:text-[#e3e3e3] cursor-grab active:cursor-grabbing transition-colors"
                         title="Drag to reorder card"
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -258,18 +239,18 @@ const KpiCard = React.forwardRef(({
                 </div>
             </div>
 
-            {/* Metrics Content */}
+            {/* Metrics Content - Crisp Google Typography */}
             <div>
-                <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                <p className="text-xs font-medium text-[#444746] dark:text-[#c4c7c5] tracking-wide mb-1">
                     {label}
                 </p>
                 <div className="flex items-baseline gap-1.5">
-                    <span className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white tracking-tight">
+                    <span className="text-2xl sm:text-3xl font-semibold text-[#1f1f1f] dark:text-[#f1f3f4] tracking-tight">
                         {value}
                     </span>
                 </div>
                 {sub && (
-                    <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1 font-medium truncate">
+                    <p className="text-xs text-[#747775] dark:text-[#8e918f] mt-1 font-normal truncate">
                         {sub}
                     </p>
                 )}
@@ -286,9 +267,9 @@ function SortableKpiCard(props) {
 
 // ─── Section Card Wrapper ────────────────────────────────────────────────────
 const SectionCard = ({ title, icon, children, action, noPad }) => (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-slate-800 bg-gray-50/60 dark:bg-slate-800/40">
-            <h3 className="text-xs font-black text-gray-800 dark:text-gray-200 uppercase tracking-widest flex items-center gap-2">
+    <div className="bg-white dark:bg-[#1e1f20] rounded-2xl border border-[#dadce0] dark:border-[#444746]/40 shadow-none hover:shadow-sm transition-shadow">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#e0e2ec] dark:border-[#444746]/40 bg-[#f8fafc] dark:bg-[#282a2c]/50">
+            <h3 className="text-xs font-semibold text-[#1f1f1f] dark:text-[#e3e3e3] uppercase tracking-wider flex items-center gap-2">
                 <span className="text-base">{icon}</span>
                 {title}
             </h3>
@@ -304,12 +285,12 @@ const SectionCard = ({ title, icon, children, action, noPad }) => (
 const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
     return (
-        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 p-3 text-xs">
-            <p className="font-black text-gray-800 dark:text-gray-100 mb-1 border-b border-gray-100 dark:border-slate-800 pb-1">{label}</p>
+        <div className="bg-white dark:bg-[#1e1f20] rounded-xl shadow-md border border-[#dadce0] dark:border-[#444746] p-3 text-xs">
+            <p className="font-semibold text-[#1f1f1f] dark:text-[#f1f3f4] mb-1 border-b border-[#dadce0] dark:border-[#444746] pb-1">{label}</p>
             {payload.map((p, i) => (
-                <div key={i} className="flex items-center justify-between gap-4 py-0.5 font-bold">
+                <div key={i} className="flex items-center justify-between gap-4 py-0.5 font-medium">
                     <span style={{ color: p.color }}>{p.name}:</span>
-                    <span className="text-gray-900 dark:text-white">
+                    <span className="text-[#1f1f1f] dark:text-[#f1f3f4]">
                         {p.name === 'Qty' || p.name === 'Stock In' || p.name === 'Stock Out' ? p.value?.toLocaleString() : fmtCompact(p.value)}
                     </span>
                 </div>
@@ -321,10 +302,10 @@ const CustomTooltip = ({ active, payload, label }) => {
 // ─── Alert Banner ────────────────────────────────────────────────────────────
 const AlertBadge = ({ alert, onDismiss }) => {
     const cfg = {
-        low_stock:   { bg: 'from-amber-50 to-orange-50 border-amber-200 dark:from-amber-950/40 dark:to-orange-950/40 dark:border-amber-800/60', text: 'text-amber-900 dark:text-amber-200', count: 'bg-amber-500 text-white', icon: '⚠️' },
-        out_of_stock:{ bg: 'from-rose-50 to-red-50 border-rose-200 dark:from-rose-950/40 dark:to-red-950/40 dark:border-rose-800/60',       text: 'text-rose-900 dark:text-rose-200',   count: 'bg-rose-500 text-white',  icon: '🔴' },
-        pending_po:  { bg: 'from-indigo-50 to-blue-50 border-indigo-200 dark:from-indigo-950/40 dark:to-blue-950/40 dark:border-indigo-800/60', text: 'text-indigo-900 dark:text-indigo-200', count: 'bg-indigo-600 text-white', icon: '📋' },
-        damaged:     { bg: 'from-orange-50 to-amber-50 border-orange-200 dark:from-orange-950/40 dark:to-amber-950/40 dark:border-orange-800/60', text: 'text-orange-900 dark:text-orange-200', count: 'bg-orange-500 text-white', icon: '🔧' },
+        low_stock:   { bg: 'bg-[#fef7e0] border-[#feefc3] dark:bg-[#5c3800]/25 dark:border-[#b06000]/40', text: 'text-[#b06000] dark:text-[#fdd663]', count: 'bg-[#b06000] text-white', icon: '⚠️' },
+        out_of_stock:{ bg: 'bg-[#fce8e6] border-[#fad2cf] dark:bg-[#5c1d1d]/25 dark:border-[#c5221f]/40', text: 'text-[#c5221f] dark:text-[#f28b82]', count: 'bg-[#c5221f] text-white', icon: '🔴' },
+        pending_po:  { bg: 'bg-[#eaf1fb] border-[#d3e3fd] dark:bg-[#004a77]/25 dark:border-[#0b57d0]/40', text: 'text-[#0b57d0] dark:text-[#a8c7fa]', count: 'bg-[#0b57d0] text-white', icon: '📋' },
+        damaged:     { bg: 'bg-[#feefe3] border-[#fedfc8] dark:bg-[#5a2e0a]/25 dark:border-[#c26401]/40', text: 'text-[#c26401] dark:text-[#fcad70]', count: 'bg-[#c26401] text-white', icon: '🔧' },
     };
     const c = cfg[alert.type] || cfg.low_stock;
     const cleanMessage = alert.count === 1 && alert.message?.includes('purchase orders are')
@@ -332,18 +313,18 @@ const AlertBadge = ({ alert, onDismiss }) => {
         : alert.message;
 
     return (
-        <div className={`relative flex items-center justify-between gap-3 px-4 py-3 border rounded-xl bg-gradient-to-r ${c.bg} shadow-sm`}>
+        <div className={`relative flex items-center justify-between gap-3 px-4 py-2.5 border rounded-xl ${c.bg} transition-all`}>
             <div className="flex items-center gap-2.5 min-w-0">
-                <span className="text-base shrink-0">{c.icon}</span>
-                <p className={`text-xs font-bold ${c.text} truncate`}>{cleanMessage}</p>
+                <span className="text-sm shrink-0">{c.icon}</span>
+                <p className={`text-xs font-medium ${c.text} truncate`}>{cleanMessage}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-                <span className={`text-xs font-black px-2 py-0.5 rounded-full ${c.count}`}>
+                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${c.count}`}>
                     {alert.count}
                 </span>
                 <button
                     onClick={onDismiss}
-                    className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-sm font-bold ml-1 p-0.5 rounded"
+                    className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-xs font-semibold ml-1 p-0.5 rounded"
                     title="Dismiss alert"
                 >
                     ✕
@@ -653,48 +634,48 @@ const Dashboard = () => {
     return (
         <div className="space-y-6 pb-24 lg:pb-12 max-w-[1700px] mx-auto">
             {/* ─── Top Header & Controls ───────────────────────────── */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-gray-200 dark:border-slate-800">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-[#dadce0] dark:border-[#444746]/40">
                 <div className="flex items-center gap-3.5">
-                    <div className="w-12 h-12 bg-white dark:bg-slate-900 shadow-sm border border-gray-200 dark:border-slate-700 rounded-2xl flex items-center justify-center overflow-hidden p-1.5">
+                    <div className="w-11 h-11 bg-white dark:bg-[#1e1f20] border border-[#dadce0] dark:border-[#444746] rounded-xl flex items-center justify-center overflow-hidden p-1.5">
                         {billingSettings?.branding?.logoUrl ? (
                             <img src={billingSettings.branding.logoUrl} alt="Logo" className="w-full h-full object-contain" />
                         ) : (
-                            <span className="text-2xl">{isMachinery ? '⚙️' : '🏢'}</span>
+                            <span className="text-xl">{isMachinery ? '⚙️' : '🏢'}</span>
                         )}
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
-                            <h1 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight leading-tight">
+                            <h1 className="text-xl sm:text-2xl font-semibold text-[#1f1f1f] dark:text-[#f1f3f4] tracking-tight leading-tight">
                                 {isMachinery ? 'Machinery & Parts Hub' : 'Inventory & Analytics Hub'}
                             </h1>
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#e6f4ea] text-[#137333] dark:bg-[#0f5223]/30 dark:text-[#81c995] border border-[#ceead6] dark:border-[#137333]/30">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#137333]"></span>
                                 Live Sync
                             </span>
                         </div>
-                        <p className="text-xs text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider mt-0.5">
+                        <p className="text-xs text-[#747775] dark:text-[#8e918f] font-medium tracking-wide mt-0.5">
                             {oldStats?.companyName || user?.name || 'Workspace Dashboard'}
                         </p>
                     </div>
                 </div>
 
-                {/* Header Action Buttons */}
+                {/* Header Action Buttons - Google Workspace Pill Buttons */}
                 <div className="flex items-center gap-2 flex-wrap">
                     {/* CUSTOMIZE DASHBOARD BUTTON */}
                     <button
                         onClick={() => setIsCustomizeOpen(true)}
-                        className="px-3.5 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 dark:from-indigo-950/40 dark:to-purple-950/40 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs font-black transition-all shadow-sm flex items-center gap-2"
+                        className="px-3.5 py-1.5 bg-white dark:bg-[#1e1f20] hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] border border-[#dadce0] dark:border-[#444746] text-[#1f1f1f] dark:text-[#e3e3e3] rounded-full text-xs font-medium transition-all shadow-none flex items-center gap-2"
                     >
                         <Icons.Settings />
                         <span>Customise Dashboard</span>
-                        <span className="px-1.5 py-0.5 text-[10px] bg-indigo-600 text-white rounded-full font-bold">
+                        <span className="px-1.5 py-0.5 text-[10px] bg-[#0b57d0] text-white rounded-full font-semibold">
                             {activeDisplayCards.length}
                         </span>
                     </button>
 
                     <button
                         onClick={toggleTheme}
-                        className="p-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 hover:border-indigo-400 dark:hover:border-indigo-500 transition-all shadow-sm"
+                        className="p-1.5 bg-white dark:bg-[#1e1f20] hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] border border-[#dadce0] dark:border-[#444746] rounded-full text-xs font-medium text-[#444746] dark:text-[#c4c7c5] transition-all"
                         title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
                     >
                         {isDark ? '☀️' : '🌙'}
@@ -702,7 +683,7 @@ const Dashboard = () => {
 
                     <button
                         onClick={fetchAll}
-                        className="px-3.5 py-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 hover:border-indigo-300 transition-all shadow-sm flex items-center gap-1.5"
+                        className="px-3.5 py-1.5 bg-white dark:bg-[#1e1f20] hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] border border-[#dadce0] dark:border-[#444746] rounded-full text-xs font-medium text-[#444746] dark:text-[#c4c7c5] transition-all flex items-center gap-1.5"
                     >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -712,7 +693,7 @@ const Dashboard = () => {
 
                     <Link
                         to="/inventory"
-                        className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl text-xs font-black transition-all shadow-sm flex items-center gap-1.5"
+                        className="px-4 py-1.5 bg-[#0b57d0] hover:bg-[#0842a0] text-white rounded-full text-xs font-medium transition-all shadow-none hover:shadow-sm flex items-center gap-1.5"
                     >
                         <span>{isMachinery ? 'Manage Parts' : 'Manage Stock'}</span>
                         <span>→</span>

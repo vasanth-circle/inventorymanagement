@@ -3,15 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { InventoryContext } from '../context/InventoryContext';
 import { AuthContext } from '../context/AuthContext';
 import { INDUSTRY_PRESETS } from '../config/industryPresets';
+import { CURRENCIES, getCurrencyConfig } from '../config/currencies';
 import { toast } from 'react-hot-toast';
 
 const INDUSTRY_ICONS = {
-    tiles:       '🧱',
-    electronics: '⚡',
-    retail:      '👕',
-    medical:     '💊',
-    machinery:   '⚙️',
-    generic:     '📦',
+    tiles:               '🧱',
+    electrical_hardware: '🔌',
+    medical:             '💊',
+    supermarket:         '🛒',
+    electronics:         '⚡',
+    retail:              '👕',
+    machinery:           '⚙️',
+    generic:             '📦',
 };
 
 const Onboarding = () => {
@@ -19,6 +22,7 @@ const Onboarding = () => {
     const { user } = useContext(AuthContext);
     const navigate = useNavigate();
     const [selectedIndustry, setSelectedIndustry] = useState(null);
+    const [selectedCurrency, setSelectedCurrency] = useState('INR');
     const [loading, setLoading] = useState(false);
 
     // If industry is already set (not generic), skip onboarding and go to dashboard
@@ -29,7 +33,7 @@ const Onboarding = () => {
     }, [billingSettings, settingsLoading, navigate]);
 
     const industries = Object.entries(INDUSTRY_PRESETS)
-        .filter(([id]) => id !== 'generic')
+        .filter(([id]) => id !== 'generic' && !['hardware', 'grocery', 'fmcg', 'machine_shop'].includes(id))
         .map(([id, preset]) => ({ id, ...preset }));
 
     const handleComplete = async () => {
@@ -42,6 +46,12 @@ const Onboarding = () => {
         try {
             const preset = INDUSTRY_PRESETS[selectedIndustry];
             const { labels, ...billingConfig } = preset.billing;
+            const currencyConfig = getCurrencyConfig(selectedCurrency);
+
+            let taxLabel = 'GST';
+            if (['USD'].includes(selectedCurrency)) taxLabel = 'Sales Tax';
+            else if (['EUR', 'GBP', 'AED', 'SAR'].includes(selectedCurrency)) taxLabel = 'VAT';
+
             const settingsData = {
                 industry: selectedIndustry,
                 unitConfig: {
@@ -49,12 +59,17 @@ const Onboarding = () => {
                     quantityLabel: labels.quantity,
                     secondaryLabel: labels.secondary,
                     rateLabel: labels.rate,
+                },
+                documentConfig: {
+                    currency: currencyConfig.code,
+                    currencySymbol: currencyConfig.symbol,
+                    taxLabel: taxLabel,
                 }
             };
 
             const result = await updateBillingSettings(settingsData);
             if (result.success) {
-                toast.success(`Welcome! Your ${preset.name} workspace is ready.`);
+                toast.success(`Welcome! Your ${preset.name} workspace (${currencyConfig.code}) is ready.`);
                 navigate('/dashboard');
             } else {
                 toast.error('Setup failed. Please try again.');
@@ -151,6 +166,51 @@ const Onboarding = () => {
                             </div>
                         );
                     })}
+                </div>
+
+                {/* Currency Selection Section */}
+                <div className="mb-10 p-6 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                        <div>
+                            <h3 className="text-lg font-black text-white flex items-center gap-2">
+                                <span>💰</span> Choose Base Currency
+                            </h3>
+                            <p className="text-xs text-slate-300">
+                                Select the currency your business operates in (Invoices, Quotations, POs, and Reports).
+                            </p>
+                        </div>
+                        <div className="px-3 py-1.5 bg-rose-500/20 border border-rose-500/40 rounded-xl text-rose-300 font-black text-sm">
+                            Selected: {selectedCurrency} ({getCurrencyConfig(selectedCurrency).symbol})
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
+                        {CURRENCIES.slice(0, 12).map((curr) => {
+                            const isSelected = selectedCurrency === curr.code;
+                            return (
+                                <button
+                                    key={curr.code}
+                                    type="button"
+                                    onClick={() => setSelectedCurrency(curr.code)}
+                                    className={`p-2.5 rounded-xl border text-left transition-all ${
+                                        isSelected
+                                            ? 'bg-rose-600 border-rose-400 text-white shadow-lg shadow-rose-900/50 scale-[1.03]'
+                                            : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:border-white/20'
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-base">{curr.flag}</span>
+                                        <span className={`text-xs font-black ${isSelected ? 'text-white' : 'text-slate-400'}`}>
+                                            {curr.symbol}
+                                        </span>
+                                    </div>
+                                    <div className="text-xs font-black truncate">{curr.code}</div>
+                                    <div className={`text-[10px] truncate ${isSelected ? 'text-rose-100' : 'text-slate-400'}`}>
+                                        {curr.country || curr.name}
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
 
                 {/* Action Buttons */}

@@ -89,14 +89,9 @@ const Navbar = ({ toggleSidebar }) => {
         <header
             className="print:hidden sticky top-0 z-30 transition-colors duration-200"
             style={{
-                height: '60px',
-                background: isDark ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255, 255, 255, 0.96)',
-                backdropFilter: 'blur(16px)',
-                WebkitBackdropFilter: 'blur(16px)',
-                borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #e2e8f0',
-                boxShadow: isDark
-                    ? '0 1px 3px rgba(0, 0, 0, 0.3)'
-                    : '0 1px 2px rgba(0, 0, 0, 0.03), 0 2px 4px rgba(0, 0, 0, 0.02)',
+                height: '64px',
+                background: isDark ? '#1e1f20' : '#ffffff',
+                borderBottom: isDark ? '1px solid #444746' : '1px solid #dadce0',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -104,37 +99,34 @@ const Navbar = ({ toggleSidebar }) => {
             }}
         >
             {/* Left Section: Mobile Toggle + Breadcrumbs / Title */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-                {/* Sidebar toggle button (Mobile & Desktop) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                {/* Sidebar toggle button (Google Circular Icon Button) */}
                 <button
                     onClick={toggleSidebar}
-                    aria-label="Toggle Navigation"
+                    aria-label="Toggle Navigation Menu"
+                    title="Toggle menu (collapse/expand)"
                     style={{
-                        width: '36px',
-                        height: '36px',
-                        borderRadius: '9px',
-                        border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e2e8f0',
-                        background: isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc',
-                        color: isDark ? '#94a3b8' : '#475569',
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '50%',
+                        border: 'none',
+                        background: 'transparent',
+                        color: isDark ? '#c4c7c5' : '#444746',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         cursor: 'pointer',
-                        transition: 'all 0.15s ease',
+                        transition: 'background 0.15s ease',
                         flexShrink: 0,
                     }}
                     onMouseEnter={e => {
-                        e.currentTarget.style.background = isDark ? 'rgba(99,102,241,0.2)' : '#eef2ff';
-                        e.currentTarget.style.color = '#6366f1';
-                        e.currentTarget.style.borderColor = '#c7d2fe';
+                        e.currentTarget.style.background = isDark ? '#282a2c' : '#f0f4f9';
                     }}
                     onMouseLeave={e => {
-                        e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc';
-                        e.currentTarget.style.color = isDark ? '#94a3b8' : '#475569';
-                        e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0';
+                        e.currentTarget.style.background = 'transparent';
                     }}
                 >
-                    <Bars3Icon style={{ width: '20px', height: '20px' }} />
+                    <Bars3Icon style={{ width: '22px', height: '22px' }} />
                 </button>
 
                 {/* Mobile Brand / App Icon */}
@@ -143,53 +135,72 @@ const Navbar = ({ toggleSidebar }) => {
                         <img src={billingSettings.branding.logoUrl} alt="Logo" style={{ height: '24px', objectFit: 'contain' }} />
                     ) : (
                         <div style={{
-                            width: '28px', height: '28px', borderRadius: '7px',
-                            background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                            width: '30px', height: '30px', borderRadius: '50%',
+                            background: '#0b57d0',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: 'white', fontWeight: 800, fontSize: '12px', fontFamily: 'Outfit, sans-serif'
+                            color: 'white', fontWeight: 700, fontSize: '12px', fontFamily: 'Inter, sans-serif'
                         }}>
                             IM
                         </div>
                     )}
                 </div>
 
-                {/* Desktop Breadcrumb Header */}
+                {/* Desktop Breadcrumb Header - Clickable Links */}
                 <div className="hidden lg:flex items-center gap-2" style={{ fontFamily: 'Inter, sans-serif' }}>
-                    <span style={{
-                        fontSize: '0.78rem',
-                        fontWeight: 600,
-                        color: isDark ? '#64748b' : '#94a3b8',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em'
-                    }}>
+                    <Link
+                        to="/dashboard"
+                        title="Go to Overview Dashboard"
+                        style={{
+                            fontSize: '0.78rem',
+                            fontWeight: 600,
+                            color: isDark ? '#8e918f' : '#747775',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em',
+                            textDecoration: 'none',
+                            cursor: 'pointer',
+                            transition: 'color 0.15s ease'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.color = '#0b57d0'}
+                        onMouseLeave={e => e.currentTarget.style.color = isDark ? '#8e918f' : '#747775'}
+                    >
                         {pageInfo.section}
-                    </span>
-                    <span style={{ color: isDark ? '#475569' : '#cbd5e1', fontSize: '0.85rem' }}>/</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    </Link>
+                    <span style={{ color: isDark ? '#444746' : '#dadce0', fontSize: '0.85rem' }}>/</span>
+                    <Link
+                        to={location.pathname}
+                        title={`Current page: ${pageInfo.title}`}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            textDecoration: 'none',
+                            cursor: 'pointer',
+                        }}
+                    >
                         <span style={{ fontSize: '0.95rem' }}>{pageInfo.icon}</span>
                         <h1 style={{
                             margin: 0,
-                            fontSize: '0.92rem',
-                            fontWeight: 700,
-                            color: isDark ? '#f8fafc' : '#0f172a',
-                            fontFamily: 'Outfit, sans-serif',
+                            fontSize: '0.94rem',
+                            fontWeight: 600,
+                            color: isDark ? '#f1f3f4' : '#1f1f1f',
+                            fontFamily: 'Inter, sans-serif',
                             letterSpacing: '-0.01em',
                             whiteSpace: 'nowrap'
                         }}>
                             {pageInfo.title}
                         </h1>
-                    </div>
+                    </Link>
                 </div>
             </div>
 
-            {/* Middle Section: Omni Search (Hidden on small mobile) */}
-            <div className="hidden md:flex items-center flex-1 max-w-md mx-6">
+            {/* Middle Section: Gmail-style Pill Search Bar */}
+            <div className="hidden md:flex items-center flex-1 max-w-xl mx-6">
                 <form onSubmit={handleSearchSubmit} style={{ width: '100%', position: 'relative' }}>
                     <MagnifyingGlassIcon style={{
-                        width: '16px', height: '16px',
-                        position: 'absolute', left: '12px', top: '50%',
+                        width: '18px', height: '18px',
+                        position: 'absolute', left: '16px', top: '50%',
                         transform: 'translateY(-50%)',
-                        color: isDark ? '#64748b' : '#94a3b8',
+                        color: isDark ? '#c4c7c5' : '#444746',
                         pointerEvents: 'none'
                     }} />
                     <input
@@ -197,62 +208,84 @@ const Navbar = ({ toggleSidebar }) => {
                         type="text"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
-                        placeholder="Search items, orders, parties... (Ctrl+K)"
+                        placeholder="Search items, orders, parties..."
                         style={{
                             width: '100%',
-                            height: '36px',
-                            paddingLeft: '36px',
-                            paddingRight: '64px',
-                            fontSize: '0.82rem',
+                            height: '42px',
+                            paddingLeft: '44px',
+                            paddingRight: '48px',
+                            fontSize: '0.875rem',
                             fontFamily: 'Inter, sans-serif',
-                            background: isDark ? 'rgba(30, 41, 59, 0.6)' : '#f8fafc',
-                            border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #e2e8f0',
-                            borderRadius: '10px',
-                            color: isDark ? '#f8fafc' : '#0f172a',
+                            background: isDark ? '#282a2c' : '#eaf1fb',
+                            border: '1px solid transparent',
+                            borderRadius: '9999px',
+                            color: isDark ? '#f1f3f4' : '#1f1f1f',
                             outline: 'none',
                             transition: 'all 0.2s ease',
                         }}
                         onFocus={e => {
-                            e.currentTarget.style.borderColor = '#6366f1';
-                            e.currentTarget.style.background = isDark ? 'rgba(30, 41, 59, 0.95)' : '#ffffff';
-                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.15)';
+                            e.currentTarget.style.borderColor = isDark ? '#444746' : '#dadce0';
+                            e.currentTarget.style.background = isDark ? '#1e1f20' : '#ffffff';
+                            e.currentTarget.style.boxShadow = isDark
+                                ? '0 1px 3px 0 rgba(0,0,0,0.4), 0 4px 8px 3px rgba(0,0,0,0.3)'
+                                : '0 1px 3px 0 rgba(60,64,67,0.3), 0 4px 8px 3px rgba(60,64,67,0.15)';
                         }}
                         onBlur={e => {
-                            e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0';
-                            e.currentTarget.style.background = isDark ? 'rgba(30, 41, 59, 0.6)' : '#f8fafc';
+                            e.currentTarget.style.borderColor = 'transparent';
+                            e.currentTarget.style.background = isDark ? '#282a2c' : '#eaf1fb';
                             e.currentTarget.style.boxShadow = 'none';
                         }}
                     />
-                    <kbd style={{
-                        position: 'absolute',
-                        right: '10px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0',
-                        color: isDark ? '#94a3b8' : '#64748b',
-                        padding: '2px 6px',
-                        borderRadius: '5px',
-                        fontSize: '0.65rem',
-                        fontWeight: 600,
-                        fontFamily: 'Inter, sans-serif',
-                        pointerEvents: 'none'
-                    }}>
-                        ⌘K
-                    </kbd>
+                    {/* Gmail-style Search Filter / Sliders Button */}
+                    <button
+                        type="submit"
+                        title="Search (or press Ctrl+K)"
+                        style={{
+                            position: 'absolute',
+                            right: '8px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'transparent',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '32px',
+                            height: '32px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: isDark ? '#c4c7c5' : '#444746',
+                            cursor: 'pointer',
+                            transition: 'background 0.15s ease'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.1)' : '#d3e3fd'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="4" y1="21" x2="4" y2="14"/>
+                            <line x1="4" y1="10" x2="4" y2="3"/>
+                            <line x1="12" y1="21" x2="12" y2="12"/>
+                            <line x1="12" y1="8" x2="12" y2="3"/>
+                            <line x1="20" y1="21" x2="20" y2="16"/>
+                            <line x1="20" y1="12" x2="20" y2="3"/>
+                            <line x1="1" y1="14" x2="7" y2="14"/>
+                            <line x1="9" y1="8" x2="15" y2="8"/>
+                            <line x1="17" y1="16" x2="23" y2="16"/>
+                        </svg>
+                    </button>
                 </form>
             </div>
 
-            {/* Right Section: Status Pill + Quick Action + Theme + User Profile */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {/* Live Sync Status Pill */}
+            {/* Right Section: Status Pill + Compose Button + Theme + User Profile */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {/* Live Sync Status Pill - Subtle & Calm */}
                 <div className="hidden sm:flex items-center gap-1.5" style={{
                     padding: '4px 10px',
-                    borderRadius: '20px',
-                    background: isDark ? 'rgba(16, 185, 129, 0.12)' : '#ecfdf5',
-                    border: isDark ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid #a7f3d0',
+                    borderRadius: '9999px',
+                    background: isDark ? 'rgba(15, 82, 35, 0.3)' : '#e6f4ea',
+                    border: isDark ? '1px solid rgba(19, 115, 51, 0.4)' : '1px solid #ceead6',
                     fontSize: '0.72rem',
-                    fontWeight: 600,
-                    color: '#059669',
+                    fontWeight: 500,
+                    color: isDark ? '#81c995' : '#137333',
                     fontFamily: 'Inter, sans-serif',
                     whiteSpace: 'nowrap'
                 }}>
@@ -260,70 +293,75 @@ const Navbar = ({ toggleSidebar }) => {
                         width: '6px',
                         height: '6px',
                         borderRadius: '50%',
-                        background: '#10b981',
-                        display: 'inline-block',
-                        boxShadow: '0 0 0 2px rgba(16, 185, 129, 0.2)'
+                        background: '#137333',
+                        display: 'inline-block'
                     }} />
                     <span>Live Sync</span>
                 </div>
 
-                {/* Quick Action: New Order */}
+                {/* Quick Action: Google Workspace "Compose" Style Pill */}
                 <Link
                     to="/sales-orders?create=true"
                     onClick={handleNewOrderClick}
                     className="hidden sm:inline-flex items-center gap-1.5"
                     style={{
-                        height: '34px',
-                        padding: '0 12px',
-                        borderRadius: '9px',
-                        background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-                        color: 'white',
-                        fontSize: '0.78rem',
+                        height: '38px',
+                        padding: '0 16px',
+                        borderRadius: '9999px',
+                        background: isDark ? '#004a77' : '#c2e7ff',
+                        color: isDark ? '#c2e7ff' : '#001d35',
+                        fontSize: '0.82rem',
                         fontWeight: 600,
                         textDecoration: 'none',
                         fontFamily: 'Inter, sans-serif',
-                        boxShadow: '0 2px 6px rgba(99,102,241,0.3)',
+                        boxShadow: '0 1px 2px 0 rgba(60,64,67,0.3)',
                         transition: 'all 0.15s ease',
                     }}
-                    onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-1px)'}
-                    onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                    onMouseEnter={e => {
+                        e.currentTarget.style.background = isDark ? '#005a8f' : '#b3d7f5';
+                        e.currentTarget.style.boxShadow = '0 1px 3px 1px rgba(60,64,67,0.15)';
+                    }}
+                    onMouseLeave={e => {
+                        e.currentTarget.style.background = isDark ? '#004a77' : '#c2e7ff';
+                        e.currentTarget.style.boxShadow = '0 1px 2px 0 rgba(60,64,67,0.3)';
+                    }}
                 >
-                    <PlusIcon style={{ width: '15px', height: '15px', strokeWidth: 2.5 }} />
+                    <PlusIcon style={{ width: '16px', height: '16px', strokeWidth: 2.5 }} />
                     <span>New Order</span>
                 </Link>
 
-                {/* Theme Toggle Button */}
+                {/* Theme Toggle Button - Round Google Icon Button */}
                 <button
                     onClick={toggleTheme}
                     title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
                     style={{
-                        width: '34px',
-                        height: '34px',
-                        borderRadius: '9px',
-                        border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e2e8f0',
-                        background: isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc',
-                        color: isDark ? '#fbbf24' : '#64748b',
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '50%',
+                        border: 'none',
+                        background: 'transparent',
+                        color: isDark ? '#fdd663' : '#444746',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         cursor: 'pointer',
-                        transition: 'all 0.15s ease',
+                        transition: 'background 0.15s ease',
                     }}
                     onMouseEnter={e => {
-                        e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.1)' : '#f1f5f9';
+                        e.currentTarget.style.background = isDark ? '#282a2c' : '#f0f4f9';
                     }}
                     onMouseLeave={e => {
-                        e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc';
+                        e.currentTarget.style.background = 'transparent';
                     }}
                 >
                     {isDark ? (
-                        <SunIcon style={{ width: '18px', height: '18px' }} />
+                        <SunIcon style={{ width: '19px', height: '19px' }} />
                     ) : (
-                        <MoonIcon style={{ width: '18px', height: '18px' }} />
+                        <MoonIcon style={{ width: '19px', height: '19px' }} />
                     )}
                 </button>
 
-                {/* User Avatar with Profile Link */}
+                {/* User Avatar with Profile Link - Google Circular Account Style */}
                 <Link
                     to="/profile"
                     style={{
@@ -331,50 +369,48 @@ const Navbar = ({ toggleSidebar }) => {
                         alignItems: 'center',
                         gap: '8px',
                         textDecoration: 'none',
-                        padding: '3px 8px 3px 4px',
-                        borderRadius: '10px',
-                        border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #e2e8f0',
-                        background: isDark ? 'rgba(255,255,255,0.04)' : '#f8fafc',
-                        transition: 'all 0.15s ease'
+                        padding: '4px 8px 4px 4px',
+                        borderRadius: '9999px',
+                        border: isDark ? '1px solid #444746' : '1px solid #dadce0',
+                        background: 'transparent',
+                        transition: 'background 0.15s ease'
                     }}
                     onMouseEnter={e => {
-                        e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.08)' : '#f1f5f9';
-                        e.currentTarget.style.borderColor = '#c7d2fe';
+                        e.currentTarget.style.background = isDark ? '#282a2c' : '#f0f4f9';
                     }}
                     onMouseLeave={e => {
-                        e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : '#f8fafc';
-                        e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0';
+                        e.currentTarget.style.background = 'transparent';
                     }}
                 >
                     <div style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '8px',
-                        background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                        width: '30px',
+                        height: '30px',
+                        borderRadius: '50%',
+                        background: '#0b57d0',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: 'white',
                         fontSize: '12px',
-                        fontWeight: 700,
-                        fontFamily: 'Outfit, sans-serif'
+                        fontWeight: 600,
+                        fontFamily: 'Inter, sans-serif'
                     }}>
                         {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                     </div>
-                    <div className="hidden lg:block" style={{ textAlign: 'left', lineHeight: 1.15 }}>
+                    <div className="hidden lg:block" style={{ textAlign: 'left', lineHeight: 1.15, paddingRight: '4px' }}>
                         <span style={{
                             display: 'block',
                             fontSize: '0.78rem',
                             fontWeight: 600,
-                            color: isDark ? '#f8fafc' : '#0f172a',
-                            fontFamily: 'Outfit, sans-serif'
+                            color: isDark ? '#f1f3f4' : '#1f1f1f',
+                            fontFamily: 'Inter, sans-serif'
                         }}>
                             {user?.name?.split(' ')[0] || 'Admin'}
                         </span>
                         <span style={{
                             display: 'block',
                             fontSize: '0.65rem',
-                            color: isDark ? '#94a3b8' : '#64748b',
+                            color: isDark ? '#8e918f' : '#747775',
                             textTransform: 'capitalize',
                             fontFamily: 'Inter, sans-serif'
                         }}>

@@ -36,8 +36,13 @@ const Sidebar = ({ isOpen, onClose }) => {
                 { name: 'HSN Codes', path: '/hsn-management', id: 'hsn', icon: '◈' },
                 { name: 'Categories', path: '/categories', id: 'categories', icon: '◈' },
                 { name: 'Brands', path: '/brands', id: 'brands', icon: '◈' },
-                { name: 'Finishes', path: '/finishes', id: 'finishes', icon: '◈' },
-                ...(billingSettings?.industry === 'tiles' ? [{ name: 'Manage Sizes', path: '/sizes', id: 'sizes', icon: '◈' }] : []),
+                ...(billingSettings?.industry === 'tiles' ? [
+                    { name: 'Finishes', path: '/finishes', id: 'finishes', icon: '◈' },
+                    { name: 'Manage Sizes', path: '/sizes', id: 'sizes', icon: '◈' }
+                ] : []),
+                ...(billingSettings?.industry === 'electrical_hardware' || billingSettings?.industry === 'hardware' ? [
+                    { name: 'Gauges & Specs', path: '/sizes', id: 'sizes', icon: '◈' }
+                ] : []),
                 ...(billingSettings?.industry === 'machinery' ? [{ name: 'Parts Config', path: '/sizes', id: 'sizes', icon: '◈' }] : []),
                 { name: 'Locations', path: '/locations', id: 'locations', icon: '◈' },
                 { name: 'Bulk Import', path: '/bulk-import', id: 'bulk-import', icon: '◈' },
@@ -249,69 +254,71 @@ const Sidebar = ({ isOpen, onClose }) => {
                 onClick={onClose}
             />
 
-            <div className={`fixed inset-y-0 left-0 z-50 lg:static lg:flex lg:flex-col transform transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)] ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+            <aside className={`fixed inset-y-0 left-0 z-50 lg:static lg:flex lg:flex-col transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)] ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
                 style={{
-                    width: '260px',
-                    background: isDark ? '#0f172a' : '#ffffff',
-                    borderRight: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #e2e8f0',
-                    boxShadow: isDark ? 'none' : '1px 0 3px rgba(0,0,0,0.02)',
+                    width: isOpen ? '260px' : '0px',
+                    minWidth: isOpen ? '260px' : '0px',
+                    overflow: 'hidden',
+                    background: isDark ? '#1e1f20' : '#ffffff',
+                    borderRight: isOpen ? (isDark ? '1px solid #444746' : '1px solid #dadce0') : 'none',
+                    boxShadow: 'none',
                     display: 'flex',
                     flexDirection: 'column',
-                    transition: 'background 0.2s ease, border-color 0.2s ease'
+                    transition: 'width 0.25s cubic-bezier(0.2,0,0,1), min-width 0.25s cubic-bezier(0.2,0,0,1), background 0.2s ease, border-color 0.2s ease'
                 }}
             >
-                {/* Logo / App Switcher */}
-                <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <button
-                        onClick={() => setShowAppSwitcher(!showAppSwitcher)}
-                        style={{
-                            width: '100%', height: '60px', display: 'flex', alignItems: 'center',
-                            justifyContent: 'space-between', padding: '0 16px',
-                            background: 'none', border: 'none', cursor: 'pointer',
-                            borderBottom: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #f1f5f9',
-                            transition: 'background 0.2s',
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : '#f8fafc'}
+                <div style={{ width: '260px', height: '100%', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+                    {/* Logo / App Switcher */}
+                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                        <button
+                            onClick={() => setShowAppSwitcher(!showAppSwitcher)}
+                            style={{
+                                width: '100%', height: '64px', display: 'flex', alignItems: 'center',
+                                justifyContent: 'space-between', padding: '0 16px',
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                borderBottom: isDark ? '1px solid #444746' : '1px solid #dadce0',
+                                transition: 'background 0.2s',
+                            }}
+                        onMouseEnter={e => e.currentTarget.style.background = isDark ? '#282a2c' : '#f0f4f9'}
                         onMouseLeave={e => e.currentTarget.style.background = 'none'}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             {companyLogo ? (
-                                <img src={companyLogo} alt="Logo" style={{ height: '30px', objectFit: 'contain' }} />
+                                <img src={companyLogo} alt="Logo" style={{ height: '28px', objectFit: 'contain' }} />
                             ) : (
                                 <div style={{
-                                    width: '34px', height: '34px', borderRadius: '10px',
-                                    background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                                    width: '32px', height: '32px', borderRadius: '50%',
+                                    background: '#0b57d0',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    boxShadow: '0 4px 12px rgba(99,102,241,0.3)',
                                 }}>
-                                    <span style={{ color: 'white', fontWeight: 800, fontSize: '13px', fontFamily: 'Outfit, sans-serif', letterSpacing: '-0.5px' }}>IM</span>
+                                    <span style={{ color: 'white', fontWeight: 700, fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>IM</span>
                                 </div>
                             )}
                             <div style={{ textAlign: 'left' }}>
                                 <span style={{
-                                    color: isDark ? '#ffffff' : '#0f172a',
-                                    fontWeight: 700, fontSize: '0.92rem',
+                                    color: isDark ? '#f1f3f4' : '#1f1f1f',
+                                    fontWeight: 600, fontSize: '0.92rem',
                                     display: 'block', lineHeight: 1.2,
-                                    fontFamily: 'Outfit, sans-serif'
+                                    fontFamily: 'Inter, sans-serif'
                                 }}>
                                     Vasanth
                                 </span>
                                 <span style={{
-                                    fontSize: '0.66rem',
-                                    fontWeight: 600,
-                                    color: isDark ? '#818cf8' : '#4f46e5',
-                                    background: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff',
-                                    padding: '1px 6px',
-                                    borderRadius: '10px',
+                                    fontSize: '0.68rem',
+                                    fontWeight: 500,
+                                    color: isDark ? '#a8c7fa' : '#0b57d0',
+                                    background: isDark ? 'rgba(11, 87, 208, 0.2)' : '#eaf1fb',
+                                    padding: '2px 8px',
+                                    borderRadius: '9999px',
                                     display: 'inline-block',
                                     lineHeight: 1.3,
                                     marginTop: '2px'
                                 }}>
-                                    {activeApp === 'inventory' ? '● Inventory Suite' : '● Asset Suite'}
+                                    {activeApp === 'inventory' ? 'Inventory Suite' : 'Asset Suite'}
                                 </span>
                             </div>
                         </div>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={isDark ? 'rgba(255,255,255,0.4)' : '#94a3b8'} strokeWidth="2.5" style={{ transform: showAppSwitcher ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={isDark ? '#c4c7c5' : '#747775'} strokeWidth="2.5" style={{ transform: showAppSwitcher ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}>
                             <polyline points="6 9 12 15 18 9"/>
                         </svg>
                     </button>
@@ -319,20 +326,20 @@ const Sidebar = ({ isOpen, onClose }) => {
                     {/* Mobile close */}
                     <div
                         onClick={onClose}
-                        style={{ position: 'absolute', top: '16px', right: '48px', padding: '6px', borderRadius: '8px', cursor: 'pointer', color: isDark ? 'rgba(255,255,255,0.4)' : '#64748b', display: 'flex' }}
+                        style={{ position: 'absolute', top: '16px', right: '48px', padding: '6px', borderRadius: '50%', cursor: 'pointer', color: isDark ? '#c4c7c5' : '#747775', display: 'flex' }}
                         className="lg:hidden"
                     >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </div>
 
                     {showAppSwitcher && (
                         <div style={{
                             position: 'absolute', top: '100%', left: 0, right: 0,
-                            background: isDark ? '#1e293b' : '#ffffff',
-                            borderBottom: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e2e8f0',
-                            borderRight: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e2e8f0',
+                            background: isDark ? '#1e1f20' : '#ffffff',
+                            borderBottom: isDark ? '1px solid #444746' : '1px solid #dadce0',
+                            borderRight: isDark ? '1px solid #444746' : '1px solid #dadce0',
                             zIndex: 50,
-                            boxShadow: isDark ? '0 12px 32px rgba(0,0,0,0.4)' : '0 12px 32px rgba(0,0,0,0.08)'
+                            boxShadow: isDark ? '0 8px 24px rgba(0,0,0,0.5)' : '0 8px 24px rgba(60,64,67,0.15)'
                         }}>
                             {[
                                 { key: 'inventory', label: 'Inventory Suite', sub: 'Stock, Sales & Purchases', route: '/dashboard' },
@@ -344,26 +351,26 @@ const Sidebar = ({ isOpen, onClose }) => {
                                         width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
                                         padding: '12px 18px',
                                         background: activeApp === app.key
-                                            ? (isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff')
+                                            ? (isDark ? '#004a77' : '#eaf1fb')
                                             : 'none',
                                         border: 'none', cursor: 'pointer',
-                                        borderBottom: isDark ? '1px solid rgba(255,255,255,0.04)' : '1px solid #f1f5f9',
-                                        transition: 'background 0.2s',
+                                        borderBottom: isDark ? '1px solid #444746' : '1px solid #f0f4f9',
+                                        transition: 'background 0.15s',
                                     }}
-                                    onMouseEnter={e => e.currentTarget.style.background = activeApp === app.key ? (isDark ? 'rgba(99,102,241,0.2)' : '#e0e7ff') : (isDark ? 'rgba(255,255,255,0.04)' : '#f8fafc')}
-                                    onMouseLeave={e => e.currentTarget.style.background = activeApp === app.key ? (isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff') : 'none'}
+                                    onMouseEnter={e => e.currentTarget.style.background = activeApp === app.key ? (isDark ? '#005a8f' : '#d3e3fd') : (isDark ? '#282a2c' : '#f0f4f9')}
+                                    onMouseLeave={e => e.currentTarget.style.background = activeApp === app.key ? (isDark ? '#004a77' : '#eaf1fb') : 'none'}
                                 >
                                     <div style={{ flex: 1, textAlign: 'left' }}>
                                         <span style={{
                                             display: 'block', fontWeight: 600, fontSize: '0.85rem',
-                                            color: activeApp === app.key ? '#6366f1' : (isDark ? 'rgba(255,255,255,0.85)' : '#0f172a'),
-                                            fontFamily: 'Outfit, sans-serif'
+                                            color: activeApp === app.key ? (isDark ? '#c2e7ff' : '#0b57d0') : (isDark ? '#f1f3f4' : '#1f1f1f'),
+                                            fontFamily: 'Inter, sans-serif'
                                         }}>
                                             {app.label}
                                         </span>
-                                        <span style={{ fontSize: '0.7rem', color: isDark ? 'rgba(255,255,255,0.35)' : '#64748b' }}>{app.sub}</span>
+                                        <span style={{ fontSize: '0.7rem', color: isDark ? '#8e918f' : '#747775' }}>{app.sub}</span>
                                     </div>
-                                    {activeApp === app.key && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+                                    {activeApp === app.key && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0b57d0" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
                                 </button>
                             ))}
                         </div>
@@ -371,7 +378,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 </div>
 
                 {/* Nav Items */}
-                <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: '3px' }}
+                <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: '3px' }}
                     className="custom-scrollbar">
                     {navGroups.map((group) => {
                         const accessibleItems = group.items.filter(item => checkAccess(item.id));
@@ -381,29 +388,29 @@ const Sidebar = ({ isOpen, onClose }) => {
                         const isExpanded = expandedGroup !== null ? expandedGroup === group.id : isGroupActive;
 
                         return (
-                            <div key={group.name} style={{ marginBottom: '2px' }}>
+                            <div key={group.name} style={{ marginBottom: '4px' }}>
                                 <button
                                     onClick={() => setExpandedGroup(isExpanded ? 'NONE' : group.id)}
                                     style={{
                                         width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                        padding: '7px 10px', background: 'none', border: 'none', cursor: 'pointer',
-                                        borderRadius: '8px', transition: 'background 0.15s',
+                                        padding: '7px 12px', background: 'none', border: 'none', cursor: 'pointer',
+                                        borderRadius: '9999px', transition: 'background 0.15s',
                                     }}
-                                    onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc'}
+                                    onMouseEnter={e => e.currentTarget.style.background = isDark ? '#282a2c' : '#f0f4f9'}
                                     onMouseLeave={e => e.currentTarget.style.background = 'none'}
                                 >
                                     <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span style={{ color: group.color, opacity: 0.95, display: 'flex' }}>{group.icon}</span>
+                                        <span style={{ color: isDark ? '#c4c7c5' : '#444746', opacity: 0.9, display: 'flex' }}>{group.icon}</span>
                                         <span style={{
-                                            fontSize: '0.68rem', fontWeight: 700,
-                                            color: isDark ? 'rgba(255,255,255,0.45)' : '#64748b',
-                                            textTransform: 'uppercase', letterSpacing: '0.08em',
-                                            fontFamily: 'Outfit, sans-serif'
+                                            fontSize: '0.72rem', fontWeight: 600,
+                                            color: isDark ? '#c4c7c5' : '#444746',
+                                            textTransform: 'uppercase', letterSpacing: '0.04em',
+                                            fontFamily: 'Inter, sans-serif'
                                         }}>
                                             {group.name}
                                         </span>
                                     </span>
-                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={isDark ? 'rgba(255,255,255,0.3)' : '#94a3b8'} strokeWidth="2.5"
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={isDark ? '#8e918f' : '#747775'} strokeWidth="2.5"
                                         style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}>
                                         <polyline points="6 9 12 15 18 9"/>
                                     </svg>
@@ -414,7 +421,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                                     maxHeight: isExpanded ? '1200px' : '0',
                                     opacity: isExpanded ? 1 : 0,
                                     transition: 'max-height 0.25s ease, opacity 0.2s ease',
-                                    paddingLeft: '4px',
+                                    paddingLeft: '2px',
                                 }}>
                                     {accessibleItems.map((item) => {
                                         const isActive = item.exact
@@ -426,42 +433,37 @@ const Sidebar = ({ isOpen, onClose }) => {
                                                 to={item.path}
                                                 onClick={() => { if (window.innerWidth < 1024) onClose(); }}
                                                 style={{
-                                                    display: 'flex', alignItems: 'center', gap: '9px',
-                                                    padding: '7px 11px', borderRadius: '8px',
-                                                    margin: '1px 0', textDecoration: 'none',
-                                                    fontSize: '0.82rem', fontWeight: isActive ? 600 : 500,
+                                                    display: 'flex', alignItems: 'center', gap: '10px',
+                                                    padding: '8px 16px', borderRadius: '9999px',
+                                                    margin: '2px 0', textDecoration: 'none',
+                                                    fontSize: '0.82rem',
+                                                    fontWeight: isActive ? 600 : 500,
                                                     fontFamily: 'Inter, sans-serif',
                                                     color: isActive
-                                                        ? (isDark ? '#ffffff' : '#4338ca')
-                                                        : (isDark ? 'rgba(255,255,255,0.6)' : '#334155'),
+                                                        ? (isDark ? '#c2e7ff' : '#041e49')
+                                                        : (isDark ? '#c4c7c5' : '#444746'),
                                                     background: isActive
-                                                        ? (isDark
-                                                            ? `linear-gradient(135deg, ${group.color}33, ${group.color}22)`
-                                                            : '#eef2ff')
+                                                        ? (isDark ? '#004a77' : '#d3e3fd')
                                                         : 'transparent',
-                                                    borderLeft: isActive
-                                                        ? `3px solid ${isDark ? group.color : '#4f46e5'}`
-                                                        : '3px solid transparent',
-                                                    transition: 'all 0.15s',
+                                                    transition: 'all 0.15s ease',
                                                 }}
                                                 onMouseEnter={e => {
                                                     if (!isActive) {
-                                                        e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : '#f8fafc';
-                                                        e.currentTarget.style.color = isDark ? 'rgba(255,255,255,0.9)' : '#0f172a';
+                                                        e.currentTarget.style.background = isDark ? '#282a2c' : '#e9eef6';
+                                                        e.currentTarget.style.color = isDark ? '#f1f3f4' : '#1f1f1f';
                                                     }
                                                 }}
                                                 onMouseLeave={e => {
                                                     if (!isActive) {
                                                         e.currentTarget.style.background = 'transparent';
-                                                        e.currentTarget.style.color = isDark ? 'rgba(255,255,255,0.6)' : '#334155';
+                                                        e.currentTarget.style.color = isDark ? '#c4c7c5' : '#444746';
                                                     }
                                                 }}
                                             >
                                                 <span style={{
-                                                    width: '5px', height: '5px', borderRadius: '50%',
-                                                    background: isActive ? (isDark ? group.color : '#4f46e5') : (isDark ? 'rgba(255,255,255,0.25)' : '#cbd5e1'),
+                                                    width: '6px', height: '6px', borderRadius: '50%',
+                                                    background: isActive ? (isDark ? '#c2e7ff' : '#0b57d0') : (isDark ? '#8e918f' : '#dadce0'),
                                                     flexShrink: 0,
-                                                    boxShadow: isActive ? `0 0 6px ${isDark ? group.color : '#6366f1'}` : 'none',
                                                     transition: 'all 0.15s'
                                                 }} />
                                                 {item.name}
@@ -476,34 +478,33 @@ const Sidebar = ({ isOpen, onClose }) => {
 
                 {/* Footer User Profile Card */}
                 <div style={{
-                    flexShrink: 0, padding: '10px 14px',
-                    borderTop: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #f1f5f9',
-                    background: isDark ? 'rgba(0,0,0,0.2)' : '#f8fafc',
+                    flexShrink: 0, padding: '12px 14px',
+                    borderTop: isDark ? '1px solid #444746' : '1px solid #dadce0',
+                    background: isDark ? '#1e1f20' : '#ffffff',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     transition: 'all 0.2s ease'
                 }}>
                     <Link to="/profile" style={{ display: 'flex', alignItems: 'center', gap: '9px', textDecoration: 'none', flex: 1, minWidth: 0 }}>
                         <div style={{
-                            width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
-                            background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                            width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0,
+                            background: '#0b57d0',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: 'white', fontSize: '12px', fontWeight: 700, fontFamily: 'Outfit, sans-serif',
-                            boxShadow: '0 2px 8px rgba(99,102,241,0.25)',
+                            color: 'white', fontSize: '12px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
                         }}>
                             {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                         </div>
                         <div style={{ minWidth: 0, flex: 1 }}>
                             <p style={{
                                 margin: 0, fontSize: '0.8rem', fontWeight: 600,
-                                color: isDark ? 'rgba(255,255,255,0.9)' : '#0f172a',
+                                color: isDark ? '#f1f3f4' : '#1f1f1f',
                                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                                fontFamily: 'Outfit, sans-serif'
+                                fontFamily: 'Inter, sans-serif'
                             }}>
                                 {user?.name}
                             </p>
                             <p style={{
-                                margin: 0, fontSize: '0.66rem',
-                                color: isDark ? 'rgba(255,255,255,0.4)' : '#64748b',
+                                margin: 0, fontSize: '0.68rem',
+                                color: isDark ? '#8e918f' : '#747775',
                                 textTransform: 'capitalize', fontFamily: 'Inter, sans-serif'
                             }}>
                                 {roleLabel?.replace('_', ' ')}
@@ -512,31 +513,30 @@ const Sidebar = ({ isOpen, onClose }) => {
                     </Link>
 
                     <button onClick={logout} title="Logout" style={{
-                        flexShrink: 0, marginLeft: '6px', width: '30px', height: '30px',
+                        flexShrink: 0, marginLeft: '6px', width: '32px', height: '32px',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
-                        border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #e2e8f0',
-                        borderRadius: '8px', cursor: 'pointer',
-                        color: isDark ? 'rgba(255,255,255,0.45)' : '#64748b',
+                        background: 'transparent',
+                        border: 'none',
+                        borderRadius: '50%', cursor: 'pointer',
+                        color: isDark ? '#c4c7c5' : '#747775',
                         transition: 'all 0.15s',
                     }}
                         onMouseEnter={e => {
-                            e.currentTarget.style.background = 'rgba(239,68,68,0.1)';
-                            e.currentTarget.style.color = '#ef4444';
-                            e.currentTarget.style.borderColor = '#fecaca';
+                            e.currentTarget.style.background = isDark ? '#282a2c' : '#fce8e6';
+                            e.currentTarget.style.color = '#c5221f';
                         }}
                         onMouseLeave={e => {
-                            e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : '#ffffff';
-                            e.currentTarget.style.color = isDark ? 'rgba(255,255,255,0.45)' : '#64748b';
-                            e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0';
+                            e.currentTarget.style.background = 'transparent';
+                            e.currentTarget.style.color = isDark ? '#c4c7c5' : '#747775';
                         }}
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
                         </svg>
                     </button>
                 </div>
             </div>
+        </aside>
         </>
     );
 };

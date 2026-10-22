@@ -4,6 +4,7 @@ import { AuthContext } from './AuthContext';
 import toast from 'react-hot-toast';
 import { confirmDelete as customConfirmDelete } from '../utils/confirmHelper.jsx';
 import { getIndustryPreset } from '../config/industryPresets';
+import { setAppCurrency, formatCurrency as helperFormatCurrency } from '../utils/helpers';
 
 export const InventoryContext = createContext();
 
@@ -24,8 +25,16 @@ export const InventoryProvider = ({ children }) => {
     const [activePreset, setActivePreset] = useState(getIndustryPreset('generic'));
     const [loading, setLoading] = useState(false);
 
-    // Sync activePreset when billingSettings change
+
+    // Sync activePreset and currency when billingSettings change
     useEffect(() => {
+        if (billingSettings?.documentConfig?.currency) {
+            setAppCurrency(
+                billingSettings.documentConfig.currency,
+                billingSettings.documentConfig.currencySymbol || '₹'
+            );
+        }
+
         if (billingSettings?.industry) {
             const basePreset = getIndustryPreset(billingSettings.industry);
             // Merge custom fields from settings if they exist
@@ -261,15 +270,121 @@ export const InventoryProvider = ({ children }) => {
             }
             // CRITICAL: For tiles, total is ALWAYS totalSqFt × ratePerSqft
             updatedRow.total = Number((updatedRow.totalSqFt * price).toFixed(2));
+        } else if ((industry === 'electrical_hardware' || industry === 'hardware') && (Number(updatedRow.rollLengthMeters) > 0 || Number(updatedRow.packQuantity) > 0)) {
+            // Electrical & Hardware Specialized Calculation Engine
+            // Coils / Rolls / Packets <-> Cut Meters / Fastener pieces
+            const rollLength = Math.max(1, Number(updatedRow.rollLengthMeters) || 1);
+            const packQty = Math.max(1, Number(updatedRow.packQuantity) || 1);
+            const billingUnit = updatedRow.billingUnit || 'coils';
+
+            if (field === 'quantity') {
+                updatedRow.quantity = value === '' ? '' : value;
+                const qty = Number(value || 0);
+                if (billingUnit === 'meters') {
+                    updatedRow.totalMeters = qty;
+                    updatedRow.coilCount = Number((qty / rollLength).toFixed(2));
+                    updatedRow.stockQty = updatedRow.coilCount;
+                    updatedRow.stockUnit = 'coils';
+                } else if (billingUnit === 'packets') {
+                    updatedRow.packetCount = qty;
+                    updatedRow.totalPcs = qty * packQty;
+                    updatedRow.stockQty = qty;
+                    updatedRow.stockUnit = 'packets';
+                } else {
+                    // Default coils / pieces
+                    updatedRow.coilCount = qty;
+                    updatedRow.totalMeters = qty * rollLength;
+                    updatedRow.stockQty = qty;
+                    updatedRow.stockUnit = 'coils';
+                }
+            } else if (field === 'billingUnit') {
+                if (value === 'meters') {
+                    updatedRow.quantity = updatedRow.totalMeters || 0;
+                } else if (value === 'packets') {
+                    updatedRow.quantity = updatedRow.packetCount || 0;
+                } else {
+                    updatedRow.quantity = updatedRow.coilCount || updatedRow.quantity || 0;
+                }
+            }
+            const qtyNum = Number(updatedRow.quantity) || 0;
+            updatedRow.total = Number((qtyNum * price).toFixed(2));
+        } else if (industry === 'medical' && (Number(updatedRow.tabletsPerStrip) > 0 || Number(updatedRow.stripsPerBox) > 0)) {
+            // Pharmacy & Medical Store Specialized Calculation Engine
+            // Strips <-> Boxes <-> Loose Tablets
+            const tabPerStrip = Math.max(1, Number(updatedRow.tabletsPerStrip) || 10);
+            const stripsPerBox = Math.max(1, Number(updatedRow.stripsPerBox) || 10);
+            const billingUnit = updatedRow.billingUnit || 'strips';
+
+            if (field === 'quantity') {
+                updatedRow.quantity = value === '' ? '' : value;
+                const qty = Number(value || 0);
+                if (billingUnit === 'boxes') {
+                    updatedRow.boxCount = qty;
+                    updatedRow.totalStrips = qty * stripsPerBox;
+                    updatedRow.totalTablets = updatedRow.totalStrips * tabPerStrip;
+                    updatedRow.stockQty = qty;
+                    updatedRow.stockUnit = 'boxes';
+                } else if (billingUnit === 'tablets') {
+                    updatedRow.totalTablets = qty;
+                    updatedRow.totalStrips = Number((qty / tabPerStrip).toFixed(2));
+                    updatedRow.stockQty = updatedRow.totalStrips;
+                    updatedRow.stockUnit = 'strips';
+                } else {
+                    // strips
+                    updatedRow.totalStrips = qty;
+                    updatedRow.totalTablets = qty * tabPerStrip;
+                    updatedRow.boxCount = Number((qty / stripsPerBox).toFixed(2));
+                    updatedRow.stockQty = qty;
+                    updatedRow.stockUnit = 'strips';
+                }
+            } else if (field === 'billingUnit') {
+                if (value === 'boxes') {
+                    updatedRow.quantity = updatedRow.boxCount || 0;
+                } else if (value === 'tablets') {
+                    updatedRow.quantity = updatedRow.totalTablets || 0;
+                } else {
+                    updatedRow.quantity = updatedRow.totalStrips || 0;
+                }
+            }
+            const qtyNum = Number(updatedRow.quantity) || 0;
+            updatedRow.total = Number((qtyNum * price).toFixed(2));
+        } else if (industry === 'supermarket' || industry === 'grocery' || industry === 'fmcg') {
+            // Supermarket & FMCG Specialized Calculation Engine
+            // Supports MRP discounts & Carton case pack conversions
+            const casePack = Math.max(1, Number(updatedRow.casePack) || 1);
+            const mrp = Number(updatedRow.mrp) || 0;
+            const billingUnit = updatedRow.billingUnit || 'pieces';
+
+            if (field === 'quantity') {
+                updatedRow.quantity = value === '' ? '' : value;
+                const qty = Number(value || 0);
+                if (billingUnit === 'cartons' || billingUnit === 'cases') {
+                    updatedRow.caseCount = qty;
+                    updatedRow.totalPcs = qty * casePack;
+                    updatedRow.stockQty = qty;
+                    updatedRow.stockUnit = 'cartons';
+                } else {
+                    updatedRow.totalPcs = qty;
+                    updatedRow.stockQty = qty;
+                    updatedRow.stockUnit = 'pieces';
+                }
+            }
+            const qtyNum = Number(updatedRow.quantity) || 0;
+            updatedRow.total = Number((qtyNum * price).toFixed(2));
+            if (mrp > price && price > 0) {
+                updatedRow.savingsAmount = Number(((mrp - price) * qtyNum).toFixed(2));
+                updatedRow.discountPct = Number((((mrp - price) / mrp) * 100).toFixed(1));
+            } else {
+                updatedRow.savingsAmount = 0;
+                updatedRow.discountPct = 0;
+            }
         } else {
             // Standard Logic: Qty * Price
-            // Covers: generic, retail, electronics, medical, machinery — all piece-based industries
             if (field === 'quantity') {
                 updatedRow.quantity = value === '' ? '' : value;
             }
             const qtyNum = Number(updatedRow.quantity) || 0;
             updatedRow.stockQty = qtyNum;
-            // Machinery uses pieces/sets, label reflects that
             updatedRow.stockUnit = industry === 'machinery' ? 'pieces' : 'units';
             updatedRow.total = Number((qtyNum * price).toFixed(2));
         }
@@ -738,6 +853,14 @@ export const InventoryProvider = ({ children }) => {
                 fetchPurchaseOrders,
                 fetchBrands,
                 fetchFinishes,
+                currency: billingSettings?.documentConfig?.currency || 'INR',
+                currencySymbol: billingSettings?.documentConfig?.currencySymbol || '₹',
+                formatCurrency: (amount, code, sym, decimals) => helperFormatCurrency(
+                    amount,
+                    code || billingSettings?.documentConfig?.currency || 'INR',
+                    sym || billingSettings?.documentConfig?.currencySymbol || '₹',
+                    decimals
+                ),
             }}
         >
             {children}

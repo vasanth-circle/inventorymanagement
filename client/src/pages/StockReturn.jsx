@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { InventoryContext } from '../context/InventoryContext';
+import { formatCurrency } from '../utils/helpers';
 import FormField, { FormSection } from '../components/ui/FormField';
 import EmptyState from '../components/ui/EmptyState';
 
@@ -618,7 +619,7 @@ const StockReturn = () => {
                 </div>
                 <div className="stat-card">
                     <div className="stat-card-value text-green-600">
-                        {'Rs.'}{(returns.filter(r => r.returnType === 'customer').reduce((sum, r) => sum + (r.total || 0), 0) / 1000).toFixed(1)}k
+                        {formatCurrency(returns.filter(r => r.returnType === 'customer').reduce((sum, r) => sum + (r.total || 0), 0))}
                     </div>
                     <div className="stat-card-label">Total Refunded</div>
                 </div>
@@ -658,7 +659,7 @@ const StockReturn = () => {
                                 >
                                     <option value="">{loadingInvoices ? 'Loading...' : 'Select Invoice'}</option>
                                     {invoices.map(inv => (
-                                        <option key={inv._id} value={inv._id}>{inv.orderNumber} ({new Date(inv.orderDate).toLocaleDateString()}) - Rs.{inv.totalAmount}</option>
+                                        <option key={inv._id} value={inv._id}>{inv.orderNumber} ({new Date(inv.orderDate).toLocaleDateString()}) - {formatCurrency(inv.totalAmount)}</option>
                                     ))}
                                 </select>
                             </FormField>
@@ -694,7 +695,7 @@ const StockReturn = () => {
                                                         <div className="font-bold">{item.billedQty} {isTile ? 'Boxes' : item.unitType}</div>
                                                         {isTile && <div className="text-[10px] text-gray-400">{(item.billedQty * item.sqFtPerPc * item.pcsPerBox).toFixed(2)} sqft</div>}
                                                     </td>
-                                                    <td className="text-right font-medium">Rs.{item.rate}</td>
+                                                    <td className="text-right font-medium">{formatCurrency(item.rate)}</td>
                                                     <td className="w-40 text-center">
                                                         <input
                                                             type="number"
@@ -707,7 +708,7 @@ const StockReturn = () => {
                                                         />
                                                     </td>
                                                     <td className="text-right font-bold text-green-600">
-                                                        Rs.{item.total > 0 ? item.total.toFixed(2) : '0.00'}
+                                                        {formatCurrency(item.total > 0 ? item.total : 0)}
                                                     </td>
                                                 </tr>
                                             );
@@ -727,7 +728,7 @@ const StockReturn = () => {
                                         </FormField>
                                         <div className="bg-green-50 p-4 rounded-xl border border-green-100 flex justify-between items-center form-full">
                                             <span className="font-bold text-green-800">Total Refund Amount:</span>
-                                            <span className="text-2xl font-black text-green-600">Rs.{refundTotal.toLocaleString('en-IN')}</span>
+                                            <span className="text-2xl font-black text-green-600">{formatCurrency(refundTotal)}</span>
                                         </div>
                                     </div>
                                     <div className="mt-6 flex justify-end">
@@ -775,7 +776,7 @@ const StockReturn = () => {
                                                 <span className="badge badge-primary">{r.quantity} qty</span>
                                             </td>
                                             <td className="text-right font-bold text-green-600">
-                                                Rs.{r.total?.toLocaleString('en-IN')}
+                                                {formatCurrency(r.total || 0)}
                                             </td>
                                             <td className="text-xs text-gray-600">{r.reason}</td>
                                         </tr>

@@ -1,12 +1,14 @@
 import { printDocument } from './printTemplates';
 import html2pdf from 'html2pdf.js';
 
+import { formatCurrency } from './helpers';
+
 export const generateShareMessage = (order, settings, docType = 'quotation') => {
     const isQuotation = docType === 'quotation';
     const title = isQuotation ? 'Quotation' : 'Invoice';
     const docNo = isQuotation ? (order.quotationNumber || order.orderNumber) : order.orderNumber;
     const company = settings?.companyName || 'Our Company';
-    const total = (order.totalAmount || 0).toLocaleString('en-IN');
+    const total = formatCurrency(order.totalAmount || 0, settings?.documentConfig?.currency, settings?.documentConfig?.currencySymbol);
     const currency = settings?.documentConfig?.currencySymbol || '₹';
 
     let message = `*${title} from ${company}*\n\n`;
@@ -24,7 +26,7 @@ export const generateShareMessage = (order, settings, docType = 'quotation') => 
     }
 
     message += `--------------------------\n`;
-    message += `*Total Amount: ${currency}${total}*\n\n`;
+    message += `*Total Amount: ${total}*\n\n`;
     
     if (order.terms) {
         message += `*Terms:* ${order.terms}\n\n`;

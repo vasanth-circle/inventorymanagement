@@ -373,44 +373,58 @@ export default function AIChatbox() {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     };
 
+    // Unique Bespoke Inventory AI Icon (Smart Cube with AI Quantum Core)
+    const UniqueAIIcon = ({ size = 19, color = "#0b57d0" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2.5L20.2 7.3V16.7L12 21.5L3.8 16.7V7.3L12 2.5Z" stroke={color} strokeWidth="1.8" strokeLinejoin="round" />
+            <path d="M12 2.5L20.2 7.3L12 12.1L3.8 7.3L12 2.5Z" fill={color === "#ffffff" ? "rgba(255,255,255,0.25)" : "#d3e3fd"} opacity="0.8" />
+            <path d="M12 12.1V21.5" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+            <circle cx="12" cy="12.1" r="2.8" fill={color} />
+            <circle cx="12" cy="12.1" r="1.2" fill={color === "#ffffff" ? "#0b57d0" : "#ffffff"} />
+            <circle cx="12" cy="2.5" r="1.2" fill={color} />
+            <circle cx="20.2" cy="7.3" r="1.2" fill={color} />
+            <circle cx="3.8" cy="7.3" r="1.2" fill={color} />
+        </svg>
+    );
+
     const BotAvatar = () => (
-        <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'linear-gradient(135deg,#4f46e5,#6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
-                <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M9 11a2 2 0 0 0-2 2 2 2 0 0 0 2 2 2 2 0 0 0 2-2 2 2 0 0 0-2-2m6 0a2 2 0 0 0-2 2 2 2 0 0 0 2 2 2 2 0 0 0 2-2 2 2 0 0 0-2-2z"/>
-            </svg>
+        <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#eaf1fb', border: '1px solid #d3e3fd', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <UniqueAIIcon size={16} color="#0b57d0" />
         </div>
     );
 
     return (
         <>
-            {/* FAB */}
+            {/* Unique Inventory AI Trigger Button */}
             <button
                 id="ai-chatbox-toggle"
                 onClick={() => setOpen(o => !o)}
                 style={{
                     position: 'fixed', bottom: '88px', right: '20px', zIndex: 1000,
                     display: 'flex', alignItems: 'center', gap: '8px',
-                    background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-                    color: 'white', border: 'none', borderRadius: '50px',
-                    padding: open ? '12px 14px' : '12px 18px',
+                    background: '#ffffff',
+                    color: '#1f1f1f',
+                    border: '1px solid #dadce0',
+                    borderRadius: '9999px',
+                    padding: open ? '10px 14px' : '9px 18px',
                     cursor: 'pointer',
-                    boxShadow: '0 8px 24px rgba(99,102,241,0.45), 0 2px 8px rgba(99,102,241,0.2)',
-                    transition: 'all 0.3s cubic-bezier(0.34,1.56,0.64,1)',
-                    fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: '0.85rem',
+                    boxShadow: '0 1px 3px 0 rgba(60,64,67,0.3), 0 4px 8px 3px rgba(60,64,67,0.15)',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: '0.82rem',
                 }}
+                onMouseEnter={e => e.currentTarget.style.background = '#f0f4f9'}
+                onMouseLeave={e => e.currentTarget.style.background = '#ffffff'}
             >
                 {open ? (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#444746" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                     </svg>
                 ) : (
                     <>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M9 11a2 2 0 0 0-2 2 2 2 0 0 0 2 2 2 2 0 0 0 2-2 2 2 0 0 0-2-2m6 0a2 2 0 0 0-2 2 2 2 0 0 0 2 2 2 2 0 0 0 2-2 2 2 0 0 0-2-2z"/>
-                        </svg>
+                        <UniqueAIIcon size={18} color="#0b57d0" />
                         <span>AI Assistant</span>
                         {hasUnread && (
-                            <span style={{ position: 'absolute', top: '6px', right: '6px', width: '10px', height: '10px', background: '#f43f5e', borderRadius: '50%', border: '2px solid white' }} />
+                            <span style={{ position: 'absolute', top: '5px', right: '5px', width: '8px', height: '8px', background: '#d93025', borderRadius: '50%', border: '2px solid white' }} />
                         )}
                     </>
                 )}
@@ -419,43 +433,42 @@ export default function AIChatbox() {
             {/* Panel */}
             {open && (
                 <div style={{
-                    position: 'fixed', bottom: '160px', right: '20px',
-                    width: '360px', maxWidth: 'calc(100vw - 32px)',
-                    height: '500px', maxHeight: 'calc(100vh - 200px)',
-                    background: 'white', borderRadius: '20px',
-                    boxShadow: '0 24px 64px rgba(0,0,0,0.16), 0 8px 24px rgba(99,102,241,0.12)',
+                    position: 'fixed', bottom: '150px', right: '20px',
+                    width: '370px', maxWidth: 'calc(100vw - 32px)',
+                    height: '520px', maxHeight: 'calc(100vh - 180px)',
+                    background: 'white', borderRadius: '24px',
+                    boxShadow: '0 8px 32px rgba(60,64,67,0.22)',
                     display: 'flex', flexDirection: 'column',
                     overflow: 'hidden', zIndex: 999,
-                    animation: 'chatSlideIn 0.35s cubic-bezier(0.34,1.56,0.64,1)',
-                    border: '1px solid rgba(99,102,241,0.1)',
+                    animation: 'chatSlideIn 0.25s cubic-bezier(0.2, 0, 0, 1)',
+                    border: '1px solid #dadce0',
                 }}>
                     {/* Header */}
                     <div style={{
-                        background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #818cf8 100%)',
-                        padding: '16px 20px', display: 'flex', alignItems: 'center',
+                        background: '#ffffff',
+                        borderBottom: '1px solid #dadce0',
+                        padding: '14px 18px', display: 'flex', alignItems: 'center',
                         justifyContent: 'space-between', flexShrink: 0,
                     }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <div style={{ position: 'relative' }}>
-                                <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
-                                        <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M9 11a2 2 0 0 0-2 2 2 2 0 0 0 2 2 2 2 0 0 0 2-2 2 2 0 0 0-2-2m6 0a2 2 0 0 0-2 2 2 2 0 0 0 2 2 2 2 0 0 0 2-2 2 2 0 0 0-2-2z"/>
-                                    </svg>
+                                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#eaf1fb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <UniqueAIIcon size={20} color="#0b57d0" />
                                 </div>
-                                <span style={{ position: 'absolute', bottom: '1px', right: '1px', width: '10px', height: '10px', background: '#4ade80', borderRadius: '50%', border: '2px solid #4f46e5' }} />
+                                <span style={{ position: 'absolute', bottom: '0px', right: '0px', width: '9px', height: '9px', background: '#137333', borderRadius: '50%', border: '2px solid white' }} />
                             </div>
                             <div>
-                                <p style={{ color: 'white', fontWeight: 700, fontSize: '0.95rem', margin: 0, fontFamily: 'Outfit, sans-serif' }}>InventoryPro AI</p>
-                                <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.7rem', margin: 0, fontFamily: 'Inter, sans-serif' }}>● Live data · Ask anything</p>
+                                <p style={{ color: '#1f1f1f', fontWeight: 600, fontSize: '0.92rem', margin: 0, fontFamily: 'Inter, sans-serif' }}>InventoryPro AI</p>
+                                <p style={{ color: '#747775', fontSize: '0.7rem', margin: 0, fontFamily: 'Inter, sans-serif' }}>Live workspace intelligence</p>
                             </div>
                         </div>
                         <button
                             onClick={() => setOpen(false)}
-                            style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white', transition: 'background 0.2s' }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+                            style={{ background: 'transparent', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#747775', transition: 'background 0.15s' }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#f0f4f9'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                         >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         </button>
                     </div>
 
@@ -525,33 +538,33 @@ export default function AIChatbox() {
                     </div>
 
                     {/* Input */}
-                    <div style={{ padding: '12px', borderTop: '1px solid #f1f5f9', background: 'white', display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+                    <div style={{ padding: '12px', borderTop: '1px solid #dadce0', background: 'white', display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
                         <input
                             ref={inputRef}
                             id="ai-chat-input"
-                            placeholder="e.g. Today's sales? Top item this week?"
+                            placeholder="Ask questions about inventory, orders, stock..."
                             value={input}
                             onChange={e => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            style={{ flex: 1, border: '1px solid #e5e7eb', borderRadius: '12px', padding: '10px 14px', fontSize: '0.83rem', fontFamily: 'Inter, sans-serif', outline: 'none', background: '#f8fafc', color: '#111827', transition: 'border-color 0.2s, box-shadow 0.2s' }}
-                            onFocus={e => { e.target.style.borderColor = '#6366f1'; e.target.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.15)'; e.target.style.background = 'white'; }}
-                            onBlur={e => { e.target.style.borderColor = '#e5e7eb'; e.target.style.boxShadow = 'none'; e.target.style.background = '#f8fafc'; }}
+                            style={{ flex: 1, border: '1px solid #dadce0', borderRadius: '9999px', padding: '10px 16px', fontSize: '0.84rem', fontFamily: 'Inter, sans-serif', outline: 'none', background: '#f8fafc', color: '#1f1f1f', transition: 'all 0.15s ease' }}
+                            onFocus={e => { e.target.style.borderColor = '#0b57d0'; e.target.style.boxShadow = '0 0 0 3px rgba(11,87,208,0.15)'; e.target.style.background = 'white'; }}
+                            onBlur={e => { e.target.style.borderColor = '#dadce0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#f8fafc'; }}
                         />
                         <button
                             id="ai-chat-send"
                             onClick={() => sendMessage()}
                             disabled={!input.trim() || isTyping}
                             style={{
-                                width: '40px', height: '40px', borderRadius: '12px', border: 'none', flexShrink: 0,
-                                background: (input.trim() && !isTyping) ? 'linear-gradient(135deg,#4f46e5,#6366f1)' : '#e5e7eb',
-                                color: (input.trim() && !isTyping) ? 'white' : '#9ca3af',
+                                width: '38px', height: '38px', borderRadius: '50%', border: 'none', flexShrink: 0,
+                                background: (input.trim() && !isTyping) ? '#0b57d0' : '#f0f4f9',
+                                color: (input.trim() && !isTyping) ? 'white' : '#747775',
                                 cursor: (input.trim() && !isTyping) ? 'pointer' : 'not-allowed',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                transition: 'all 0.2s',
-                                boxShadow: (input.trim() && !isTyping) ? '0 4px 12px rgba(99,102,241,0.3)' : 'none',
+                                transition: 'all 0.15s ease',
+                                boxShadow: (input.trim() && !isTyping) ? '0 1px 2px 0 rgba(60,64,67,0.3)' : 'none',
                             }}
                         >
-                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
                             </svg>
                         </button>

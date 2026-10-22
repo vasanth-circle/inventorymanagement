@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { confirmDelete } from '../utils/confirmHelper.jsx';
 import { AuthContext } from '../context/AuthContext';
 import { InventoryContext } from '../context/InventoryContext';
+import { formatCurrency } from '../utils/helpers';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const ASSET_TYPES = ['System', 'Vehicle', 'Furniture', 'Networking', 'Other'];
@@ -30,7 +31,7 @@ const CONDITION_COLORS = {
     Excellent: '#10b981', Good: '#6366f1', Fair: '#f59e0b', Poor: '#ef4444',
 };
 
-const fmt = (n) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n || 0);
+const fmt = (n) => formatCurrency(n, null, null, 0);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 const daysUntil = (d) => Math.ceil((new Date(d) - new Date()) / (1000 * 60 * 60 * 24));
 

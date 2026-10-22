@@ -6,6 +6,7 @@ import { AuthContext } from '../context/AuthContext';
 import { InventoryContext } from '../context/InventoryContext';
 import { printDocument, generateInvoiceHtml } from '../utils/printTemplates';
 import { shareViaWhatsApp, shareViaEmail, shareInvoiceAsPdf } from '../utils/shareUtils';
+import { formatCurrency } from '../utils/helpers';
 import SearchableSelect from '../components/SearchableSelect';
 import { confirmDelete as confirmAction } from '../utils/confirmHelper.jsx';
 import Drawer from '../components/ui/Drawer';
@@ -17,7 +18,7 @@ const ITEMS_API = '/api/items';
 
 const SalesOrders = () => {
     const { user } = useContext(AuthContext);
-    const { billingSettings, calculateItemValues, customerTypes = [] } = useContext(InventoryContext);
+    const { billingSettings, calculateItemValues, customerTypes = [], currencySymbol = '₹' } = useContext(InventoryContext);
     const [orders, setOrders] = useState([]);
     const [customers, setCustomers] = useState([]);
     const [items, setItems] = useState([]);
@@ -647,7 +648,7 @@ const SalesOrders = () => {
                                             <div style={{fontSize:'13px',color:'#475569',fontWeight:'500'}}>{new Date(order.orderDate).toLocaleDateString()}</div>
                                         </td>
                                         <td>
-                                            <div style={{fontSize:'14px',fontWeight:'800',color:'#0f172a'}}>Rs.{((order.totalAmount || 0) + (order.advanceAmount || 0) - (order.oldBalance || 0)).toLocaleString()}</div>
+                                            <div style={{fontSize:'14px',fontWeight:'800',color:'#0f172a'}}>{formatCurrency((order.totalAmount || 0) + (order.advanceAmount || 0) - (order.oldBalance || 0))}</div>
                                         </td>
                                         <td>
                                             <span className={`badge ${getStatusColor(order.status)}`}>
@@ -805,7 +806,7 @@ const SalesOrders = () => {
 
                     <FormSection icon="💰" title="Payment & Notes" color="#f0fdf4">
                         <div className="form-grid-2">
-                            <FormField label="Advance Received (₹)">
+                            <FormField label={`Advance Received (${currencySymbol})`}>
                                 <input type="number" step="0.01" value={formData.advanceAmount} onChange={(e) => setFormData({ ...formData, advanceAmount: parseFloat(e.target.value) || '' })} placeholder="0.00" />
                             </FormField>
                             <FormField label="Payment Method">
